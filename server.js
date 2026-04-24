@@ -221,17 +221,18 @@ app.get('/reservations', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('reservations')
-            .select('id, name, arrivalDate, arrivalTime, tableNo');
+            // Fetch using the database's lowercase names
+            .select('id, name, arrivaldate, arrivaltime, tableno');
 
         if (error) throw error;
 
-        // Map columns on the fly to match your admin.html JS
+        // Map columns back to camelCase for the frontend UI
         const mappedData = data.map(r => ({
             reservationNumber: r.id,
             customerName: r.name,
-            arrivalDate: r.arrivalDate,
-            arrivalTime: r.arrivalTime,
-            bookedTable: r.tableNo,
+            arrivalDate: r.arrivaldate,
+            arrivalTime: r.arrivaltime,
+            bookedTable: r.tableno,
             reservationType: 'priority'
         }));
 
@@ -251,10 +252,11 @@ app.post('/reserve', async (req, res) => {
         const { error } = await supabase
             .from('reservations')
             .insert([{ 
+                // Insert using the database's lowercase names
                 name: name, 
-                arrivalDate: date, 
-                arrivalTime: time, 
-                tableNo: table 
+                arrivaldate: date, 
+                arrivaltime: time, 
+                tableno: table 
             }]);
 
         if (error) throw error;
