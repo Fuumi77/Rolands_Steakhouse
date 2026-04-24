@@ -350,6 +350,17 @@ app.post('/api/paymongo/checkout', async (req, res) => {
     }
 });
 
+/* GET LIVE INVENTORY (CLOUD SYNC) */
+app.get('/api/inventory', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('inventory').select('*');
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Database fetch error");
+    }
+});
 /* SAVE OR UPDATE INVENTORY ITEM */
 app.post('/api/inventory', async (req, res) => {
     const { id, title, category, price, total_stock, added_stock, sold_stock, image, last_updated } = req.body;
