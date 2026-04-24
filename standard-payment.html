@@ -497,6 +497,22 @@
             });
             localStorage.removeItem('tempPaymentUpload');
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            // --- SYNC TO SUPABASE CLOUD ---
+            try {
+                fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: customerName,
+                        date: arrivalDate,
+                        time: arrivalTime,
+                        table: bookedTable
+                    })
+                });
+            } catch(err) {
+                console.error("Cloud sync failed:", err);
+            }
+            // ------------------------------
             localStorage.setItem('reservationNumber', resNo);
             window.onbeforeunload = null;
             await superModal({
