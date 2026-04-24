@@ -147,10 +147,17 @@
                 </div>
 
                 <input type="email" placeholder="Email Address (Optional)">
-                <input type="date" id="arrival-date-input" required>
+                
+                <input type="date" id="arrival-date-input" required 
+                    onclick="try{this.showPicker()}catch(e){}" 
+                    style="cursor: pointer;">
+                
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 13px; color: #555; text-align: left; margin-left: 2px;">Arrival Time (10:30 - 21:00)</label>
-                    <input type="time" id="arrival-time-input" min="10:30" max="21:00" required>
+                    
+                    <input type="time" id="arrival-time-input" min="10:30" max="21:00" required 
+                        onclick="try{this.showPicker()}catch(e){}" 
+                        style="cursor: pointer;">
                 </div>
                 <select required>
                     <option value="" disabled selected>Number of Guests</option>
