@@ -268,6 +268,27 @@ app.post('/reserve', async (req, res) => {
     }
 });
 
+/* DELETE RESERVATION */
+app.delete('/reserve', async (req, res) => {
+    const { name, date, table } = req.body;
+
+    try {
+        const { error } = await supabase
+            .from('reservations')
+            .delete()
+            .eq('name', name)
+            .eq('arrivaldate', date)
+            .eq('tableno', table);
+
+        if (error) throw error;
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error("Supabase Delete Error:", err);
+        res.status(500).send("Error deleting from database");
+    }
+});
+
 /* CREATE PAYMONGO CHECKOUT SESSION (Card-only, no QR) */
 app.post('/api/paymongo/checkout', async (req, res) => {
     const { amount, description, customerName } = req.body;
