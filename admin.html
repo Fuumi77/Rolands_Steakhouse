@@ -2246,6 +2246,23 @@
                         }
                     }
                     localStorage.setItem('inventoryItems', JSON.stringify(items));
+                    // --- SYNC TO SUPABASE CLOUD ---
+            try {
+                fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        date: date,
+                        time: time,
+                        table: table
+                    })
+                });
+            } catch(err) {
+                console.error("Cloud sync failed:", err);
+            }
+            // ------------------------------
+                    
                     renderMenuManagement(); // Refresh inventory tab
                 }
             } catch(e) { console.error("Stock deduction failed", e); }
