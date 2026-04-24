@@ -302,67 +302,64 @@
             }
         }
 
-        // Handle Login Submission — calls real SQL Server backend
+        // Handle Login Submission — Cloud Backend
         async function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
+            const email    = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            const btn = e.target.querySelector('button[type="submit"]');
+            const btn      = e.target.querySelector('button[type="submit"]');
             btn.textContent = 'Signing in...';
-            btn.disabled = true;
+            btn.disabled    = true;
 
             try {
-                const res = await fetch('http://localhost:3000/login', {
-                    method: 'POST',
+                // Connect to the Cloud instead of localhost
+                const res  = await fetch('/login', {
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body:    JSON.stringify({ email, password })
                 });
                 const data = await res.json();
 
                 if (data.success) {
+                    // Save the real Full Name from Supabase!
                     localStorage.setItem('loggedInUserName', data.name);
                     window.location.href = 'index.html';
                 } else {
                     superModal({ title: 'Login Failed ❌', message: 'Invalid email or password. Please try again.' });
                     btn.textContent = 'Sign In';
-                    btn.disabled = false;
+                    btn.disabled    = false;
                 }
             } catch (err) {
-                // Server offline — fallback: derive name from email
-                console.warn('Server offline, using local fallback:', err);
-                const namePart = email.split('@')[0];
-                const name = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-                localStorage.setItem('loggedInUserName', name);
-                window.location.href = 'index.html';
+                superModal({ title: 'Connection Error 🔌', message: 'Could not connect to the cloud database.' });
+                btn.textContent = 'Sign In';
+                btn.disabled    = false;
             }
         }
 
-        // Handle Sign Up Submission — calls real SQL Server backend
+        // Handle Sign Up Submission — Cloud Backend
         async function handleSignUp(e) {
             e.preventDefault();
-            const name = document.getElementById('signup-name').value;
-            const email = document.getElementById('signup-email').value;
+            const name     = document.getElementById('signup-name').value;
+            const email    = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
-            const btn = e.target.querySelector('button[type="submit"]');
+            const btn      = e.target.querySelector('button[type="submit"]');
             btn.textContent = 'Creating account...';
-            btn.disabled = true;
+            btn.disabled    = true;
 
             try {
-                await fetch('http://localhost:3000/signup', {
-                    method: 'POST',
+                // Connect to the Cloud instead of localhost
+                await fetch('/signup', {
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, password })
+                    body:    JSON.stringify({ name, email, password })
                 });
                 superModal({ title: 'Welcome! 🎉', message: 'Account created! Please sign in with your new credentials.' });
                 switchForm('login-form');
             } catch (err) {
-                // Server offline — log in locally
-                console.warn('Server offline, using local fallback:', err);
-                localStorage.setItem('loggedInUserName', name);
-                window.location.href = 'index.html';
+                superModal({ title: 'Connection Error 🔌', message: 'Could not connect to the cloud database.' });
             } finally {
                 btn.textContent = 'Sign Up';
-                btn.disabled = false;
+                btn.disabled    = false;
             }
         }
 
