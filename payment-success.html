@@ -129,6 +129,21 @@
         if (entry) {
             entry.paymentStatus = 'paid';
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            // --- SYNC TO SUPABASE CLOUD ---
+            try {
+                fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: entry.customerName,
+                        date: entry.arrivalDate,
+                        time: entry.arrivalTime,
+                        table: entry.bookedTable
+                    })
+                });
+            } catch(err) {
+                console.error("Cloud sync failed:", err);
+            }
 
             // Populate visual receipt
             document.getElementById('receipt-area').style.display = 'block';
