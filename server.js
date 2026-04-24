@@ -270,7 +270,7 @@ app.post('/reserve', async (req, res) => {
 
 /* DELETE RESERVATION */
 app.delete('/reserve', async (req, res) => {
-    const { name, date, table } = req.body;
+    const { name, date, table } = req.query; 
 
     try {
         const { error } = await supabase
