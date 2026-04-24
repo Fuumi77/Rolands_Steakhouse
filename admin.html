@@ -1946,123 +1946,86 @@
         }
 
         async function initAuth() {
+            const authSection = document.getElementById('auth-section');
+            const dashboardSection = document.getElementById('dashboard-section');
             const noAdminUsers = document.getElementById('no-admin-users');
             const adminLoginPanel = document.getElementById('admin-login');
             const authMsg2 = document.getElementById('auth-message-2');
+
+            const sessionUser = sessionStorage.getItem('adminLoggedInUser');
             const logoutBtn = document.getElementById('logout-admin-btn');
             logoutBtn.onclick = logoutAdmin;
 
-            // --- Step 1: Check existing session ---
-            const sessionUser = sessionStorage.getItem('adminLoggedInUser');
             if (sessionUser) {
                 return renderDashboard();
             }
 
-            // --- Step 2: Load user list (local first, then try cloud sync) ---
-            let knownUsers = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-
-            // Try to sync from Supabase in the background, non-blocking
+            // 1. Check cloud database (WITH CACHE-BUSTING)
             try {
-                const res = await fetch('/api/staff?nocache=' + Date.now(), {
-                    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
-                });
-                if (res.ok) {
-                    const cloudUsers = await res.json();
-                    if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
-                        knownUsers = cloudUsers;
-                        localStorage.setItem('adminUsers', JSON.stringify(cloudUsers)); // keep in sync
-                    }
+                const response = await fetch('/api/staff?t=' + Date.now(), { cache: 'no-store' });
+                const users = await response.json();
+                
+                if (!users || users.length === 0) {
+                    noAdminUsers.classList.remove('hidden');
+                    adminLoginPanel.classList.add('hidden');
+                    return;
                 }
-            } catch (e) {
-                // Silently use local storage - no network needed for offline use
+            } catch(e) {
+                console.error("Could not fetch staff from DB");
             }
 
-            // --- Step 3: Show restricted message if no accounts exist ---
-            if (knownUsers.length === 0) {
-                noAdminUsers.classList.remove('hidden');
-                adminLoginPanel.classList.add('hidden');
-                return;
-            }
-
-            // --- Step 4: Attach the Sign In button handler ---
+            // 2. Admin login check against Cloud DB
             document.getElementById('admin-login-btn').addEventListener('click', async () => {
-                const btn = document.getElementById('admin-login-btn');
-                authMsg2.textContent = '';
-                authMsg2.style.color = '#ef4444';
-
-                const username = (document.getElementById('admin-username').value || '').trim();
-                const password = document.getElementById('admin-password').value || '';
-
-                if (!username) { authMsg2.textContent = '⚠️ Please enter your username.'; return; }
-                if (!password) { authMsg2.textContent = '⚠️ Please enter your password.'; return; }
-
-                btn.textContent = 'Authenticating...';
-                btn.disabled = true;
-
                 try {
-                    // Always re-fetch latest user list on login attempt
-                    let usersNow = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-                    try {
-                        const res = await fetch('/api/staff?nocache=' + Date.now(), {
-                            headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-                        });
-                        if (res.ok) {
-                            const cloud = await res.json();
-                            if (Array.isArray(cloud) && cloud.length > 0) {
-                                usersNow = cloud;
-                                localStorage.setItem('adminUsers', JSON.stringify(cloud));
-                            }
-                        }
-                    } catch (e) { /* use local */ }
+                    const username = (document.getElementById('admin-username').value || '').trim();
+                    const password = document.getElementById('admin-password').value || '';
+                    authMsg2.textContent = '';
+                    authMsg2.style.color = '#ef4444';
 
-                    // Find user (case-insensitive)
+                    if (!username) { authMsg2.textContent = 'Please enter your username.'; return; }
+                    if (!password) { authMsg2.textContent = 'Please enter your password.'; return; }
+
+                    const btn = document.getElementById('admin-login-btn');
+                    btn.textContent = "Authenticating...";
+
+                    // Fetch live accounts from Supabase via server (WITH CACHE-BUSTING)
+                    const res = await fetch('/api/staff?t=' + Date.now(), { cache: 'no-store' });
+                    const usersNow = await res.json();
+                    
+                    // Case-insensitive check
                     const user = usersNow.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
-                    if (!user) {
-                        authMsg2.textContent = `❌ Account "${username}" not found. Contact Super Admin.`;
-                        btn.textContent = 'Sign In';
-                        btn.disabled = false;
-                        return;
+                    if (!user) { 
+                        authMsg2.textContent = 'Account not found. Ask Super Admin to create it.'; 
+                        btn.textContent = "Sign In";
+                        return; 
                     }
 
-                    // Validate password — supports both hashed and legacy plain-text
                     const passwordHash = await sha256Hex(password);
-                    const storedHash = user.passwordHash || user.passwordhash;
-                    const isHashMatch = storedHash && storedHash === passwordHash;
-                    const isLegacyMatch = user.password && user.password === password;
-
-                    if (!isHashMatch && !isLegacyMatch) {
-                        authMsg2.textContent = '❌ Incorrect password. Please try again.';
-                        btn.textContent = 'Sign In';
-                        btn.disabled = false;
-                        return;
+                    // Supabase automatically lowercases column names
+                    const dbHash = user.passwordHash || user.passwordhash;
+                    
+                    if (dbHash !== passwordHash) { 
+                        authMsg2.textContent = 'Wrong password. Please try again.'; 
+                        btn.textContent = "Sign In";
+                        return; 
                     }
 
-                    // Upgrade legacy plain-text password to hash silently
-                    if (isLegacyMatch && !storedHash) {
-                        user.passwordHash = passwordHash;
-                        delete user.password;
-                        localStorage.setItem('adminUsers', JSON.stringify(usersNow));
-                    }
-
-                    // ✅ Login successful
-                    authMsg2.style.color = '#16a34a';
-                    authMsg2.textContent = '✅ Login successful! Loading dashboard...';
                     setAdminSession(user.username);
-                    setTimeout(() => renderDashboard(), 400);
-
+                    renderDashboard();
                 } catch (err) {
-                    authMsg2.textContent = '⚠️ Error: ' + err.message;
-                    btn.textContent = 'Sign In';
-                    btn.disabled = false;
+                    authMsg2.textContent = 'CRITICAL LOGIN ERROR: ' + err.message;
+                    document.getElementById('admin-login-btn').textContent = "Sign In";
                 }
             });
 
-            // Allow Enter key to submit
-            ['admin-username', 'admin-password'].forEach(id => {
-                document.getElementById(id).addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') document.getElementById('admin-login-btn').click();
-                });
-            });
+            // Allow ENTER key to submit
+            const handleEnter = function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('admin-login-btn').click();
+                }
+            };
+            document.getElementById('admin-username').addEventListener('keypress', handleEnter);
+            document.getElementById('admin-password').addEventListener('keypress', handleEnter);
         }
 
         initAuth();
