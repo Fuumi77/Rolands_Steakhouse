@@ -2382,6 +2382,43 @@
 
         // Auto-render recent walk-ins when tab loads
         document.querySelector('[onclick="switchAdminTab(\'walkin\', this)"]')?.addEventListener('click', renderRecentWalkins);
+        // --- LIVE CLOUD INVENTORY SYNC ---
+        async function syncLiveInventory() {
+            try {
+                // Fetch the live inventory from Supabase via Vercel
+                const res = await fetch('/api/inventory?t=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) return;
+                
+                const cloudData = await res.json();
+                if (cloudData && cloudData.length > 0) {
+                    // Update the local browser memory
+                    localStorage.setItem('inventoryItems', JSON.stringify(cloudData));
+                    
+                    // Smart Re-render: Safely updates the UI without crashing
+                    try {
+                        if (typeof renderInventory === 'function') renderInventory(); // Super Admin
+                        if (typeof renderMenuManagement === 'function') renderMenuManagement(); // Staff Admin
+                        
+                        // If Staff Walk-in food picker is open, refresh it
+                        if (typeof renderWalkinFoodPicker === 'function' && document.getElementById('walkin-food-modal') && !document.getElementById('walkin-food-modal').classList.contains('hidden')) {
+                            renderWalkinFoodPicker(document.getElementById('walkin-food-search')?.value || "");
+                        }
+                        
+                        // Customer Pre-Order screen refresh
+                        if (typeof renderMenu === 'function') renderMenu();
+                        if (typeof renderFoods === 'function') {
+                            const activeBtn = document.querySelector('.menu-cat-btn.active');
+                            renderFoods(activeBtn ? activeBtn.textContent.trim() : 'Beef');
+                        }
+                    } catch(renderErr) { /* Ignore if function isn't on this specific page */ }
+                }
+            } catch(e) { 
+                console.warn("Live sync check failed (working offline).", e); 
+            }
+        }
+        
+        syncLiveInventory(); // Run once when page loads
+        setInterval(syncLiveInventory, 3000); // Check the cloud every 3 seconds
     </script>
 </body>
 </html>
