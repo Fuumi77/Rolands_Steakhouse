@@ -19,7 +19,7 @@
 
 <body>
     <header>
-        <div class="brand">Roland's Super Admin</div>
+        <div class="brand">Roland's Manager</div>
         <div class="actions">
             <div id="admin-status" class="muted"></div>
             <button class="secondary hidden" id="logout-admin-btn" type="button">Secure Logout</button>
@@ -29,12 +29,12 @@
     <div class="container">
         <!-- AUTH SECTION -->
         <div id="auth-section" class="auth-wrap">
-            <h1 class="auth-title">Super Admin Access</h1>
+            <h1 class="auth-title">Manager Access</h1>
             <div class="auth-card">
                 <div id="super-admin-login">
                     <h2>System Authentication</h2>
                     <div>
-                        <label for="admin-password">Super Admin Passkey</label>
+                        <label for="admin-password">Manager Passkey</label>
                         <input id="admin-password" type="password" placeholder="Enter master passkey">
                     </div>
                     <div class="btnrow">
@@ -1882,7 +1882,7 @@
             // UI Reveal
             auth.classList.add('hidden');
             dashboard.classList.remove('hidden');
-            adminStatus.textContent = 'Super Admin Mode';
+            adminStatus.textContent = 'Manager Mode';
             logoutBtn.classList.remove('hidden');
         }
 
