@@ -1669,29 +1669,27 @@
                     type: 'confirm'
                 });
                 if(!confirmed) return;
-
+                
                 const hist = getReservationHistory();
-                const target = hist[idx]; // Capture the data before deleting
+                const target = hist[idx]; // Capture the data before deleting it locally
                 
                 hist.splice(idx, 1);
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 renderDashboard();
-
+                
                 // --- SYNC DELETE TO SUPABASE CLOUD ---
                 if (target) {
                     try {
-                        fetch('/reserve', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                name: target.customerName,
-                                date: target.arrivalDate,
-                                table: target.bookedTable
-                            })
+                        const qName = encodeURIComponent(target.customerName);
+                        const qDate = encodeURIComponent(target.arrivalDate);
+                        const qTable = encodeURIComponent(target.bookedTable);
+                        
+                        // Pass the data directly into the URL to bypass Vercel restrictions
+                        fetch(`/reserve?name=${qName}&date=${qDate}&table=${qTable}`, {
+                            method: 'DELETE'
                         });
                     } catch(err) { console.error("Cloud delete failed:", err); }
                 }
-                // -------------------------------------
             };
 
             window.deleteItem = async function(resObjNum) {
@@ -1702,27 +1700,25 @@
                 });
                 if(confirmed) {
                     const hist = getReservationHistory();
-                    const target = hist.find(h => h.reservationNumber === resObjNum); // Capture the data before deleting
+                    const target = hist.find(h => h.reservationNumber === resObjNum); // Capture the data
                     const filtered = hist.filter(h => h.reservationNumber !== resObjNum);
                     
                     localStorage.setItem('reservationHistory', JSON.stringify(filtered));
                     renderDashboard();
-
+                    
                     // --- SYNC DELETE TO SUPABASE CLOUD ---
                     if (target) {
                         try {
-                            fetch('/reserve', {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    name: target.customerName,
-                                    date: target.arrivalDate,
-                                    table: target.bookedTable
-                                })
+                            const qName = encodeURIComponent(target.customerName);
+                            const qDate = encodeURIComponent(target.arrivalDate);
+                            const qTable = encodeURIComponent(target.bookedTable);
+                            
+                            // Pass the data directly into the URL to bypass Vercel restrictions
+                            fetch(`/reserve?name=${qName}&date=${qDate}&table=${qTable}`, {
+                                method: 'DELETE'
                             });
                         } catch(err) { console.error("Cloud delete failed:", err); }
                     }
-                    // -------------------------------------
                 }
             };
 
