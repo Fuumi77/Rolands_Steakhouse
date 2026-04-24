@@ -1492,23 +1492,6 @@
                 reader.readAsDataURL(file);
             };
 
-            window.removeInvImage = function () {
-                const preview = document.getElementById('inv-img-preview');
-                const placeholder = document.getElementById('inv-img-placeholder');
-                const removeBtn = document.getElementById('remove-inv-img-btn');
-                const input = document.getElementById('inv-image-input');
-
-                preview.src = '';
-                preview.style.display = 'none';
-                placeholder.style.display = 'flex';
-                removeBtn.style.display = 'none';
-                input.value = '';
-            };
-
-            window.closeInventoryModal = () => {
-                document.getElementById('inv-modal').classList.add('hidden');
-            };
-
             window.saveInventoryItem = async function () {
                 const id = document.getElementById('inv-id').value;
                 const title = document.getElementById('inv-title').value.trim();
@@ -1523,10 +1506,7 @@
                     : '';
 
                 if (!title) {
-                    return superModal({
-                        title: 'Missing Info',
-                        message: 'Item name is required.'
-                    });
+                    return superModal({ title: 'Missing Info', message: 'Item name is required.' });
                 }
                 if (price !== null && price < 0) {
                     return superModal({ title: 'Invalid Price', message: 'Price cannot be negative.' });
@@ -1538,20 +1518,31 @@
                     title, category, total_stock, added_stock, sold_stock, image,
                     last_updated: new Date().toISOString()
                 };
-                // Only set price if admin explicitly entered one
                 if (price !== null) itemData.price = price;
 
+                let finalId = id;
                 if (id) {
                     const idx = items.findIndex(i => i.id === id);
                     if (idx > -1) Object.assign(items[idx], itemData);
                 } else {
-                    items.push({ id: 'itm_' + Date.now(), ...itemData });
+                    finalId = 'itm_' + Date.now();
+                    items.push({ id: finalId, ...itemData });
                 }
 
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
                 document.getElementById('inv-modal').classList.add('hidden');
                 renderInventory();
                 window.dispatchEvent(new Event('storage'));
+
+                // --- SYNC TO SUPABASE CLOUD ---
+                try {
+                    fetch('/api/inventory', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: finalId, ...itemData })
+                    });
+                } catch(err) { console.error("Cloud sync failed:", err); }
+                // ------------------------------
 
                 await superModal({
                     title: id ? 'Item Updated! ✨' : 'Item Added! 🎉',
@@ -1572,6 +1563,12 @@
                     const items = getInventory().filter(i => i.id !== id);
                     localStorage.setItem('inventoryItems', JSON.stringify(items));
                     renderInventory();
+
+                    // --- SYNC DELETE TO SUPABASE CLOUD ---
+                    try {
+                        fetch('/api/inventory?id=' + encodeURIComponent(id), { method: 'DELETE' });
+                    } catch(err) {}
+                    // -------------------------------------
 
                     superModal({
                         title: 'Item Deleted',
