@@ -350,6 +350,41 @@ app.post('/api/paymongo/checkout', async (req, res) => {
     }
 });
 
+/* SAVE OR UPDATE INVENTORY ITEM */
+app.post('/api/inventory', async (req, res) => {
+    const { id, title, category, price, total_stock, added_stock, sold_stock, image, last_updated } = req.body;
+    try {
+        // Upsert means: Update the item if it exists, or Insert it if it is brand new!
+        const { error } = await supabase
+            .from('inventory')
+            .upsert([{ 
+                id, title, category, price, total_stock, added_stock, sold_stock, image, last_updated 
+            }]);
+        
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Supabase Inventory Save Error:", err);
+        res.status(500).send("Error saving inventory");
+    }
+});
+
+/* DELETE INVENTORY ITEM */
+app.delete('/api/inventory', async (req, res) => {
+    const { id } = req.query; // Use query to bypass Vercel's strict delete rules
+    try {
+        const { error } = await supabase
+            .from('inventory')
+            .delete()
+            .eq('id', id);
+            
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).send("Error deleting inventory");
+    }
+});
+
 // Run locally if testing on your laptop
 if (process.env.NODE_ENV !== 'production') {
     app.listen(3000, () => console.log("Server running locally on port 3000"));
