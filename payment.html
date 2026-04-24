@@ -658,6 +658,22 @@
                             }
                         }
                         localStorage.setItem('inventoryItems', JSON.stringify(inv));
+                        // --- SYNC TO SUPABASE CLOUD ---
+            try {
+                fetch('/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: customerName,
+                        date: arrivalDate,
+                        time: arrivalTime,
+                        table: bookedTable
+                    })
+                });
+            } catch(err) {
+                console.error("Cloud sync failed:", err);
+            }
+            // ------------------------------
                     }
                     localStorage.removeItem('currentCartObj');
                 } catch (e) {}
