@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful | Roland's</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <script src="js/design-system.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7, #f0fdf4);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .success-card {
+            background: white;
+            border-radius: 24px;
+            padding: 50px 40px;
+            max-width: 460px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(27,94,32,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .success-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+        }
+        .check-circle {
+            width: 90px; height: 90px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 24px rgba(22,163,74,0.35);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .check-circle svg { width: 44px; height: 44px; }
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 30px; color: #1b5e20;
+            margin-bottom: 10px;
+        }
+        .sub { color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .res-badge {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 14px;
+            padding: 18px 24px;
+            margin-bottom: 28px;
+        }
+        .res-badge .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .res-badge .code { font-size: 26px; font-weight: 800; color: #16a34a; letter-spacing: 2px; margin-top: 6px; }
+        .home-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(22,163,74,0.3);
+        }
+        .home-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.35); }
+        .pm-note { margin-top: 16px; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="success-card">
+        <div class="check-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h1>Payment Successful!</h1>
+        <p class="sub">Your priority reservation at Roland's Steakhouse has been confirmed. We look forward to serving you!</p>
+        <div class="res-badge">
+            <div class="label">Reservation Number</div>
+            <div class="code" id="res-number">Loading...</div>
+        </div>
+
+        <!-- Receipt Section -->
+        <div id="receipt-area" style="display:none; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:16px; padding:20px; margin-bottom:28px; text-align:left;">
+            <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; margin-bottom:12px; display:flex; justify-content:space-between;">
+                <span>E-Receipt</span>
+                <span id="receipt-date" style="color:#94a3b8; font-weight:400;"></span>
+            </div>
+            <div id="receipt-items" style="font-size:14px; color:#334155; line-height:1.6;">
+                <!-- Filled by JS -->
+            </div>
+            <div style="border-top:1px solid #e2e8f0; margin-top:12px; padding-top:12px; display:flex; justify-content:space-between; font-weight:800; color:#1b5e20; font-size:18px;">
+                <span>Total Paid</span>
+                <span id="receipt-total">₱0.00</span>
+            </div>
+        </div>
+        <a href="index.html" class="home-btn">🏠 Return to Homepage</a>
+        <p class="pm-note">Payment processed securely via PayMongo</p>
+    </div>
+
+    <script>
+        // Grab reservation number from URL or localStorage
+        const params = new URLSearchParams(window.location.search);
+        const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
+        document.getElementById('res-number').textContent = resNo;
+
+        // Mark the reservation as paid in history
+        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        const entry = hist.find(r => r.reservationNumber === resNo);
+        if (entry) {
+            entry.paymentStatus = 'paid';
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+            // Populate visual receipt
+            document.getElementById('receipt-area').style.display = 'block';
+            document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
+            document.getElementById('receipt-total').textContent = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, {minimumFractionDigits:2});
+            
+            let itemsHtml = `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
+            itemsHtml += `<div style="margin-bottom:4px;"><strong>Table:</strong> ${entry.bookedTable}</div>`;
+            itemsHtml += `<div style="margin-bottom:4px;"><strong>Arrival:</strong> ${entry.arrivalDateTimeDisplay}</div>`;
+            if (entry.orderSummary) {
+                itemsHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #f1f5f9; color:#64748b; font-size:13px;">${entry.orderSummary}</div>`;
+            }
+            // Add Link to QR Receipt
+            itemsHtml += `<div style="margin-top:15px; text-align:center;">
+                <a href="receipt.html?res=${resNo}" style="color:#1b5e20; font-size:12px; font-weight:700; text-decoration:none; border-bottom:1px dashed #1b5e20;">🖨️ View QR Receipt for Scanning</a>
+            </div>`;
+            
+            document.getElementById('receipt-items').innerHTML = itemsHtml;
+
+            // Automatically inject stylized Receipt Card into the Live Support Chat
+            const sId = localStorage.getItem('chatSessionId') || ('session_' + Math.random().toString(36).substr(2, 9));
+            if (!localStorage.getItem('chatSessionId')) localStorage.setItem('chatSessionId', sId);
+
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            if (!allChats[sId]) allChats[sId] = [];
+
+            const resNoStr = entry.reservationNumber;
+            const hasReceipt = allChats[sId].some(m => m.res_no === resNoStr && m.text.includes('Receipt'));
+
+            if (!hasReceipt) {
+                const amount = entry.paymentAmount || 0;
+                const fmtAmt = Number(amount).toLocaleString(undefined, {minimumFractionDigits: 2});
+                
+                // STYLIZED RECEIPT CARD HTML (Points to receipt.html?res=...)
+                const receiptCardHtml = `
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 15px; margin-top: 5px; box-shadow: 0 4px 12px rgba(22,163,74,0.1);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <div style="background: #16a34a; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✅</div>
+                            <strong style="color: #1b5e20; font-size: 15px;">Payment Verified</strong>
+                        </div>
+                        <p style="font-size: 13px; color: #374151; margin-bottom: 12px; line-height: 1.4;">
+                            Your reservation <strong>${resNoStr}</strong> is confirmed. Here is your official QR receipt:
+                        </p>
+                        <button onclick="window.location.href='receipt.html?res=${resNoStr}'" 
+                                style="width: 100%; background: #1b5e20; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            📋 View QR Receipt
+                        </button>
+                    </div>
+                `;
+                
+                allChats[sId].push({
+                    sender: 'staff',
+                    text: receiptCardHtml,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    res_no: resNoStr
+                });
+                localStorage.setItem('liveChats', JSON.stringify(allChats));
+                window.dispatchEvent(new Event('storage'));
+            }
+        }
+
+        // Clear checkout data
+        localStorage.removeItem('totalBill');
+        localStorage.removeItem('cartItems');
+        localStorage.removeItem('reservationData');
+        localStorage.removeItem('pendingReservation');
+        localStorage.removeItem('paymongoSessionId');
+        localStorage.removeItem('reservationNumber');
+        localStorage.removeItem('pendingReservationNumber');
+    </script>
+</body>
+</html>
