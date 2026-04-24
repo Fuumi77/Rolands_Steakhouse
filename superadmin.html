@@ -175,6 +175,8 @@
                 <div class="stat-filter-row">
                     <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Inventory Intelligence</h2>
                     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="filter-btn" onclick="syncAllToCloud(this)"
+                            style="background: #3b82f6; color: white; border: none; box-shadow: 0 4px 10px rgba(59,130,246,0.2);">☁️ Sync to Cloud</button>
                         <button type="button" class="filter-btn secondary" onclick="exportInventoryReport()"
                             style="border: 1px solid #e2e8f0; background: white;">📊 Export Report</button>
                         <button type="button" class="filter-btn" id="bulk-edit-btn" onclick="toggleBulkEdit()"
@@ -1575,6 +1577,54 @@
                         message: 'The item has been removed from your inventory records.'
                     });
                 }
+                window.syncAllToCloud = async function (btn) {
+                const confirm = await superModal({
+                    title: 'Sync to Cloud? ☁️',
+                    message: 'This will push all your current local inventory items (including stock levels and prices) straight to your Supabase database. Continue?',
+                    type: 'confirm'
+                });
+
+                if (!confirm) return;
+
+                const items = getInventory();
+                const originalText = btn.textContent;
+                btn.textContent = "Syncing... Please wait ⏳";
+                btn.disabled = true;
+
+                let successCount = 0;
+
+                // Loop through all existing items and push them to Supabase
+                for (let item of items) {
+                    try {
+                        const res = await fetch('/api/inventory', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: item.id,
+                                title: item.title,
+                                category: item.category,
+                                price: item.price,
+                                total_stock: item.total_stock || 0,
+                                added_stock: item.added_stock || 0,
+                                sold_stock: item.sold_stock || 0,
+                                image: item.image || '',
+                                last_updated: item.last_updated || new Date().toISOString()
+                            })
+                        });
+                        
+                        if(res.ok) successCount++;
+                    } catch (err) {
+                        console.error("Failed to sync item:", item.title, err);
+                    }
+                }
+
+                btn.textContent = originalText;
+                btn.disabled = false;
+
+                superModal({
+                    title: 'Cloud Sync Complete! 🚀',
+                    message: `Successfully pushed ${successCount} out of ${items.length} items to your Supabase database!`
+                });
             };
 
             // OCR LOGIC
