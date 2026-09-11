@@ -1,0 +1,713 @@
+@charset "UTF-8";
+/* 
+   ══════════════════════════════════════════════
+   KITCHEN DISPLAY SYSTEM (KDS) - STYLE SHEET
+   Roland's Steak House - Premium Kitchen Display System
+   ══════════════════════════════════════════════ 
+*/
+
+:root {
+    --kds-bg: #0b140e;
+    --kds-surface: #112217;
+    --kds-card-bg: #162a1d;
+    --kds-card-border: #23422e;
+    --kds-text: #f0fdf4;
+    --kds-text-muted: #94a3b8;
+    --kds-gold: #c5a059;
+    --kds-gold-glow: rgba(197, 160, 89, 0.25);
+    
+    --kds-pending: #f59e0b;
+    --kds-pending-bg: rgba(245, 158, 11, 0.12);
+    --kds-cooking: #3b82f6;
+    --kds-cooking-bg: rgba(59, 130, 246, 0.12);
+    --kds-ready: #22c55e;
+    --kds-ready-bg: rgba(34, 197, 94, 0.12);
+    --kds-urgent: #ef4444;
+    --kds-urgent-bg: rgba(239, 68, 68, 0.15);
+
+    --kds-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+    --kds-radius: 16px;
+    --kds-font: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--kds-font);
+    background-color: var(--kds-bg);
+    color: var(--kds-text);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════════
+   AUTHENTICATION OVERLAY GATE
+   ══════════════════════════════════════════════ */
+#auth-gate {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(7, 18, 11, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-card {
+    background: var(--kds-surface);
+    border: 1px solid var(--kds-card-border);
+    padding: 36px 32px;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    animation: kdsPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes kdsPopIn {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.auth-card h1 {
+    font-family: 'Playfair Display', serif;
+    color: var(--kds-gold);
+    margin: 0 0 8px 0;
+    font-size: 30px;
+    letter-spacing: 0.5px;
+}
+
+.auth-card p {
+    color: var(--kds-text-muted);
+    font-size: 14px;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+}
+
+.pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.pin-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #2a4734;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pin-dot.filled {
+    background: var(--kds-ready);
+    border-color: var(--kds-ready);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+    transform: scale(1.15);
+}
+
+.auth-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.num-btn {
+    background: #182e20;
+    color: #ffffff;
+    border: 1px solid #284c35;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.num-btn:hover:not(:disabled) {
+    background: #22422e;
+    border-color: var(--kds-gold);
+    color: var(--kds-gold);
+}
+
+.num-btn:active:not(:disabled) {
+    transform: scale(0.94);
+    background: #2a523a;
+}
+
+.auth-msg {
+    color: var(--kds-urgent);
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 16px;
+    min-height: 20px;
+}
+
+/* ══════════════════════════════════════════════
+   HEADER & METRICS BAR
+   ══════════════════════════════════════════════ */
+header {
+    background: var(--kds-surface);
+    border-bottom: 1px solid var(--kds-card-border);
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--kds-shadow);
+}
+
+.brand-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--kds-gold);
+    letter-spacing: 0.5px;
+}
+
+.kds-clock {
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--kds-text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--kds-card-border);
+}
+
+.metrics-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.metric-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.metric-pill.total {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.metric-pill.pending {
+    background: var(--kds-pending-bg);
+    color: var(--kds-pending);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.metric-pill.cooking {
+    background: var(--kds-cooking-bg);
+    color: var(--kds-cooking);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.metric-pill.ready {
+    background: var(--kds-ready-bg);
+    color: var(--kds-ready);
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--kds-card-border);
+    color: var(--kds-text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--kds-gold);
+    color: var(--kds-gold);
+}
+
+/* ══════════════════════════════════════════════
+   TOOLBAR & FILTER TABS
+   ══════════════════════════════════════════════ */
+.toolbar {
+    padding: 16px 28px 0 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    background: var(--kds-surface);
+    padding: 5px;
+    border-radius: 12px;
+    border: 1px solid var(--kds-card-border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--kds-text-muted);
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    color: #ffffff;
+}
+
+.tab-btn.active {
+    background: var(--kds-card-bg);
+    color: var(--kds-gold);
+    border: 1px solid var(--kds-card-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ══════════════════════════════════════════════
+   MAIN CONTAINER & WORKFLOW KANBAN BOARD
+   ══════════════════════════════════════════════ */
+.container {
+    padding: 24px 28px 40px 28px;
+}
+
+.kds-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
+.kds-column {
+    background: rgba(17, 34, 23, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--kds-card-border);
+    border-radius: 20px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 520px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.2s ease;
+}
+
+.kds-column.col-pending {
+    border-top: 5px solid var(--kds-pending);
+}
+
+.kds-column.col-cooking {
+    border-top: 5px solid var(--kds-cooking);
+    background: rgba(15, 30, 48, 0.5);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.kds-column.col-ready {
+    border-top: 5px solid var(--kds-ready);
+    background: rgba(14, 38, 22, 0.5);
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+.kds-col-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kds-col-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.kds-col-title .col-icon {
+    font-size: 20px;
+}
+
+.kds-col-badge {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    letter-spacing: 0.5px;
+}
+
+.kds-column.col-pending .kds-col-title { color: var(--kds-pending); }
+.kds-column.col-pending .kds-col-badge { background: var(--kds-pending-bg); color: var(--kds-pending); border: 1px solid rgba(245, 158, 11, 0.4); }
+
+.kds-column.col-cooking .kds-col-title { color: #60a5fa; }
+.kds-column.col-cooking .kds-col-badge { background: var(--kds-cooking-bg); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+
+.kds-column.col-ready .kds-col-title { color: #4ade80; }
+.kds-column.col-ready .kds-col-badge { background: var(--kds-ready-bg); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+
+.kds-col-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+}
+
+.kds-col-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 18px;
+    color: var(--kds-text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    border: 2px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.015);
+    margin: auto 0;
+}
+
+.kds-col-empty-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+}
+
+.ticket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 20px;
+}
+
+/* TICKET CARD DESIGN */
+.ticket {
+    background: var(--kds-card-bg);
+    border: 1.5px solid var(--kds-card-border);
+    border-radius: var(--kds-radius);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: var(--kds-shadow);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    border-top: 6px solid var(--kds-pending);
+}
+
+.ticket.status-pending { border-top-color: var(--kds-pending); }
+.ticket.status-cooking { 
+    border-top-color: var(--kds-cooking);
+    background: linear-gradient(180deg, rgba(29, 46, 68, 0.9) 0%, var(--kds-card-bg) 100%);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+.ticket.status-ready { 
+    border-top-color: var(--kds-ready); 
+    background: linear-gradient(180deg, rgba(20, 50, 30, 0.9) 0%, var(--kds-card-bg) 100%);
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.ticket:hover {
+    transform: translateY(-2px);
+    border-color: #325e41;
+}
+
+.ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 14px;
+}
+
+.table-badge {
+    font-size: 26px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+.customer-name {
+    font-size: 15px;
+    color: var(--kds-gold);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.ticket-meta {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.timer-badge {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.timer-badge.normal {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.timer-badge.warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.timer-badge.urgent {
+    background: var(--kds-urgent-bg);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    animation: pulse 1.5s infinite;
+}
+
+.status-badge {
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.status-badge.pending { background: var(--kds-pending-bg); color: var(--kds-pending); }
+.status-badge.cooking { background: var(--kds-cooking-bg); color: var(--kds-cooking); }
+.status-badge.ready { background: var(--kds-ready-bg); color: var(--kds-ready); }
+
+/* BEEF DONENESS & SPECIAL NOTES */
+.doneness-badge {
+    background: #3b0707;
+    color: #fca5a5;
+    border: 1px solid #7f1d1d;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ticket-notes {
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid var(--kds-cooking);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--kds-text-muted);
+}
+
+/* FOOD LIST */
+.food-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    flex: 1;
+}
+
+.food-list li {
+    padding: 10px 0;
+    font-size: 17px;
+    font-weight: 600;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.food-list li:last-child {
+    border-bottom: none;
+}
+
+.qty-tag {
+    background: rgba(197, 160, 89, 0.2);
+    color: var(--kds-gold);
+    font-size: 13px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* TICKET ACTIONS */
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.action-row {
+    display: flex;
+    gap: 8px;
+}
+
+.actions button {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: inherit;
+}
+
+.btn-cook {
+    background: var(--kds-cooking);
+    color: #ffffff;
+}
+
+.btn-cook:hover {
+    background: #2563eb;
+}
+
+.btn-ready {
+    background: var(--kds-ready);
+    color: #ffffff;
+}
+
+.btn-ready:hover {
+    background: #16a34a;
+}
+
+.btn-dismiss {
+    background: #334155;
+    color: #ffffff;
+}
+
+.btn-dismiss:hover {
+    background: #475569;
+}
+
+.btn-cancel {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    color: #f87171;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+}
+
+.btn-cancel:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.kds-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--kds-text-muted);
+    font-size: 20px;
+    font-weight: 500;
+    border: 2px dashed var(--kds-card-border);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* POPUP NOTIFICATION */
+.new-order-popup {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    color: #ffffff;
+    padding: 16px 36px;
+    border-radius: 50px;
+    font-weight: 900;
+    font-size: 18px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: kdsSlideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes kdsSlideDown {
+    0% { transform: translate(-50%, -80px); opacity: 0; }
+    100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@media (max-width: 1100px) {
+    .kds-board { grid-template-columns: 1fr; gap: 20px; }
+}
+
+@media (max-width: 768px) {
+    header { padding: 14px 16px; flex-direction: column; gap: 12px; align-items: stretch; }
+    .toolbar { padding: 12px 16px 0 16px; }
+    .container { padding: 16px; }
+    .ticket-grid { grid-template-columns: 1fr; }
+    .kds-board { grid-template-columns: 1fr; }
+}

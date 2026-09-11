@@ -1,0 +1,672 @@
+/*
+ * ============================================================
+ *  ROLAND'S STEAKHOUSE — GLOBAL RESPONSIVE STYLESHEET
+ *  Covers: Phone (≤480px), Large Phone (≤600px),
+ *          Tablet (≤768px), iPad/Small Laptop (≤1024px)
+ *  Applied to: ALL pages via <link rel="stylesheet" href="css/responsive.css">
+ * ============================================================
+ *  ⚠️ RULES:
+ *  - DO NOT override transform on elements that use transform for show/hide
+ *  - DO NOT apply broad table/tr/td rules without proper scoping
+ *  - All overrides use specific selectors to avoid collision
+ * ============================================================
+ */
+
+/* ─── BASE ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+img, video, iframe { max-width: 100%; height: auto; }
+
+/* ================================================================
+   ① GLOBAL — INPUTS & TOUCH (all pages)
+   ================================================================ */
+@media (max-width: 768px) {
+    /* Prevent iOS font zoom on focus (font-size must be ≥ 16px) */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    input[type="search"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* Comfortable tap targets */
+    button,
+    input[type="submit"],
+    input[type="button"],
+    .tab-link,
+    .btn {
+        min-height: 44px;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+}
+
+/* ================================================================
+   ② INDEX.HTML — HOMEPAGE NAVIGATION
+   ================================================================ */
+@media (max-width: 1024px) {
+    .booking-card { padding: 36px 28px; }
+}
+
+@media (max-width: 768px) {
+    /* Mobile Fixed Header */
+    #main-header {
+        padding: 8px 14px !important;
+        gap: 6px !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 54px !important;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
+    }
+    #main-header:not(.transparent) {
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    }
+    #main-header:not(.transparent) .nav-link {
+        color: #1e293b !important;
+    }
+    #main-header:not(.transparent) .nav-link.active {
+        color: #1b5e20 !important;
+    }
+    #main-header:not(.transparent) .logo img {
+        filter: none !important;
+    }
+    nav ul {
+        gap: 6px 12px !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    .nav-link { 
+        font-size: 12.5px !important; 
+        padding: 4px 2px !important;
+    }
+    .nav-manage-pill {
+        padding: 5px 12px !important;
+        font-size: 11.5px !important;
+    }
+    .logo-img, .logo img { height: 34px !important; }
+
+    /* Hero text */
+    .hero-content h1 {
+        font-size: clamp(26px, 9vw, 48px) !important;
+        line-height: 1.15 !important;
+    }
+    .hero-content p { font-size: 15px; }
+
+    /* Sections */
+    section { padding: 50px 16px; }
+
+    /* Booking card */
+    .booking-card {
+        padding: 28px 18px;
+        border-radius: 20px;
+    }
+    .section-title { font-size: 30px; }
+    .section-subtitle { font-size: 15px; margin-bottom: 24px; }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .login-prompt {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .login-actions { width: 100%; }
+    .login-btn-small { flex: 1; text-align: center; }
+
+    /* Chat widget */
+    .chat-widget-container {
+        right: 12px !important;
+        bottom: 12px !important;
+    }
+    .chat-bubble-btn {
+        width: 52px !important;
+        height: 52px !important;
+        font-size: 22px !important;
+    }
+
+    /* Order status pill */
+    #order-status-pill {
+        right: 12px !important;
+        bottom: 74px !important;
+        max-width: 190px;
+        font-size: 12px !important;
+        padding: 8px 12px !important;
+    }
+
+    /* Floor plan tiles */
+    .floor-plan { padding: 18px; gap: 12px; }
+    .table-seat { width: 110px; }
+    .table-seat img { height: 68px; }
+}
+
+@media (max-width: 480px) {
+    /* Phone Specific Navigation & Header */
+    #main-header {
+        padding: 6px 10px !important;
+    }
+    nav ul {
+        gap: 4px 8px !important;
+    }
+    .nav-link {
+        font-size: 11.5px !important;
+        padding: 3px 2px !important;
+    }
+    .nav-manage-pill {
+        padding: 4px 9px !important;
+        font-size: 11px !important;
+    }
+    .logo-img, .logo img { height: 30px !important; }
+
+    /* Guest Portal Modal on Phone Screens */
+    #manage-booking-modal {
+        padding: 8px !important;
+        pointer-events: auto !important;
+    }
+    #manage-booking-modal * {
+        pointer-events: auto;
+    }
+    #manage-booking-modal .luxury-modal-card {
+        max-height: 94vh !important;
+        border-radius: 20px !important;
+        pointer-events: auto !important;
+    }
+    #manage-booking-modal .modal-scroll-body {
+        padding: 16px 14px !important;
+    }
+    #det-actions-active,
+    #det-actions-completed,
+    #det-actions-cancelled {
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin-top: 14px !important;
+    }
+    #det-actions-active button,
+    #det-actions-completed button,
+    #det-actions-cancelled button {
+        width: 100% !important;
+        min-height: 44px !important;
+        font-size: 13.5px !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+    #cancel-reason-select,
+    #cancel-notes-input {
+        font-size: 14px !important;
+    }
+
+    section { padding: 40px 12px; }
+    .booking-card { padding: 20px 14px; border-radius: 16px; }
+    .section-title { font-size: 26px; }
+    .booking-card input,
+    .booking-card select { padding: 12px 14px; }
+    .submit-booking-btn { font-size: 15px; padding: 14px; }
+    .login-actions { flex-direction: column; }
+    .login-btn-small { width: 100%; }
+
+    /* Order status pill */
+    #order-status-pill {
+        right: 8px !important;
+        min-width: 130px;
+    }
+
+    /* Promo modal */
+    .promo-modal-img { height: 180px; }
+    .promo-modal-content { padding: 20px 16px; }
+    .promo-modal-title { font-size: 22px; }
+    .promo-modal-actions { flex-direction: column; gap: 10px; }
+    .promo-modal-btn { width: 100%; }
+
+    /* Floor plan */
+    .floor-plan { padding: 12px; gap: 8px; }
+    .table-seat { width: 90px; }
+    .table-seat img { height: 58px; }
+    .table-label { font-size: 12px; }
+}
+
+/* ================================================================
+   ③ LOGIN.HTML
+   ================================================================ */
+@media (max-width: 768px) {
+    .auth-container { padding: 20px 16px; }
+    .auth-card { padding: 32px 24px; border-radius: 20px; }
+}
+@media (max-width: 480px) {
+    .auth-card { padding: 24px 16px; }
+    .auth-header h2 { font-size: 24px; }
+    .btn-auth { font-size: 15px; padding: 14px; width: 100%; }
+    .otp-container { gap: 5px; }
+    .otp-input {
+        width: 40px !important;
+        height: 48px !important;
+        font-size: 20px !important;
+    }
+    .back-home { font-size: 13px; top: 12px; left: 12px; }
+}
+
+/* ================================================================
+   ④ PRE-ORDER.HTML
+   ================================================================ */
+@media (max-width: 1024px) {
+    #preorder-container { flex-direction: column !important; padding-bottom: 100px; }
+    .category-sidebar {
+        display: none !important;
+    }
+    .category-mobile-selector { display: block !important; width: 100%; margin-bottom: 18px; }
+    .menu-main { padding: 10px !important; }
+}
+
+@media (max-width: 768px) {
+    .menu-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+    .menu-card { padding: 10px !important; }
+    .menu-img { height: 120px !important; }
+}
+
+@media (max-width: 480px) {
+    .menu-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .menu-card { padding: 8px !important; border-radius: 12px !important; }
+    .menu-img { height: 100px !important; }
+    .menu-title { font-size: 13px !important; }
+    .menu-price { font-size: 15px !important; }
+    
+    #floating-cart-btn {
+        width: 90% !important;
+        bottom: 12px !important;
+        padding: 12px !important;
+        font-size: 14px !important;
+        border-radius: 12px !important;
+    }
+}
+
+/* ================================================================
+   ⑤ SEAT-SELECTION.HTML
+   ================================================================ */
+@media (max-width: 768px) {
+    #seat-selection-section { padding-top: 100px; padding-bottom: 120px; }
+    .floor-plan { 
+        display: grid !important; 
+        grid-template-columns: repeat(2, 1fr) !important; 
+        padding: 16px !important; 
+        gap: 12px !important; 
+        max-width: 100% !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .table-seat { width: 100% !important; padding: 10px !important; }
+    .table-seat img { height: 80px !important; }
+    
+    .checkout-panel { 
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        margin: 0 !important; 
+        padding: 16px 20px !important; 
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important;
+        z-index: 1001;
+    }
+    .reservation-filter { 
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 8px !important; 
+    }
+    .reservation-filter label { 
+        flex: 1;
+        min-width: 100px;
+        padding: 10px 8px !important; 
+        font-size: 13px !important; 
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    #seat-selection-section { padding-top: 80px; }
+    .floor-plan { 
+        grid-template-columns: repeat(3, 1fr) !important; 
+        gap: 8px !important; 
+        padding: 10px !important;
+    }
+    .table-seat img { height: 55px !important; }
+    .table-label { font-size: 11px !important; margin-top: 6px !important; }
+    
+    .reservation-filter label { font-size: 12px !important; padding: 8px 4px !important; }
+    
+    #page-heading { font-size: 28px !important; margin-bottom: 20px !important; }
+    #instruction-text { font-size: 11px !important; margin-bottom: 15px !important; }
+
+    /* VIP section */
+    .vip-card { padding: 30px 20px !important; border-radius: 20px !important; }
+    .vip-crown { font-size: 40px !important; }
+    .vip-pills { gap: 6px !important; }
+    .vip-pill { padding: 6px 12px !important; font-size: 11px !important; }
+    .vip-price-main { font-size: 32px !important; }
+}
+
+/* ================================================================
+   ⑥ PAYMENT.HTML / STANDARD-PAYMENT.HTML / GCASH
+   ================================================================ */
+@media (max-width: 768px) {
+    .payment-container,
+    .gcash-container {
+        padding: 24px 16px !important;
+        border-radius: 18px !important;
+        max-width: 100% !important;
+        margin: 16px !important;
+    }
+    .payment-steps { flex-wrap: wrap; gap: 8px; }
+}
+@media (max-width: 480px) {
+    .payment-container,
+    .gcash-container {
+        padding: 16px 12px !important;
+        margin: 10px !important;
+        border-radius: 14px !important;
+    }
+    .qr-img { max-width: 180px !important; }
+    .payment-actions { flex-direction: column; gap: 10px; }
+    .payment-actions button { width: 100%; }
+    .upload-box { padding: 24px 12px !important; }
+    .amount-display { font-size: 28px !important; }
+}
+
+/* ================================================================
+   ⑦ PAYMENT-SUCCESS.HTML
+   ================================================================ */
+@media (max-width: 480px) {
+    .success-card {
+        padding: 30px 16px !important;
+        margin: 16px !important;
+        border-radius: 20px !important;
+    }
+    .success-icon { font-size: 56px !important; }
+    .success-title { font-size: 22px !important; }
+    .success-actions { flex-direction: column; gap: 10px; }
+    .success-actions a,
+    .success-actions button { width: 100%; text-align: center; }
+}
+
+/* ================================================================
+   ⑧ KITCHEN.HTML
+   ================================================================ */
+@media (max-width: 768px) {
+    .kitchen-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px 16px;
+    }
+    .kitchen-filter-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        gap: 6px;
+    }
+    .kds-filter-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .ticket-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+}
+@media (max-width: 480px) {
+    .ticket-grid { grid-template-columns: 1fr !important; }
+    .ticket { padding: 14px !important; }
+    .ticket-table { font-size: 18px !important; }
+    .ticket .actions { flex-direction: column; }
+    .ticket .actions button { width: 100%; }
+}
+
+/* ================================================================
+   ⑨ ADMIN.HTML (Staff Admin)
+   ================================================================ */
+@media (max-width: 1024px) {
+    .admin-tabs { flex-wrap: wrap; gap: 4px; }
+    .tab-link { font-size: 13px; padding: 8px 10px; }
+}
+@media (max-width: 768px) {
+    .container { padding: 12px !important; }
+
+    /* Horizontal scrolling tabs */
+    .admin-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .admin-tabs::-webkit-scrollbar { display: none; }
+    .tab-link { white-space: nowrap; flex-shrink: 0; }
+
+    /* Scoped table → card layout (admin tables only) */
+    #dashboard-section table thead { display: none; }
+    #dashboard-section table tr {
+        display: block;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        background: white;
+    }
+    #dashboard-section table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px !important;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+    }
+    #dashboard-section table td:last-child { border-bottom: none; }
+
+    /* Chat layout */
+    .chat-layout {
+        flex-direction: column;
+        height: auto;
+        min-height: 500px;
+    }
+    .chat-sidebar {
+        width: 100% !important;
+        height: 200px;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .chat-main { height: 380px; }
+
+    /* Walk-in form grid */
+    #tab-walkin .card > div[style*="grid-template-columns:1fr 1fr"],
+    #tab-walkin .card > div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Stat cards */
+    .grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Floor plan */
+    .floor-plan { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; gap: 10px; }
+    .table-card { padding: 14px 10px !important; }
+    .table-name { font-size: 16px !important; }
+}
+@media (max-width: 480px) {
+    header .brand { font-size: 16px; }
+    .grid { grid-template-columns: 1fr !important; }
+    .tab-link { font-size: 12px; padding: 7px 8px; }
+    .row { flex-direction: column; }
+    .row input { max-width: 100% !important; }
+    .auth-card .half { grid-template-columns: 1fr !important; }
+    /* Modals */
+    #edit-modal .card { padding: 16px !important; margin: 12px; }
+}
+
+/* ================================================================
+   ⑩ SUPERADMIN.HTML
+   ================================================================ */
+@media (max-width: 899px) {
+    .grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; }
+    .inv-top-bar { flex-direction: column; align-items: stretch; }
+    .stat-filter-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .super-modal-box { margin: 12px; max-width: calc(100% - 24px) !important; }
+}
+@media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr !important; }
+    .revenue-grid { grid-template-columns: 1fr !important; }
+    .section-title { font-size: 20px; }
+    .card { padding: 14px !important; }
+    .value { font-size: 22px !important; }
+    .super-modal-box { padding: 20px 14px !important; }
+    #tab-kitchen > div { grid-template-columns: 1fr !important; }
+}
+
+/* ================================================================
+   ⑪ POS.HTML
+   ================================================================ */
+@media (max-width: 1024px) {
+    .pos-layout { flex-direction: column !important; }
+    .pos-sidebar { width: 100% !important; max-height: 45vh; overflow-y: auto; }
+    .pos-item-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
+}
+@media (max-width: 768px) {
+    .pos-header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+    .pos-category-bar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pos-cat-btn { white-space: nowrap; flex-shrink: 0; }
+    .pos-item-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+}
+@media (max-width: 480px) {
+    .pos-item-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    .pos-item-card { padding: 10px !important; }
+    .pos-item-name { font-size: 12px !important; }
+    .pos-item-price { font-size: 13px !important; }
+    .pos-total { font-size: 20px !important; }
+    .pos-bill-btn { font-size: 14px !important; padding: 12px !important; }
+}
+
+/* ================================================================
+   ⑫ RECEIPT.HTML
+   ================================================================ */
+@media (max-width: 480px) {
+    .receipt-card { padding: 20px 14px !important; margin: 12px !important; }
+    .receipt-logo { max-height: 48px !important; }
+    .receipt-title { font-size: 18px !important; }
+    .receipt-total { font-size: 20px !important; }
+    .receipt-actions { flex-direction: column; gap: 8px; }
+    .receipt-actions button,
+    .receipt-actions a { width: 100%; text-align: center; }
+}
+
+/* ================================================================
+   ⑬ HOSTESS / KDS / OWNER
+   ================================================================ */
+@media (max-width: 768px) {
+    .hostess-floor { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; gap: 10px; }
+    .kds-grid { grid-template-columns: 1fr 1fr !important; }
+    .owner-grid { grid-template-columns: 1fr !important; }
+    .owner-header { flex-direction: column; gap: 8px; }
+}
+@media (max-width: 480px) {
+    .kds-grid { grid-template-columns: 1fr !important; }
+    .hostess-floor { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ================================================================
+   ⑭ NOTIFICATION TOAST — mobile repositioning
+   ================================================================ */
+@media (max-width: 600px) {
+    #notification-container {
+        top: 12px !important;
+        right: 12px !important;
+        left: 12px !important;
+        align-items: stretch;
+    }
+    .custom-notification {
+        min-width: unset !important;
+        max-width: 100% !important;
+        width: 100%;
+        font-size: 13px;
+    }
+}
+
+/* ================================================================
+   ⑮ SMALLEST SCREENS (360px and below)
+   ================================================================ */
+@media (max-width: 360px) {
+    body { min-width: 320px; }
+    .booking-card { padding: 16px 10px; }
+    .section-title { font-size: 22px; }
+    nav ul { gap: 6px; }
+    .nav-link { font-size: 12px; }
+}
+
+/* ================================================================
+   ⑯ AUTOMATIC FLUID SPACING & TABLET OPTIMIZATIONS
+   ================================================================ */
+:root {
+    --fluid-section-py: clamp(36px, 5vw, 80px);
+    --fluid-section-px: clamp(14px, 4vw, 40px);
+    --fluid-card-p: clamp(16px, 3vw, 32px);
+    --fluid-h1: clamp(26px, 5vw, 46px);
+    --fluid-h2: clamp(20px, 4vw, 32px);
+}
+
+.booking-card,
+.reservation-card,
+.auth-card {
+    padding: var(--fluid-card-p) !important;
+}
+
+/* Tablets (iPads, Android Tablets: 768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container, .main-content {
+        padding: 20px !important;
+    }
+    .grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+    }
+    .admin-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .admin-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .cal-cell {
+        min-height: 80px;
+    }
+}
+
+/* Mobile & Touch Devices (≤768px) */
+@media (max-width: 768px) {
+    .admin-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 6px;
+        gap: 6px;
+    }
+    .admin-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .admin-tabs .tab-link {
+        font-size: 13px;
+        padding: 8px 14px;
+        flex-shrink: 0;
+    }
+    .modal-content,
+    .super-modal-box {
+        max-width: 94vw !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 20px 16px !important;
+    }
+}

@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script>if (location.protocol === 'file:') location.replace('http://localhost:3000/index.html');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Roland's Steak House - Premium fine dining steakhouse offering artisanal steaks, online table reservations, pre-ordering, and seamless digital service.">
+    <title>Roland's Steak House | Premium Fine Dining & Online Reservations</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=2.0">
+    <link rel="stylesheet" href="css/design-system.css?v=2.0">
+    <script src="js/design-system.js?v=2.0"></script>
+    <script src="js/inventory-system.js?v=2.0"></script>
+    <link rel="stylesheet" href="css/responsive.css?v=2.0">
+    <style>
+        .nav-manage-pill {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 15px !important;
+            border-radius: 20px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            text-decoration: none !important;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            backdrop-filter: blur(8px);
+            transition: all 0.25s ease !important;
+        }
+        .nav-manage-pill::after { display: none !important; }
+        header:not(.transparent) .nav-manage-pill {
+            background: #f1f5f9 !important;
+            color: #1b5e20 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .nav-manage-pill:hover {
+            background: #1b5e20 !important;
+            color: #ffffff !important;
+            border-color: #1b5e20 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(27, 94, 32, 0.28);
+        }
+        .nav-manage-pill .pill-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+            display: inline-block;
+        }
+        @keyframes luxuryModalIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header id="main-header" class="transparent">
+        <div class="logo"><img src="images/Rolands logo 2.png" alt="Roland's Steak House"></div>
+        <nav>
+            <ul>
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+                <li><a href="#location" class="nav-link">Location</a></li>
+                <li><a href="#menu" class="nav-link">Menu</a></li>
+                <li><a href="#reservations" class="nav-link">Reservations</a></li>
+                <li><a href="javascript:void(0)" onclick="openManageBookingModal()" class="nav-manage-pill"><span class="pill-dot"></span><span>My Booking</span></a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="home">
+        <!-- Background Slideshow -->
+        <div class="hero-slideshow">
+            <div class="hero-slide active" style="background-image: url('images/Untitled_design_2 (1).webp')"></div>
+            <div class="hero-slide" style="background-image: url('images/2.webp')"></div>
+            <div class="hero-slide" style="background-image: url('images/3.webp')"></div>
+        </div>
+        <div class="hero-overlay"></div>
+        <div class="reveal hero-content">
+            <h1>Roland's Steak House</h1>
+            <p style="font-size: 20px; margin-bottom: 40px;">Fine Dining Excellence in Gensan</p>
+            <a href="#reservations" class="cta-btn">Reserve Your Table</a>
+            <div class="slide-dots">
+                <span class="slide-dot active"></span>
+                <span class="slide-dot"></span>
+                <span class="slide-dot"></span>
+            </div>
+        </div>
+    </section>
+
+
+
+    <section id="about">
+        <div class="container">
+            <div class="about-img reveal-left">
+                <img src="images/storyhistory.png" alt="Interior">
+            </div>
+            <div class="about-text reveal-right">
+                <h2>Our Heritage & Story</h2>
+                <p>Founded in 1994, Roland's Steak House began with a simple mission: to bring an authentic, world-class
+                    steakhouse experience to General Santos City. For decades, we have dedicated ourselves to sourcing
+                    only the highest quality meats, aging them to perfection, and grilling them exactly to your liking.
+                </p>
+                <p>Our master chefs combine traditional fire-grilling techniques with modern culinary innovations,
+                    ensuring every bite is a celebration of flavor.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="location">
+        <div class="reveal" style="text-align: center;">
+            <h2 style="font-family: 'Playfair Display'; font-size: 45px; color: #1b5e20; margin-bottom: 10px;">Visit Our
+                Shop</h2>
+            <p style="color: #666; margin-bottom: 30px;">Jose Catolico Sr. Ave., General Santos City (Dadiangas), 9500
+                South Cotabato</p>
+
+            <div class="map-container">
+                <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.386053151522!2d125.190588!3d6.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32f09fb579f4695d%3A0x3498bc0e23698fc3!2sRoland's%20Steak%20House!5e0!3m2!1sen!2sph!4v1711000000000!5m2!1sen!2sph"
+                    width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+        </div>
+    </section>
+
+    <section id="menu">
+        <div class="reveal" style="width: 100%; max-width: 1200px; margin: 0 auto;">
+            <h2 style="font-family: 'Playfair Display'; font-size: 45px; color: #1b5e20; text-align: center;">Signature
+                Menu</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px;">Tap right to flip, left to go back, or
+                swipe</p>
+
+            <div class="menu-book-container" id="menu-gesture-area">
+                <div class="menu-book" id="menu-book">
+                    <div class="menu-page active">
+                        <img src="images/MenuEntry.png" alt="Roland's menu cover">
+                    </div>
+                    <div class="menu-page">
+                        <img src="images/Menu3.png" alt="Roland's menu page 1">
+                    </div>
+                    <div class="menu-page">
+                        <img src="images/Menu2.png" alt="Roland's menu page 2">
+                    </div>
+                </div>
+            </div>
+
+            <div class="book-indicator" style="text-align: center; margin-top: 15px;">
+                <span id="book-page-indicator" style="font-weight: bold; color: #555;">Page 1 of 3</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="reservations">
+        <div class="form-container reveal">
+            <div class="booking-card">
+                <h2 class="section-title">Book Your Table</h2>
+                <p class="section-subtitle">Experience General Santos' finest fire-grilled steaks.</p>
+
+                <div id="login-area" class="login-prompt">
+                    <div class="login-info">
+                        <span class="muted-label">Reservation Account:</span>
+                        <span id="logged-in-user" class="active-user">Guest</span>
+                    </div>
+                    <div class="login-actions">
+                        <button type="button" id="logout-btn" class="login-btn-small outline" disabled>Logout</button>
+                        <button type="button" id="go-login-page-btn" class="login-btn-small">Login / Sign up</button>
+                    </div>
+                </div>
+
+                <form id="booking-form" onsubmit="goToNextPage(event)">
+                    <div class="form-group">
+                        <label for="customer-name-input">Full Name</label>
+                        <input type="text" id="customer-name-input" placeholder="Enter your full name" required
+                            oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <div class="phone-input-group">
+                                <span class="phone-prefix">+63</span>
+                                <input type="tel" placeholder="9XX XXX XXXX" required maxlength="10" 
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Email <span style="font-size:11px; color:#64748b; font-weight:normal;">(Optional - For Receipt / Login)</span></label>
+                            <input type="email" id="customer-email-input" placeholder="example@email.com">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="arrival-date-input">Arrival Date</label>
+                            <input type="date" id="arrival-date-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="arrival-time-input">Arrival Time</label>
+                            <input type="time" id="arrival-time-input" min="10:30" max="21:00" required>
+                            <span class="time-limit-hint">Available: 10:30 AM - 9:00 PM</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="party-size-select">Number of Guests</label>
+                        <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required>
+                            <option value="" disabled selected>Select party size</option>
+                            <option>1-2 Persons</option>
+                            <option>3-5 Persons</option>
+                            <option>6+ Persons</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>→</span></button>
+                    <div style="text-align:center; margin-top:14px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif;">Already have a reservation? <a href="javascript:void(0)" onclick="openManageBookingModal()" style="color:#1b5e20; font-weight:700; text-decoration:underline; cursor:pointer;">Manage or Cancel Existing Booking</a></div>
+                </form>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 🎁 FLOATING PROMOTION MODAL -->
+    <div class="promo-modal-overlay" id="promo-modal">
+        <div class="promo-modal-card">
+            <button class="promo-modal-close" onclick="closePromoModal()">✕</button>
+            <img src="" id="promo-modal-img" class="promo-modal-img" alt="Promotion">
+            <div class="promo-modal-content">
+                <h2 class="promo-modal-title" id="promo-modal-title">Special Offer</h2>
+                <p class="promo-modal-desc" id="promo-modal-desc"></p>
+                <div class="promo-modal-actions">
+                    <button class="promo-modal-btn secondary" onclick="closePromoModal()">Maybe Later</button>
+                    <button class="promo-modal-btn primary" onclick="window.location.href='#reservations'; closePromoModal();">Book Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <h3>Roland's Steak House</h3>
+                <p>Serving the finest fire-grilled steaks in General Santos City since 1994. Quality, tradition, and
+                    flavor in every plate.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Quick Links</h4>
+                <a href="#home">Home</a>
+                <a href="#about">About Us</a>
+                <a href="#menu">Menu</a>
+                <a href="#reservations">Reservations</a>
+            </div>
+            <div class="footer-links">
+                <h4>Contact</h4>
+                <a href="#location">Jose Catolico Sr. Ave.</a>
+                <a href="#location">General Santos City</a>
+                <a href="#location">9500 South Cotabato</a>
+                <a>Tel: (083) 123-4567</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2024 Roland's Steak House. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const header = document.getElementById('main-header');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            const scrollPos = window.scrollY;
+
+            if (scrollPos > 50) header.classList.remove('transparent');
+            else header.classList.add('transparent');
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollPos >= (sectionTop - 250)) current = section.getAttribute('id');
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === current) link.classList.add('active');
+            });
+
+            // Fade on scroll
+            const heroContent = document.querySelector('.hero-content');
+            if (heroContent) {
+                const heroH = document.getElementById('home')?.offsetHeight || window.innerHeight;
+                const progress = Math.min(scrollPos / (heroH * 0.65), 1);
+                heroContent.style.opacity = 1 - progress;
+                heroContent.style.transform = `translateY(${progress * 70}px)`;
+            }
+        });
+
+
+        const observerOptions = { threshold: 0.15 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+        document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => observer.observe(el));
+
+        function goToNextPage(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('customer-name-input');
+            const emailInput = document.getElementById('customer-email-input');
+            const arrivalDateInput = document.getElementById('arrival-date-input');
+            const arrivalTimeInput = document.getElementById('arrival-time-input');
+
+            // Enforce time bounds manually for older browsers
+            if (arrivalDateInput && arrivalTimeInput && arrivalTimeInput.value) {
+                const selectedDate = arrivalDateInput.value;
+                const selectedTime = arrivalTimeInput.value;
+
+                // Validate Holiday / Blocked Dates
+                if (selectedDate && typeof window.checkHolidayOrBlockedDate === 'function') {
+                    const holidayCheck = window.checkHolidayOrBlockedDate(selectedDate);
+                    if (holidayCheck.isBlocked) {
+                        superModal({
+                            title: 'Holiday / Restaurant Closed 🚫',
+                            message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${selectedDate}). Please choose an available non-holiday date.`
+                        });
+                        arrivalDateInput.value = '';
+                        return;
+                    }
+                }
+
+                if (selectedTime < "10:30" || selectedTime > "21:00") {
+                    superModal({ title: 'Invalid Time 🕒', message: 'Please select an arrival time between 10:30 AM and 9:00 PM.' });
+                    return;
+                }
+
+                // If today is selected, block past times
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                if (selectedDate === todayStr) {
+                    const nowTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                    if (selectedTime <= nowTimeStr) {
+                        superModal({ title: 'Time Already Passed \uD83D\uDD52', message: 'The selected time has already passed. Please choose a later time for today.' });
+                        return;
+                    }
+                }
+            }
+
+            localStorage.setItem('customerName', (nameInput?.value || '').trim());
+            localStorage.setItem('customerEmail', (emailInput?.value || '').trim());
+            localStorage.setItem('arrivalDate', arrivalDateInput?.value || '');
+            localStorage.setItem('arrivalTime', arrivalTimeInput?.value || '');
+
+            // Clear any stale cart/pre-order data for a fresh start
+            localStorage.removeItem('preOrderCart');
+            localStorage.removeItem('totalBill');
+            localStorage.removeItem('orderSummary');
+            localStorage.removeItem('beefNote');
+            localStorage.removeItem('currentCartObj');
+
+            window.location.href = "seat-selection.html";
+        }
+
+        (function initLocalLogin() {
+            const storedName  = localStorage.getItem('loggedInUserName');
+            const storedEmail = localStorage.getItem('loggedInUserEmail');
+            const nameInput      = document.getElementById('customer-name-input');
+            const loggedInLabel  = document.getElementById('logged-in-user');
+            const logoutBtn      = document.getElementById('logout-btn');
+            const goLoginPageBtn = document.getElementById('go-login-page-btn');
+
+            if (!nameInput || !loggedInLabel || !logoutBtn || !goLoginPageBtn) return;
+
+            const applyLoginState = (name, email) => {
+                const cleanName  = (name  || '').trim();
+                const cleanEmail = (email || '').trim();
+
+                if (cleanName || cleanEmail) {
+                    // Show email as the account identifier; leave Full Name blank for the customer to type
+                    loggedInLabel.textContent = cleanEmail || cleanName;
+                    nameInput.value = ''; // Do NOT auto-fill — customer types their own name
+                    logoutBtn.disabled = false;
+                    goLoginPageBtn.disabled = true;
+                } else {
+                    loggedInLabel.textContent = 'Guest';
+                    nameInput.value = '';
+                    logoutBtn.disabled = true;
+                    goLoginPageBtn.disabled = false;
+                }
+            };
+
+            applyLoginState(storedName, storedEmail);
+
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('loggedInUserName');
+                localStorage.removeItem('loggedInUserEmail');
+                applyLoginState('', '');
+            });
+
+            goLoginPageBtn.addEventListener('click', () => {
+                window.location.href = "login.html";
+            });
+        })();
+
+        (function initMenuGestures() {
+            const book = document.getElementById('menu-book');
+            const pages = Array.from(book.querySelectorAll('.menu-page'));
+            const indicator = document.getElementById('book-page-indicator');
+            const gestureArea = document.getElementById('menu-gesture-area');
+
+            if (!pages.length || !indicator || !gestureArea) return;
+
+            let current = 0;
+            const total = pages.length;
+
+            const updatePages = () => {
+                pages.forEach((p, index) => {
+                    p.style.transform = ''; // Clear inline styles
+                    p.style.opacity = '';
+                    p.classList.remove('active', 'before', 'next', 'after', 'dragging');
+
+                    if (index === current) {
+                        p.classList.add('active');
+                    } else if (index === current + 1) {
+                        p.classList.add('next');
+                    } else if (index < current) {
+                        p.classList.add('before');
+                    } else {
+                        p.classList.add('after');
+                    }
+                });
+                indicator.textContent = `Page ${current + 1} of ${total}`;
+            };
+
+            let isDragging = false;
+            let startX = 0;
+            let draggingPage = null;
+            let dragDirection = 0;
+            let bookWidth = 0;
+
+            const onPointerDown = (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                bookWidth = book.getBoundingClientRect().width;
+                gestureArea.setPointerCapture(e.pointerId);
+                draggingPage = null;
+                dragDirection = 0;
+            };
+
+            const onPointerMove = (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - startX;
+
+                if (!draggingPage && Math.abs(deltaX) > 5) {
+                    dragDirection = deltaX < 0 ? -1 : 1;
+                    if (dragDirection === -1 && current < total - 1) {
+                        draggingPage = pages[current];
+                    } else if (dragDirection === 1 && current > 0) {
+                        draggingPage = pages[current - 1];
+                        // Bring the previous page above the current stack to flip it back
+                        draggingPage.classList.remove('before');
+                        draggingPage.classList.add('active');
+                        draggingPage.style.opacity = '1';
+                    }
+                    if (draggingPage) draggingPage.classList.add('dragging');
+                }
+
+                if (draggingPage) {
+                    let progress = deltaX / bookWidth;
+                    if (dragDirection === -1) {
+                        progress = Math.max(-1, Math.min(0, progress));
+                        const angle = progress * 130;
+                        draggingPage.style.transform = `rotateY(${angle}deg)`;
+                    } else {
+                        progress = Math.max(0, Math.min(1, progress));
+                        const angle = -130 + (progress * 130);
+                        draggingPage.style.transform = `rotateY(${angle}deg)`;
+                    }
+                }
+            };
+
+            const onPointerUp = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const deltaX = e.clientX - startX;
+
+                if (draggingPage) {
+                    draggingPage.classList.remove('dragging');
+                    draggingPage.style.transform = '';
+                    draggingPage.style.opacity = '';
+
+                    const threshold = bookWidth * 0.2;
+
+                    if (dragDirection === -1 && deltaX < -threshold) {
+                        current++;
+                    } else if (dragDirection === 1 && deltaX > threshold) {
+                        current--;
+                    }
+                    draggingPage = null;
+                    updatePages();
+                } else {
+                    const rect = gestureArea.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    if (clickX > rect.width / 2) {
+                        if (current < total - 1) current++;
+                    } else {
+                        if (current > 0) current--;
+                    }
+                    updatePages();
+                }
+            };
+
+            gestureArea.style.touchAction = 'pan-y'; // Allow vertical scroll, disable horizontal swipe navigation
+            gestureArea.addEventListener('pointerdown', onPointerDown);
+            gestureArea.addEventListener('pointermove', onPointerMove);
+            gestureArea.addEventListener('pointerup', onPointerUp);
+            gestureArea.addEventListener('pointercancel', onPointerUp);
+
+            updatePages();
+        })();
+
+        // Live promotions
+        (function initPromotions() {
+            // --- FLOATING AD TRIGGER ---
+            window.closePromoModal = function() {
+                document.getElementById('promo-modal').classList.remove('active');
+            };
+
+            const hasSeenAd = sessionStorage.getItem('hasSeenPromoAd');
+            if (!hasSeenAd) {
+                // Show ad after 2 seconds delay for premium feel
+                setTimeout(() => {
+                    const promos = JSON.parse(localStorage.getItem('activePromos') || '[]');
+                    if (promos.length > 0) {
+                        const latest = promos[promos.length - 1]; // Show most recent
+                        document.getElementById('promo-modal-img').src = latest.image;
+                        document.getElementById('promo-modal-title').textContent = latest.title;
+                        document.getElementById('promo-modal-desc').textContent = latest.desc;
+                        document.getElementById('promo-modal').classList.add('active');
+                        sessionStorage.setItem('hasSeenPromoAd', 'true');
+                    }
+                }, 2000);
+            }
+        })();
+
+        // Customer online heartbeat
+        (function initCustomerHeartbeat() {
+            setInterval(() => {
+                const customers = JSON.parse(localStorage.getItem('onlineCustomers') || '{}');
+                let custId = sessionStorage.getItem('customerId');
+                if (!custId) {
+                    custId = 'Cust-' + Math.floor(Math.random() * 1000000);
+                    sessionStorage.setItem('customerId', custId);
+                }
+                const name = localStorage.getItem('loggedInUserName') || 'Guest';
+                customers[custId] = { name: name, time: Date.now() };
+
+                for (const key in customers) {
+                    if (Date.now() - customers[key].time > 15000) delete customers[key];
+                }
+                localStorage.setItem('onlineCustomers', JSON.stringify(customers));
+            }, 5000);
+        })();
+
+        // Date + Time limiter (linked so today blocks past times & late night advances to tomorrow)
+        (function initDateBounds() {
+            const dateInput = document.getElementById('arrival-date-input');
+            const timeInput = document.getElementById('arrival-time-input');
+            if (!dateInput || !timeInput) return;
+
+            // Format YYYY-MM-DD
+            const formatDate = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            // Format HH:MM
+            const formatTime = (date) => {
+                return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+            };
+
+            const now = new Date();
+            const nowTimeStr = formatTime(now);
+
+            // If current time is past 20:30 (8:30 PM), cutoff for today is reached; minimum date is tomorrow
+            let minDateObj = new Date(now);
+            if (nowTimeStr > "20:30") {
+                minDateObj.setDate(minDateObj.getDate() + 1);
+            }
+            const minDate = formatDate(minDateObj);
+
+            const maxDateObj = new Date(now);
+            maxDateObj.setFullYear(maxDateObj.getFullYear() + 1);
+            const maxDate = formatDate(maxDateObj);
+
+            dateInput.setAttribute('min', minDate);
+            dateInput.setAttribute('max', maxDate);
+            if (timeInput) {
+                timeInput.setAttribute('min', '10:30');
+                timeInput.setAttribute('max', '21:00');
+            }
+
+            // Update time min whenever date changes
+            function updateTimeMin() {
+                const selectedDate = dateInput.value;
+                if (!selectedDate || !timeInput) return;
+
+                const actualTodayStr = formatDate(new Date());
+                if (selectedDate === actualTodayStr) {
+                    // For today: min time = current time (so past times are blocked)
+                    const currentNowTime = formatTime(new Date());
+                    // Clamp: if current time is before 10:30, use 10:30
+                    const minTime = currentNowTime > "10:30" ? currentNowTime : "10:30";
+                    timeInput.setAttribute('min', minTime);
+                    timeInput.setAttribute('max', '21:00');
+
+                    // If user already picked a time that's now in the past, clear it
+                    if (timeInput.value && timeInput.value <= currentNowTime) {
+                        timeInput.value = '';
+                    }
+                } else {
+                    // Future date: allow from 10:30 to 21:00
+                    timeInput.setAttribute('min', '10:30');
+                    timeInput.setAttribute('max', '21:00');
+                }
+            }
+
+            dateInput.addEventListener('change', () => {
+                const val = dateInput.value;
+                if (val && typeof window.checkHolidayOrBlockedDate === 'function') {
+                    const holidayCheck = window.checkHolidayOrBlockedDate(val);
+                    if (holidayCheck.isBlocked) {
+                        if (typeof superModal === 'function') {
+                            superModal({
+                                title: 'Holiday / Restaurant Closed 🚫',
+                                message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${val}). Please select an available non-holiday date.`
+                            });
+                        } else {
+                            alert(`Sorry, Roland's Steak House is closed on ${holidayCheck.name} (${val}).`);
+                        }
+                        dateInput.value = '';
+                        return;
+                    }
+                }
+                updateTimeMin();
+            });
+            // Run once on load in case a date is already prefilled
+            updateTimeMin();
+
+            // Stop manual key typing on date field
+            dateInput.addEventListener('keydown', (e) => {
+                e.preventDefault();
+            });
+        })();
+
+        // Hero background slideshow
+        (function initHeroSlideshow() {
+            const slides = document.querySelectorAll('.hero-slide');
+            const dots = document.querySelectorAll('.slide-dot');
+            if (!slides.length) return;
+            let current = 0;
+
+            const goTo = (next) => {
+                slides[current].classList.remove('active');
+                slides[current].classList.add('exit');
+                if (dots[current]) dots[current].classList.remove('active');
+
+                const exiting = slides[current];
+                setTimeout(() => exiting.classList.remove('exit'), 900);
+
+                current = next;
+                slides[current].classList.add('active');
+                if (dots[current]) dots[current].classList.add('active');
+            };
+
+            setInterval(() => goTo((current + 1) % slides.length), 5000);
+
+            // Clicking a dot jumps to that slide
+            dots.forEach((dot, i) => dot.addEventListener('click', () => { if (i !== current) goTo(i); }));
+        })();
+
+
+        // Chat logic
+        function toggleChat() {
+            const panel = document.getElementById('chatPanel');
+            panel.classList.toggle('active');
+            const bubbleIcon = document.getElementById('chat-bubble-icon');
+            if (bubbleIcon) {
+                bubbleIcon.textContent = panel.classList.contains('active') ? '✕' : '💬';
+            }
+            if (panel.classList.contains('active')) {
+                const isLoggedIn = !!localStorage.getItem('loggedInUserName');
+                const guestRes = !!sessionStorage.getItem('guestChatRes');
+                if (!isLoggedIn && !guestRes) {
+                    renderChatLoginGate();
+                } else {
+                    renderChatContent();
+                    loadChatMessages();
+                    checkActiveReservation();
+                }
+            }
+        }
+
+        function renderChatLoginGate() {
+            const body = document.getElementById('chatBody');
+            const footer = document.getElementById('chatFooter');
+            const resInfo = document.getElementById('chatResInfo');
+
+            if (resInfo) resInfo.style.display = 'none';
+            if (footer) footer.style.display = 'none';
+
+            const lastRes = localStorage.getItem('reservationNumber') || '';
+            const prefill = lastRes ? (lastRes.startsWith('#') ? lastRes : '#' + lastRes) : '';
+
+            body.innerHTML = `
+                <div style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: center;
+                    min-height: 100%;
+                    padding: 24px 16px;
+                    text-align: center;
+                    gap: 14px;
+                    box-sizing: border-box;
+                ">
+                    <div style="width: 50px; height: 50px; border-radius: 16px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto;">💬</div>
+                    <div>
+                        <h3 style="
+                            font-family: 'Playfair Display', serif;
+                            font-size: 19px;
+                            color: #1b5e20;
+                            margin: 0 0 4px;
+                        ">Live Support</h3>
+                        <p style="
+                            font-size: 12.5px;
+                            color: #64748b;
+                            line-height: 1.45;
+                            margin: 0;
+                        ">Connect with our team for questions about your reservation, table, or special requests.</p>
+                    </div>
+
+                    <!-- GUEST OPTION: Chat using Reservation Code -->
+                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:14px; padding:14px; text-align:left; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <label for="chat-res-code-input" style="font-size:11px; font-weight:800; color:#1e293b; text-transform:uppercase; letter-spacing:0.5px;">
+                                🎫 Use Reservation Code
+                            </label>
+                            <span style="font-size:10px; font-weight:700; color:#166534; background:#dcfce7; padding:2px 7px; border-radius:6px;">No Account Needed</span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <input type="text" id="chat-res-code-input" placeholder="e.g. RES-376881" value="${prefill}"
+                                style="flex:1; min-width:0; padding:10px 12px; border:1.5px solid #94a3b8; border-radius:8px; font-size:13px; font-weight:700; color:#0f172a; outline:none; text-transform:uppercase; background:white;"
+                                onkeypress="if(event.key === 'Enter') handleGuestChatByCode()">
+                            <button type="button" onclick="handleGuestChatByCode()" style="background:#1b5e20; color:white; border:none; border-radius:8px; padding:0 14px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap; transition:all 0.15s; box-shadow:0 2px 6px rgba(27,94,32,0.25);" onmouseover="this.style.background='#2e7d32'" onmouseout="this.style.background='#1b5e20'">
+                                Start Chat
+                            </button>
+                        </div>
+                        <div id="chat-res-code-error" style="display:none; color:#dc2626; font-size:11.5px; font-weight:600; margin-top:6px;"></div>
+                        <div style="font-size:11px; color:#64748b; margin-top:6px; line-height:1.4;">
+                            Already booked? Enter your receipt code to link your chat directly to your reservation.
+                        </div>
+                    </div>
+
+                    <!-- DIVIDER -->
+                    <div style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:11px; font-weight:700;">
+                        <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                        <span>OR</span>
+                        <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+                    </div>
+
+                    <!-- MEMBER LOGIN OPTION -->
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button onclick="window.location.href='login.html'" style="
+                            background: white;
+                            color: #1b5e20;
+                            border: 1.5px solid #1b5e20;
+                            border-radius: 10px;
+                            padding: 10px 16px;
+                            font-size: 13px;
+                            font-weight: 700;
+                            font-family: 'Roboto', sans-serif;
+                            cursor: pointer;
+                            transition: all 0.15s;
+                        " onmouseover="this.style.background='#f0fdf4';" onmouseout="this.style.background='white';">
+                            👤 Log In / Sign Up with Account
+                        </button>
+                        <button type="button" onclick="startGuestChatWithoutCode()" style="
+                            background: transparent;
+                            border: none;
+                            color: #64748b;
+                            font-size: 12px;
+                            text-decoration: underline;
+                            cursor: pointer;
+                            padding: 4px;
+                        ">No reservation yet? Chat as General Guest</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.handleGuestChatByCode = function() {
+            const input = document.getElementById('chat-res-code-input');
+            const err = document.getElementById('chat-res-code-error');
+            if (!input) return;
+            const rawVal = input.value.trim();
+            if (!rawVal) {
+                if (err) { err.textContent = 'Please enter your reservation code.'; err.style.display = 'block'; }
+                return;
+            }
+
+            const cleanCode = rawVal.toUpperCase().replace(/^#/, '');
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const found = hist.find(r => {
+                const rNum = (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
+                return rNum === cleanCode || rNum === ('RES-' + cleanCode) || ('RES-' + rNum) === cleanCode;
+            });
+
+            if (found) {
+                sessionStorage.setItem('guestChatRes', JSON.stringify(found));
+                localStorage.setItem('customerName', found.customerName || 'Guest');
+                localStorage.setItem('reservationNumber', found.reservationNumber);
+                renderChatContent();
+                loadChatMessages();
+                checkActiveReservation();
+            } else {
+                // If not strictly in history, allow them to chat anyway with their reservation code reference
+                const tempRes = {
+                    reservationNumber: cleanCode,
+                    customerName: localStorage.getItem('customerName') || 'Guest',
+                    bookedTable: 'Inquiry Table',
+                    arrivalDate: 'Upcoming',
+                    arrivalTime: '',
+                    foods: []
+                };
+                sessionStorage.setItem('guestChatRes', JSON.stringify(tempRes));
+                localStorage.setItem('reservationNumber', cleanCode);
+                renderChatContent();
+                loadChatMessages();
+                checkActiveReservation();
+            }
+        };
+
+        window.startGuestChatWithoutCode = function() {
+            let name = prompt('Please enter your name for Live Support:');
+            if (name === null) return; // Cancelled
+            name = name.trim() || 'Guest';
+            const guestObj = {
+                reservationNumber: 'INQUIRY-' + Math.floor(1000 + Math.random() * 9000),
+                customerName: name,
+                bookedTable: 'General Chat',
+                foods: []
+            };
+            sessionStorage.setItem('guestChatRes', JSON.stringify(guestObj));
+            localStorage.setItem('customerName', name);
+            renderChatContent();
+            loadChatMessages();
+            checkActiveReservation();
+        };
+
+        window.exitGuestChat = function() {
+            sessionStorage.removeItem('guestChatRes');
+            renderChatLoginGate();
+        };
+
+        function renderChatContent() {
+            const resInfo = document.getElementById('chatResInfo');
+            const footer = document.getElementById('chatFooter');
+            if (resInfo) resInfo.style.display = '';
+            if (footer) footer.style.display = '';
+        }
+
+        function getChatId() {
+            let id = localStorage.getItem('chatSessionId');
+            if (!id) {
+                id = 'session_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', id);
+            }
+            return id;
+        }
+
+        function checkActiveReservation() {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const cName = localStorage.getItem('customerName');
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            const resInfo = document.getElementById('chatResInfo');
+            if (!resInfo) return;
+
+            let myRes = null;
+            if (guestRes) {
+                const gCode = (guestRes.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
+                myRes = hist.find(r => (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '') === gCode) || guestRes;
+            } else if (cName) {
+                myRes = [...hist].reverse().find(r => r.customerName === cName);
+            }
+
+            if (myRes) {
+                let foodText = '';
+                if (myRes.reservationType === 'standard') {
+                    foodText = 'None (Standard Reservation)';
+                } else if (myRes.foods && myRes.foods.length > 0) {
+                    foodText = myRes.foods.join(', ');
+                    if (myRes.beefNote) foodText += ` | 🥩 ${myRes.beefNote}`;
+                } else {
+                    foodText = 'None';
+                }
+
+                // Kitchen status badge
+                const kds = myRes.kdsStatus || 'pending';
+                const kdsConfig = {
+                    pending:  { icon: '⏳', label: 'Order Received',  bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                    cooking:  { icon: '👨‍🍳', label: 'Now Cooking…',    bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                    ready:    { icon: '🍽️', label: 'Food is Ready!',   bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
+                    served:   { icon: '✅', label: 'Served',           bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+                    cancelled:{ icon: '🚫', label: 'Order Cancelled',  bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                };
+                const cfg = kdsConfig[kds] || kdsConfig.pending;
+
+                const hasFoodOrder = myRes.foods && myRes.foods.length > 0;
+                const kitchenBadge = hasFoodOrder ? `
+                    <div id="kitchen-status-badge" style="
+                        margin-top: 8px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        background: ${cfg.bg};
+                        border: 1.5px solid ${cfg.border};
+                        border-radius: 10px;
+                        padding: 8px 12px;
+                        ${kds === 'ready' ? 'animation: kdsReadyPulse 1.8s ease-in-out infinite;' : ''}
+                    ">
+                        <span style="font-size:18px; line-height:1;">${cfg.icon}</span>
+                        <div>
+                            <div style="font-size:10px; color:${cfg.color}; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Kitchen Status</div>
+                            <div style="font-size:13px; color:${cfg.color}; font-weight:800;">${cfg.label}</div>
+                        </div>
+                    </div>` : '';
+
+                const isCancelled = myRes.approvalStatus === 'rejected' || myRes.approvalStatus === 'cancelled' || myRes.kdsStatus === 'cancelled';
+                const isServed = myRes.kdsStatus === 'served' || myRes.approvalStatus === 'completed';
+
+                resInfo.innerHTML = `
+                    <div style="text-align:left; line-height:1.4;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                            <div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div>
+                            <button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer;">Switch Code</button>
+                        </div>
+                        <div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || 'Guest'} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div>
+                        <div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div>
+                        <div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>
+                        ${kitchenBadge}
+                        ${!isCancelled && !isServed ? `
+                            <button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;">
+                                <span>🚫</span> Cancel My Reservation & Food
+                            </button>
+                        ` : (isCancelled ? `
+                            <div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">
+                                🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}
+                            </div>
+                        ` : '')}
+                    </div>
+                `;
+                return;
+            }
+            resInfo.textContent = 'No active reservation found.';
+        }
+
+        function loadChatMessages() {
+            const sId = getChatId();
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            const cName = localStorage.getItem('customerName');
+
+            // Bring in any orphaned messages created by the Admin for this customer
+            if (cName) {
+                for (let otherId in allChats) {
+                    if (otherId !== sId) {
+                        const hasCust = allChats[otherId].some(m => m.name === cName || (m.sender === 'staff' && m.text.includes(cName)) || (m.sender === 'customer' && m.name === cName));
+                        if (hasCust) {
+                            // Merge them into our actual session
+                            if (!allChats[sId]) allChats[sId] = [];
+                            allChats[sId] = allChats[sId].concat(allChats[otherId]);
+                            delete allChats[otherId];
+                            localStorage.setItem('liveChats', JSON.stringify(allChats));
+                        }
+                    }
+                }
+            }
+
+            const myChat = allChats[sId] || [];
+            const body = document.getElementById('chatBody');
+
+            body.innerHTML = `<div class="chat-msg staff">
+                Hello! How can we help you today?
+                <div class="chat-msg-time">System</div>
+            </div>`;
+
+            myChat.forEach(m => {
+                const div = document.createElement('div');
+                div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
+                div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
+                body.appendChild(div);
+            });
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const sId = getChatId();
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            if (!allChats[sId]) allChats[sId] = [];
+
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            let cName = localStorage.getItem('customerName') || 'Guest';
+            if (guestRes && guestRes.reservationNumber) {
+                const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
+                cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
+            }
+
+            const newMsg = {
+                sender: 'customer',
+                name: cName,
+                text: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            allChats[sId].push(newMsg);
+            localStorage.setItem('liveChats', JSON.stringify(allChats));
+
+            input.value = '';
+            loadChatMessages();
+        }
+
+        function sendChatPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const b64 = e.target.result;
+                const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
+
+                const sId = getChatId();
+                const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                if (!allChats[sId]) allChats[sId] = [];
+
+                const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+                let cName = localStorage.getItem('customerName') || 'Guest';
+                if (guestRes && guestRes.reservationNumber) {
+                    const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
+                    cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
+                }
+
+                const newMsg = {
+                    sender: 'customer',
+                    name: cName,
+                    text: txt,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+
+                allChats[sId].push(newMsg);
+                localStorage.setItem('liveChats', JSON.stringify(allChats));
+
+                loadChatMessages();
+                input.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        setInterval(() => {
+            if (document.getElementById('chatPanel').classList.contains('active')) {
+                loadChatMessages();
+            }
+        }, 3000);
+
+        // Payment status polling (Verified/Rejected — for manual payments only)
+        setInterval(() => {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const myName = localStorage.getItem('customerName');
+            if (!myName) return;
+
+            let newlyVerified = false;
+            let newlyRejected = false;
+            let verifiedRes = null;
+            let rejectedRes = null;
+
+            hist.forEach(r => {
+                if (r.customerName !== myName) return;
+
+                // Skip PayMongo-processed payments — they are handled by payment-success.html
+                if (r.paymentMethod === 'paymongo' || r.paymentStatus === 'paid' || r.paymentStatus === 'pending_paymongo') return;
+
+                // Only show "Verified" popup for admin-verified MANUAL payments not yet acknowledged
+                if (r.paymentStatus === 'verified' && !r.receiptAcknowledged) {
+                    newlyVerified = true;
+                    verifiedRes = r;
+                    r.receiptAcknowledged = true;
+                }
+
+                // Only show "Rejected" popup for admin-explicitly-rejected entries not yet acknowledged
+                if (r.paymentStatus === 'rejected' && !r.rejectionAcknowledged) {
+                    newlyRejected = true;
+                    rejectedRes = r;
+                    r.rejectionAcknowledged = true;
+                }
+            });
+
+            if (!newlyVerified && !newlyRejected) return;
+
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); animation:fadeIn 0.2s ease;';
+
+            const style = ``;
+
+            if (newlyVerified) {
+                const resNo = verifiedRes ? verifiedRes.reservationNumber : '';
+                overlay.innerHTML = style + `
+                    <div class="pay-popup-card">
+                        <div class="pay-popup-icon">✅</div>
+                        <h2 class="pay-popup-title" style="color:#1b5e20;">Payment Verified!</h2>
+                        <p class="pay-popup-msg">Your payment has been confirmed by our team. Your reservation is now secured!</p>
+                        ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
+                        <button class="pay-popup-btn" style="background:#1b5e20; color:white;" 
+                            onclick="closeStatusPopup(this.closest('[style*=fixed]'), true)">
+                            💬 View Receipt in Chat
+                        </button>
+                    </div>`;
+
+            } else if (newlyRejected) {
+                const resNo = rejectedRes ? rejectedRes.reservationNumber : '';
+                overlay.innerHTML = style + `
+                    <div class="pay-popup-card">
+                        <div class="pay-popup-icon">⚠️</div>
+                        <h2 class="pay-popup-title" style="color:#b91c1c;">Payment Invalid</h2>
+                        <p class="pay-popup-msg">Sorry, your payment could not be verified. Please check your transaction details and re-upload your proof of payment.</p>
+                        ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
+                        <button class="pay-popup-btn" style="background:#b91c1c; color:white;"
+                            onclick="closeStatusPopup(this.closest('[style*=fixed]'), false)">
+                            I Understand
+                        </button>
+                    </div>`;
+            }
+
+            document.body.appendChild(overlay);
+
+            window.closeStatusPopup = function(el, openChat) {
+                if (el) el.remove();
+                if (openChat) {
+                    const panel = document.getElementById('chatPanel');
+                    if (panel && !panel.classList.contains('active')) toggleChat();
+                }
+            };
+        }, 3000);
+
+        // ══════════════════════════════════════════════
+        // 🍽️  FOOD-READY ALERT SYSTEM (Kitchen → Customer)
+        // Polls every 5s. When kitchen marks order as 'ready',
+        // fires a popup and badges the chat bubble.
+        // ══════════════════════════════════════════════
+        (function initFoodReadyPolling() {
+            let lastSeenKdsStatus = sessionStorage.getItem('lastKdsStatus') || null;
+
+            function checkFoodReady() {
+                const myName = localStorage.getItem('customerName');
+                if (!myName) return;
+
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                const myRes = [...hist].reverse().find(r => r.customerName === myName);
+                if (!myRes || !myRes.foods || myRes.foods.length === 0) return;
+
+                const currentKds = myRes.kdsStatus || 'pending';
+
+                // Refresh the kitchen badge inside chat panel if it's open
+                if (document.getElementById('chatPanel')?.classList.contains('active')) {
+                    checkActiveReservation();
+                }
+
+                const hasFoodOrder = myRes.foods && myRes.foods.length > 0;
+
+                // Update the floating order-status pill
+                updateOrderPill(currentKds, hasFoodOrder);
+                // Manage the pulsing red dot on the chat bubble
+                const bubble = document.querySelector('.chat-bubble-btn');
+                if (bubble) {
+                    const existingDot = document.getElementById('chat-food-dot');
+                    if (currentKds === 'ready') {
+                        if (!existingDot) {
+                            const dot = document.createElement('span');
+                            dot.id = 'chat-food-dot';
+                            dot.style.cssText = `
+                                position: absolute; top: -4px; right: -4px;
+                                width: 16px; height: 16px; border-radius: 50%;
+                                background: #ef4444; border: 2.5px solid white;
+                                animation: foodDotPulse 1.4s ease-in-out infinite;
+                                pointer-events: none;
+                            `;
+                            bubble.style.position = 'relative';
+                            bubble.appendChild(dot);
+                        }
+                    } else {
+                        if (existingDot) existingDot.remove();
+                    }
+                }
+
+                // Fire the popup only ONCE per 'ready' event
+                if (currentKds === 'ready' && lastSeenKdsStatus !== 'ready') {
+                    lastSeenKdsStatus = 'ready';
+                    sessionStorage.setItem('lastKdsStatus', 'ready');
+                    showFoodReadyPopup(myRes);
+                }
+
+                // Reset tracking when status moves past 'ready'
+                if (currentKds === 'served' || currentKds === 'cancelled') {
+                    if (lastSeenKdsStatus === 'ready') {
+                        lastSeenKdsStatus = currentKds;
+                        sessionStorage.setItem('lastKdsStatus', currentKds);
+                    }
+                }
+
+                // Track cooking → ready transition
+                if (currentKds !== lastSeenKdsStatus && currentKds !== 'ready') {
+                    lastSeenKdsStatus = currentKds;
+                    sessionStorage.setItem('lastKdsStatus', currentKds);
+                }
+            }
+
+            function showFoodReadyPopup(res) {
+                const overlay = document.createElement('div');
+                overlay.id = 'food-ready-overlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); animation:fadeIn 0.25s ease;';
+
+                const foodList = (res.foods || []).map(f => `<li style="margin:4px 0; font-size:14px; color:#333;">${f}</li>`).join('');
+
+                overlay.innerHTML = `
+                    <div class="food-ready-card">
+                        <span class="food-ready-icon">🍽️</span>
+                        <h2 class="food-ready-title">Your Food is Ready!</h2>
+                        <p class="food-ready-sub">Our kitchen has finished preparing your order. Please proceed to your table to enjoy your meal.</p>
+                        <ul class="food-ready-list">${foodList}</ul>
+                        ${res.reservationNumber ? `<div class="food-ready-res">Reservation #${res.reservationNumber} &nbsp;·&nbsp; Table: ${res.bookedTable || 'Assigned at door'}</div>` : ''}
+                        <button class="food-ready-btn-primary" onclick="closeFoodReadyPopup(true)">💬 Open Live Support</button>
+                        <button class="food-ready-btn-secondary" onclick="closeFoodReadyPopup(false)">Got it, Thank you!</button>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                window.closeFoodReadyPopup = function(openChat) {
+                    const el = document.getElementById('food-ready-overlay');
+                    if (el) el.remove();
+                    if (openChat) {
+                        const panel = document.getElementById('chatPanel');
+                        if (panel && !panel.classList.contains('active')) toggleChat();
+                    }
+                };
+            }
+
+            // Inject keyframe animations into the page
+            const animStyle = document.createElement('style');
+            animStyle.textContent = `
+                @keyframes kdsReadyPulse { 0%,100% { box-shadow:0 0 0 0 rgba(74,222,128,0.55); } 50% { box-shadow:0 0 0 10px rgba(74,222,128,0); } }
+                @keyframes foodDotPulse  { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.3); opacity:0.65; } }
+                @keyframes pillSlideIn   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+                @keyframes pillReadyGlow { 0%,100% { box-shadow:0 4px 18px rgba(22,163,74,0.25); } 50% { box-shadow:0 4px 28px rgba(22,163,74,0.65); } }
+                #order-status-pill {
+                    position: fixed;
+                    bottom: 100px;
+                    right: 24px;
+                    z-index: 8888;
+                    display: none;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 16px;
+                    border-radius: 40px;
+                    cursor: pointer;
+                    font-family: 'Roboto', sans-serif;
+                    font-size: 13px;
+                    font-weight: 700;
+                    border: none;
+                    outline: none;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    animation: pillSlideIn 0.35s ease forwards;
+                    min-width: 160px;
+                    max-width: 230px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                #order-status-pill:hover { transform: translateY(-3px) scale(1.03); }
+                #order-status-pill.kds-pending  { background:#fffbeb; color:#92400e; box-shadow:0 4px 18px rgba(0,0,0,0.12); border:1.5px solid #fcd34d; }
+                #order-status-pill.kds-cooking  { background:#eff6ff; color:#1e40af; box-shadow:0 4px 18px rgba(0,0,0,0.12); border:1.5px solid #93c5fd; }
+                #order-status-pill.kds-ready    { background:#f0fdf4; color:#14532d; border:1.5px solid #4ade80; animation: pillSlideIn 0.35s ease forwards, pillReadyGlow 1.8s ease-in-out infinite; }
+                #order-status-pill.kds-served   { background:#f8fafc; color:#475569; box-shadow:0 4px 18px rgba(0,0,0,0.08); border:1.5px solid #e2e8f0; }
+                #order-status-pill.kds-cancelled{ background:#fff1f2; color:#991b1b; box-shadow:0 4px 18px rgba(0,0,0,0.08); border:1.5px solid #fca5a5; }
+                .pill-icon { font-size: 18px; flex-shrink: 0; }
+                .pill-text { display:flex; flex-direction:column; overflow:hidden; }
+                .pill-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; opacity:0.7; line-height:1; margin-bottom:2px; }
+                .pill-status { font-size:13px; font-weight:800; line-height:1; }
+            `;
+            document.head.appendChild(animStyle);
+
+            // Update the floating pill
+            function updateOrderPill(kdsStatus, hasFoodOrder) {
+                const pill = document.getElementById('order-status-pill');
+                if (!pill) return;
+
+                if (!hasFoodOrder || kdsStatus === 'served' || kdsStatus === 'cancelled') {
+                    pill.style.display = 'none';
+                    return;
+                }
+
+                const kdsMap = {
+                    pending:  { icon: '⏳', label: 'Kitchen Status', status: 'Order Received',  cls: 'kds-pending'  },
+                    cooking:  { icon: '👨‍🍳', label: 'Kitchen Status', status: 'Now Cooking…',   cls: 'kds-cooking'  },
+                    ready:    { icon: '🍽️', label: '🔔 Food Ready!',  status: 'Tap to view',    cls: 'kds-ready'    },
+                };
+                const cfg = kdsMap[kdsStatus] || kdsMap.pending;
+
+                pill.className = cfg.cls;
+                pill.style.display = 'flex';
+                pill.innerHTML = `
+                    <span class="pill-icon">${cfg.icon}</span>
+                    <span class="pill-text">
+                        <span class="pill-label">${cfg.label}</span>
+                        <span class="pill-status">${cfg.status}</span>
+                    </span>
+                `;
+            }
+
+            checkFoodReady();
+            setInterval(checkFoodReady, 5000);
+        })();
+
+        // ─── Chat Tab Switcher ───────────────────────────────────────
+        let _currentChatView = 'chat'; // 'chat' | 'history'
+
+        function switchChatTab(tab) {
+            _currentChatView = tab;
+            const tabChat    = document.getElementById('tabChat');
+            const tabHistory = document.getElementById('tabHistory');
+            const activeStyle   = 'color:#1b5e20; border-bottom:2.5px solid #1b5e20; background:transparent;';
+            const inactiveStyle = 'color:#94a3b8; border-bottom:2.5px solid transparent; background:transparent;';
+
+            if (tab === 'chat') {
+                tabChat.style.cssText    += activeStyle;
+                tabHistory.style.cssText += inactiveStyle;
+                // Re-apply active styles (override specificity)
+                tabChat.style.color    = '#1b5e20'; tabChat.style.borderBottom    = '2.5px solid #1b5e20';
+                tabHistory.style.color = '#94a3b8'; tabHistory.style.borderBottom = '2.5px solid transparent';
+                renderChatContent();
+                loadChatMessages();
+                checkActiveReservation();
+            } else {
+                tabHistory.style.color = '#1b5e20'; tabHistory.style.borderBottom = '2.5px solid #1b5e20';
+                tabChat.style.color    = '#94a3b8'; tabChat.style.borderBottom    = '2.5px solid transparent';
+                // Hide footer & resInfo while in history view
+                const footer  = document.getElementById('chatFooter');
+                const resInfo = document.getElementById('chatResInfo');
+                if (footer)  footer.style.display  = 'none';
+                if (resInfo) resInfo.style.display  = 'none';
+                showReservationHistory();
+            }
+        }
+
+        function showReservationHistory() {
+            const body  = document.getElementById('chatBody');
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            const cName = localStorage.getItem('customerName');
+            const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+            let myRes = [];
+            if (guestRes && guestRes.reservationNumber) {
+                const gNum = (guestRes.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
+                myRes = hist.filter(r => (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '') === gNum);
+            }
+            if (myRes.length === 0 && cName) {
+                myRes = hist.filter(r => r.customerName === cName).reverse();
+            }
+
+            if (myRes.length === 0) {
+                body.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;">No reservations found yet.<br>Please enter your reservation code in Live Support.</div>`;
+                return;
+            }
+
+            const kdsConfig = {
+                pending:  { icon:'⏳', label:'Order Received', bg:'#fef3c7', color:'#92400e', border:'#fcd34d' },
+                cooking:  { icon:'👨\u200d🍳', label:'Now Cooking…',  bg:'#dbeafe', color:'#1e40af', border:'#93c5fd' },
+                ready:    { icon:'🍽️', label:'Food Ready!',   bg:'#dcfce7', color:'#14532d', border:'#4ade80' },
+                served:   { icon:'✅', label:'Served',         bg:'#f0fdf4', color:'#166534', border:'#86efac' },
+                cancelled:{ icon:'🚫', label:'Cancelled',      bg:'#fee2e2', color:'#991b1b', border:'#fca5a5' },
+            };
+
+            const payConfig = {
+                verified:    { icon:'✅', label:'Verified',     color:'#166534' },
+                paid:        { icon:'💳', label:'Paid',         color:'#166534' },
+                pending_check:{ icon:'⏳', label:'Pending Review', color:'#92400e' },
+                pending_paymongo:{ icon:'⏳', label:'Processing', color:'#1e40af' },
+                rejected:    { icon:'⚠️', label:'Rejected',     color:'#991b1b' },
+                'walk-in':   { icon:'🚶', label:'Walk-in',      color:'#475569' },
+            };
+
+            let html = `<div style="padding:12px 12px 6px; font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;">Your Reservations (${myRes.length})</div>`;
+
+            myRes.forEach(r => {
+                const kds = r.kdsStatus || 'pending';
+                const kCfg = kdsConfig[kds] || kdsConfig.pending;
+                const pay = r.paymentStatus || '';
+                const pCfg = payConfig[pay] || { icon:'—', label: pay || 'Unknown', color:'#64748b' };
+
+                const hasFoods = r.foods && r.foods.length > 0;
+                const foodHtml = hasFoods
+                    ? r.foods.map(f => `<span style="display:inline-block;background:#f1f5f9;border-radius:6px;padding:2px 7px;font-size:11px;margin:2px 2px 0 0;color:#334155;">${f}</span>`).join('')
+                    : `<span style="color:#94a3b8;font-size:11px;">No food pre-ordered</span>`;
+
+                const kitchenBadgeHtml = hasFoods ? `
+                    <div style="display:flex;align-items:center;gap:6px;background:${kCfg.bg};border:1px solid ${kCfg.border};border-radius:8px;padding:6px 10px;margin-top:8px;${kds==='ready'?'animation:kdsReadyPulse 1.8s infinite;':''} ">
+                        <span style="font-size:15px;">${kCfg.icon}</span>
+                        <div>
+                            <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:${kCfg.color};letter-spacing:0.5px;">Kitchen Status</div>
+                            <div style="font-size:12px;font-weight:800;color:${kCfg.color};">${kCfg.label}</div>
+                        </div>
+                    </div>` : '';
+
+                html += `
+                    <div style="
+                        margin:0 10px 10px;
+                        background:white;
+                        border-radius:14px;
+                        border:1.5px solid #e2e8f0;
+                        padding:14px;
+                        box-shadow:0 2px 8px rgba(0,0,0,0.05);
+                        font-family:'Roboto',sans-serif;
+                    ">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                            <div style="font-size:12px;font-weight:800;color:#1b5e20;">🎫 ${r.reservationNumber || 'N/A'}</div>
+                            <div style="font-size:10px;color:${pCfg.color};font-weight:700;">${pCfg.icon} ${pCfg.label}</div>
+                        </div>
+                        <div style="font-size:11px;color:#64748b;margin-bottom:6px;">📅 ${r.arrivalDate||'—'} &nbsp; ⏰ ${r.arrivalTime||'—'} &nbsp; 🪑 ${r.bookedTable||'TBD'}</div>
+                        <div style="margin-bottom:4px;">${foodHtml}</div>
+                        ${kitchenBadgeHtml}
+                    </div>
+                `;
+            });
+
+            body.innerHTML = html;
+            body.scrollTop = 0;
+        }
+    </script>
+
+    <!-- FLOATING ORDER STATUS PILL -->
+    <button id="order-status-pill" onclick="toggleChat()" title="View your order status"></button>
+
+    <!-- CHAT WIDGET -->
+    <div class="chat-widget-container">
+        <div class="chat-panel" id="chatPanel">
+            <div class="chat-header">
+                <h4>Live Support</h4>
+                <button class="chat-close" onclick="toggleChat()">×</button>
+            </div>
+            <div class="chat-res-info" id="chatResInfo" style="cursor:default;">Loading reservation...</div>
+
+            <!-- Tab bar -->
+            <div id="chatTabBar" style="
+                display: flex;
+                border-bottom: 1.5px solid #e2e8f0;
+                background: #f8fafc;
+                flex-shrink: 0;
+            ">
+                <button id="tabChat" onclick="switchChatTab('chat')" style="
+                    flex:1; padding:9px 4px; font-size:12px; font-weight:700;
+                    font-family:'Roboto',sans-serif; border:none; cursor:pointer;
+                    background:transparent; color:#1b5e20;
+                    border-bottom: 2.5px solid #1b5e20;
+                    transition: background 0.15s;
+                ">💬 Chat</button>
+                <button id="tabHistory" onclick="switchChatTab('history')" style="
+                    flex:1; padding:9px 4px; font-size:12px; font-weight:700;
+                    font-family:'Roboto',sans-serif; border:none; cursor:pointer;
+                    background:transparent; color:#94a3b8;
+                    border-bottom: 2.5px solid transparent;
+                    transition: background 0.15s;
+                ">📋 My Reservations</button>
+            </div>
+
+            <div class="chat-body" id="chatBody">
+                <div class="chat-msg staff">
+                    Hello! How can we help you today?
+                    <div class="chat-msg-time">System</div>
+                </div>
+            </div>
+            <div class="chat-footer" id="chatFooter">
+                <label for="chatAttach"
+                    style="cursor:pointer; font-size:20px; color:#1b5e20; display:flex; align-items:center;">📷</label>
+                <input type="file" id="chatAttach" accept="image/*" style="display:none;"
+                    onchange="sendChatPhoto(this)">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..."
+                    onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                <button class="chat-submit-btn" onclick="sendChatMessage()">➤</button>
+            </div>
+        </div>
+        <!-- FLOATING LIVE CHAT LAUNCHER BUTTON -->
+        <button class="chat-bubble-btn" id="chat-bubble-trigger" onclick="toggleChat()" title="Chat with Live Support" aria-label="Open Live Support">
+            <span id="chat-bubble-icon" style="pointer-events: none; font-size: 26px; line-height: 1;">💬</span>
+        </button>
+    </div> <!-- Close .chat-widget-container -->
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 🎫 UNIFIED LUXURY GUEST RESERVATION MANAGER   -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="manage-booking-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;" onclick="if(event.target === this) closeManageBookingModal()">
+        <div class="luxury-modal-card" style="background:#ffffff; border-radius:24px; width:100%; max-width:540px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); pointer-events:auto;">
+            <!-- Modal Header -->
+            <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center; position:relative;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">🎫</div>
+                    <div>
+                        <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; letter-spacing:0.3px;">Guest Portal</h3>
+                        <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;">Roland's Steakhouse · Table & Pre-Orders</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeManageBookingModal()" aria-label="Close" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; pointer-events:auto;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+            </div>
+
+            <!-- Modal Body (Stages) -->
+            <div class="modal-scroll-body" style="padding:22px 24px; overflow-y:auto; flex:1; font-family:'Roboto',sans-serif;">
+                
+                <!-- STAGE 1: SEARCH / LOOKUP -->
+                <div id="manage-stage-search" style="display:none;">
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <h4 style="margin:0 0 6px 0; font-size:17px; color:#1e293b; font-weight:800;">Find Your Reservation</h4>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Enter your Reservation Number or customer name to view details or cancel.</p>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Reservation # or Name</label>
+                        <div style="position:relative;">
+                            <input type="text" id="manage-search-input" placeholder="e.g. RES-2026-1001 or Juan" style="width:100%; padding:12px 14px 12px 40px; border:1.5px solid #cbd5e1; border-radius:12px; font-size:14px; box-sizing:border-box; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'" onkeypress="if(event.key==='Enter') executeManageSearch()">
+                            <span style="position:absolute; left:14px; top:12px; font-size:16px; opacity:0.6;">🔍</span>
+                        </div>
+                    </div>
+                    <div id="manage-search-error" style="display:none; color:#dc2626; background:#fee2e2; padding:10px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px; font-weight:600;"></div>
+                    <button type="button" onclick="executeManageSearch()" style="width:100%; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(27,94,32,0.3); transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                        View Reservation Details
+                    </button>
+                </div>
+
+                <!-- STAGE 2: DETAILS & QUICK ACTIONS -->
+                <div id="manage-stage-details" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                        <div>
+                            <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Reservation Reference</span>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                                <strong id="det-res-num" style="font-size:18px; color:#0f172a; font-weight:800;"></strong>
+                                <button type="button" onclick="copyResNumberToClipboard()" style="background:#f1f5f9; border:none; padding:3px 8px; border-radius:6px; font-size:11px; color:#475569; font-weight:700; cursor:pointer;">Copy</button>
+                            </div>
+                        </div>
+                        <div id="det-approval-badge"></div>
+                    </div>
+
+                    <!-- Booking Summary Ticket -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:16px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                            <div>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Guest Name</span>
+                                <strong id="det-guest-name" style="font-size:14px; color:#1e293b;"></strong>
+                            </div>
+                            <div>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Booked Table</span>
+                                <strong id="det-table" style="font-size:14px; color:#166534;"></strong>
+                            </div>
+                            <div>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Arrival Schedule</span>
+                                <span id="det-schedule" style="font-size:13px; font-weight:700; color:#334155;"></span>
+                            </div>
+                            <div>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Payment Status</span>
+                                <span id="det-payment-status" style="font-size:13px; font-weight:700;"></span>
+                            </div>
+                        </div>
+
+                        <!-- Pre-ordered Dishes -->
+                        <div style="border-top:1px dashed #cbd5e1; padding-top:10px; margin-top:6px;">
+                            <span style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px;">Pre-Ordered Dishes:</span>
+                            <div id="det-food-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Kitchen Status Banner -->
+                    <div id="det-kitchen-badge" style="margin-bottom:18px;"></div>
+
+                    <!-- Action Buttons -->
+                    <!-- Active Booking Actions (Cancel allowed) -->
+                    <div id="det-actions-active" style="display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" id="det-btn-receipt" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:11px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>📄</span> View Receipt
+                            </button>
+                            <button type="button" onclick="goToCancelStage()" style="flex:1; background:#fee2e2; border:1.5px solid #f87171; color:#991b1b; padding:11px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>🚫</span> Cancel Reservation
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Completed Dining Actions (No cancel allowed) -->
+                    <div id="det-actions-completed" style="display:none; flex-direction:column; gap:10px;">
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 14px; font-size:13px; color:#166534; display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:22px;">🍽️</span>
+                            <div>
+                                <strong style="display:block; font-size:13.5px;">Dining Completed</strong>
+                                <span style="font-size:12px; color:#15803d;">This reservation was successfully served. Thank you for dining with us!</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>📄</span> View Receipt
+                            </button>
+                            <button type="button" onclick="bookAnotherTable()" style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                                <span>📅</span> Book Table Again
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cancelled Booking Actions (No cancel allowed) -->
+                    <div id="det-actions-cancelled" style="display:none; flex-direction:column; gap:10px;">
+                        <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; color:#991b1b; font-size:13px; display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:22px;">🚫</span>
+                            <div>
+                                <strong style="display:block; font-size:13.5px;">Reservation Cancelled</strong>
+                                <span id="det-cancel-reason-text" style="font-size:12px; color:#b91c1c;">Table released to available and pre-orders refunded.</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>📄</span> View Receipt
+                            </button>
+                            <button type="button" onclick="bookAnotherTable()" style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                                <span>📅</span> Make New Reservation
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; align-items:center; gap:16px;">
+                        <a href="javascript:void(0)" onclick="goToSearchStage()" style="font-size:12px; color:#64748b; text-decoration:underline;">Looking for another reservation? Search here</a>
+                        <span style="color:#cbd5e1;">•</span>
+                        <a href="javascript:void(0)" onclick="closeManageBookingModal()" style="font-size:12px; color:#64748b; font-weight:700; text-decoration:none; cursor:pointer;">✕ Close Window</a>
+                    </div>
+                </div>
+
+                <!-- STAGE 3: CANCELLATION CONFIRMATION -->
+                <div id="manage-stage-confirm" style="display:none;">
+                    <div style="text-align:center; margin-bottom:16px;">
+                        <div style="width:48px; height:48px; border-radius:50%; background:#fee2e2; color:#dc2626; font-size:24px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px auto;">⚠️</div>
+                        <h4 style="margin:0 0 4px 0; font-size:18px; color:#0f172a; font-weight:800;">Cancel This Reservation?</h4>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Please review what happens before confirming your cancellation.</p>
+                    </div>
+
+                    <!-- Impact Guard Alert -->
+                    <div id="cancel-guard-box" style="border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; line-height:1.45;"></div>
+
+                    <!-- Reason Selector -->
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Reason for Cancellation <span style="color:#ef4444;">*</span></label>
+                        <select id="cancel-reason-select" style="width:100%; padding:10px 12px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13.5px; background:white; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#cbd5e1'">
+                            <option value="Change of Schedule / Travel Plans">Change of Schedule / Travel Plans</option>
+                            <option value="Family or Personal Emergency">Family or Personal Emergency</option>
+                            <option value="Booked by Mistake / Duplicate Booking">Booked by Mistake / Duplicate Booking</option>
+                            <option value="Found Alternative Dining Venue">Found Alternative Dining Venue</option>
+                            <option value="Health or Medical Reasons">Health or Medical Reasons</option>
+                            <option value="Other Reason">Other Reason</option>
+                        </select>
+                    </div>
+
+                    <!-- Optional Notes -->
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Additional Notes (Optional)</label>
+                        <textarea id="cancel-notes-input" rows="2" placeholder="Let our team know if you'd like to reschedule for another day..." style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13px; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#cbd5e1'"></textarea>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" onclick="goToDetailsStage()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">
+                            ← Keep Reservation
+                        </button>
+                        <button type="button" id="btn-final-cancel" onclick="executeFinalCancellation()" style="flex:1; background:linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 14px rgba(220,38,38,0.3);">
+                            Confirm Cancellation
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STAGE 4: SUCCESS CONFIRMATION -->
+                <div id="manage-stage-success" style="display:none; text-align:center; padding:16px 8px;">
+                    <div style="width:64px; height:64px; border-radius:50%; background:#dcfce7; color:#166534; font-size:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto; box-shadow:0 0 0 8px rgba(34,197,94,0.15);">✓</div>
+                    <h3 style="margin:0 0 6px 0; font-family:'Playfair Display',serif; color:#166534; font-size:22px;">Reservation Cancelled</h3>
+                    <p style="margin:0 0 16px 0; font-size:13.5px; color:#475569; line-height:1.5;">
+                        Your reservation has been cancelled. Your table has been released and all pre-ordered foods have been safely cancelled.
+                    </p>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:20px; font-size:12px; color:#1e293b; text-align:left; display:flex; flex-direction:column; gap:4px;">
+                        <div>🪑 <strong>Table Status:</strong> Released to 🟢 Available</div>
+                        <div id="succ-food-impact">🍲 <strong>Inventory:</strong> Raw ingredients restored to warehouse stock</div>
+                    </div>
+                    <button type="button" onclick="closeManageBookingModal()" style="background:#1b5e20; color:white; border:none; padding:12px 28px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                        Done
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════
+        // 🎫 UNIFIED GUEST BOOKING & CANCELLATION ENGINE
+        // ══════════════════════════════════════════════
+        let activeManageRes = null;
+
+        window.openManageBookingModal = function(specificResNum) {
+            const modal = document.getElementById('manage-booking-modal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const cName = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName');
+
+            // Auto-heal: Ensure active/upcoming reservations aren't blocked by premature completedAt
+            try {
+                let updated = false;
+                hist.forEach(r => {
+                    if (r.completedAt && r.kdsStatus !== 'served' && r.approvalStatus !== 'completed') {
+                        delete r.completedAt;
+                        updated = true;
+                    }
+                });
+                if (updated) localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            } catch (e) {}
+
+            let targetRes = null;
+            if (specificResNum) {
+                targetRes = hist.find(r => r.reservationNumber === specificResNum);
+            } else if (cName) {
+                // 1. Look for ACTIVE / UPCOMING booking first
+                targetRes = [...hist].reverse().find(r => 
+                    r.customerName && r.customerName.trim().toLowerCase() === cName.trim().toLowerCase() &&
+                    r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' && r.kdsStatus !== 'served' && r.approvalStatus !== 'completed'
+                );
+                // 2. If no active upcoming booking, fall back to their latest past booking
+                if (!targetRes) {
+                    targetRes = [...hist].reverse().find(r => r.customerName && r.customerName.trim().toLowerCase() === cName.trim().toLowerCase());
+                }
+            }
+
+            if (targetRes) {
+                renderManageDetails(targetRes);
+                goToDetailsStage();
+            } else {
+                goToSearchStage();
+            }
+        };
+
+        // Alias for backwards compatibility
+        window.openLookupCancelModal = function() { window.openManageBookingModal(); };
+        window.openCustomerCancelModal = function(resNum) {
+            window.openManageBookingModal(resNum);
+            if (activeManageRes) {
+                const isCanc = activeManageRes.approvalStatus === 'rejected' || activeManageRes.approvalStatus === 'cancelled' || activeManageRes.kdsStatus === 'cancelled';
+                const isDone = Boolean(activeManageRes.approvalStatus === 'completed' || activeManageRes.kdsStatus === 'served');
+                if (!isCanc && !isDone) window.goToCancelStage();
+            }
+        };
+
+        window.closeManageBookingModal = function() {
+            const modal = document.getElementById('manage-booking-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+        };
+
+        window.bookAnotherTable = function() {
+            window.closeManageBookingModal();
+            const sec = document.getElementById('reservations');
+            if (sec) {
+                sec.scrollIntoView({ behavior: 'smooth' });
+                const nameInput = document.getElementById('customer-name-input');
+                if (nameInput) setTimeout(() => nameInput.focus(), 600);
+            }
+        };
+
+        function goToSearchStage() {
+            document.getElementById('manage-stage-search').style.display = 'block';
+            document.getElementById('manage-stage-details').style.display = 'none';
+            document.getElementById('manage-stage-confirm').style.display = 'none';
+            document.getElementById('manage-stage-success').style.display = 'none';
+            const err = document.getElementById('manage-search-error');
+            if (err) err.style.display = 'none';
+            const input = document.getElementById('manage-search-input');
+            if (input) setTimeout(() => input.focus(), 100);
+        }
+
+        function goToDetailsStage() {
+            document.getElementById('manage-stage-search').style.display = 'none';
+            document.getElementById('manage-stage-details').style.display = 'block';
+            document.getElementById('manage-stage-confirm').style.display = 'none';
+            document.getElementById('manage-stage-success').style.display = 'none';
+        }
+
+        window.goToCancelStage = function() {
+            if (!activeManageRes) return;
+            const isCancelled = activeManageRes.approvalStatus === 'rejected' || activeManageRes.approvalStatus === 'cancelled' || activeManageRes.kdsStatus === 'cancelled';
+            const isCompleted = Boolean(activeManageRes.approvalStatus === 'completed' || activeManageRes.kdsStatus === 'served');
+            if (isCancelled || isCompleted) {
+                return; // Guard: can never cancel completed or cancelled reservation
+            }
+
+            document.getElementById('manage-stage-search').style.display = 'none';
+            document.getElementById('manage-stage-details').style.display = 'none';
+            document.getElementById('manage-stage-confirm').style.display = 'block';
+            document.getElementById('manage-stage-success').style.display = 'none';
+
+            // Fill guard impact
+            const kds = activeManageRes.kdsStatus || 'pending';
+            const hasFood = activeManageRes.foods && activeManageRes.foods.length > 0;
+            const guardEl = document.getElementById('cancel-guard-box');
+
+            if (!hasFood) {
+                guardEl.style.background = '#f0fdf4';
+                guardEl.style.border = '1px solid #86efac';
+                guardEl.style.color = '#166534';
+                guardEl.innerHTML = `<strong>🟢 Standard Table Booking:</strong> Your table reservation will be released back to <em>Available</em> immediately.`;
+            } else if (kds === 'cooking' || kds === 'ready') {
+                guardEl.style.background = '#fffbeb';
+                guardEl.style.border = '1px solid #fde68a';
+                guardEl.style.color = '#92400e';
+                guardEl.innerHTML = `<strong>👨‍🍳 Kitchen Prep Underway:</strong> Our chefs have already fired up the grill! Confirming will alert the kitchen immediately to stop cooking.`;
+            } else {
+                guardEl.style.background = '#f0fdf4';
+                guardEl.style.border = '1px solid #86efac';
+                guardEl.style.color = '#166534';
+                guardEl.innerHTML = `<strong>🟢 Ingredients Restored:</strong> Your order has not reached the grill yet. All raw meat cuts, sauces, and seasonings will be returned directly to inventory stock.`;
+            }
+        };
+
+        function renderManageDetails(res) {
+            activeManageRes = res;
+            document.getElementById('det-res-num').textContent = '#' + res.reservationNumber;
+            document.getElementById('det-guest-name').textContent = res.customerName || 'Valued Guest';
+            document.getElementById('det-table').textContent = res.bookedTable || 'Assigned Table';
+            document.getElementById('det-schedule').textContent = (res.arrivalDate || '—') + ' @ ' + (res.arrivalTime || '—');
+
+            const isCancelled = res.approvalStatus === 'rejected' || res.approvalStatus === 'cancelled' || res.kdsStatus === 'cancelled';
+            const isCompleted = !isCancelled && Boolean(res.approvalStatus === 'completed' || res.kdsStatus === 'served');
+            const isActive = !isCancelled && !isCompleted;
+
+            // Approval / Status Badge
+            const badgeEl = document.getElementById('det-approval-badge');
+            if (isCancelled) {
+                badgeEl.innerHTML = `<span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🚫 CANCELLED</span>`;
+            } else if (isCompleted) {
+                badgeEl.innerHTML = `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">✓ COMPLETED</span>`;
+            } else {
+                badgeEl.innerHTML = `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🟢 CONFIRMED</span>`;
+            }
+
+            // Payment badge
+            const payEl = document.getElementById('det-payment-status');
+            const pStatus = (res.paymentStatus || 'unpaid').toUpperCase();
+            payEl.textContent = pStatus;
+            payEl.style.color = (pStatus === 'PAID' || pStatus === 'VERIFIED') ? '#166534' : '#b45309';
+
+            // Foods
+            const foodListEl = document.getElementById('det-food-list');
+            if (res.foods && res.foods.length > 0) {
+                foodListEl.innerHTML = res.foods.map(f => `<span style="background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:600; color:#1e293b;">${f}</span>`).join('');
+                if (res.beefNote) {
+                    const cleanNote = res.beefNote.replace(/^Doneness:\s*/i, '');
+                    foodListEl.innerHTML += `<span style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; color:#92400e;">🔥 ${cleanNote}</span>`;
+                }
+            } else {
+                foodListEl.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Standard table booking (No pre-ordered food)</span>`;
+            }
+
+            // Kitchen Status Banner
+            const kdsEl = document.getElementById('det-kitchen-badge');
+            if (isCompleted) {
+                kdsEl.innerHTML = `
+                    <div style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:16px;">✅</span>
+                        <span>Kitchen Queue: Order Served & Completed</span>
+                    </div>
+                `;
+            } else {
+                const kds = res.kdsStatus || 'pending';
+                const kdsMap = {
+                    pending:   { bg:'#fef3c7', color:'#92400e', icon:'⏳', text:'Kitchen Queue: Order Received (Not Cooking Yet)' },
+                    cooking:   { bg:'#dbeafe', color:'#1e40af', icon:'👨‍🍳', text:'Kitchen Queue: Cooking on Grill' },
+                    ready:     { bg:'#dcfce7', color:'#14532d', icon:'🍽️', text:'Kitchen Queue: Food Ready for Service' },
+                    served:    { bg:'#f0fdf4', color:'#166534', icon:'✅', text:'Kitchen Queue: Served' },
+                    cancelled: { bg:'#fee2e2', color:'#991b1b', icon:'🚫', text:'Order Cancelled' }
+                };
+                const kCfg = kdsMap[kds] || kdsMap.pending;
+                kdsEl.innerHTML = `
+                    <div style="background:${kCfg.bg}; color:${kCfg.color}; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:16px;">${kCfg.icon}</span>
+                        <span>${kCfg.text}</span>
+                    </div>
+                `;
+            }
+
+            // Toggle Actions
+            const activeActions = document.getElementById('det-actions-active');
+            const completedActions = document.getElementById('det-actions-completed');
+            const cancelledActions = document.getElementById('det-actions-cancelled');
+
+            if (isCancelled) {
+                if (activeActions) activeActions.style.display = 'none';
+                if (completedActions) completedActions.style.display = 'none';
+                if (cancelledActions) cancelledActions.style.display = 'flex';
+                const reasonText = document.getElementById('det-cancel-reason-text');
+                if (reasonText && res.cancellationReason) {
+                    reasonText.textContent = `Reason: "${res.cancellationReason}". Table released & pre-orders refunded.`;
+                }
+            } else if (isCompleted) {
+                if (activeActions) activeActions.style.display = 'none';
+                if (completedActions) completedActions.style.display = 'flex';
+                if (cancelledActions) cancelledActions.style.display = 'none';
+            } else {
+                if (activeActions) activeActions.style.display = 'flex';
+                if (completedActions) completedActions.style.display = 'none';
+                if (cancelledActions) cancelledActions.style.display = 'none';
+            }
+        }
+
+        window.executeManageSearch = function() {
+            const query = (document.getElementById('manage-search-input')?.value || '').trim();
+            const err = document.getElementById('manage-search-error');
+            if (!query) {
+                if (err) { err.textContent = 'Please enter your Reservation # or customer name.'; err.style.display = 'block'; }
+                return;
+            }
+
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const found = hist.find(r => 
+                (r.reservationNumber && r.reservationNumber.toLowerCase() === query.toLowerCase()) ||
+                (r.customerName && r.customerName.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            if (!found) {
+                if (err) { err.textContent = `No reservation found matching "${query}". Please check your booking reference.`; err.style.display = 'block'; }
+                return;
+            }
+
+            renderManageDetails(found);
+            goToDetailsStage();
+        };
+
+        window.executeFinalCancellation = function() {
+            if (!activeManageRes) return;
+            const resNum = activeManageRes.reservationNumber;
+            const reason = document.getElementById('cancel-reason-select')?.value || 'Customer Requested Cancellation';
+            const notes = document.getElementById('cancel-notes-input')?.value || '';
+            const fullReason = notes ? `${reason} (Notes: ${notes})` : reason;
+
+            const btn = document.getElementById('btn-final-cancel');
+            if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
+
+            try {
+                let res = null;
+                if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
+                    res = window.InventorySystem.cancelReservationWithFood({
+                        reservationNumber: resNum,
+                        reason: fullReason,
+                        cancelledBy: 'customer',
+                        operator: 'Customer Portal'
+                    });
+                } else {
+                    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                    const idx = hist.findIndex(r => r.reservationNumber === resNum);
+                    if (idx !== -1) {
+                        hist[idx].approvalStatus = 'rejected';
+                        hist[idx].kdsStatus = 'cancelled';
+                        hist[idx].cancelledAt = new Date().toISOString();
+                        hist[idx].cancelledBy = 'customer';
+                        hist[idx].cancellationReason = fullReason;
+                        localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                        res = { success: true };
+                    }
+                }
+
+                if (res && res.success) {
+                    activeManageRes.approvalStatus = 'rejected';
+                    activeManageRes.kdsStatus = 'cancelled';
+                    activeManageRes.cancellationReason = fullReason;
+
+                    try {
+                        const sId = getChatId();
+                        const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                        if (!allChats[sId]) allChats[sId] = [];
+                        allChats[sId].push({
+                            sender: 'staff',
+                            name: 'System',
+                            text: `🚫 Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                        localStorage.setItem('liveChats', JSON.stringify(allChats));
+                    } catch (e) {}
+
+                    checkActiveReservation();
+                    if (typeof showReservationHistory === 'function') showReservationHistory();
+
+                    document.getElementById('manage-stage-confirm').style.display = 'none';
+                    document.getElementById('manage-stage-success').style.display = 'block';
+                    const succFood = document.getElementById('succ-food-impact');
+                    if (succFood) {
+                        succFood.innerHTML = res.stockAction === 'restored_to_stock' 
+                            ? '🍲 <strong>Inventory:</strong> Raw cuts and ingredients restored to warehouse stock'
+                            : '🍲 <strong>Kitchen Status:</strong> Food preparation halted';
+                    }
+                } else {
+                    alert('Could not cancel: ' + (res?.error || 'Unknown error'));
+                    goToDetailsStage();
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error: ' + err.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Confirm Cancellation'; }
+            }
+        };
+
+        window.copyResNumberToClipboard = function() {
+            if (!activeManageRes) return;
+            navigator.clipboard?.writeText(activeManageRes.reservationNumber).then(() => {
+                const badge = document.getElementById('det-res-num');
+                if (badge) {
+                    const original = badge.textContent;
+                    badge.textContent = 'Copied!';
+                    setTimeout(() => badge.textContent = original, 1200);
+                }
+            }).catch(() => {});
+        };
+
+        window.viewReceiptFromModal = function() {
+            if (!activeManageRes) return;
+            window.open(`receipt.html?res=${encodeURIComponent(activeManageRes.reservationNumber)}`, '_blank');
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeManageBookingModal();
+        });
+
+        // 📱 Smooth Header Glassmorphism on Scroll
+        function updateHeaderScroll() {
+            const header = document.getElementById('main-header');
+            if (!header) return;
+            if (window.scrollY > 30) {
+                header.classList.remove('transparent');
+            } else {
+                header.classList.add('transparent');
+            }
+        }
+        window.addEventListener('scroll', updateHeaderScroll, { passive: true });
+        updateHeaderScroll();
+    </script>
+
+    <!-- STORE STATUS (OPEN / CLOSED) CUSTOMER PROTECTION -->
+    <div id="store-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+        🔒 NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check back during opening hours.
+    </div>
+
+    <script>
+        function checkCustomerStoreStatus() {
+            const status = window.InventorySystem ? window.InventorySystem.getStoreStatus() : (localStorage.getItem('store_status') || 'open');
+            const banner = document.getElementById('store-closed-banner');
+            const isClosed = status === 'closed';
+
+            if (banner) {
+                banner.style.display = isClosed ? 'block' : 'none';
+            }
+
+            document.querySelectorAll('.cta-btn, #btn-proceed-order, #btn-submit-reservation, .btn-primary').forEach(btn => {
+                if (isClosed) {
+                    btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.5';
+                    btn.style.filter = 'grayscale(1)';
+                } else {
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    btn.style.filter = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', checkCustomerStoreStatus);
+        window.addEventListener('storeStatusUpdated', checkCustomerStoreStatus);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'store_status') checkCustomerStoreStatus();
+        });
+        if (typeof BroadcastChannel !== 'undefined') {
+            try {
+                const bc = new BroadcastChannel('inventory_sync_channel');
+                bc.onmessage = (e) => {
+                    if (e.data && e.data.action === 'storeStatusUpdated') checkCustomerStoreStatus();
+                };
+            } catch (err) {}
+        }
+    </script>
+</body>
+
+</html>

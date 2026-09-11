@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful | Roland's</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <script src="js/design-system.js"></script>
+    <script src="js/inventory-system.js"></script>
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/payment-success.css">
+</head>
+<body>
+    <div class="success-card">
+        <div style="margin-bottom: 30px;">
+            <img src="images/Rolands logo 2.png" alt="Roland's Logo" style="height: 70px; width: auto; filter: drop-shadow(0 4px 10px rgba(27, 94, 32, 0.15));">
+        </div>
+        <div class="check-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h1>Payment Successful!</h1>
+        <p class="sub">Your priority reservation at Roland's Steakhouse has been confirmed. We look forward to serving you!</p>
+        <div class="res-badge">
+            <div class="label">Reservation Number</div>
+            <div class="code" id="res-number">Loading...</div>
+        </div>
+
+        <!-- Receipt Section -->
+        <div id="receipt-area" style="display:none; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:16px; padding:20px; margin-bottom:28px; text-align:left;">
+            <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; margin-bottom:12px; display:flex; justify-content:space-between;">
+                <span>E-Receipt</span>
+                <span id="receipt-date" style="color:#94a3b8; font-weight:400;"></span>
+            </div>
+            <div id="receipt-items" style="font-size:14px; color:#334155; line-height:1.6;">
+                <!-- Filled by JS -->
+            </div>
+            <div style="border-top:1px solid #e2e8f0; margin-top:12px; padding-top:12px; display:flex; justify-content:space-between; font-weight:800; color:#1b5e20; font-size:18px;">
+                <span>Total Paid</span>
+                <span id="receipt-total">₱0.00</span>
+            </div>
+        </div>
+        <a href="index.html" class="home-btn">🏠 Return to Homepage</a>
+        <p class="pm-note">Payment processed securely via PayMongo</p>
+    </div>
+
+    <script>
+        // Grab reservation number from URL or localStorage
+        const params = new URLSearchParams(window.location.search);
+        const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
+        document.getElementById('res-number').textContent = resNo;
+
+        // Mark the reservation as paid in history and deduct stock only now
+        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        const entry = hist.find(r => r.reservationNumber === resNo);
+        if (entry) {
+            entry.paymentStatus = 'paid';
+
+            // Deduct raw ingredients now that payment is confirmed
+            if (!entry.stockDeducted && entry.cartItems && entry.cartItems.length > 0) {
+                if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+                    window.InventorySystem.deductIngredientsForOrder(entry.cartItems, 'PayMongo Verified Payment', entry.reservationNumber);
+                    entry.stockDeducted = true;
+                }
+            }
+
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+            // SEND AUTOMATIC EMAIL RECEIPT
+            const customerEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail');
+            if (customerEmail) {
+                fetch('http://localhost:3000/api/send-receipt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: customerEmail,
+                        customerName: entry.customerName || 'Guest',
+                        amount: entry.paymentAmount || 0,
+                        reservationNumber: entry.reservationNumber,
+                        paymentMethod: 'PayMongo',
+                        arrivalDateTime: entry.arrivalDateTimeDisplay || 'TBD',
+                        table: entry.bookedTable || 'Unassigned',
+                        orderSummary: entry.orderSummary || 'Standard Reservation'
+                    })
+                }).then(r => console.log('Email sent status:', r.status))
+                  .catch(err => console.error('Failed to trigger email', err));
+            }
+
+            // Populate visual receipt
+            document.getElementById('receipt-area').style.display = 'block';
+            document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
+            document.getElementById('receipt-total').textContent = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, {minimumFractionDigits:2});
+            
+            let itemsHtml = `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
+            itemsHtml += `<div style="margin-bottom:4px;"><strong>Table:</strong> ${entry.bookedTable}</div>`;
+            itemsHtml += `<div style="margin-bottom:4px;"><strong>Arrival:</strong> ${entry.arrivalDateTimeDisplay}</div>`;
+            if (entry.orderSummary) {
+                itemsHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #f1f5f9; color:#64748b; font-size:13px;">${entry.orderSummary}</div>`;
+            }
+            // Add Link to QR Receipt
+            itemsHtml += `<div style="margin-top:15px; text-align:center;">
+                <a href="receipt.html?res=${resNo}" style="color:#1b5e20; font-size:12px; font-weight:700; text-decoration:none; border-bottom:1px dashed #1b5e20;">🖨️ View QR Receipt for Scanning</a>
+            </div>`;
+            
+            document.getElementById('receipt-items').innerHTML = itemsHtml;
+
+            // Automatically inject stylized Receipt Card into the Live Support Chat
+            const sId = localStorage.getItem('chatSessionId') || ('session_' + Math.random().toString(36).substr(2, 9));
+            if (!localStorage.getItem('chatSessionId')) localStorage.setItem('chatSessionId', sId);
+
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            if (!allChats[sId]) allChats[sId] = [];
+
+            const resNoStr = entry.reservationNumber;
+            const hasReceipt = allChats[sId].some(m => m.res_no === resNoStr && m.text.includes('Receipt'));
+
+            if (!hasReceipt) {
+                const amount = entry.paymentAmount || 0;
+                const fmtAmt = Number(amount).toLocaleString(undefined, {minimumFractionDigits: 2});
+                
+                // STYLIZED RECEIPT CARD HTML (Points to receipt.html?res=...)
+                const receiptCardHtml = `
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 15px; margin-top: 5px; box-shadow: 0 4px 12px rgba(22,163,74,0.1);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <div style="background: #16a34a; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✅</div>
+                            <strong style="color: #1b5e20; font-size: 15px;">Payment Verified</strong>
+                        </div>
+                        <p style="font-size: 13px; color: #374151; margin-bottom: 12px; line-height: 1.4;">
+                            Your reservation <strong>${resNoStr}</strong> is confirmed. Here is your official QR receipt:
+                        </p>
+                        <button onclick="window.location.href='receipt.html?res=${resNoStr}'" 
+                                style="width: 100%; background: #1b5e20; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            📋 View QR Receipt
+                        </button>
+                    </div>
+                `;
+                
+                allChats[sId].push({
+                    sender: 'staff',
+                    text: receiptCardHtml,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    res_no: resNoStr
+                });
+                localStorage.setItem('liveChats', JSON.stringify(allChats));
+                window.dispatchEvent(new Event('storage'));
+            }
+        }
+
+        // Clear checkout data
+        localStorage.removeItem('totalBill');
+        localStorage.removeItem('cartItems');
+        localStorage.removeItem('reservationData');
+        localStorage.removeItem('pendingReservation');
+        localStorage.removeItem('paymongoSessionId');
+        localStorage.removeItem('reservationNumber');
+        localStorage.removeItem('pendingReservationNumber');
+    </script>
+</body>
+</html>

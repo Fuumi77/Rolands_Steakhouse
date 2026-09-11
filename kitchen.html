@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cook Area | Roland's Steak House</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/kitchen.css?v=2.0">
+    <link rel="stylesheet" href="css/design-system.css?v=2.0">
+    <script src="js/design-system.js?v=2.0"></script>
+    <script src="js/inventory-system.js?v=2.0"></script>
+    <link rel="stylesheet" href="css/responsive.css?v=2.0">
+</head>
+<body>
+
+    <!-- AUTHENTICATION OVERLAY GATE -->
+    <div id="auth-gate">
+        <div class="auth-card">
+            <h1>Cook Access</h1>
+            <p style="color: #ef4444; font-weight: 700; margin-bottom: 6px;">[SECURITY GATE ACTIVE]</p>
+            <p>Enter the 4-digit Kitchen Access Code set by Super Admin to continue.</p>
+            <div class="pin-dots" id="pin-dots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <input type="password" id="kitchen-pass-input" maxlength="4" readonly autocomplete="off">
+            <div class="numpad">
+                <button class="num-btn" type="button" onclick="appendPin('1')">1</button>
+                <button class="num-btn" type="button" onclick="appendPin('2')">2</button>
+                <button class="num-btn" type="button" onclick="appendPin('3')">3</button>
+                <button class="num-btn" type="button" onclick="appendPin('4')">4</button>
+                <button class="num-btn" type="button" onclick="appendPin('5')">5</button>
+                <button class="num-btn" type="button" onclick="appendPin('6')">6</button>
+                <button class="num-btn" type="button" onclick="appendPin('7')">7</button>
+                <button class="num-btn" type="button" onclick="appendPin('8')">8</button>
+                <button class="num-btn" type="button" onclick="appendPin('9')">9</button>
+                <button class="num-btn" type="button" style="background:transparent; border:none;" disabled></button>
+                <button class="num-btn" type="button" onclick="appendPin('0')">0</button>
+                <button class="num-btn" type="button" style="background:#dc2626; border-color:#ef4444; color:white;" onclick="clearPin()">⌫</button>
+            </div>
+            <div id="auth-msg" class="auth-msg"></div>
+        </div>
+    </div>
+
+    <!-- MAIN KITCHEN HEADER -->
+    <header>
+        <div class="brand-section">
+            <div class="brand">ROLAND'S KITCHEN</div>
+            <div class="kds-clock" id="live-clock">00:00:00</div>
+        </div>
+        <div class="metrics-bar">
+            <div class="metric-pill total" id="metric-total">0 Active</div>
+            <div class="metric-pill pending" id="metric-pending">0 Pending</div>
+            <div class="metric-pill cooking" id="metric-cooking">0 Cooking</div>
+            <div class="metric-pill ready" id="metric-ready">0 Ready</div>
+
+            <button class="icon-btn" type="button" id="sound-btn" onclick="toggleSound()" title="Toggle Sound Chime">
+                🔊 Sound: ON
+            </button>
+            <button class="icon-btn" type="button" onclick="lockKitchen()" title="Lock Display Gate">
+                🔒 Lock Gate
+            </button>
+        </div>
+    </header>
+
+    <!-- FILTER TOOLBAR -->
+    <div class="toolbar">
+        <div class="filter-tabs">
+            <button class="tab-btn active" id="tab-all" type="button" onclick="setFilter('all')">ALL ORDERS</button>
+            <button class="tab-btn" id="tab-pending" type="button" onclick="setFilter('pending')">PENDING</button>
+            <button class="tab-btn" id="tab-cooking" type="button" onclick="setFilter('cooking')">COOKING</button>
+            <button class="tab-btn" id="tab-ready" type="button" onclick="setFilter('ready')">READY</button>
+        </div>
+        <div style="font-size: 13px; color: var(--kds-text-muted); font-weight: 600;" id="sync-status">
+            ● Live Sync Active
+        </div>
+    </div>
+
+    <!-- MAIN TICKET GRID CONTAINER -->
+    <main class="container">
+        <div class="ticket-grid" id="kds-grid">
+            <div class="kds-empty">Waiting for food orders...</div>
+        </div>
+    </main>
+
+    <script>
+        // ── STATE VARIABLES ──
+        let currentPin = "";
+        let activeFilter = 'all';
+        let isSoundEnabled = true;
+        let lastHistoryCount = -1;
+
+        // ── PHYSICAL KEYBOARD LISTENERS FOR PIN GATE ──
+        window.addEventListener('keydown', (e) => {
+            const gate = document.getElementById('auth-gate');
+            if (gate && gate.style.display !== 'none') {
+                if (e.key >= '0' && e.key <= '9') {
+                    appendPin(e.key);
+                } else if (e.key === 'Backspace') {
+                    if (currentPin.length > 0) {
+                        currentPin = currentPin.slice(0, -1);
+                        updatePinDots();
+                        document.getElementById('auth-msg').textContent = '';
+                    }
+                } else if (e.key === 'Escape') {
+                    clearPin();
+                }
+            }
+        });
+
+        // ── AUTHENTICATION LOGIC ──
+        function appendPin(num) {
+            if (currentPin.length >= 4) return;
+            currentPin += num;
+            updatePinDots();
+            if (currentPin.length === 4) checkAuth();
+        }
+
+        function clearPin() {
+            currentPin = "";
+            updatePinDots();
+            document.getElementById('auth-msg').textContent = '';
+        }
+
+        function updatePinDots() {
+            const dots = document.querySelectorAll('.pin-dot');
+            dots.forEach((d, i) => {
+                d.classList.toggle('filled', i < currentPin.length);
+            });
+        }
+
+        async function checkAuth() {
+            const correct = localStorage.getItem('kitchenPassword') || '1234';
+            const msg = document.getElementById('auth-msg');
+
+            await new Promise(r => setTimeout(r, 120));
+
+            if (currentPin === correct) {
+                sessionStorage.setItem('kitchenAuthenticated', 'true');
+                document.getElementById('auth-gate').style.display = 'none';
+                initKitchen();
+                if (typeof showToast === 'function') {
+                    showToast('Kitchen display unlocked', 'success');
+                }
+            } else {
+                msg.textContent = 'Invalid access code. Please try again.';
+                clearPin();
+                if (typeof showToast === 'function') {
+                    showToast('Invalid access code', 'error');
+                }
+            }
+        }
+
+        function lockKitchen() {
+            sessionStorage.removeItem('kitchenAuthenticated');
+            currentPin = "";
+            updatePinDots();
+            document.getElementById('auth-msg').textContent = '';
+            document.getElementById('auth-gate').style.display = 'flex';
+        }
+
+        // On page load check authentication
+        if (sessionStorage.getItem('kitchenAuthenticated') === 'true') {
+            document.getElementById('auth-gate').style.display = 'none';
+            initKitchen();
+        }
+
+        // ── LIVE CLOCK ──
+        function updateClock() {
+            const now = new Date();
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) {
+                clockEl.textContent = now.toLocaleTimeString();
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const soundBtn = document.getElementById('sound-btn');
+            if (soundBtn) {
+                soundBtn.textContent = isSoundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+            }
+            if (typeof showToast === 'function') {
+                showToast(`Kitchen Chime ${isSoundEnabled ? 'Enabled' : 'Muted'}`, 'info');
+            }
+        }
+
+        function setFilter(filterName) {
+            activeFilter = filterName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`tab-${filterName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            renderKitchenQueue(true);
+        }
+
+        function initKitchen() {
+            renderKitchenQueue(true);
+            setInterval(() => renderKitchenQueue(true), 3000);
+        }
+
+        function getReservationHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // Elapsed Minutes Timer Calculation
+        function getElapsedTimerHtml(createdAtIso) {
+            if (!createdAtIso) return `<span class="timer-badge normal">⏱️ Recent</span>`;
+            const createdMs = new Date(createdAtIso).getTime();
+            if (isNaN(createdMs)) return `<span class="timer-badge normal">⏱️ Recent</span>`;
+            
+            const diffMins = Math.floor((Date.now() - createdMs) / 60000);
+            if (diffMins < 10) {
+                return `<span class="timer-badge normal">⏱️ ${diffMins}m ago</span>`;
+            } else if (diffMins < 20) {
+                return `<span class="timer-badge warning">⏱️ ${diffMins}m ago</span>`;
+            } else {
+                return `<span class="timer-badge urgent">🔥 URGENT ${diffMins}m</span>`;
+            }
+        }
+
+        // ── TICKET CARD BUILDER HELPER ──
+        function buildTicketCard(r) {
+            const realIdx = r._originalIndex;
+            const status = r.kdsStatus || 'pending';
+            const isPriority = r.reservationType === 'priority';
+            
+            const t = document.createElement('div');
+            t.className = `ticket status-${status}`;
+            
+            // Format foods list items
+            const foodsHtml = (r.foods || []).map(f => {
+                const match = f.match(/^(\d+x)\s+(.*)/);
+                if (match) {
+                    return `<li><span class="qty-tag">${match[1]}</span> <span>${escapeHtml(match[2])}</span></li>`;
+                }
+                return `<li><span class="qty-tag">1x</span> <span>${escapeHtml(f)}</span></li>`;
+            }).join('');
+            
+            // Doneness & Notes
+            let donenessHtml = '';
+            if (r.beefNote) {
+                const cleanDoneness = r.beefNote.replace(/^doneness:\s*/i, '').trim();
+                donenessHtml = `<div class="doneness-badge">🔥 DONENESS: ${escapeHtml(cleanDoneness.toUpperCase())}</div>`;
+            }
+            
+            let detailHtml = '';
+            if (r.notes) {
+                detailHtml += `<div class="ticket-notes">📝 <strong>Note:</strong> ${escapeHtml(r.notes)}</div>`;
+            }
+            
+            // Action Buttons
+            let btns = '';
+            if (status === 'pending') {
+                btns = `
+                    <div class="action-row">
+                        <button class="btn-cook" type="button" onclick="updateStatus(${realIdx}, 'cooking')">🔥 START COOKING</button>
+                    </div>
+                    <div class="action-row">
+                        <button class="btn-cancel" type="button" onclick="cancelOrder(${realIdx})">Cancel Order</button>
+                    </div>
+                `;
+            } else if (status === 'cooking') {
+                btns = `
+                    <div class="action-row">
+                        <button class="btn-ready" type="button" onclick="updateStatus(${realIdx}, 'ready')">✔ MARK AS DONE</button>
+                    </div>
+                    <div class="action-row">
+                        <button class="btn-cancel" type="button" onclick="cancelOrder(${realIdx})">Cancel Order</button>
+                    </div>
+                `;
+            } else if (status === 'ready') {
+                btns = `
+                    <div class="action-row">
+                        <button class="btn-dismiss" type="button" onclick="updateStatus(${realIdx}, 'served')">🍽️ SERVED / DISMISS</button>
+                    </div>
+                `;
+            }
+
+            const tableText = r.bookedTable ? (r.bookedTable.toLowerCase().includes('table') ? r.bookedTable.toUpperCase() : `TABLE ${r.bookedTable}`) : 'WALK-IN';
+
+            t.innerHTML = `
+                <div class="ticket-header">
+                    <div>
+                        <div class="table-badge">${escapeHtml(tableText)}</div>
+                        <div class="customer-name">${escapeHtml(r.customerName || 'Guest')}</div>
+                        <div style="font-size: 11px; color: var(--kds-text-muted); margin-top: 2px;">#${escapeHtml(r.reservationNumber || 'N/A')}</div>
+                    </div>
+                    <div class="ticket-meta">
+                        ${getElapsedTimerHtml(r.createdAt || r.kdsUpdateAt)}
+                        <span class="status-badge ${status}">${status}</span>
+                    </div>
+                </div>
+                ${donenessHtml}
+                <ul class="food-list">${foodsHtml}</ul>
+                ${detailHtml}
+                <div class="actions">${btns}</div>
+            `;
+            return t;
+        }
+
+        // ── MAIN QUEUE RENDERER ──
+        function renderKitchenQueue(silent = false) {
+            const hist = getReservationHistory();
+            const grid = document.getElementById('kds-grid');
+            if (!grid) return;
+
+            // Trigger notification sound if new food order arrives
+            if (!silent && lastHistoryCount !== -1 && hist.length > lastHistoryCount) {
+                const newRes = hist[hist.length - 1];
+                if (newRes && newRes.foods && newRes.foods.length > 0 && isSoundEnabled) {
+                    playNewOrderChime();
+                    showNewOrderPopup();
+                }
+            }
+            lastHistoryCount = hist.length;
+
+            // Map and filter kitchen food orders
+            let foodOrders = hist.map((r, index) => {
+                return { ...r, _originalIndex: index };
+            }).filter(r => 
+                r.foods && r.foods.length > 0 && 
+                r.kdsStatus !== 'served' && 
+                r.kdsStatus !== 'cancelled' &&
+                (
+                    r.paymentStatus === 'verified' || 
+                    r.paymentStatus === 'paid' || 
+                    r.paymentStatus === 'walk-in' || 
+                    r.approvalStatus === 'approved' || 
+                    r.paymentStatus === 'pending_check' || 
+                    r.bookedBy === 'staff' || 
+                    r.bookedBy === 'admin' ||
+                    r.status === 'seated' ||
+                    r.status === 'confirmed' ||
+                    r.status === 'approved'
+                )
+            );
+
+            // Metrics Update
+            const pendingOrders = foodOrders.filter(o => !o.kdsStatus || o.kdsStatus === 'pending');
+            const cookingOrders = foodOrders.filter(o => o.kdsStatus === 'cooking');
+            const readyOrders = foodOrders.filter(o => o.kdsStatus === 'ready');
+
+            document.getElementById('metric-total').textContent = `${foodOrders.length} Active`;
+            document.getElementById('metric-pending').textContent = `${pendingOrders.length} Pending`;
+            document.getElementById('metric-cooking').textContent = `${cookingOrders.length} Cooking`;
+            document.getElementById('metric-ready').textContent = `${readyOrders.length} Ready`;
+
+            // If ALL ORDERS tab is active: Render the 3-column workflow board
+            if (activeFilter === 'all') {
+                if (foodOrders.length === 0) {
+                    grid.innerHTML = `<div class="kds-empty">No active food orders in kitchen queue.</div>`;
+                    return;
+                }
+
+                grid.className = 'kds-board';
+                grid.innerHTML = `
+                    <!-- PENDING ORDERS AREA -->
+                    <div class="kds-column col-pending">
+                        <div class="kds-col-header">
+                            <div class="kds-col-title"><span class="col-icon">📥</span> PENDING ORDERS</div>
+                            <span class="kds-col-badge">${pendingOrders.length} Waiting</span>
+                        </div>
+                        <div class="kds-col-body" id="col-body-pending"></div>
+                    </div>
+
+                    <!-- NOW COOKING AREA -->
+                    <div class="kds-column col-cooking">
+                        <div class="kds-col-header">
+                            <div class="kds-col-title"><span class="col-icon">🍳</span> NOW COOKING</div>
+                            <span class="kds-col-badge">${cookingOrders.length} On Grill</span>
+                        </div>
+                        <div class="kds-col-body" id="col-body-cooking"></div>
+                    </div>
+
+                    <!-- READY FOR SERVICE AREA -->
+                    <div class="kds-column col-ready">
+                        <div class="kds-col-header">
+                            <div class="kds-col-title"><span class="col-icon">🔔</span> READY TO SERVE</div>
+                            <span class="kds-col-badge">${readyOrders.length} Ready</span>
+                        </div>
+                        <div class="kds-col-body" id="col-body-ready"></div>
+                    </div>
+                `;
+
+                const bodyPending = document.getElementById('col-body-pending');
+                const bodyCooking = document.getElementById('col-body-cooking');
+                const bodyReady = document.getElementById('col-body-ready');
+
+                if (pendingOrders.length === 0) {
+                    bodyPending.innerHTML = `<div class="kds-col-empty"><div class="kds-col-empty-icon">⏳</div>No pending orders waiting</div>`;
+                } else {
+                    pendingOrders.forEach(r => bodyPending.appendChild(buildTicketCard(r)));
+                }
+
+                if (cookingOrders.length === 0) {
+                    bodyCooking.innerHTML = `<div class="kds-col-empty"><div class="kds-col-empty-icon">🍳</div>No orders currently cooking<br><span style="font-size:12px; opacity:0.75; margin-top:4px;">Press "START COOKING" on any pending order</span></div>`;
+                } else {
+                    cookingOrders.forEach(r => bodyCooking.appendChild(buildTicketCard(r)));
+                }
+
+                if (readyOrders.length === 0) {
+                    bodyReady.innerHTML = `<div class="kds-col-empty"><div class="kds-col-empty-icon">✅</div>No orders ready for pickup</div>`;
+                } else {
+                    readyOrders.forEach(r => bodyReady.appendChild(buildTicketCard(r)));
+                }
+                return;
+            }
+
+            // Single Tab Filter View (e.g. Pending, Cooking, Ready)
+            grid.className = 'ticket-grid';
+            let filteredOrders = foodOrders.filter(o => (o.kdsStatus || 'pending') === activeFilter);
+
+            if (filteredOrders.length === 0) {
+                grid.innerHTML = `<div class="kds-empty">No ${activeFilter.toUpperCase()} food orders in kitchen queue.</div>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+            filteredOrders.forEach(r => {
+                grid.appendChild(buildTicketCard(r));
+            });
+        }
+
+        // ── SOUND & POPUP NOTIFICATIONS ──
+        function playNewOrderChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.3); // E5
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+
+        function showNewOrderPopup() {
+            const div = document.createElement('div');
+            div.className = 'new-order-popup';
+            div.innerHTML = '🔔 NEW KITCHEN ORDER RECEIVED!';
+            document.body.appendChild(div);
+            setTimeout(() => {
+                div.style.opacity = '0';
+                div.style.transition = '0.5s';
+                setTimeout(() => div.remove(), 500);
+            }, 3500);
+        }
+
+        // ── STATUS UPDATES ──
+        function updateStatus(idx, newStatus) {
+            const hist = getReservationHistory();
+            if (hist[idx]) {
+                hist[idx].kdsStatus = newStatus;
+                hist[idx].kdsUpdateAt = new Date().toISOString();
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                
+                try {
+                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                    }
+                } catch (e) {}
+                
+                if (typeof showToast === 'function') {
+                    const label = newStatus === 'cooking' ? 'Started Cooking' : (newStatus === 'ready' ? 'Marked as Ready' : 'Order Dismissed');
+                    showToast(`Order status updated: ${label}`, 'success');
+                }
+                renderKitchenQueue(true);
+            }
+        }
+
+        async function cancelOrder(idx) {
+            let confirmed = true;
+            if (typeof superModal === 'function') {
+                confirmed = await superModal({
+                    title: 'Cancel Food Order?',
+                    message: 'Are you sure you want to CANCEL this order? It will be removed from the kitchen display.',
+                    type: 'confirm',
+                    confirmText: 'Yes, Cancel Order',
+                    cancelText: 'Keep Cooking'
+                });
+            } else {
+                confirmed = confirm('Are you sure you want to cancel this food order?');
+            }
+
+            if (!confirmed) return;
+
+            const hist = getReservationHistory();
+            if (hist[idx]) {
+                hist[idx].kdsStatus = 'cancelled';
+                hist[idx].kdsUpdateAt = new Date().toISOString();
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                
+                try {
+                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                    }
+                } catch (e) {}
+                
+                if (typeof showToast === 'function') {
+                    showToast('Order cancelled', 'warning');
+                }
+                renderKitchenQueue(true);
+            }
+        }
+
+        // ── REAL-TIME EVENT LISTENERS ──
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'reservationHistory' || e.key === 'tableOverrides') {
+                renderKitchenQueue(true);
+            }
+            if (e.key === 'kitchenPassword') {
+                sessionStorage.removeItem('kitchenAuthenticated');
+                window.location.reload();
+            }
+        });
+
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                const kdsChannel = new BroadcastChannel('inventory_sync_channel');
+                kdsChannel.onmessage = function (e) {
+                    if (e.data && (e.data.action === 'reservationHistoryUpdated' || e.data.action === 'tableOverridesUpdated')) {
+                        renderKitchenQueue(true);
+                    }
+                };
+            }
+        } catch (e) {}
+
+    </script>
+</body>
+</html>

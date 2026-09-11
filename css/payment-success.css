@@ -1,0 +1,80 @@
+
+
+/* ─────────────────────────────────────────────────
+   Migrated from payment-success.html
+───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7, #f0fdf4);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .success-card {
+            background: white;
+            border-radius: 24px;
+            padding: 50px 40px;
+            max-width: 460px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(27,94,32,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .success-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+        }
+        .check-circle {
+            width: 90px; height: 90px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 24px rgba(22,163,74,0.35);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .check-circle svg { width: 44px; height: 44px; }
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 30px; color: #1b5e20;
+            margin-bottom: 10px;
+        }
+        .sub { color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .res-badge {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 14px;
+            padding: 18px 24px;
+            margin-bottom: 28px;
+        }
+        .res-badge .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .res-badge .code { font-size: 26px; font-weight: 800; color: #16a34a; letter-spacing: 2px; margin-top: 6px; }
+        .home-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(22,163,74,0.3);
+        }
+        .home-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.35); }
+        .pm-note { margin-top: 16px; font-size: 12px; color: #94a3b8; }

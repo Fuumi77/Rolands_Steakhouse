@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Auto-redirect: if opened from file://, go to the local server instead -->
+    <script>
+        if (location.protocol === 'file:') {
+            location.replace('http://localhost:3000/payment.html');
+        }
+        // Detect if returning from an active/failed PayMongo session
+        if (localStorage.getItem('paymongoSessionId')) {
+            localStorage.removeItem('paymongoSessionId');
+            location.replace('pre-order.html?payment=failed');
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Priority Booking Payment | Roland's</title>
+    <meta name="description" content="Secure online payment for Roland's Steakhouse Priority Reservation via PayMongo.">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <script src="js/design-system.js"></script>
+    <script src="js/inventory-system.js"></script>
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/payment.css">
+</head>
+<body>
+    <header>
+        <img src="images/Rolands logo 2.png" alt="Roland's Steakhouse Logo" style="height: 60px; border-radius: 0; filter: drop-shadow(0 2px 4px rgba(27, 94, 32, 0.1));">
+        <div>
+            <div class="brand-name">Roland's Steakhouse</div>
+            <div class="brand-tag">Secure Checkout</div>
+        </div>
+    </header>
+
+    <div id="super-modal-root"></div>
+
+    <div class="page-wrap">
+        <div class="payment-card">
+            <div class="card-header">
+                <h1>Complete Your Reservation</h1>
+                <p>You're one step away from securing your priority table.</p>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="order-summary">
+                <div class="order-summary-title">Booking Summary</div>
+                <div class="order-row">
+                    <span>Customer</span>
+                    <span id="summary-name">—</span>
+                </div>
+                <div class="order-row">
+                    <span>Arrival</span>
+                    <span id="summary-date">—</span>
+                </div>
+                <div class="order-row">
+                    <span>Table</span>
+                    <span id="summary-table">—</span>
+                </div>
+                <div class="order-row" id="summary-order-row" style="display:none;">
+                    <span>Order</span>
+                    <span id="summary-order" style="max-width:200px; text-align:right; font-size:13px;">—</span>
+                </div>
+                <!-- Discount row (hidden by default, shown if PWD/Senior) -->
+                <div class="order-row" id="summary-discount-row" style="display:none; color:#16a34a;">
+                    <span id="summary-discount-label">Discount</span>
+                    <span id="summary-discount-val" style="font-weight:700; color:#16a34a;">-₱0</span>
+                </div>
+                <hr class="order-divider">
+                <div class="order-row" id="summary-subtotal-row" style="display:none; font-size:13px; color:#64748b;">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal-val">₱0</span>
+                </div>
+                <div class="order-total">
+                    <span>Total Due</span>
+                    <span class="amount-big">₱<span id="display-amt">0</span></span>
+                </div>
+            </div>
+
+            <!-- Status message area -->
+            <div class="status-msg" id="status-msg"></div>
+
+            <!-- Payment Methods -->
+            <div class="methods-label">Accepted Payment Methods</div>
+            <div class="methods-row">
+                <div class="method-pill"><span class="dot dot-gcash"></span> GCash</div>
+                <div class="method-pill"><span class="dot dot-maya"></span> Maya</div>
+                <div class="method-pill"><span class="dot dot-card"></span> Credit / Debit Card</div>
+                <div class="method-pill"><span class="dot dot-dob"></span> Online Banking</div>
+            </div>
+
+            <!-- PayMongo Primary CTA -->
+            <button class="pay-btn" id="paymongo-btn" onclick="initiatePayMongoCheckout()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                Pay Now via PayMongo
+            </button>
+
+            <button class="cancel-btn" onclick="cancelBooking()">✕ Cancel Booking</button>
+
+            <p style="text-align:center; font-size:12px; color:#aaa; margin:10px 0 0;">
+                Cancellation will remove your reservation and return you to the pre-order area.
+            </p>
+
+            <!-- Offline / Manual fallback -->
+            <div class="offline-section" id="offline-section">
+                <div class="offline-divider">or pay manually (if online payment is unavailable)</div>
+
+                <div style="margin-bottom:14px;">
+                    <label for="proof-upload" style="font-weight:700; font-size:13px; color:#374151; display:block; margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px;">
+                        Upload Payment Screenshot
+                    </label>
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" id="proof-upload" title="Upload Payment Screenshot" placeholder="Upload Payment Screenshot" accept="image/*" onchange="previewProof(this)">
+                        <div id="upload-placeholder">
+                            <div style="font-size:32px; margin-bottom:8px;">📤</div>
+                            <p style="font-size:14px; color:#666; margin:0;">Tap to upload your GCash / QR Ph screenshot</p>
+                            <p style="font-size:12px; color:#aaa; margin:4px 0 0;">PNG, JPG supported</p>
+                        </div>
+                        <img id="upload-preview" class="upload-preview" alt="Payment proof">
+                    </div>
+                    <p id="upload-filename" style="font-size:12px; color:#16a34a; font-weight:600;"></p>
+                </div>
+
+                <input type="text" id="ref-num" title="Reference Number" class="ref-input" placeholder="GCash / QR Ph reference number (optional)">
+                <button class="manual-pay-btn" onclick="submitManualPayment()">✅ Submit Manual Payment</button>
+            </div>
+
+            <div class="security-note">
+                🔒 Payments are securely processed by <strong style="color:#3d5a99;">PayMongo</strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Load booking data ──
+        const total        = localStorage.getItem('totalBill') || '0';
+        const subtotalRaw  = localStorage.getItem('subtotalBill') || total;
+        const discountType = localStorage.getItem('discountType')  || 'none';
+        const discountAmt  = parseFloat(localStorage.getItem('discountAmount') || '0');
+        const discountLabel= localStorage.getItem('discountLabel') || '';
+        const discountIdNo = localStorage.getItem('discountIdNo')  || '';
+        const customerName = localStorage.getItem('customerName') || 'Guest';
+        const arrivalDate  = localStorage.getItem('arrivalDate') || '';
+        const arrivalTime  = localStorage.getItem('arrivalTime') || '';
+        const bookedTable  = localStorage.getItem('bookedTable') || 'TBD';
+        const orderSummary = localStorage.getItem('orderSummary') || '';
+
+        // Display amounts
+        document.getElementById('display-amt').textContent = Number(total).toLocaleString();
+        document.getElementById('summary-name').textContent  = customerName;
+        document.getElementById('summary-table').textContent = bookedTable;
+
+        // Show discount breakdown if applicable
+        if (discountType !== 'none' && discountAmt > 0) {
+            const discRow     = document.getElementById('summary-discount-row');
+            const subRow      = document.getElementById('summary-subtotal-row');
+            const discLabelEl = document.getElementById('summary-discount-label');
+            const discValEl   = document.getElementById('summary-discount-val');
+            const subValEl    = document.getElementById('summary-subtotal-val');
+
+            discLabelEl.textContent = discountLabel + (discountIdNo ? ` (ID: ${discountIdNo})` : '');
+            discValEl.textContent   = '-₱' + discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            subValEl.textContent    = '₱' + Number(subtotalRaw).toLocaleString(undefined, { minimumFractionDigits: 2 });
+            if (discRow) discRow.style.display = 'flex';
+            if (subRow)  subRow.style.display  = 'flex';
+        }
+
+        const d = new Date(arrivalDate + 'T' + arrivalTime);
+        const displayDt = isNaN(d) ? arrivalDate + ' ' + arrivalTime : d.toLocaleString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        document.getElementById('summary-date').textContent = displayDt || '—';
+        localStorage.setItem('arrivalDateTimeDisplay', displayDt);
+
+        if (orderSummary) {
+            document.getElementById('summary-order-row').style.display = 'flex';
+            const orderEl = document.getElementById('summary-order');
+            orderEl.textContent = orderSummary.length > 60 ? orderSummary.slice(0, 60) + '…' : orderSummary;
+        }
+
+        // ── Back button protection ──
+        history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', () => {
+            history.pushState(null, null, window.location.href);
+            cancelBooking();
+        });
+
+        // ── Show status message ──
+        function showStatus(msg, type = 'info') {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg;
+            el.className = 'status-msg ' + type;
+        }
+        function clearStatus() {
+            const el = document.getElementById('status-msg');
+            el.className = 'status-msg';
+        }
+
+        // ── PayMongo Checkout ──
+        // Auto-detects: uses Node backend if available, otherwise calls PayMongo directly
+        async function initiatePayMongoCheckout() {
+            const btn = document.getElementById('paymongo-btn');
+            clearStatus();
+
+            if (!total || Number(total) <= 0) {
+                showStatus('⚠️ Invalid payment amount. Please go back and try again.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Connecting to PayMongo...';
+
+            const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
+            localStorage.setItem('pendingReservationNumber', resNo);
+            localStorage.setItem('reservationNumber', resNo);
+
+            // PayMongo security handling is moved to the Node.js backend
+            // Redundant frontend key removed for GitHub security compliance
+
+
+            try {
+                // Server-side payment link generation
+                const base = window.location.origin;
+                const successUrl = base + '/payment-success.html?resno=' + resNo;
+                const cancelUrl  = base + '/pre-order.html?payment=failed';
+
+                const nodeRes = await fetch('/api/paymongo/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: Number(total),
+                        description: `Roland's Priority Reservation #${resNo}`,
+                        successUrl,
+                        cancelUrl,
+                        customerName,
+                        customerEmail: localStorage.getItem('customerEmail') || '',
+                        customerPhone: localStorage.getItem('customerPhone') || ''
+                    })
+                });
+
+                if (!nodeRes.ok) {
+                    const errInfo = await nodeRes.json().catch(() => ({}));
+                    throw new Error(errInfo.error || 'Server rejected payment request. Make sure the Node server is running.');
+                }
+
+                const nodeData = await nodeRes.json();
+                const checkoutUrl = nodeData.checkout_url;
+                const sessionId = nodeData.session_id || '';
+
+                if (!checkoutUrl) {
+                    throw new Error('Server did not return a valid PayMongo checkout URL.');
+                }
+
+                // Save reservation draft before leaving the page
+                saveReservationDraft(resNo, 'pending_paymongo');
+                localStorage.setItem('paymongoSessionId', sessionId);
+
+                window.onbeforeunload = null;
+                window.location.href = checkoutUrl;
+
+            } catch (err) {
+                console.error('PayMongo error:', err);
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    Pay Now via PayMongo`;
+
+                let errorMsg = err.message;
+                if (errorMsg === 'Failed to fetch') {
+                    errorMsg = 'Cannot connect to local server. Make sure you ran START SERVER.bat and the black window is still open!';
+                }
+
+                showStatus('⚠️ ' + errorMsg, 'error');
+                document.getElementById('offline-section').classList.add('visible');
+                document.getElementById('offline-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ── Save reservation draft (used by PayMongo flow) ──
+        function saveReservationDraft(resNo, status) {
+            const foodArray = orderSummary ? orderSummary.split(', ') : [];
+            const reservationHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+            // Parse cart items for deferred deduction upon payment confirmation
+            let itemsArray = [];
+            const currentCartStr = localStorage.getItem('currentCartObj');
+            if (currentCartStr) {
+                try {
+                    const cart = JSON.parse(currentCartStr);
+                    for (const id in cart) {
+                        itemsArray.push({ id: id, quantity: cart[id].qty || 1 });
+                    }
+                } catch (e) { console.error('Cart parse error', e); }
+            }
+
+            reservationHistory.push({
+                reservationNumber:      resNo,
+                reservationType:        'priority',
+                arrivalDate:            arrivalDate,
+                arrivalTime:            arrivalTime,
+                arrivalDateTimeDisplay: displayDt,
+                customerName:           customerName,
+                bookedTable:            bookedTable,
+                orderSummary:           orderSummary,
+                foods:                  foodArray,
+                cartItems:              itemsArray,
+                stockDeducted:          false, // Will be deducted in payment-success.html upon verified payment
+                beefNote:               localStorage.getItem('beefNote') || '',
+                subtotalAmount:         Number(subtotalRaw),
+                discountType:           discountType,
+                discountAmount:         discountAmt,
+                discountLabel:          discountLabel,
+                discountIdNo:           discountIdNo,
+                paymentAmount:          Number(total),
+                paymentRef:             '',
+                paymentProof:           '',
+                paymentStatus:          status,
+                paymentMethod:          'paymongo',
+                paidAt:                 new Date().toISOString()
+            });
+
+            localStorage.setItem('reservationHistory', JSON.stringify(reservationHistory));
+            localStorage.setItem('reservationNumber', resNo);
+            return resNo;
+        }
+
+        // ── Manual / offline payment fallback ──
+        function previewProof(input) {
+            const preview     = document.getElementById('upload-preview');
+            const placeholder = document.getElementById('upload-placeholder');
+            const filename    = document.getElementById('upload-filename');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    filename.textContent = '✅ ' + input.files[0].name;
+                    localStorage.setItem('tempPaymentUpload', e.target.result);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function submitManualPayment() {
+            const ref     = document.getElementById('ref-num').value.trim();
+            const hasFile = document.getElementById('proof-upload').files.length > 0;
+
+            if (!ref && !hasFile) {
+                showStatus('⚠️ Please upload your payment screenshot or enter a reference number.', 'error');
+                return;
+            }
+
+            clearStatus();
+            const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
+            const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+            // Parse cart items
+            let itemsArray = [];
+            const cartStr = localStorage.getItem('currentCartObj');
+            if (cartStr) {
+                try {
+                    const cart = JSON.parse(cartStr);
+                    for (const id in cart) {
+                        itemsArray.push({ id: id, quantity: cart[id].qty || 1 });
+                    }
+                } catch (e) {}
+            }
+
+            // Atomic validation & stock deduction
+            if (itemsArray.length > 0 && window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+                const deductResult = window.InventorySystem.deductIngredientsForOrder(itemsArray, 'Manual Payment Order', resNo);
+                if (!deductResult.success) {
+                    const shortageMsg = (deductResult.shortages && deductResult.shortages.length > 0)
+                        ? deductResult.shortages.map(s => `${s.ingredientName}: needed ${s.needed}${s.unit}, only ${s.available}${s.unit} left`).join(', ')
+                        : (deductResult.error || 'Insufficient stock');
+                    showStatus(`⚠️ Cannot process order due to shortage: ${shortageMsg}`, 'error');
+                    return;
+                }
+            }
+            localStorage.removeItem('currentCartObj');
+
+            const foodArray = orderSummary ? orderSummary.split(', ') : [];
+            hist.push({
+                reservationNumber:      resNo,
+                reservationType:        'priority',
+                arrivalDate:            arrivalDate,
+                arrivalTime:            arrivalTime,
+                arrivalDateTimeDisplay: displayDt,
+                customerName:           customerName,
+                bookedTable:            bookedTable,
+                orderSummary:           orderSummary,
+                foods:                  foodArray,
+                cartItems:              itemsArray,
+                stockDeducted:          true,
+                beefNote:               localStorage.getItem('beefNote') || '',
+                paymentAmount:          total,
+                paymentRef:             ref,
+                paymentProof:           localStorage.getItem('tempPaymentUpload') || '',
+                paymentStatus:          'pending',
+                paymentMethod:          'manual',
+                createdAt:              new Date().toISOString()
+            });
+
+            localStorage.removeItem('tempPaymentUpload');
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            localStorage.setItem('reservationNumber', resNo);
+            window.onbeforeunload = null;
+
+            await superModal({
+                title: 'Payment Submitted! 🎉',
+                message: 'Your payment proof has been submitted. Please wait for the admin to verify your payment.'
+            });
+            window.location.href = 'index.html';
+        }
+
+        // ── Cancel booking ──
+        async function cancelBooking() {
+            const confirmed = await superModal({
+                title: 'Cancel Booking? ⚠️',
+                message: 'Are you sure you want to cancel? Your reservation will be removed.',
+                type: 'confirm',
+                confirmText: 'Yes, Cancel',
+                cancelText: 'Stay Here'
+            });
+            if (confirmed) {
+                localStorage.removeItem('totalBill');
+                localStorage.removeItem('cartItems');
+                localStorage.removeItem('reservationData');
+                localStorage.removeItem('tempPaymentUpload');
+                localStorage.removeItem('pendingReservation');
+                window.onbeforeunload = null;
+                window.location.href = 'pre-order.html';
+            }
+        }
+    </script>
+</body>
+</html>

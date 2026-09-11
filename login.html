@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication - Roland's Steak House</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/design-system.css">
+    <script src="js/design-system.js"></script>
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+
+    <a href="index.html" class="back-home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Home
+    </a>
+
+    <div class="auth-container">
+        <div class="auth-card">
+
+            <!-- Login form -->
+            <form id="login-form" class="active" onsubmit="handleLogin(event)">
+                <div class="auth-icon-wrap" id="user-logo-egg">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>Welcome Back</h2>
+                    <p>Enter your details to manage your reservations.</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('login-password', this)" style="color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-auth">Sign In</button>
+
+                <div class="auth-links">
+                    <a onclick="switchForm('forgot-form')">Forgot Password?</a>
+                    <a onclick="switchForm('signup-form')">Create an Account</a>
+                </div>
+            </form>
+
+            <!-- Sign up form -->
+            <form id="signup-form" onsubmit="handleSignUp(event)">
+                <div class="auth-icon-wrap">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>Create Account</h2>
+                    <p>Join us for exclusive dining privileges.</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-name">Full Name</label>
+                    <input type="text" id="signup-name" placeholder="John Doe" required
+                        oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-email">Email Address</label>
+                    <input type="email" id="signup-email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-password">Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="signup-password" placeholder="Create a strong password" required oninput="checkPasswordStrength(this.value)" onfocus="document.getElementById('password-checklist').classList.add('active')">
+                        <span class="password-toggle" onclick="togglePasswordVisibility('signup-password', this)" style="color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </span>
+                    </div>
+                    <ul class="password-checklist" id="password-checklist">
+                        <li class="req-length invalid">At least 8 characters</li>
+                        <li class="req-upper invalid">1 uppercase letter</li>
+                        <li class="req-number invalid">1 number</li>
+                        <li class="req-special invalid">1 special character (!@#$%^&*)</li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="btn-auth">Sign Up</button>
+
+                <div class="auth-links" style="justify-content: center; margin-top: 20px;">
+                    <span style="color: rgba(255,255,255,0.4); margin-right: 8px;">Already have an account?</span>
+                    <a onclick="switchForm('login-form')">Sign In</a>
+                </div>
+            </form>
+
+            <!-- Verification form (Step 2: Enter Signup Code) -->
+            <form id="signup-verify-form" onsubmit="handleSignUpVerify(event)">
+                <div class="auth-icon-wrap">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>Verify Your Email</h2>
+                    <p>Enter the 6-digit code sent to your email to create your account.</p>
+                </div>
+
+                <div class="otp-container" style="display:flex; gap:8px; justify-content:center; margin-bottom:24px;">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                </div>
+
+                <button type="submit" class="btn-auth" id="btn-verify-signup-code">Verify & Create Account</button>
+
+                <div class="auth-links" style="justify-content: center; margin-top: 25px;">
+                    <span style="color: rgba(255,255,255,0.4); margin-right: 8px;">Didn't get the code?</span>
+                    <a onclick="handleSignUp(event)">Resend</a>
+                </div>
+            </form>
+
+            <!-- Forgot password form (Step 1: Enter Email) -->
+            <form id="forgot-form" onsubmit="handleForgot(event)">
+                <div class="auth-icon-wrap">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>Reset Password</h2>
+                    <p>Enter your email and we'll send a verification code.</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="forgot-email">Email Address</label>
+                    <input type="email" id="forgot-email" placeholder="you@example.com" required>
+                </div>
+
+                <button type="submit" class="btn-auth" id="btn-send-code">Send Verification Code</button>
+
+                <div class="auth-links" style="justify-content: center; margin-top: 25px;">
+                    <a onclick="switchForm('login-form')" style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Back to Sign In
+                    </a>
+                </div>
+            </form>
+
+            <!-- Verification form (Step 2: Enter Code) -->
+            <form id="verify-form" onsubmit="handleVerify(event)">
+                <div class="auth-icon-wrap">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>Verify Email</h2>
+                    <p>Enter the 6-digit code sent to your email.</p>
+                </div>
+
+                <div class="otp-container" style="display:flex; gap:8px; justify-content:center; margin-bottom:24px;">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                    <input type="text" maxlength="1" class="otp-input" oninput="moveFocus(this, 1)" onkeydown="moveFocus(this, -1, event)">
+                </div>
+
+                <button type="submit" class="btn-auth" id="btn-verify-code">Verify Code</button>
+
+                <div class="auth-links" style="justify-content: center; margin-top: 25px;">
+                    <span style="color: rgba(255,255,255,0.4); margin-right: 8px;">Didn't get the code?</span>
+                    <a onclick="handleForgot(event)">Resend</a>
+                </div>
+            </form>
+
+            <!-- Reset Password form (Step 3: New Password) -->
+            <form id="reset-form" onsubmit="handleReset(event)">
+                <div class="auth-icon-wrap">
+                    <img src="images/Rolands logo 2.png" alt="Roland's" class="auth-brand-logo">
+                </div>
+                <div class="auth-header">
+                    <h2>New Password</h2>
+                    <p>Enter your new password below.</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="new-password">New Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="new-password" placeholder="••••••••" required oninput="checkPasswordStrength(this.value, 'reset-checklist')" onfocus="document.getElementById('reset-checklist').classList.add('active')">
+                        <span class="password-toggle" onclick="togglePasswordVisibility('new-password', this)" style="color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </span>
+                    </div>
+                    <ul class="password-checklist" id="reset-checklist">
+                        <li class="req-length invalid">At least 8 characters</li>
+                        <li class="req-upper invalid">1 uppercase letter</li>
+                        <li class="req-number invalid">1 number</li>
+                        <li class="req-special invalid">1 special character (!@#$%^&*)</li>
+                    </ul>
+                </div>
+
+                <div class="input-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="confirm-password" placeholder="••••••••" required>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('confirm-password', this)" style="color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-auth" id="btn-reset-pass">Update Password</button>
+            </form>
+
+        </div>
+
+    </div>
+
+    <script>
+        function switchForm(formId) {
+            document.querySelectorAll('form').forEach(f => f.classList.remove('active'));
+            document.getElementById(formId).classList.add('active');
+        }
+
+        function moveFocus(el, dir, e) {
+            if (dir === 1 && el.value.length === 1) {
+                const next = el.nextElementSibling;
+                if (next) next.focus();
+            } else if (dir === -1 && e && e.key === 'Backspace' && el.value.length === 0) {
+                const prev = el.previousElementSibling;
+                if (prev) prev.focus();
+            }
+        }
+
+        async function handleForgot(event) {
+            event.preventDefault();
+            const email = document.getElementById('forgot-email').value;
+            const btn = document.getElementById('btn-send-code');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                const res = await fetch('/api/auth/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    sessionStorage.setItem('resetEmail', email);
+                    switchForm('verify-form');
+                } else {
+                    alert(data.error || 'Failed to send code.');
+                }
+            } catch (e) {
+                alert('Connection error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Send Verification Code';
+            }
+        }
+
+        async function handleVerify(event) {
+            event.preventDefault();
+            const code = Array.from(document.querySelectorAll('#verify-form .otp-input')).map(i => i.value).join('');
+            if (code.length < 6) return alert('Please enter the full 6-digit code.');
+            const email = sessionStorage.getItem('resetEmail');
+
+            const btn = document.getElementById('btn-verify-code');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const res = await fetch('/api/auth/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, code })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    switchForm('reset-form');
+                } else {
+                    alert(data.error || 'Invalid verification code.');
+                }
+            } catch (e) {
+                alert('Connection error.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Verify Code';
+            }
+        }
+
+        async function handleReset(event) {
+            event.preventDefault();
+            const password = document.getElementById('new-password').value;
+            const confirm = document.getElementById('confirm-password').value;
+            const email = sessionStorage.getItem('resetEmail');
+
+            if (password !== confirm) return alert('Passwords do not match.');
+
+            // Enforce password strength
+            const reqLength = password.length >= 8;
+            const reqUpper = /[A-Z]/.test(password);
+            const reqNumber = /[0-9]/.test(password);
+            const reqSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            if (!(reqLength && reqUpper && reqNumber && reqSpecial)) {
+                return superModal({ title: 'Weak Password ⚠️', message: 'Please ensure your new password meets all the security requirements.' });
+            }
+
+            const btn = document.getElementById('btn-reset-pass');
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+
+            try {
+                const res = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await superModal({
+                        title: 'Success! 🎊',
+                        message: 'Your password has been updated. You can now sign in.'
+                    });
+                    switchForm('login-form');
+                } else {
+                    alert(data.error || 'Failed to update password.');
+                }
+            } catch (e) {
+                alert('Connection error.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Update Password';
+            }
+        }
+
+        // Handle Login Submission — calls real SQL Server backend
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('http://localhost:3000/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('loggedInUserName', data.name);
+                    localStorage.setItem('loggedInUserEmail', email);
+                    window.location.href = 'index.html';
+                } else {
+                    superModal({ title: 'Login Failed ❌', message: 'Invalid email or password. Please try again.' });
+                    btn.textContent = 'Sign In';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                // Server offline — fallback: derive name from email
+                console.warn('Server offline, using local fallback:', err);
+                const namePart = email.split('@')[0];
+                const name = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+                localStorage.setItem('loggedInUserName', name);
+                localStorage.setItem('loggedInUserEmail', email);
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Handle Sign Up Submission — sends email verification first
+        async function handleSignUp(e) {
+            if (e) e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            // Enforce password strength
+            const reqLength = password.length >= 8;
+            const reqUpper = /[A-Z]/.test(password);
+            const reqNumber = /[0-9]/.test(password);
+            const reqSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            if (!(reqLength && reqUpper && reqNumber && reqSpecial)) {
+                return superModal({ title: 'Weak Password ⚠️', message: 'Please ensure your password meets all the security requirements.' });
+            }
+
+            const btn = e ? e.target.querySelector('button[type="submit"]') : document.querySelector('#signup-form button[type="submit"]');
+            if(btn) {
+                btn.textContent = 'Sending code...';
+                btn.disabled = true;
+            }
+
+            try {
+                const res = await fetch('http://localhost:3000/api/auth/send-signup-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    sessionStorage.setItem('signupEmail', email);
+                    sessionStorage.setItem('signupName', name);
+                    sessionStorage.setItem('signupPassword', password);
+                    switchForm('signup-verify-form');
+                } else {
+                    alert(data.error || 'Failed to send verification code.');
+                }
+            } catch (err) {
+                alert('Connection error. Server may be offline.');
+            } finally {
+                if(btn) {
+                    btn.textContent = 'Sign Up';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        async function handleSignUpVerify(event) {
+            event.preventDefault();
+            const otpInputs = document.querySelectorAll('#signup-verify-form .otp-input');
+            const code = Array.from(otpInputs).map(i => i.value).join('');
+            if (code.length < 6) return alert('Please enter the full 6-digit code.');
+            
+            const email = sessionStorage.getItem('signupEmail');
+            const name = sessionStorage.getItem('signupName');
+            const password = sessionStorage.getItem('signupPassword');
+
+            const btn = document.getElementById('btn-verify-signup-code');
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const verifyRes = await fetch('http://localhost:3000/api/auth/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, code })
+                });
+                const verifyData = await verifyRes.json();
+                
+                if (verifyData.success) {
+                    btn.textContent = 'Creating account...';
+                    await fetch('http://localhost:3000/signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password })
+                    });
+                    
+                    superModal({ title: 'Welcome! 🎉', message: 'Account created successfully! Please sign in with your new credentials.' });
+                    switchForm('login-form');
+                } else {
+                    alert(verifyData.error || 'Invalid verification code.');
+                }
+            } catch (e) {
+                alert('Connection error.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Verify & Create Account';
+            }
+        }
+
+        // (Removed duplicate mock handleForgot function so the real API call executes)
+
+        // Easter egg admin access
+        (function initAdminEasterEgg() {
+            const logo = document.getElementById('user-logo-egg');
+            if (!logo) return;
+
+            let clickCount = 0;
+            let lastClick = 0;
+
+            // Make it slightly responsive
+            logo.style.cursor = 'pointer';
+
+            logo.addEventListener('click', () => {
+                const now = Date.now();
+                if (now - lastClick > 1500) {
+                    clickCount = 0; // Reset if too slow
+                }
+                lastClick = now;
+                clickCount++;
+
+                if (clickCount >= 7) {
+                    clickCount = 0;
+                    window.location.href = "admin.html";
+                }
+            });
+        })();
+
+        // Password Visibility Toggle
+        function togglePasswordVisibility(inputId, iconEl) {
+            const input = document.getElementById(inputId);
+            const eyeOpen = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+            const eyeClosed = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconEl.innerHTML = eyeOpen;
+            } else {
+                input.type = 'password';
+                iconEl.innerHTML = eyeClosed;
+            }
+        }
+
+        // Password Strength Checklist
+        function checkPasswordStrength(password, checklistId = 'password-checklist') {
+            const checklist = document.getElementById(checklistId);
+            if (!checklist) return;
+            if (password.length > 0) checklist.classList.add('active');
+
+            const reqLength = checklist.querySelector('.req-length');
+            const reqUpper = checklist.querySelector('.req-upper');
+            const reqNumber = checklist.querySelector('.req-number');
+            const reqSpecial = checklist.querySelector('.req-special');
+
+            if(reqLength) reqLength.className = 'req-length ' + (password.length >= 8 ? 'valid' : 'invalid');
+            if(reqUpper) reqUpper.className = 'req-upper ' + (/[A-Z]/.test(password) ? 'valid' : 'invalid');
+            if(reqNumber) reqNumber.className = 'req-number ' + (/[0-9]/.test(password) ? 'valid' : 'invalid');
+            if(reqSpecial) reqSpecial.className = 'req-special ' + (/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'valid' : 'invalid');
+        }
+    </script>
+</body>
+
+</html>

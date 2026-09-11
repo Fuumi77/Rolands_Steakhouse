@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Display System (KDS) | Roland's</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/kitchen.css">
+    <link rel="stylesheet" href="css/design-system.css">
+    <script src="js/design-system.js"></script>
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+    <header>
+        <div class="brand-section">
+            <div class="brand">ROLAND'S KDS DISPLAY</div>
+            <div class="kds-clock" id="live-clock">00:00:00</div>
+        </div>
+        <div class="metrics-bar">
+            <a href="kitchen.html" style="text-decoration:none;">
+                <button class="icon-btn" type="button">
+                    👨‍🍳 Switch to Interactive Cook Terminal
+                </button>
+            </a>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <div class="filter-tabs">
+            <button class="tab-btn active" id="tab-all" type="button" onclick="setFilter('all')">ALL ORDERS</button>
+            <button class="tab-btn" id="tab-pending" type="button" onclick="setFilter('pending')">PENDING</button>
+            <button class="tab-btn" id="tab-cooking" type="button" onclick="setFilter('cooking')">COOKING</button>
+            <button class="tab-btn" id="tab-ready" type="button" onclick="setFilter('ready')">READY</button>
+        </div>
+        <div style="font-size: 13px; color: var(--kds-text-muted); font-weight: 600;">
+            ● Auto-syncs every 3 seconds
+        </div>
+    </div>
+
+    <main class="container">
+        <div class="ticket-grid" id="ticket-grid">
+            <div class="kds-empty">Loading Kitchen Queue...</div>
+        </div>
+    </main>
+
+    <script>
+        let activeFilter = 'all';
+
+        function updateClock() {
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) clockEl.textContent = new Date().toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function setFilter(filterName) {
+            activeFilter = filterName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`tab-${filterName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            loadTickets();
+        }
+
+        function getElapsedTimerHtml(createdAtIso) {
+            if (!createdAtIso) return `<span class="timer-badge normal">⏱️ Recent</span>`;
+            const createdMs = new Date(createdAtIso).getTime();
+            if (isNaN(createdMs)) return `<span class="timer-badge normal">⏱️ Recent</span>`;
+            
+            const diffMins = Math.floor((Date.now() - createdMs) / 60000);
+            if (diffMins < 10) return `<span class="timer-badge normal">⏱️ ${diffMins}m ago</span>`;
+            if (diffMins < 20) return `<span class="timer-badge warning">⏱️ ${diffMins}m ago</span>`;
+            return `<span class="timer-badge urgent">🔥 URGENT ${diffMins}m</span>`;
+        }
+
+        function loadTickets() {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const grid = document.getElementById('ticket-grid');
+            if (!grid) return;
+
+            let foodOrders = hist.map((r, index) => ({ ...r, _originalIndex: index }))
+                .filter(r => r.foods && r.foods.length > 0 && r.kdsStatus !== 'served' && r.kdsStatus !== 'cancelled');
+
+            if (activeFilter !== 'all') {
+                foodOrders = foodOrders.filter(o => (o.kdsStatus || 'pending') === activeFilter);
+            }
+
+            foodOrders.sort((a, b) => {
+                const statusOrder = { 'pending': 1, 'cooking': 2, 'ready': 3 };
+                const stA = statusOrder[a.kdsStatus || 'pending'] || 1;
+                const stB = statusOrder[b.kdsStatus || 'pending'] || 1;
+                if (stA !== stB) return stA - stB;
+                return (a._originalIndex - b._originalIndex);
+            });
+
+            if (foodOrders.length === 0) {
+                grid.innerHTML = `<div class="kds-empty">No active food orders in queue.</div>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+            foodOrders.forEach(r => {
+                const realIdx = r._originalIndex;
+                const status = r.kdsStatus || 'pending';
+                const t = document.createElement('div');
+                t.className = `ticket status-${status}`;
+
+                const foodsHtml = (r.foods || []).map(f => {
+                    const match = f.match(/^(\d+x)\s+(.*)/);
+                    if (match) {
+                        return `<li><span class="qty-tag">${match[1]}</span> <span>${escapeHtml(match[2])}</span></li>`;
+                    }
+                    return `<li><span class="qty-tag">1x</span> <span>${escapeHtml(f)}</span></li>`;
+                }).join('');
+
+                let donenessHtml = '';
+                if (r.beefNote) {
+                    donenessHtml = `<div class="doneness-badge">🔥 DONENESS: ${escapeHtml(r.beefNote.toUpperCase())}</div>`;
+                }
+
+                let btns = '';
+                if (status === 'pending') {
+                    btns = `<button class="btn-cook" onclick="updateStatus(${realIdx}, 'cooking')">START COOKING</button>`;
+                } else if (status === 'cooking') {
+                    btns = `<button class="btn-ready" onclick="updateStatus(${realIdx}, 'ready')">MARK READY</button>`;
+                } else if (status === 'ready') {
+                    btns = `<button class="btn-dismiss" onclick="updateStatus(${realIdx}, 'served')">DONE / DISMISS</button>`;
+                }
+
+                const tableText = r.bookedTable ? (r.bookedTable.toLowerCase().includes('table') ? r.bookedTable.toUpperCase() : `TABLE ${r.bookedTable}`) : 'WALK-IN';
+
+                t.innerHTML = `
+                    <div class="ticket-header">
+                        <div>
+                            <div class="table-badge">${escapeHtml(tableText)}</div>
+                            <div class="customer-name">${escapeHtml(r.customerName || 'Guest')}</div>
+                        </div>
+                        <div class="ticket-meta">
+                            ${getElapsedTimerHtml(r.createdAt || r.kdsUpdateAt)}
+                            <span class="status-badge ${status}">${status}</span>
+                        </div>
+                    </div>
+                    ${donenessHtml}
+                    <ul class="food-list">${foodsHtml}</ul>
+                    <div class="actions">${btns}</div>
+                `;
+                grid.appendChild(t);
+            });
+        }
+
+        window.updateStatus = function(idx, newStatus) {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            if (hist[idx]) {
+                hist[idx].kdsStatus = newStatus;
+                hist[idx].kdsUpdateAt = new Date().toISOString();
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                try {
+                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                    }
+                } catch (e) {}
+                loadTickets();
+            }
+        };
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'reservationHistory' || e.key === 'tableOverrides') {
+                loadTickets();
+            }
+        });
+
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                const kdsChannel = new BroadcastChannel('inventory_sync_channel');
+                kdsChannel.onmessage = function (e) {
+                    if (e.data && (e.data.action === 'reservationHistoryUpdated' || e.data.action === 'tableOverridesUpdated')) {
+                        loadTickets();
+                    }
+                };
+            }
+        } catch (e) {}
+
+        setInterval(loadTickets, 3000);
+        loadTickets();
+    </script>
+</body>
+</html>

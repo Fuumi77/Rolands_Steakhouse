@@ -1,0 +1,261 @@
+/* 
+   ROLAND'S STEAKHOUSE - UNIFIED DESIGN SYSTEM
+   Theme: Luxury Steakhouse (Deep Emerald, Charcoal & Champagne Gold)
+*/
+
+:root {
+    /* Brand Colors */
+    --ds-primary: #1b5e20;
+    --ds-primary-dark: #0f3813;
+    --ds-primary-light: #2e7d32;
+    --ds-gold: #c5a059;
+    --ds-gold-light: #e5c986;
+    --ds-gold-dark: #9e7b37;
+    --ds-charcoal: #121814;
+    --ds-surface: #ffffff;
+    --ds-surface-elevated: #fcfbf9;
+    
+    /* Functional Colors */
+    --ds-accent: #10b981;
+    --ds-danger: #ef4444;
+    --ds-warning: #f59e0b;
+    --ds-info: #3b82f6;
+    
+    /* Typography Colors */
+    --ds-text: #1e293b;
+    --ds-text-muted: #64748b;
+    --ds-text-light: #94a3b8;
+
+    /* Elevated Surfaces & Shadows */
+    --ds-overlay: rgba(10, 20, 14, 0.75);
+    --ds-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --ds-shadow-md: 0 10px 30px -5px rgba(10, 25, 15, 0.12);
+    --ds-shadow-lg: 0 25px 50px -12px rgba(10, 25, 15, 0.25);
+    --ds-border-radius: 16px;
+    --ds-border-radius-sm: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SVG ICON UTILITIES (Replaces raw emojis with clean SVG icons)
+   ══════════════════════════════════════════════════════════ */
+.ds-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    width: 1.25em;
+    height: 1.25em;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.ds-icon-lg {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.ds-icon-gold {
+    color: var(--ds-gold);
+}
+
+.ds-icon-emerald {
+    color: var(--ds-primary);
+}
+
+/* Status Badges */
+.ds-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.ds-badge-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ds-badge-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ds-badge-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #991b1b;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.ds-badge-gold {
+    background: rgba(197, 160, 89, 0.15);
+    color: #74571d;
+    border: 1px solid rgba(197, 160, 89, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SUPER MODAL STYLES
+   ══════════════════════════════════════════════════════════ */
+.super-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ds-overlay);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+    padding: 20px;
+    animation: dsFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.super-modal-box {
+    background: var(--ds-surface);
+    width: 100%;
+    max-width: 440px;
+    border-radius: var(--ds-border-radius);
+    overflow: hidden;
+    box-shadow: var(--ds-shadow-lg);
+    border: 1px solid rgba(197, 160, 89, 0.2);
+    animation: dsSpringUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.super-modal-header {
+    background: linear-gradient(135deg, var(--ds-primary-dark) 0%, var(--ds-primary) 100%);
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid var(--ds-gold);
+}
+
+.super-modal-header h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 20px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.super-modal-body {
+    padding: 28px 28px 20px 28px;
+    text-align: left;
+}
+
+.super-modal-body p {
+    margin: 0;
+    color: var(--ds-text-muted);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.super-modal-footer {
+    padding: 0 28px 28px 28px;
+    display: flex;
+    gap: 12px;
+}
+
+.super-modal-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: var(--ds-border-radius-sm);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.super-modal-btn.confirm {
+    background: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-light) 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(27, 94, 32, 0.25);
+}
+
+.super-modal-btn.confirm:hover {
+    background: linear-gradient(135deg, var(--ds-primary-dark) 0%, var(--ds-primary) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(27, 94, 32, 0.35);
+}
+
+.super-modal-btn.cancel {
+    background: #f1f5f9;
+    color: var(--ds-text-muted);
+    border: 1px solid #e2e8f0;
+}
+
+.super-modal-btn.cancel:hover {
+    background: #e2e8f0;
+    color: var(--ds-text);
+}
+
+.super-modal-input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: var(--ds-border-radius-sm);
+    border: 1.5px solid #cbd5e1;
+    font-size: 16px;
+    font-family: inherit;
+    transition: all 0.2s;
+    background: #f8fafc;
+    box-sizing: border-box;
+    text-align: center;
+    font-weight: 600;
+    color: var(--ds-primary);
+    margin-bottom: 5px;
+}
+
+.super-modal-input:focus {
+    outline: none;
+    border-color: var(--ds-gold);
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(197, 160, 89, 0.15);
+}
+
+/* Animations */
+@keyframes dsFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes dsSpringUp {
+    from { transform: translateY(24px) scale(0.96); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes dsBadgePulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+    70% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.ds-pulse {
+    animation: dsBadgePulse 2s infinite;
+}
+
+.ds-hover-lift {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ds-hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ds-shadow-md);
+}
+
+/* Modal Root */
+#super-modal-root {
+    position: absolute;
+    z-index: 100000;
+}
