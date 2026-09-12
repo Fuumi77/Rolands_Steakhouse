@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
+const mysql = require('mysql2'); // REPLACED SUPABASE WITH MYSQL
 
 const app = express();
 app.use(cors());
@@ -20,16 +20,22 @@ app.use(express.static(__dirname, {
     lastModified: false
 }));
 
-// Initialize Supabase (Pulls from your .env file or Vercel Environment Variables)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// Initialize Hostinger MySQL Connection
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
-let supabase = null;
-if (supabaseUrl && supabaseKey) {
-    supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-    console.warn('⚠️  Supabase credentials missing — DB features disabled, but PayMongo will still work.');
-}
+const db = pool.promise();
+
+db.query('SELECT 1')
+    .then(() => console.log('✅ Connected to Hostinger MySQL Database!'))
+    .catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 
 // ── SECURITY & SANITIZATION HELPERS ──
@@ -331,35 +337,14 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
 });
 
-app.post('/api/auth/verify-code', (req, res) => {
-    const { email, code } = req.body;
-    const stored = tempCodes[email];
-
-    if (stored && stored.code === code && Date.now() < stored.expires) {
-        res.json({ success: true });
-    } else {
-        res.json({ success: false, error: "Invalid or expired code." });
-    }
-});
-
-app.post('/api/auth/reset-password', async (req, res) => {
-    const { email, password } = req.body;
-
+/* GET STAFF ACCOUNTS */
+app.get('/api/staff', async (req, res) => {
     try {
-        const { error } = await supabase
-            .from('users')
-            .update({ password: password })
-            .eq('email', email);
-
-        if (error) throw error;
-
-        // Clear the code
-        delete tempCodes[email];
-        res.json({ success: true });
-
+        const [rows] = await db.query('SELECT username, password_hash FROM staff_credentials');
+        res.json(rows);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, error: "Database error." });
+        console.error("Staff Fetch Error:", err);
+        res.status(500).send("Database error");
     }
 });
 
@@ -498,6 +483,7 @@ async function deductStock(cartItems, branch = 'General Santos City') {
         console.error("Stock Deduction Error:", err);
     }
 }
+
 /* UPDATE RESERVATION STATUS */
 app.post('/api/reservations/update-status', async (req, res) => {
     const { id, status } = req.body;
