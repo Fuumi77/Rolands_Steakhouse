@@ -210,32 +210,31 @@ app.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // 1. Attempt to find the user
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email)
-            .eq('password', password);
+        // 1. Search MySQL for the user
+        const [users] = await db.query(
+            'SELECT * FROM customer_credentials WHERE email = ? AND password_hash = ?',
+            [email, password]
+        );
 
-        if (error) throw error;
-
-        const isSuccess = data && data.length > 0;
-        const fullName = isSuccess ? data[0].name : 'Unknown Attempt';
-
-        // 2. Record the login attempt
-        await supabase
-            .from('login_attempts')
-            .insert([{ email: email, name: fullName, status: isSuccess ? 'SUCCESS' : 'FAILED' }]);
+        const isSuccess = users.length > 0;
 
         if (isSuccess) {
-            res.json({ success: true, name: fullName });
+            const user = users[0];
+            
+            // 2. Record the successful login attempt
+            await db.query(
+                "INSERT INTO login_logs (user_type, user_id, action) VALUES ('Customer', ?, 'Login Success')",
+                [user.customer_id]
+            );
+
+            res.json({ success: true, name: user.name });
         } else {
-            res.json({ success: false });
+            res.json({ success: false, error: 'Invalid email or password' });
         }
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Server error during login");
+        console.error("Login Error:", err);
+        res.status(500).json({ success: false, error: "Server error during login" });
     }
 });
 
@@ -244,16 +243,15 @@ app.post('/signup', authLimiter, async (req, res) => {
     const { name, email, password } = req.body;
 
     try {
-        const { error } = await supabase
-            .from('users')
-            .insert([{ name, email, password }]);
-
-        if (error) throw error;
+        await db.query(
+            'INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)',
+            [name, email, password]
+        );
         res.json({ success: true });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Error");
+        console.error("Signup Error:", err);
+        res.status(500).json({ success: false, error: "Database error during signup" });
     }
 });
 
@@ -263,16 +261,10 @@ app.post('/api/auth/send-signup-code', authLimiter, async (req, res) => {
     if (!email) return res.status(400).json({ success: false, error: "Email required" });
 
     try {
-        if (supabase) {
-            const { data: user, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (user) {
-                return res.status(400).json({ success: false, error: "An account with this email already exists." });
-            }
+        // Check MySQL if user already exists
+        const [existing] = await db.query('SELECT * FROM customer_credentials WHERE email = ?', [email]);
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, error: "An account with this email already exists." });
         }
 
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -282,21 +274,7 @@ app.post('/api/auth/send-signup-code', authLimiter, async (req, res) => {
             from: process.env.EMAIL_USER || 'your.restaurant.email@gmail.com',
             to: email,
             subject: "Verify your email - Roland's Steak House",
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                    <div style="background: #1b5e20; padding: 20px; text-align: center; color: white;">
-                        <h2 style="margin: 0;">Roland's Steak House</h2>
-                    </div>
-                    <div style="padding: 30px; text-align: center;">
-                        <h3 style="color: #1e293b; margin-top: 0;">Verify Your Email Address</h3>
-                        <p style="color: #475569; margin-bottom: 25px;">Welcome! Please use the verification code below to complete your sign up:</p>
-                        <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1b5e20; background: #f0fdf4; padding: 15px; border-radius: 8px; border: 2px dashed #86efac; display: inline-block; margin-bottom: 25px;">
-                            ${escapeHtml(code)}
-                        </div>
-                        <p style="color: #94a3b8; font-size: 13px;">This code will expire in 10 minutes.</p>
-                    </div>
-                </div>
-            `
+            html: `<h2>Roland's Steak House</h2><p>Your verification code is: <strong>${escapeHtml(code)}</strong></p>`
         };
 
         await transporter.sendMail(mailOptions);
@@ -307,65 +285,49 @@ app.post('/api/auth/send-signup-code', authLimiter, async (req, res) => {
     }
 });
 
-/* FORGOT PASSWORD - USPEEDO INTEGRATION */
-
+/* FORGOT PASSWORD */
 app.post('/api/auth/send-code', authLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ success: false, error: "Email required" });
 
     try {
-        // 1. Verify user exists (Skip if Supabase is not configured)
-        if (supabase) {
-            const { data: user, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (userError || !user) {
-                return res.status(404).json({ success: false, error: "No account found with this email." });
-            }
-        } else {
-            console.log("Supabase not configured, bypassing user check for prototype.");
+        // Verify user exists in MySQL
+        const [existing] = await db.query('SELECT * FROM customer_credentials WHERE email = ?', [email]);
+        if (existing.length === 0) {
+            return res.status(404).json({ success: false, error: "No account found with this email." });
         }
 
-        // 2. Generate 6-digit code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        tempCodes[email] = {
-            code: code,
-            expires: Date.now() + (10 * 60 * 1000) // 10 minutes
-        };
-
-        // 3. Send via Gmail (Nodemailer)
-        console.log(`✉️ Sending verification code ${code} to ${email} via Gmail...`);
+        tempCodes[email] = { code, expires: Date.now() + (10 * 60 * 1000) };
         
         const mailOptions = {
             from: process.env.EMAIL_USER || 'your.restaurant.email@gmail.com',
             to: email,
             subject: "Password Reset Code - Roland's Steak House",
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                    <div style="background: #1b5e20; padding: 20px; text-align: center; color: white;">
-                        <h2 style="margin: 0;">Roland's Steak House</h2>
-                    </div>
-                    <div style="padding: 30px; text-align: center;">
-                        <h3 style="color: #1e293b; margin-top: 0;">Password Reset Request</h3>
-                        <p style="color: #475569; margin-bottom: 25px;">You requested a password reset. Here is your verification code:</p>
-                        <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1b5e20; background: #f0fdf4; padding: 15px; border-radius: 8px; border: 2px dashed #86efac; display: inline-block; margin-bottom: 25px;">
-                            ${code}
-                        </div>
-                        <p style="color: #94a3b8; font-size: 13px;">This code will expire in 10 minutes.<br>If you did not request this, please ignore this email.</p>
-                    </div>
-                </div>
-            `
+            html: `<h2>Roland's Steak House</h2><p>Your password reset code is: <strong>${code}</strong></p>`
         };
 
         await transporter.sendMail(mailOptions);
         res.json({ success: true });
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, error: "Failed to send email." });
+    }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        await db.query(
+            'UPDATE customer_credentials SET password_hash = ? WHERE email = ?', 
+            [password, email]
+        );
+        delete tempCodes[email];
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: "Database error." });
     }
 });
 
@@ -404,10 +366,10 @@ app.post('/api/auth/reset-password', async (req, res) => {
 /* GET STAFF ACCOUNTS */
 app.get('/api/staff', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('staff_accounts').select('*');
-        if (error) throw error;
-        res.json(data);
+        const [rows] = await db.query('SELECT username, password_hash FROM staff_credentials');
+        res.json(rows);
     } catch (err) {
+        console.error("Staff Fetch Error:", err);
         res.status(500).send("Database error");
     }
 });
@@ -416,13 +378,13 @@ app.get('/api/staff', async (req, res) => {
 app.post('/api/staff', async (req, res) => {
     const { username, passwordHash } = req.body;
     try {
-        // PGSQL automatically makes column names lowercase, so we use passwordhash
-        const { error } = await supabase
-            .from('staff_accounts')
-            .insert([{ username: username, passwordhash: passwordHash }]);
-        if (error) throw error;
+        await db.query(
+            "INSERT INTO staff_credentials (username, password_hash, role) VALUES (?, ?, 'Staff')",
+            [username, passwordHash]
+        );
         res.json({ success: true });
     } catch (err) {
+        console.error("Create Staff Error:", err);
         res.status(500).send("Database error");
     }
 });
@@ -430,13 +392,10 @@ app.post('/api/staff', async (req, res) => {
 /* DELETE STAFF ACCOUNT */
 app.delete('/api/staff/:username', async (req, res) => {
     try {
-        const { error } = await supabase
-            .from('staff_accounts')
-            .delete()
-            .eq('username', req.params.username);
-        if (error) throw error;
+        await db.query('DELETE FROM staff_credentials WHERE username = ?', [req.params.username]);
         res.json({ success: true });
     } catch (err) {
+        console.error("Delete Staff Error:", err);
         res.status(500).send("Database error");
     }
 });
@@ -444,25 +403,30 @@ app.delete('/api/staff/:username', async (req, res) => {
 /* RESERVATIONS */
 app.get('/reservations', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('reservations')
-            .select('id, name, arrivalDate, arrivalTime, tableNo');
+        // Fetch all reservations and join with customer data
+        const [rows] = await db.query(`
+            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status
+            FROM reservation_log r
+            JOIN customer_credentials c ON r.customer_id = c.customer_id
+        `);
 
-        if (error) throw error;
-
-        // Map columns on the fly to match your admin.html JS
-        const mappedData = data.map(r => ({
-            reservationNumber: r.id,
-            customerName: r.name,
-            arrivalDate: r.arrivalDate,
-            arrivalTime: r.arrivalTime,
-            bookedTable: r.tableNo,
-            reservationType: 'priority'
-        }));
+        // Map the SQL columns to match what your frontend JS expects
+        const mappedData = rows.map(r => {
+            const d = new Date(r.reservation_time);
+            return {
+                reservationNumber: `RES-${r.reservation_id}`,
+                customerName: r.name,
+                arrivalDate: d.toISOString().split('T')[0],
+                arrivalTime: d.toTimeString().substring(0, 5),
+                bookedTable: `Table ${r.table_number}`,
+                reservationType: 'priority',
+                status: r.status
+            };
+        });
 
         res.json(mappedData);
     } catch (err) {
-        console.error(err);
+        console.error("Database fetch error:", err);
         res.status(500).send("Database fetch error");
     }
 });
@@ -470,22 +434,34 @@ app.get('/reservations', async (req, res) => {
 /* SAVE NEW RESERVATION */
 app.post('/reserve', async (req, res) => {
     console.log("Saving new reservation for:", req.body.name);
-    const { name, date, time, table, cartItems, status } = req.body;
+    const { name, email, date, time, table, cartItems, status } = req.body;
 
     try {
-        const { error } = await supabase
-            .from('reservations')
-            .insert([{
-                name: name,
-                arrivalDate: date,
-                arrivalTime: time,
-                tableNo: table,
-                status: status || 'pending'
-            }]);
+        // 1. Check if customer exists, or create a temporary guest account
+        let [customers] = await db.query('SELECT customer_id FROM customer_credentials WHERE name = ? OR email = ? LIMIT 1', [name, email || '']);
+        let customerId;
 
-        if (error) throw error;
+        if (customers.length > 0) {
+            customerId = customers[0].customer_id;
+        } else {
+            const [result] = await db.query(
+                'INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)', 
+                [name, email || `guest-${Date.now()}@temp.com`, 'guest-no-password']
+            );
+            customerId = result.insertId;
+        }
 
-        // Trigger stock deduction if cartItems provided
+        // 2. Parse the table string (e.g., "Table 4") into an integer for the database
+        const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 0;
+        const reservationTime = `${date} ${time}:00`;
+
+        // 3. Insert the reservation
+        await db.query(
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status) VALUES (?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'pending']
+        );
+
+        // 4. Deduct Stock if items were ordered
         if (cartItems && cartItems.length > 0) {
             await deductStock(cartItems);
         }
@@ -493,57 +469,47 @@ app.post('/reserve', async (req, res) => {
         res.json({ success: true });
 
     } catch (err) {
-        console.error("Supabase Save Error:", err);
+        console.error("Save Reservation Error:", err);
         res.status(500).send("Error saving to database");
     }
 });
 
 /* DEDUCT STOCK HELPER */
-async function deductStock(cartItems) {
-    if (!supabase) return; // Skip if no DB connection
-    console.log(`Deducting stock for ${cartItems.length} items...`);
+async function deductStock(cartItems, branch = 'General Santos City') {
+    console.log(`Deducting stock for ${cartItems.length} items at ${branch}...`);
     try {
         for (const item of cartItems) {
-            // Find current item in DB
-            const { data: invData, error: invError } = await supabase
-                .from('inventoryItems')
-                .select('id, total_stock')
-                .eq('id', item.id)
-                .single();
-
-            if (invError || !invData) continue;
-
             const qty = item.quantity || 1;
-            const newStock = Math.max(0, (invData.total_stock || 0) - qty);
+            
+            // 1. Deduct from the live master inventory
+            await db.query(
+                'UPDATE master_inventory SET current_stock = current_stock - ? WHERE (item_id = ? OR item_name = ?) AND branch_location = ?',
+                [qty, item.id, item.name || item.title || item.id, branch]
+            );
 
-            await supabase
-                .from('inventoryItems')
-                .update({ total_stock: newStock })
-                .eq('id', item.id);
+            // 2. (Optional but recommended) Record the change in your log table
+            // You would normally grab the previous stock first, but this keeps the log flowing!
+            await db.query(
+                'INSERT INTO menu_stock_change_log (item_name, previous_stock, new_stock, updated_by) VALUES (?, ?, ?, ?)',
+                [item.name || item.title, 0, 0, 1] // 1 represents a generic system/admin ID
+            );
         }
     } catch (err) {
         console.error("Stock Deduction Error:", err);
     }
 }
-
 /* UPDATE RESERVATION STATUS */
 app.post('/api/reservations/update-status', async (req, res) => {
     const { id, status } = req.body;
     try {
-        if (!supabase) throw new Error("No database connection");
-
-        // Find by name/date/time since 'id' might be a reservation number string
-        // If frontend passes a real Supabase UUID, use it. Otherwise, match by name if id is missing.
-        // We'll assume the frontend passes `resNumber` which corresponds to Supabase `id`.
-
-        // To be safe and compatible with local testing where Supabase might not have the ID:
-        if (id) {
-            const { error } = await supabase
-                .from('reservations')
-                .update({ status: status })
-                .eq('id', id);
-
-            if (error) throw error;
+        // Strip "RES-" prefix from the frontend string to get the SQL ID
+        const numericId = String(id).replace(/[^0-9]/g, '');
+        
+        if (numericId) {
+            await db.query(
+                'UPDATE reservation_log SET status = ? WHERE reservation_id = ?', 
+                [status, numericId]
+            );
         }
 
         res.json({ success: true });
