@@ -71,7 +71,7 @@
             // SEND AUTOMATIC EMAIL RECEIPT
             const customerEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail');
             if (customerEmail) {
-                fetch('http://localhost:3000/api/send-receipt', {
+                fetch('${API_BASE_URL}/api/send-receipt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
