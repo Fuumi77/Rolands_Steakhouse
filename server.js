@@ -290,7 +290,31 @@ app.post('/api/auth/send-signup-code', authLimiter, async (req, res) => {
         res.status(500).json({ success: false, error: "Failed to send verification email." });
     }
 });
+/* VERIFY SIGNUP CODE */
+app.post('/api/auth/verify-code', authLimiter, (req, res) => {
+    const { email, code } = req.body;
+    
+    if (!email || !code) {
+        return res.status(400).json({ success: false, error: "Email and code are required." });
+    }
 
+    const record = tempCodes[email];
+
+    // Check if a code was actually requested or if it expired
+    if (!record || Date.now() > record.expires) {
+        if (record) delete tempCodes[email];
+        return res.status(400).json({ success: false, error: "Verification code expired. Please request a new one." });
+    }
+
+    // Check if the code matches
+    if (record.code !== code) {
+        return res.status(400).json({ success: false, error: "Invalid verification code." });
+    }
+
+    // Success! Code matches, clear it from memory so it can't be reused
+    delete tempCodes[email];
+    res.json({ success: true });
+});
 /* FORGOT PASSWORD */
 app.post('/api/auth/send-code', authLimiter, async (req, res) => {
     const { email } = req.body;
