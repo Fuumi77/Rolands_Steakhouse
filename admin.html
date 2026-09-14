@@ -4334,7 +4334,7 @@
 
                     // Validate password — supports both hashed and legacy plain-text
                     const passwordHash = await sha256Hex(password);
-                    const storedHash = user.passwordHash || user.passwordhash;
+                    const storedHash = user.passwordHash || user.passwordhash || user.password_hash;
                     const isHashMatch = storedHash && storedHash === passwordHash;
                     const isLegacyMatch = user.password && user.password === password;
 
