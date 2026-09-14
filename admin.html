@@ -824,6 +824,8 @@
     </div>
 
     <script>
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app'
+        
         window.launchTerminal = function (url) {
             console.log("🚀 Launching Terminal:", url);
             const win = window.open(url, '_blank');
@@ -1599,7 +1601,7 @@
 
                 // 2. Sync approval to Supabase / Backend API
                 try {
-                    fetch('/api/reservations/update-status', {
+                    fetch('${API_BASE_URL}/api/reservations/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'approved' })
@@ -1646,7 +1648,7 @@
                 const r = hist[idx];
 
                 try {
-                    fetch('/api/reservations/update-status', {
+                    fetch('${API_BASE_URL}/api/reservations/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'rejected' })
@@ -1689,7 +1691,7 @@
                 const r = hist[idx];
 
                 try {
-                    fetch('/api/reservations/update-status', {
+                    fetch('${API_BASE_URL}/api/reservations/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'seated' })
@@ -4269,7 +4271,7 @@
 
             // Try to sync from Supabase in the background, non-blocking
             try {
-                const res = await fetch('/api/staff?nocache=' + Date.now(), {
+                const res = await fetch('${API_BASE_URL}/api/staff?nocache=' + Date.now(), {
                     headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
                 });
                 if (res.ok) {
@@ -4309,7 +4311,7 @@
                     // Always re-fetch latest user list on login attempt
                     let usersNow = JSON.parse(localStorage.getItem('adminUsers') || '[]');
                     try {
-                        const res = await fetch('/api/staff?nocache=' + Date.now(), {
+                        const res = await fetch('${API_BASE_URL}/api/staff?nocache=' + Date.now(), {
                             headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
                         });
                         if (res.ok) {
