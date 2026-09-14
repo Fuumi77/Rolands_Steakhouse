@@ -372,13 +372,23 @@ app.get('/api/staff', async (req, res) => {
     }
 });
 
-/* GET STAFF ACCOUNTS */
-app.get('/api/staff', async (req, res) => {
+/* LOG STAFF LOGIN */
+app.post('/api/staff/log-login', async (req, res) => {
+    const { username } = req.body;
     try {
-        const [rows] = await db.query('SELECT username, password_hash FROM staff_credentials');
-        res.json(rows);
+        // 1. Find the specific staff_id for this username
+        const [staff] = await db.query('SELECT staff_id FROM staff_credentials WHERE username = ?', [username]);
+        
+        if (staff.length > 0) {
+            // 2. Record it in the login_logs table
+            await db.query(
+                "INSERT INTO login_logs (user_type, user_id, action) VALUES ('Staff', ?, 'Login Success')",
+                [staff[0].staff_id]
+            );
+        }
+        res.json({ success: true });
     } catch (err) {
-        console.error("Staff Fetch Error:", err);
+        console.error("Staff Logging Error:", err);
         res.status(500).send("Database error");
     }
 });
