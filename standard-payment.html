@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        if (location.protocol === 'file:') {
-            location.replace('http://localhost:3000/standard-payment.html');
-        }
         // Detect if returning from an active/failed PayMongo session
         if (localStorage.getItem('paymongoSessionId')) {
             localStorage.removeItem('paymongoSessionId');
@@ -119,6 +116,7 @@
     </div>
 
     <script>
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
         // ── Detect VIP or Standard ──
         const resType      = localStorage.getItem('reservationType') || 'standard';
         const isVip        = resType === 'vip';
@@ -182,7 +180,7 @@
             const depositLabel = isVip ? "VIP Room Down Payment" : "Standard Reservation Deposit";
 
             try {
-                const nodeRes = await fetch('/api/paymongo/checkout', {
+                const nodeRes = await fetch(`${API_BASE_URL}/api/paymongo/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
