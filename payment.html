@@ -224,7 +224,7 @@
                 const successUrl = base + '/payment-success.html?resno=' + resNo;
                 const cancelUrl  = base + '/pre-order.html?payment=failed';
 
-                const nodeRes = await fetch('${API_BASE_URL}/api/paymongo/checkout', {
+                const nodeRes = await fetch(`${API_BASE_URL}/api/paymongo/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
