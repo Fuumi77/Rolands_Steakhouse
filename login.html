@@ -10,6 +10,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="css/login.css">
     <link rel="stylesheet" href="css/design-system.css">
+    const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app/';
     <script src="js/design-system.js"></script>
     <link rel="stylesheet" href="css/responsive.css">
 </head>
@@ -361,7 +362,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch('http://localhost:3000/login', {
+                const res = await fetch(`${API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -411,7 +412,7 @@
             }
 
             try {
-                const res = await fetch('http://localhost:3000/api/auth/send-signup-code', {
+                const res = await fetch('${API_BASE_URL}/api/auth/send-signup-code', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
@@ -450,7 +451,7 @@
             btn.textContent = 'Verifying...';
 
             try {
-                const verifyRes = await fetch('http://localhost:3000/api/auth/verify-code', {
+                const verifyRes = await fetch('${API_BASE_URL}/api/auth/verify-code', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, code })
@@ -459,7 +460,7 @@
                 
                 if (verifyData.success) {
                     btn.textContent = 'Creating account...';
-                    await fetch('http://localhost:3000/signup', {
+                    await fetch('${API_BASE_URL}/signup', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name, email, password })
