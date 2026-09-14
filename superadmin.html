@@ -869,6 +869,7 @@
     </div><!-- end app-layout / dashboard-section -->
 
     <script>
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
         // Utilities
         async function sha256Hex(str) {
             if (window.crypto && window.crypto.subtle && window.TextEncoder) {
@@ -1744,7 +1745,7 @@
                 let usingCloud = true;
 
                 try {
-                    const response = await fetch('/api/staff?nocache=' + new Date().getTime(), {
+                    const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
                         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
                     });
                     if (response.ok) {
@@ -1797,7 +1798,7 @@
 
                 if (pin === "789456") {
                     try {
-                        await fetch('/api/staff/' + username, { method: 'DELETE' });
+                        await fetch(`${API_BASE_URL}/api/staff/` + username, { method: 'DELETE' });
                     } catch (e) { } // Ignore server disconnects
 
                     const updatedUsers = users.filter(u => u.username !== username);
@@ -1859,7 +1860,7 @@
 
                     let savedToCloud = false;
                     try {
-                        const res = await fetch('/api/staff', {
+                        const res = await fetch(`${API_BASE_URL}/api/staff`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username, passwordHash })
