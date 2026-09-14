@@ -4351,12 +4351,25 @@
                         delete user.password;
                         localStorage.setItem('adminUsers', JSON.stringify(usersNow));
                     }
-
                     // ✅ Login successful
                     authMsg2.style.color = '#16a34a';
                     authMsg2.textContent = '✅ Login successful! Loading dashboard...';
                     setAdminSession(user.username);
+
+                    // 👉 ADDED: Tell Vercel to record the login in the database
+                    try {
+                        await fetch(`${API_BASE_URL}/api/staff/log-login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: user.username })
+                        });
+                    } catch (e) {
+                        console.warn('Failed to log session', e);
+                    }
+
                     setTimeout(() => renderDashboard(), 400);
+
+                    
 
                 } catch (err) {
                     authMsg2.textContent = '⚠️ Error: ' + err.message;
