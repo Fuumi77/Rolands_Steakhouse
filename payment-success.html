@@ -47,6 +47,7 @@
     </div>
 
     <script>
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
         // Grab reservation number from URL or localStorage
         const params = new URLSearchParams(window.location.search);
         const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
