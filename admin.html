@@ -4630,30 +4630,33 @@
                 }
             }
 
-            const reservation = {
-                reservationNumber: resNo,
-                reservationType: walkinType,
-                arrivalDate: date,
-                arrivalTime: time,
-                arrivalDateTimeDisplay: displayDt,
-                customerName: name,
-                contactNumber: contact,
-                bookedTable: table,
-                guestCount: guests,
-                foods: foodArray,
-                orderSummary: orderSummary,
-                beefNote: notes,
-                paymentAmount: walkinType === 'priority' ? payment : 500,
-                paymentStatus: 'walk-in',
-                bookedBy: 'staff',
-                completedAt: new Date().toISOString(),
-                cartItems: structuredCart,
-                stockDeducted: true
-            };
+            // 👉 NEW: Send the manual reservation directly to Vercel/MySQL
+            try {
+                const res = await fetch(`${API_BASE_URL}/reserve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                    name: name,
+                    email: `walkin-${Date.now()}@temp.com`, // Walk-ins don't have emails, so we make a dummy one
+                    date: date,
+                    time: time,
+                    table: table,
+                    cartItems: structuredCart,
+                    status: 'walk-in'
+                    })
+                });
 
-            const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            history.push(reservation);
-            localStorage.setItem('reservationHistory', JSON.stringify(history));
+                if (!res.ok) throw new Error('Database rejected the save');
+
+                // Force the dashboard to immediately pull the updated list from the database
+                if (typeof syncReservations === 'function') await syncReservations();
+
+            } catch (err) {
+                console.error("Failed to save to database:", err);
+                errorEl.textContent = 'Failed to connect to live database.';
+                errorEl.style.display = 'block';
+            return;
+            }
 
             if (typeof renderMenuManagement === 'function') {
                 renderMenuManagement(); // Refresh inventory tab
