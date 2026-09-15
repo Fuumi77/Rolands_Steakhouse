@@ -1174,32 +1174,65 @@
                 return tb - ta;
             });
         }
-        // 👉 NEW: Fetch live reservations from Vercel/MySQL
+        // 👉 NEW: Fetch live reservations from Vercel/MySQL (Smart Merge)
         async function syncReservations() {
             try {
                 const res = await fetch(`${API_BASE_URL}/reservations`);
-                if (res.ok) {
-                    const dbReservations = await res.json();
-            
-                    // Map the database format to what the dashboard expects
-                    const formattedForDashboard = dbReservations.map(dbRes => {
-                        return {
+                if (!res.ok) return;
+                const dbReservations = await res.json();
+        
+                // Get current local rich data (to keep foods, prices, and staff flags)
+                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let updated = false;
+
+                dbReservations.forEach(dbRes => {
+                    // 1. Try to find matching reservation by ID
+                    let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
+
+                    // 2. If no ID match, try matching by Name & Table (Fixes the WI- vs RES- database ID mismatch!)
+                    if (!match) {
+                        match = localHistory.find(local => 
+                            local.customerName === dbRes.customerName && 
+                            local.bookedTable === dbRes.bookedTable
+                        );
+                
+                        if (match) {
+                            // Lock in the official MySQL Database ID so Approve/Reject buttons work!
+                            match.reservationNumber = dbRes.reservationNumber; 
+                            updated = true;
+                        }
+                    }
+
+                    if (match) {
+                        // MERGE: Update the status from DB, but KEEP local foods and payments
+                        if (dbRes.status && dbRes.status !== '' && dbRes.status !== 'pending') {
+                            if (match.approvalStatus !== dbRes.status) {
+                                match.approvalStatus = dbRes.status;
+                                if (dbRes.status === 'seated') match.paymentStatus = 'verified';
+                                updated = true;
+                            }
+                        }
+                    } else {
+                        // Brand new online reservation that the dashboard hasn't seen yet
+                        localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
-                            reservationType: dbRes.reservationType,
+                            reservationType: 'standard',
                             customerName: dbRes.customerName,
                             bookedTable: dbRes.bookedTable,
                             arrivalDate: dbRes.arrivalDate,
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
-                            approvalStatus: dbRes.status,
-                            paymentStatus: dbRes.status === 'pending' ? 'pending' : 'paid',
+                            approvalStatus: dbRes.status || 'pending',
+                            paymentStatus: 'pending',
                             foods: [], 
-                            paymentAmount: 200 
-                        };
-                    });
+                            paymentAmount: 0 
+                        });
+                        updated = true;
+                    }
+                });
 
-                    // Update the local dashboard with the real live data
-                    localStorage.setItem('reservationHistory', JSON.stringify(formattedForDashboard));
+                if (updated) {
+                    localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
                     renderDashboard();
                 }
             } catch (err) {
