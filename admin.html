@@ -1174,6 +1174,38 @@
                 return tb - ta;
             });
         }
+        // 👉 NEW: Fetch live reservations from Vercel/MySQL
+        async function syncReservations() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/reservations`);
+                if (res.ok) {
+                    const dbReservations = await res.json();
+            
+                    // Map the database format to what the dashboard expects
+                    const formattedForDashboard = dbReservations.map(dbRes => {
+                        return {
+                            reservationNumber: dbRes.reservationNumber,
+                            reservationType: dbRes.reservationType,
+                            customerName: dbRes.customerName,
+                            bookedTable: dbRes.bookedTable,
+                            arrivalDate: dbRes.arrivalDate,
+                            arrivalTime: dbRes.arrivalTime,
+                            arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
+                            approvalStatus: dbRes.status,
+                            paymentStatus: dbRes.status === 'pending' ? 'pending' : 'paid',
+                            foods: [], 
+                            paymentAmount: 200 
+                        };
+                    });
+
+                    // Update the local dashboard with the real live data
+                    localStorage.setItem('reservationHistory', JSON.stringify(formattedForDashboard));
+                    renderDashboard();
+                }
+            } catch (err) {
+                console.error("Failed to sync reservations from Vercel:", err);
+            }
+        }
 
         function setAdminSession(username) {
             sessionStorage.setItem('adminLoggedInUser', username);
@@ -2949,10 +2981,10 @@
                 });
                 listEl.innerHTML = html;
             };
-
             // Bind pollers
             if (!window.isPollingActive) {
                 setInterval(() => {
+                    syncReservations();
                     renderFloorPlan();
                     renderAdminChats();
                     renderPayments();
@@ -2960,6 +2992,7 @@
                 }, 5000);
                 window.isPollingActive = true;
             }
+            syncReservations();
             renderFloorPlan();
             renderPayments();
             renderPromosAdmin();
