@@ -1167,7 +1167,7 @@
 
         function getReservationHistory() {
             let hist = safeJsonParse(localStorage.getItem('reservationHistory'), []) || [];
-            }
+            
             return hist.sort((a, b) => {
                 const ta = parseRecordDate(a).getTime();
                 const tb = parseRecordDate(b).getTime();
