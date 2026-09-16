@@ -1214,7 +1214,7 @@ async function syncReservations() {
                 const isPending = dbStatus === 'pending';
                 if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
                     match.approvalStatus = dbStatus;
-                    if (dbStatus === 'seated') match.paymentStatus = 'verified';
+                    if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
                     if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
                     updated = true;
                 }
@@ -1473,6 +1473,9 @@ async function syncReservations() {
                         approvalBtns = `<div style="font-size:11px; color:#1b5e20; font-weight:bold; margin-top:4px; text-align:center;">Seated</div>`;
                     } else if (aStatus === 'rejected' || aStatus === 'cancelled') {
                         approvalBtns = `<div style="font-size:11px; color:#991b1b; font-weight:bold; margin-top:4px; text-align:center;">${aStatus === 'cancelled' ? 'Cancelled' : 'Rejected'}</div>`;
+                    } else if (aStatus === 'completed') {
+                        // 👉 ADDED: Clean green text for Completed reservations
+                        approvalBtns = `<div style="font-size:12px; color:#16a34a; font-weight:bold; margin-top:4px; text-align:center;">Completed</div>`;
                     }
 
                     const isCancelledOrRejected = aStatus === 'rejected' || aStatus === 'cancelled' || r.kdsStatus === 'cancelled';
@@ -1641,6 +1644,14 @@ async function syncReservations() {
             };
 
             window.approveReservation = async function (resNum) {
+    // 👉 NEW: Confirmation Pop-up for Approvals
+    const confirmed = await superModal({
+        title: 'Approve Reservation? ✅',
+        message: `Approve Reservation #${resNum}?\n\nThis will confirm the booking, verify the payment, and reserve the table on the floor plan.`,
+        type: 'confirm'
+    });
+    if (!confirmed) return;
+
     const hist = getReservationHistory();
     const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum || String(h.id) === String(resNum) || h.resNumber === resNum));
     if (idx === -1) {
@@ -1691,9 +1702,10 @@ async function syncReservations() {
 
     // 3. Update local state
     r.approvalStatus = 'approved';
+    r.paymentStatus = 'verified'; // Instantly verifies payment
     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-    // 👉 NEW: Automatically set the floor plan table to "Reserved"
+    // Automatically set the floor plan table to "Reserved"
     if (r.bookedTable) {
         try {
             const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
@@ -1709,7 +1721,6 @@ async function syncReservations() {
     renderDashboard();
     if (typeof renderFloorPlan === 'function') renderFloorPlan();
 };
-
             // 👉 NEW: Safe Reject Function (Prevents popup spam)
 window.rejectReservation = async function (resNum) {
     const confirmed = await superModal({
