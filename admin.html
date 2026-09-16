@@ -1227,6 +1227,7 @@ async function syncReservations() {
                     arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                     approvalStatus: dbStatus,
                     paymentStatus: 'pending',
+                    createdAt: new Date().toISOString(),
                     foods: [], 
                     paymentAmount: 0 
                 });
@@ -1343,7 +1344,7 @@ async function syncReservations() {
                     const tr = document.createElement('tr');
 
                     // NEW HIGHLIGHT LOGIC: Less than 1 minute old
-                    const createdTime = r.completedAt ? new Date(r.completedAt).getTime() : 0;
+                    const createdTime = r.createdAt ? new Date(r.createdAt).getTime() : 0;
                     const isNew = createdTime && (Date.now() - createdTime < 60000);
 
                     if (isNew) {
@@ -2176,7 +2177,7 @@ window.rejectReservation = async function (resNum) {
                 if (!fp) return;
                 fp.innerHTML = '';
                 const floorConfig = getFloorPlanConfig();
-                // Keep this view simple for staff: always a clean responsive grid.
+                
                 fp.style.position = '';
                 fp.style.minHeight = '';
                 fp.style.display = '';
@@ -2186,13 +2187,14 @@ window.rejectReservation = async function (resNum) {
                     const tId = t.id;
                     const status = overrides[tId] || 'available';
 
-                    // 👉 FIX 3: Hide completed/cancelled reservations from Floor Plan badge
+                    // 👉 FIX: Cleanly filter out completed and cancelled reservations from the Floor Plan badge
                     const tableReservations = hist.filter(r => 
                         r.bookedTable === tId && 
                         !r.completedAt && 
                         r.approvalStatus !== 'rejected' && 
                         r.approvalStatus !== 'cancelled'
-                    );const tableReservations = hist.filter(r => r.bookedTable === tId);
+                    );
+                    
                     const nextRes = tableReservations.find(r => !r.completedAt);
                     const metaText = nextRes ? `${nextRes.arrivalDate || ''} @ ${nextRes.arrivalTime || '?'}` : '';
 
@@ -2201,7 +2203,6 @@ window.rejectReservation = async function (resNum) {
                     card.style.cursor = 'pointer';
                     card.setAttribute('draggable', 'true');
 
-                    // Optional: allow re-ordering tables in staff view (lightweight).
                     card.addEventListener('dragstart', (e) => {
                         e.dataTransfer.setData('text/plain', tId);
                         card.style.opacity = '0.6';
@@ -2236,7 +2237,6 @@ window.rejectReservation = async function (resNum) {
                     `;
 
                     card.addEventListener('click', (e) => {
-                        // Open the toast panel for this table
                         openFloorToast(tId, hist, overrides);
                     });
 
@@ -4758,6 +4758,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             beefNote: notes,
             paymentAmount: walkinType === 'priority' ? payment : 200,
             paymentStatus: 'pending',
+            createdAt: new Date().toISOString(),
             approvalStatus: 'pending',
             bookedBy: 'staff',
             completedAt: null, // 👉 FIX: Keeps the reservation active on the Floor Plan!
