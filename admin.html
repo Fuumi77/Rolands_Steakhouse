@@ -4592,132 +4592,176 @@
         };
 
         window.submitWalkinReservation = async function () {
-            const errorEl = document.getElementById('walkin-error');
-            errorEl.style.display = 'none';
+    const errorEl = document.getElementById('walkin-error');
+    errorEl.style.display = 'none';
 
-            const name = (document.getElementById('walkin-name').value || '').trim();
-            const contact = (document.getElementById('walkin-contact').value || '').trim();
-            const date = document.getElementById('walkin-date').value;
-            const time = document.getElementById('walkin-time').value;
-            const table = document.getElementById('walkin-table').value;
-            const guests = document.getElementById('walkin-guests').value;
-            const payment = parseFloat(document.getElementById('walkin-payment').value) || 0;
-            const notes = (document.getElementById('walkin-notes').value || '').trim();
+    // 👉 NEW: Grab the button to create a Loading State
+    const submitBtn = document.querySelector('button[onclick="submitWalkinReservation()"]');
+    const originalBtnHtml = submitBtn.innerHTML;
 
-            if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
-            if (!date) { errorEl.textContent = 'Arrival date is required.'; errorEl.style.display = 'block'; return; }
-            if (!time) { errorEl.textContent = 'Arrival time is required.'; errorEl.style.display = 'block'; return; }
-            if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
+    const name = (document.getElementById('walkin-name').value || '').trim();
+    const contact = (document.getElementById('walkin-contact').value || '').trim();
+    const date = document.getElementById('walkin-date').value;
+    const time = document.getElementById('walkin-time').value;
+    const table = document.getElementById('walkin-table').value;
+    const guests = document.getElementById('walkin-guests').value;
+    const payment = parseFloat(document.getElementById('walkin-payment').value) || 0;
+    const notes = (document.getElementById('walkin-notes').value || '').trim();
 
-            const d = new Date(date + 'T' + time);
-            const displayDt = isNaN(d) ? date + ' ' + time : d.toLocaleString(undefined, {
-                weekday: 'short', month: 'short', day: 'numeric',
-                hour: '2-digit', minute: '2-digit', hour12: false
-            });
+    if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
+    if (!date) { errorEl.textContent = 'Arrival date is required.'; errorEl.style.display = 'block'; return; }
+    if (!time) { errorEl.textContent = 'Arrival time is required.'; errorEl.style.display = 'block'; return; }
+    if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
 
-            const resNo = 'WI-' + Math.floor(100000 + Math.random() * 900000);
+    // 👉 NEW: Start Loading State
+    submitBtn.innerHTML = '⏳ Saving to Database...';
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
 
-            // Reconstruct foodArray from currentSelection
-            const invItems = getInventory();
-            const foodArray = [];
-            let orderSummary = "";
+    const d = new Date(date + 'T' + time);
+    const displayDt = isNaN(d) ? date + ' ' + time : d.toLocaleString(undefined, {
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    });
 
-            for (const id in currentSelection) {
-                const item = invItems.find(i => i.id === id);
-                if (item) {
-                    const qty = currentSelection[id];
-                    foodArray.push(`${qty}x ${item.title}`);
+    const resNo = 'WI-' + Math.floor(100000 + Math.random() * 900000);
+
+    const invItems = getInventory();
+    const foodArray = [];
+    let orderSummary = "";
+
+    for (const id in currentSelection) {
+        const item = invItems.find(i => i.id === id);
+        if (item) {
+            const qty = currentSelection[id];
+            foodArray.push(`${qty}x ${item.title}`);
+        }
+    }
+    orderSummary = foodArray.join(', ');
+
+    const structuredCart = [];
+    for (const id in currentSelection) {
+        if (currentSelection[id] > 0) {
+            structuredCart.push({ id: id, quantity: currentSelection[id] });
+        }
+    }
+
+    if (structuredCart.length > 0 && window.InventorySystem) {
+        if (typeof window.InventorySystem.validateOrderIngredients === 'function') {
+            const check = window.InventorySystem.validateOrderIngredients(structuredCart);
+            if (!check.isValid) {
+                const list = check.shortages.map(s => `${s.ingredientName}: needed ${s.needed}${s.unit}, only ${s.available}${s.unit} left`).join(', ');
+                if (window.showToast) {
+                    window.showToast(`Cannot save walk-in: ${list}`, 'error', 5000);
+                } else {
+                    alert(`Cannot save walk-in due to kitchen shortage: ${list}`);
                 }
+                // Stop Loading State
+                submitBtn.innerHTML = originalBtnHtml;
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                return;
             }
-            orderSummary = foodArray.join(', ');
+        }
 
-            // Build structured cart for raw ingredient deduction
-            const structuredCart = [];
-            for (const id in currentSelection) {
-                if (currentSelection[id] > 0) {
-                    structuredCart.push({ id: id, quantity: currentSelection[id] });
-                }
+        if (typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+            const deductResult = window.InventorySystem.deductIngredientsForOrder(structuredCart, 'Admin Walk-in', resNo);
+            if (!deductResult.success) {
+                alert('Stock deduction failed: ' + (deductResult.error || 'Insufficient stock'));
+                // Stop Loading State
+                submitBtn.innerHTML = originalBtnHtml;
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                return;
             }
+        }
+    }
 
-            // Pre-flight check & atomic raw ingredient deduction
-            if (structuredCart.length > 0 && window.InventorySystem) {
-                if (typeof window.InventorySystem.validateOrderIngredients === 'function') {
-                    const check = window.InventorySystem.validateOrderIngredients(structuredCart);
-                    if (!check.isValid) {
-                        const list = check.shortages.map(s => `${s.ingredientName}: needed ${s.needed}${s.unit}, only ${s.available}${s.unit} left`).join(', ');
-                        if (window.showToast) {
-                            window.showToast(`Cannot save walk-in: ${list}`, 'error', 5000);
-                        } else {
-                            alert(`Cannot save walk-in due to kitchen shortage: ${list}`);
-                        }
-                        return;
-                    }
-                }
+    try {
+        // 1. Save to live MySQL database
+        const res = await fetch(`${API_BASE_URL}/reserve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                email: `walkin-${Date.now()}@temp.com`,
+                date: date,
+                time: time,
+                table: table,
+                cartItems: structuredCart,
+                status: 'walk-in'
+            })
+        });
 
-                if (typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
-                    const deductResult = window.InventorySystem.deductIngredientsForOrder(structuredCart, 'Admin Walk-in', resNo);
-                    if (!deductResult.success) {
-                        alert('Stock deduction failed: ' + (deductResult.error || 'Insufficient stock'));
-                        return;
-                    }
-                }
-            }
+        if (!res.ok) throw new Error('Database rejected the save');
 
-            // 👉 NEW: Send the manual reservation directly to Vercel/MySQL
-            try {
-                const res = await fetch(`${API_BASE_URL}/reserve`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                    name: name,
-                    email: `walkin-${Date.now()}@temp.com`, // Walk-ins don't have emails, so we make a dummy one
-                    date: date,
-                    time: time,
-                    table: table,
-                    cartItems: structuredCart,
-                    status: 'walk-in'
-                    })
-                });
-
-                if (!res.ok) throw new Error('Database rejected the save');
-
-                // Force the dashboard to immediately pull the updated list from the database
-                if (typeof syncReservations === 'function') await syncReservations();
-
-            } catch (err) {
-                console.error("Failed to save to database:", err);
-                errorEl.textContent = 'Failed to connect to live database.';
-                errorEl.style.display = 'block';
-            return;
-            }
-
-            if (typeof renderMenuManagement === 'function') {
-                renderMenuManagement(); // Refresh inventory tab
-            }
-
-            // Show success toast
-            const toast = document.getElementById('walkin-toast');
-            toast.textContent = `✅ Reservation ${resNo} saved for ${name} — ${table} on ${displayDt}`;
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 5000);
-
-            // Reset form
-            document.getElementById('walkin-name').value = '';
-            document.getElementById('walkin-contact').value = '';
-            const now = new Date();
-            document.getElementById('walkin-date').value = now.toISOString().split('T')[0];
-            document.getElementById('walkin-time').value = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-            document.getElementById('walkin-table').value = '';
-            document.getElementById('walkin-guests').value = '';
-            document.getElementById('walkin-payment').value = '';
-            document.getElementById('walkin-notes').value = '';
-            document.getElementById('walkin-food-search').value = '';
-            document.getElementById('walkin-order-summary').innerHTML = "No items selected yet.";
-            currentSelection = {};
-            tempWalkinOrder = {};
-
-            renderRecentWalkins();
+        // 2. 👉 FIX: Save the rich object to local memory first so 'bookedBy: staff' and foods are kept!
+        const reservation = {
+            reservationNumber: resNo,
+            reservationType: walkinType,
+            arrivalDate: date,
+            arrivalTime: time,
+            arrivalDateTimeDisplay: displayDt,
+            customerName: name,
+            contactNumber: contact,
+            bookedTable: table,
+            guestCount: guests,
+            foods: foodArray,
+            orderSummary: orderSummary,
+            beefNote: notes,
+            paymentAmount: walkinType === 'priority' ? payment : 500,
+            paymentStatus: 'walk-in',
+            approvalStatus: 'approved',
+            bookedBy: 'staff',
+            completedAt: new Date().toISOString(),
+            cartItems: structuredCart,
+            stockDeducted: true
         };
+
+        const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        history.push(reservation);
+        localStorage.setItem('reservationHistory', JSON.stringify(history));
+
+        // 3. Force the smart merge to update the WI- ID to the official MySQL RES- ID
+        if (typeof syncReservations === 'function') await syncReservations();
+
+        if (typeof renderMenuManagement === 'function') {
+            renderMenuManagement();
+        }
+
+        const toast = document.getElementById('walkin-toast');
+        toast.textContent = `✅ Reservation saved for ${name} — ${table}`;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 5000);
+
+        // Reset form
+        document.getElementById('walkin-name').value = '';
+        document.getElementById('walkin-contact').value = '';
+        const now = new Date();
+        document.getElementById('walkin-date').value = now.toISOString().split('T')[0];
+        document.getElementById('walkin-time').value = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        document.getElementById('walkin-table').value = '';
+        document.getElementById('walkin-guests').value = '';
+        document.getElementById('walkin-payment').value = '';
+        document.getElementById('walkin-notes').value = '';
+        document.getElementById('walkin-food-search').value = '';
+        document.getElementById('walkin-order-summary').innerHTML = "No items selected yet.";
+        currentSelection = {};
+        tempWalkinOrder = {};
+
+        renderRecentWalkins();
+
+    } catch (err) {
+        console.error("Failed to save to database:", err);
+        errorEl.textContent = 'Failed to connect to live database.';
+        errorEl.style.display = 'block';
+    } finally {
+        // 👉 NEW: Remove Loading State
+        submitBtn.innerHTML = originalBtnHtml;
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+};
 
         function renderRecentWalkins() {
             const container = document.getElementById('walkin-recent-list');
