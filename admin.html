@@ -1175,70 +1175,84 @@
             });
         }
         // 👉 NEW: Fetch live reservations from Vercel/MySQL (Smart Merge)
-        async function syncReservations() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/reservations`);
-                if (!res.ok) return;
-                const dbReservations = await res.json();
+async function syncReservations() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/reservations`);
+        if (!res.ok) return;
+        const dbReservations = await res.json();
         
-                // Get current local rich data (to keep foods, prices, and staff flags)
-                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-                let updated = false;
+        let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        let updated = false;
 
-                dbReservations.forEach(dbRes => {
-                    // 1. Try to find matching reservation by ID
-                    let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
+        dbReservations.forEach(dbRes => {
+            let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
-                    // 2. If no ID match, try matching by Name & Table (Fixes the WI- vs RES- database ID mismatch!)
-                    if (!match) {
-                        match = localHistory.find(local => 
-                            local.customerName === dbRes.customerName && 
-                            local.bookedTable === dbRes.bookedTable
-                        );
+            // 👉 FIX: Bulletproof matching using lowercase names and stripped table numbers!
+            if (!match) {
+                match = localHistory.find(local => {
+                    const localName = String(local.customerName).toLowerCase().trim();
+                    const dbName = String(dbRes.customerName).toLowerCase().trim();
+                    const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
+                    const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
+                    
+                    return localName === dbName && localTab === dbTab && String(local.reservationNumber).startsWith('WI-');
+                });
                 
-                        if (match) {
-                            // Lock in the official MySQL Database ID so Approve/Reject buttons work!
-                            match.reservationNumber = dbRes.reservationNumber; 
-                            updated = true;
-                        }
-                    }
+                if (match) {
+                    match.reservationNumber = dbRes.reservationNumber; // Lock in official DB ID
+                    updated = true;
+                }
+            }
 
-                    if (match) {
-                        // MERGE: Update the status from DB, but KEEP local foods and payments
-                        if (dbRes.status && dbRes.status !== '' && dbRes.status !== 'pending') {
-                            if (match.approvalStatus !== dbRes.status) {
-                                match.approvalStatus = dbRes.status;
-                                if (dbRes.status === 'seated') match.paymentStatus = 'verified';
-                                updated = true;
-                            }
-                        }
-                    } else {
-                        // Brand new online reservation that the dashboard hasn't seen yet
-                        localHistory.push({
-                            reservationNumber: dbRes.reservationNumber,
-                            reservationType: 'standard',
-                            customerName: dbRes.customerName,
-                            bookedTable: dbRes.bookedTable,
-                            arrivalDate: dbRes.arrivalDate,
-                            arrivalTime: dbRes.arrivalTime,
-                            arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
-                            approvalStatus: dbRes.status || 'pending',
-                            paymentStatus: 'pending',
-                            foods: [], 
-                            paymentAmount: 0 
-                        });
+            if (match) {
+                // 👉 FIX: Convert 'walk-in' status from DB into 'approved' for the dashboard
+                let dbStatus = dbRes.status === 'walk-in' ? 'approved' : dbRes.status;
+                
+                if (dbStatus && dbStatus !== '' && dbStatus !== 'pending') {
+                    if (match.approvalStatus !== dbStatus) {
+                        match.approvalStatus = dbStatus;
+                        if (dbStatus === 'seated') match.paymentStatus = 'verified';
                         updated = true;
                     }
-                });
-
-                if (updated) {
-                    localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
-                    renderDashboard();
                 }
-            } catch (err) {
-                console.error("Failed to sync reservations from Vercel:", err);
+            } else {
+                localHistory.push({
+                    reservationNumber: dbRes.reservationNumber,
+                    reservationType: 'standard',
+                    customerName: dbRes.customerName,
+                    bookedTable: dbRes.bookedTable,
+                    arrivalDate: dbRes.arrivalDate,
+                    arrivalTime: dbRes.arrivalTime,
+                    arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
+                    approvalStatus: dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending'),
+                    paymentStatus: 'pending',
+                    foods: [], 
+                    paymentAmount: 0 
+                });
+                updated = true;
             }
+        });
+
+        // 👉 CLEANUP: Remove old stranded WI- duplicates that got successfully merged
+        const originalLength = localHistory.length;
+        localHistory = localHistory.filter(h => {
+            if (String(h.reservationNumber).startsWith('WI-')) {
+                // Only keep WI- if it was created within the last 30 seconds
+                const age = Date.now() - new Date(h.completedAt || Date.now()).getTime();
+                return age < 30000; 
+            }
+            return true;
+        });
+        if (localHistory.length !== originalLength) updated = true;
+
+        if (updated) {
+            localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
+            renderDashboard();
         }
+    } catch (err) {
+        console.error("Failed to sync reservations from Vercel:", err);
+    }
+}
 
         function setAdminSession(username) {
             sessionStorage.setItem('adminLoggedInUser', username);
@@ -1684,68 +1698,62 @@
             };
 
             window.rejectReservation = async function (resNum) {
-                const confirmed = confirm(`Cancel / Reject Reservation #${resNum}?\n\nThis will release the booked table and automatically return raw food ingredients to inventory.`);
-                if (!confirmed) return;
+    const confirmed = await superModal({
+        title: 'Reject Reservation? ❌',
+        message: `Cancel Reservation #${resNum}?\n\nThis will release the table and return ingredients to stock.`,
+        type: 'confirm'
+    });
+    if (!confirmed) return;
 
-                if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-                    window.InventorySystem.cancelReservationWithFood({
-                        reservationNumber: resNum,
-                        reason: 'Rejected by Admin',
-                        cancelledBy: 'admin',
-                        operator: 'Admin Staff'
-                    });
-                    if (window.showToast) {
-                        window.showToast(`Reservation ${resNum} Rejected & Inventory Restored`, 'info', 3500);
-                    }
-                    renderDashboard();
-                    if (typeof renderFloorPlan === 'function') renderFloorPlan();
-                    return;
-                }
+    const hist = getReservationHistory();
+    const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum));
+    if (idx === -1) return;
+    const r = hist[idx];
 
-                const hist = getReservationHistory();
-                const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum || String(h.id) === String(resNum) || h.resNumber === resNum));
-                if (idx === -1) {
-                    console.warn("Reservation not found for rejection:", resNum);
-                    return;
-                }
-                const r = hist[idx];
+    // 1. Process Inventory Return
+    if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
+        window.InventorySystem.cancelReservationWithFood({
+            reservationNumber: resNum,
+            reason: 'Rejected by Admin',
+            cancelledBy: 'admin',
+            operator: 'Admin Staff'
+        });
+        // 👉 FIX: The rogue "return;" that broke the database sync has been removed!
+    }
 
-                try {
-                    fetch(`${API_BASE_URL}/api/reservations/update-status`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'rejected' })
-                    }).catch(err => console.warn('Sync notice:', err));
-                } catch (e) { }
+    // 2. Update the live MySQL Database
+    try {
+        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: r.reservationNumber, status: 'rejected' })
+        });
+    } catch (e) {
+        console.error('Failed to sync rejection to DB:', e);
+    }
 
-                r.approvalStatus = 'rejected';
-                r.kdsStatus = 'cancelled';
-                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+    // 3. Update Local Memory
+    r.approvalStatus = 'rejected';
+    r.kdsStatus = 'cancelled';
+    r.completedAt = new Date().toISOString();
+    localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-                // Restore raw ingredient stock if order items exist
-                if (r && window.InventorySystem) {
-                    const itemsToRefund = r.cartItems || r.foods || r.preOrders || r.orderSummary;
-                    if (Array.isArray(itemsToRefund) && itemsToRefund.length > 0) {
-                        window.InventorySystem.restoreIngredientsForOrder(itemsToRefund, `Reservation Rejected #${resNum}`, 'Admin');
-                    }
-                }
+    // 4. Free the table
+    if (r.bookedTable) {
+        try {
+            const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+            overrides[r.bookedTable] = 'available';
+            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+        } catch(e) {}
+    }
 
-                // Release table
-                if (r.bookedTable) {
-                    try {
-                        const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                        overrides[r.bookedTable] = 'available';
-                        localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                    } catch(e) {}
-                }
+    if (window.showToast) {
+        window.showToast(`Reservation ${resNum} Rejected`, 'info', 3500);
+    }
 
-                if (window.showToast) {
-                    window.showToast(`Reservation ${resNum} Rejected`, 'info', 3500);
-                }
-
-                renderDashboard();
-                if (typeof renderFloorPlan === 'function') renderFloorPlan();
-            };
+    renderDashboard();
+    if (typeof renderFloorPlan === 'function') renderFloorPlan();
+};
 
             window.markSeated = async function (resNum) {
                 const hist = getReservationHistory();
