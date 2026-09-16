@@ -167,8 +167,10 @@
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Arrival
                                 Time *</label>
-                            <input type="time" id="walkin-time" title="Arrival Time" aria-label="Arrival Time"
+                            <input type="time" id="walkin-time" title="Arrival Time" aria-label="Arrival Time" min="10:30" max="21:00"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
+                            <!-- 👉 NEW: Helper text just like the customer side -->
+                            <div style="font-size:11px; color:#64748b; margin-top:4px; font-weight: 500;">Available: 10:30 AM - 9:00 PM</div>
                         </div>
                         <div>
                             <label
@@ -4658,6 +4660,10 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
     if (!date) { errorEl.textContent = 'Arrival date is required.'; errorEl.style.display = 'block'; return; }
     if (!time) { errorEl.textContent = 'Arrival time is required.'; errorEl.style.display = 'block'; return; }
+    if (time < '10:30' || time > '21:00') { 
+        errorEl.textContent = 'Reservations must be between 10:30 AM and 9:00 PM.'; 
+        errorEl.style.display = 'block'; 
+        return; }
     if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
 
     // 👉 NEW: Start Loading State
@@ -4787,7 +4793,12 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         document.getElementById('walkin-contact').value = '';
         const now = new Date();
         document.getElementById('walkin-date').value = now.toISOString().split('T')[0];
-        document.getElementById('walkin-time').value = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        
+        // 👉 NEW: Clamped Reset
+        let tStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        if (tStr < '10:30') tStr = '10:30';
+        if (tStr > '21:00') tStr = '21:00';
+        document.getElementById('walkin-time').value = tStr;
         document.getElementById('walkin-table').value = '';
         document.getElementById('walkin-guests').value = '';
         document.getElementById('walkin-payment').value = '';
@@ -4917,10 +4928,13 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (dateInput && !dateInput.value) {
                     dateInput.value = new Date().toISOString().split('T')[0];
                 }
-                // Auto-set time to now if empty
+                // Auto-set time to now if empty (with clamps)
                 if (timeInput && !timeInput.value) {
                     const now = new Date();
-                    timeInput.value = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                    let tStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                    if (tStr < '10:30') tStr = '10:30';
+                    if (tStr > '21:00') tStr = '21:00';
+                    timeInput.value = tStr;
                 }
                 renderRecentWalkins();
             }
