@@ -4679,7 +4679,7 @@ window.rejectReservation = async function (resNum) {
                 time: time,
                 table: table,
                 cartItems: structuredCart,
-                status: 'approved'
+                status: 'pending'
             })
         });
 
@@ -4701,7 +4701,7 @@ window.rejectReservation = async function (resNum) {
             beefNote: notes,
             paymentAmount: walkinType === 'priority' ? payment : 500,
             paymentStatus: 'walk-in',
-            approvalStatus: 'approved',
+            approvalStatus: 'pending',
             bookedBy: 'staff',
             completedAt: new Date().toISOString(),
             cartItems: structuredCart,
