@@ -34,7 +34,11 @@ const pool = mysql.createPool({
 const db = pool.promise();
 
 db.query('SELECT 1')
-    .then(() => console.log('✅ Connected to Hostinger MySQL Database!'))
+    .then(() => {
+        console.log('✅ Connected to Hostinger MySQL Database!');
+        // 👉 FIX: Upgrade the strict status column so it flawlessly accepts Approved, Seated, and Completed
+        db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
+    })
     .catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 
