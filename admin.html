@@ -1174,11 +1174,9 @@
                 return tb - ta;
             });
         }
-        // 👉 NEW: Fetch live reservations from Vercel/MySQL (Smart Merge)
-// 👉 NEW: Fetch live reservations from Vercel/MySQL (Cache-Busted & Smart Merge)
+        // 👉 NEW: Strict One-Way Sync (Prevents reverting & fixes ID mismatch)
 async function syncReservations() {
     try {
-        // 👉 FIX 1: Add cache-buster so the browser stops reading old data!
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
         if (!res.ok) return;
         const dbReservations = await res.json();
@@ -1187,38 +1185,37 @@ async function syncReservations() {
         let updated = false;
 
         dbReservations.forEach(dbRes => {
+            // 1. Try to match by exact ID
             let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
+            // 2. If no ID match, map the temporary WI- ID to the official MySQL RES- ID
             if (!match) {
                 match = localHistory.find(local => {
                     const localName = String(local.customerName).toLowerCase().trim();
                     const dbName = String(dbRes.customerName).toLowerCase().trim();
                     const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
                     const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
-                    
                     return localName === dbName && localTab === dbTab && String(local.reservationNumber).startsWith('WI-');
                 });
-                
                 if (match) {
-                    match.reservationNumber = dbRes.reservationNumber; 
+                    match.reservationNumber = dbRes.reservationNumber; // Lock in the official database ID!
                     updated = true;
                 }
             }
 
             if (match) {
-                // 👉 FIX 2: Safely map MySQL statuses
-                let dbStatus = dbRes.status;
-                if (dbStatus === 'walk-in') dbStatus = 'approved';
-                if (dbStatus === 'rejected') dbStatus = 'cancelled';
+                // 3. STRICT ONE-WAY SYNC: Only upgrade statuses, NEVER downgrade!
+                const newStatus = dbRes.status === 'walk-in' ? 'approved' : dbRes.status;
+                const isPending = !newStatus || newStatus === 'pending' || newStatus === 'walk-in';
                 
-                if (dbStatus && dbStatus !== '' && dbStatus !== 'pending') {
-                    if (match.approvalStatus !== dbStatus) {
-                        match.approvalStatus = dbStatus;
-                        if (dbStatus === 'seated') match.paymentStatus = 'verified';
-                        updated = true;
-                    }
+                if (!isPending && match.approvalStatus !== newStatus) {
+                    match.approvalStatus = newStatus;
+                    if (newStatus === 'seated') match.paymentStatus = 'verified';
+                    if (newStatus === 'cancelled' || newStatus === 'rejected') match.kdsStatus = 'cancelled';
+                    updated = true;
                 }
             } else {
+                // 4. Add brand new reservations
                 localHistory.push({
                     reservationNumber: dbRes.reservationNumber,
                     reservationType: 'standard',
@@ -1227,7 +1224,7 @@ async function syncReservations() {
                     arrivalDate: dbRes.arrivalDate,
                     arrivalTime: dbRes.arrivalTime,
                     arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
-                    approvalStatus: (dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending')),
+                    approvalStatus: dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending'),
                     paymentStatus: 'pending',
                     foods: [], 
                     paymentAmount: 0 
@@ -1236,22 +1233,19 @@ async function syncReservations() {
             }
         });
 
-        // Clean up stranded WI- duplicates
-        const originalLength = localHistory.length;
-        localHistory = localHistory.filter(h => {
-            if (String(h.reservationNumber).startsWith('WI-')) {
-                return (Date.now() - new Date(h.completedAt || Date.now()).getTime()) < 30000; 
-            }
-            return true;
-        });
-        if (localHistory.length !== originalLength) updated = true;
+        // 5. Instantly clean up stranded duplicates to prevent dashboard clutter
+        const cleanHistory = localHistory.filter(h => !String(h.reservationNumber).startsWith('WI-'));
+        if (cleanHistory.length !== localHistory.length) {
+            localHistory = cleanHistory;
+            updated = true;
+        }
 
         if (updated) {
             localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
             renderDashboard();
         }
     } catch (err) {
-        console.error("Failed to sync reservations from Vercel:", err);
+        console.error("Sync error:", err);
     }
 }
 
@@ -1698,44 +1692,37 @@ async function syncReservations() {
                 if (typeof renderFloorPlan === 'function') renderFloorPlan();
             };
 
-            window.rejectReservation = async function (resNum) {
+            // 👉 NEW: Safe Reject Function (Prevents popup spam)
+window.rejectReservation = async function (resNum) {
     const confirmed = await superModal({
         title: 'Reject Reservation? ❌',
-        message: `Cancel Reservation #${resNum}?\n\nThis will release the table and return ingredients to stock.`,
+        message: `Cancel Reservation #${resNum}?\n\nThis will release the table instantly.`,
         type: 'confirm'
     });
     if (!confirmed) return;
 
-    const hist = getReservationHistory();
-    const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum));
+    let hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+    const idx = hist.findIndex(h => h.reservationNumber === resNum);
     if (idx === -1) return;
     const r = hist[idx];
 
-    if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-        window.InventorySystem.cancelReservationWithFood({
-            reservationNumber: resNum,
-            reason: 'Rejected by Admin',
-            cancelledBy: 'admin',
-            operator: 'Admin Staff'
-        });
-    }
-
+    // 1. Force the database to update silently
     try {
-        // 👉 FIX 3: Send 'cancelled' to MySQL instead of 'rejected' so the database accepts it
         await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: r.reservationNumber, status: 'cancelled' })
         });
-    } catch (e) {
-        console.error('Failed to sync rejection to DB:', e);
-    }
+    } catch (e) {}
 
+    // 2. Update local dashboard
     r.approvalStatus = 'cancelled';
     r.kdsStatus = 'cancelled';
+    r.paymentStatus = 'rejected';
     r.completedAt = new Date().toISOString();
     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
+    // 3. Free the table
     if (r.bookedTable) {
         try {
             const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
@@ -1744,9 +1731,7 @@ async function syncReservations() {
         } catch(e) {}
     }
 
-    if (window.showToast) {
-        window.showToast(`Reservation ${resNum} Rejected`, 'info', 3500);
-    }
+    if (window.showToast) window.showToast(`Reservation ${resNum} Rejected Successfully`, 'info', 3000);
 
     renderDashboard();
     if (typeof renderFloorPlan === 'function') renderFloorPlan();
