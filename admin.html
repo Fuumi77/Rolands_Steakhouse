@@ -4664,7 +4664,17 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         errorEl.textContent = 'Reservations must be between 10:30 AM and 9:00 PM.'; 
         errorEl.style.display = 'block'; 
         return; }
+    const selectedDateTime = new Date(date + 'T' + time);
+    const currentDateTime = new Date();
+    currentDateTime.setMinutes(currentDateTime.getMinutes() - 5); 
+
+    if (selectedDateTime < currentDateTime) {
+        errorEl.textContent = 'Cannot save a reservation in the past.';
+        errorEl.style.display = 'block';
+        return;
+    }
     if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
+    
 
     // 👉 NEW: Start Loading State
     submitBtn.innerHTML = '⏳ Saving to Database...';
