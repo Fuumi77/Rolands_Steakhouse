@@ -1174,7 +1174,7 @@
                 return tb - ta;
             });
         }
-        // 👉 NEW: Strict One-Way Sync (Prevents reverting & fixes ID mismatch)
+        // 👉 FIX 1: Strict One-Way Sync with safe WI- matching delay
 async function syncReservations() {
     try {
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -1185,10 +1185,8 @@ async function syncReservations() {
         let updated = false;
 
         dbReservations.forEach(dbRes => {
-            // 1. Try to match by exact ID
             let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
-            // 2. If no ID match, map the temporary WI- ID to the official MySQL RES- ID
             if (!match) {
                 match = localHistory.find(local => {
                     const localName = String(local.customerName).toLowerCase().trim();
@@ -1198,13 +1196,12 @@ async function syncReservations() {
                     return localName === dbName && localTab === dbTab && String(local.reservationNumber).startsWith('WI-');
                 });
                 if (match) {
-                    match.reservationNumber = dbRes.reservationNumber; // Lock in the official database ID!
+                    match.reservationNumber = dbRes.reservationNumber; // Lock in the DB ID
                     updated = true;
                 }
             }
 
             if (match) {
-                // 3. STRICT ONE-WAY SYNC: Only upgrade statuses, NEVER downgrade!
                 const newStatus = dbRes.status === 'walk-in' ? 'approved' : dbRes.status;
                 const isPending = !newStatus || newStatus === 'pending' || newStatus === 'walk-in';
                 
@@ -1215,7 +1212,6 @@ async function syncReservations() {
                     updated = true;
                 }
             } else {
-                // 4. Add brand new reservations
                 localHistory.push({
                     reservationNumber: dbRes.reservationNumber,
                     reservationType: 'standard',
@@ -1233,12 +1229,16 @@ async function syncReservations() {
             }
         });
 
-        // 5. Instantly clean up stranded duplicates to prevent dashboard clutter
-        const cleanHistory = localHistory.filter(h => !String(h.reservationNumber).startsWith('WI-'));
-        if (cleanHistory.length !== localHistory.length) {
-            localHistory = cleanHistory;
-            updated = true;
-        }
+        // Give Walk-ins 30 seconds to match the database before deleting them!
+        const originalLength = localHistory.length;
+        localHistory = localHistory.filter(h => {
+            if (String(h.reservationNumber).startsWith('WI-')) {
+                const age = Date.now() - new Date(h.completedAt || Date.now()).getTime();
+                return age < 30000; 
+            }
+            return true;
+        });
+        if (localHistory.length !== originalLength) updated = true;
 
         if (updated) {
             localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
@@ -2407,69 +2407,74 @@ window.rejectReservation = async function (resNum) {
                 }
             };
 
-            window.updateSingleReservationStatus = function (idx, newStatus, tId) {
-                const hist = getReservationHistory();
-                if (idx >= 0 && idx < hist.length) {
-                    const targetRes = hist[idx];
-                    if (newStatus === 'completed') {
-                        targetRes.completedAt = new Date().toISOString();
-                        targetRes.approvalStatus = 'completed';
-                    } else if (newStatus === 'seated') {
-                        targetRes.approvalStatus = 'seated';
-                        targetRes.seatedAt = new Date().toISOString();
-                        const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-                        overrides[tId] = 'seated';
-                        localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                    } else if (newStatus === 'rejected') {
-                        const confirmed = confirm(`Cancel Reservation #${targetRes.reservationNumber} for ${targetRes.customerName || 'Guest'}?\n\nThis will release Table ${tId} and return pre-ordered food ingredients to inventory stock.`);
-                        if (!confirmed) return;
+            // 👉 FIX 2: Fixed Floor Plan Toast Reject Loop
+window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
+    const hist = getReservationHistory();
+    if (idx >= 0 && idx < hist.length) {
+        const targetRes = hist[idx];
+        
+        if (newStatus === 'completed') {
+            targetRes.completedAt = new Date().toISOString();
+            targetRes.approvalStatus = 'completed';
+        } else if (newStatus === 'seated') {
+            targetRes.approvalStatus = 'seated';
+            targetRes.seatedAt = new Date().toISOString();
+            const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
+            overrides[tId] = 'seated';
+            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+        } else if (newStatus === 'rejected') {
+            const confirmed = await superModal({
+                title: 'Cancel Reservation? ❌',
+                message: `Cancel Reservation #${targetRes.reservationNumber} for ${targetRes.customerName || 'Guest'}?\n\nThis will release Table ${tId} and return pre-ordered food ingredients to inventory stock.`,
+                type: 'confirm'
+            });
+            if (!confirmed) return;
 
-                        if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-                            window.InventorySystem.cancelReservationWithFood({
-                                reservationNumber: targetRes.reservationNumber,
-                                reason: 'Cancelled by Staff from Table Manager',
-                                cancelledBy: 'admin',
-                                operator: 'Admin Staff'
-                            });
-                            renderFloorPlan();
-                            if (typeof renderDashboard === 'function') renderDashboard();
-                            const updatedOverrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-                            openFloorToast(tId, getReservationHistory(), updatedOverrides);
-                            return;
-                        } else {
-                            targetRes.approvalStatus = 'rejected';
-                            targetRes.kdsStatus = 'cancelled';
-                            targetRes.completedAt = new Date().toISOString();
-                        }
-                    }
+            // 👉 This is what was missing! Tell MySQL to cancel it!
+            try {
+                await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: targetRes.reservationNumber, status: 'cancelled' })
+                });
+            } catch (e) {}
 
-                    // Check remaining active reservations for this table
-                    const activeRes = hist.filter(r => r.bookedTable === tId && !r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled');
-                    if (activeRes.length === 0) {
-                        const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-                        overrides[tId] = 'available';
-                        localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                    }
+            if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
+                window.InventorySystem.cancelReservationWithFood({
+                    reservationNumber: targetRes.reservationNumber,
+                    reason: 'Cancelled by Staff from Table Manager',
+                    cancelledBy: 'admin',
+                    operator: 'Admin Staff'
+                });
+            }
+            
+            targetRes.approvalStatus = 'rejected';
+            targetRes.kdsStatus = 'cancelled';
+            targetRes.completedAt = new Date().toISOString();
+        }
 
-                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+        // Check remaining active reservations for this table
+        const activeRes = hist.filter(r => r.bookedTable === tId && !r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled');
+        if (activeRes.length === 0) {
+            const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
+            overrides[tId] = 'available';
+            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+        }
 
-                    try {
-                        window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
-                        window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: safeJsonParse(localStorage.getItem('tableOverrides'), {}) }));
-                        if (typeof BroadcastChannel !== 'undefined') {
-                            const bc = new BroadcastChannel('inventory_sync_channel');
-                            bc.postMessage({ action: 'reservationHistoryUpdated', payload: hist });
-                            bc.postMessage({ action: 'tableOverridesUpdated', payload: safeJsonParse(localStorage.getItem('tableOverrides'), {}) });
-                        }
-                    } catch (e) {}
+        localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-                    renderFloorPlan();
-                    if (typeof renderDashboard === 'function') renderDashboard();
+        try {
+            window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+            window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: safeJsonParse(localStorage.getItem('tableOverrides'), {}) }));
+        } catch (e) {}
 
-                    const updatedOverrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-                    openFloorToast(tId, hist, updatedOverrides);
-                }
-            };
+        renderFloorPlan();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        const updatedOverrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
+        openFloorToast(tId, hist, updatedOverrides);
+    }
+};
 
             // ── CUSTOMER SELF-CANCELLATION LIVE ALERT ENGINE ──
             function playCancellationAlertSound() {
