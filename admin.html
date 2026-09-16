@@ -1634,63 +1634,74 @@ async function syncReservations() {
             };
 
             window.approveReservation = async function (resNum) {
-                const hist = getReservationHistory();
-                const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum || String(h.id) === String(resNum) || h.resNumber === resNum));
-                if (idx === -1) {
-                    console.warn("Reservation not found for approval:", resNum);
-                    return;
+    const hist = getReservationHistory();
+    const idx = hist.findIndex(h => (h.reservationNumber === resNum || h.id === resNum || String(h.id) === String(resNum) || h.resNumber === resNum));
+    if (idx === -1) {
+        console.warn("Reservation not found for approval:", resNum);
+        return;
+    }
+    const r = hist[idx];
+
+    // 1. Stock Validation
+    const inv = typeof getInventory === 'function' ? getInventory() : [];
+    let stockOut = false;
+    let stockOutName = '';
+    if (r.foods && Array.isArray(r.foods) && r.foods.length > 0 && inv.length > 0) {
+        for (let f of r.foods) {
+            const cleanName = String(f).replace(/^\d+x\s*/i, '').split('|')[0].trim().toLowerCase();
+            const item = inv.find(i => {
+                const name = (i.title || i.name || '').toLowerCase();
+                return name && (cleanName.includes(name) || name.includes(cleanName));
+            });
+            if (item) {
+                const val = item.stock_val !== undefined ? item.stock_val : (item.total_stock !== undefined ? item.total_stock : 100);
+                if (val <= 0) {
+                    stockOut = true;
+                    stockOutName = item.title || item.name;
+                    break;
                 }
-                const r = hist[idx];
+            }
+        }
+    }
 
-                // 1. Stock Validation
-                const inv = typeof getInventory === 'function' ? getInventory() : [];
-                let stockOut = false;
-                let stockOutName = '';
-                if (r.foods && Array.isArray(r.foods) && r.foods.length > 0 && inv.length > 0) {
-                    for (let f of r.foods) {
-                        const cleanName = String(f).replace(/^\d+x\s*/i, '').split('|')[0].trim().toLowerCase();
-                        const item = inv.find(i => {
-                            const name = (i.title || i.name || '').toLowerCase();
-                            return name && (cleanName.includes(name) || name.includes(cleanName));
-                        });
-                        if (item) {
-                            const val = item.stock_val !== undefined ? item.stock_val : (item.total_stock !== undefined ? item.total_stock : 100);
-                            if (val <= 0) {
-                                stockOut = true;
-                                stockOutName = item.title || item.name;
-                                break;
-                            }
-                        }
-                    }
-                }
+    if (stockOut) {
+        const msg = `Cannot approve: '${stockOutName}' is out of stock.`;
+        if (window.showToast) window.showToast(`⚠️ ${msg}`, 'error', 4500);
+        else alert(msg);
+        return;
+    }
 
-                if (stockOut) {
-                    const msg = `Cannot approve: '${stockOutName}' is out of stock.`;
-                    if (window.showToast) window.showToast(`⚠️ ${msg}`, 'error', 4500);
-                    else alert(msg);
-                    return;
-                }
+    // 2. Sync approval to live MySQL database
+    try {
+        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'approved' })
+        });
+    } catch (e) {
+        console.error('Failed to sync approval to DB:', e);
+    }
 
-                // 2. Sync approval to Supabase / Backend API
-                try {
-                    fetch(`${API_BASE_URL}/api/reservations/update-status`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'approved' })
-                    }).catch(err => console.warn('Sync notice:', err));
-                } catch (e) { }
+    // 3. Update local state
+    r.approvalStatus = 'approved';
+    localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-                // 3. Update local state
-                r.approvalStatus = 'approved';
-                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+    // 👉 NEW: Automatically set the floor plan table to "Reserved"
+    if (r.bookedTable) {
+        try {
+            const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+            overrides[r.bookedTable] = 'reserved';
+            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+        } catch(e) {}
+    }
 
-                if (window.showToast) {
-                    window.showToast(`Reservation ${resNum} Approved!`, 'success', 3500);
-                }
+    if (window.showToast) {
+        window.showToast(`Reservation ${resNum} Approved! Table reserved.`, 'success', 3500);
+    }
 
-                renderDashboard();
-                if (typeof renderFloorPlan === 'function') renderFloorPlan();
-            };
+    renderDashboard();
+    if (typeof renderFloorPlan === 'function') renderFloorPlan();
+};
 
             // 👉 NEW: Safe Reject Function (Prevents popup spam)
 window.rejectReservation = async function (resNum) {
@@ -4705,7 +4716,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             orderSummary: orderSummary,
             beefNote: notes,
             paymentAmount: walkinType === 'priority' ? payment : 500,
-            paymentStatus: 'walk-in',
+            paymentStatus: 'pending',
             approvalStatus: 'pending',
             bookedBy: 'staff',
             completedAt: new Date().toISOString(),
