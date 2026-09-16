@@ -1175,9 +1175,11 @@
             });
         }
         // 👉 NEW: Fetch live reservations from Vercel/MySQL (Smart Merge)
+// 👉 NEW: Fetch live reservations from Vercel/MySQL (Cache-Busted & Smart Merge)
 async function syncReservations() {
     try {
-        const res = await fetch(`${API_BASE_URL}/reservations`);
+        // 👉 FIX 1: Add cache-buster so the browser stops reading old data!
+        const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
         if (!res.ok) return;
         const dbReservations = await res.json();
         
@@ -1187,7 +1189,6 @@ async function syncReservations() {
         dbReservations.forEach(dbRes => {
             let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
-            // 👉 FIX: Bulletproof matching using lowercase names and stripped table numbers!
             if (!match) {
                 match = localHistory.find(local => {
                     const localName = String(local.customerName).toLowerCase().trim();
@@ -1199,14 +1200,16 @@ async function syncReservations() {
                 });
                 
                 if (match) {
-                    match.reservationNumber = dbRes.reservationNumber; // Lock in official DB ID
+                    match.reservationNumber = dbRes.reservationNumber; 
                     updated = true;
                 }
             }
 
             if (match) {
-                // 👉 FIX: Convert 'walk-in' status from DB into 'approved' for the dashboard
-                let dbStatus = dbRes.status === 'walk-in' ? 'approved' : dbRes.status;
+                // 👉 FIX 2: Safely map MySQL statuses
+                let dbStatus = dbRes.status;
+                if (dbStatus === 'walk-in') dbStatus = 'approved';
+                if (dbStatus === 'rejected') dbStatus = 'cancelled';
                 
                 if (dbStatus && dbStatus !== '' && dbStatus !== 'pending') {
                     if (match.approvalStatus !== dbStatus) {
@@ -1224,7 +1227,7 @@ async function syncReservations() {
                     arrivalDate: dbRes.arrivalDate,
                     arrivalTime: dbRes.arrivalTime,
                     arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
-                    approvalStatus: dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending'),
+                    approvalStatus: (dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending')),
                     paymentStatus: 'pending',
                     foods: [], 
                     paymentAmount: 0 
@@ -1233,13 +1236,11 @@ async function syncReservations() {
             }
         });
 
-        // 👉 CLEANUP: Remove old stranded WI- duplicates that got successfully merged
+        // Clean up stranded WI- duplicates
         const originalLength = localHistory.length;
         localHistory = localHistory.filter(h => {
             if (String(h.reservationNumber).startsWith('WI-')) {
-                // Only keep WI- if it was created within the last 30 seconds
-                const age = Date.now() - new Date(h.completedAt || Date.now()).getTime();
-                return age < 30000; 
+                return (Date.now() - new Date(h.completedAt || Date.now()).getTime()) < 30000; 
             }
             return true;
         });
@@ -1710,7 +1711,6 @@ async function syncReservations() {
     if (idx === -1) return;
     const r = hist[idx];
 
-    // 1. Process Inventory Return
     if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
         window.InventorySystem.cancelReservationWithFood({
             reservationNumber: resNum,
@@ -1718,27 +1718,24 @@ async function syncReservations() {
             cancelledBy: 'admin',
             operator: 'Admin Staff'
         });
-        // 👉 FIX: The rogue "return;" that broke the database sync has been removed!
     }
 
-    // 2. Update the live MySQL Database
     try {
+        // 👉 FIX 3: Send 'cancelled' to MySQL instead of 'rejected' so the database accepts it
         await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: r.reservationNumber, status: 'rejected' })
+            body: JSON.stringify({ id: r.reservationNumber, status: 'cancelled' })
         });
     } catch (e) {
         console.error('Failed to sync rejection to DB:', e);
     }
 
-    // 3. Update Local Memory
-    r.approvalStatus = 'rejected';
+    r.approvalStatus = 'cancelled';
     r.kdsStatus = 'cancelled';
     r.completedAt = new Date().toISOString();
     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-    // 4. Free the table
     if (r.bookedTable) {
         try {
             const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
@@ -4697,7 +4694,7 @@ async function syncReservations() {
                 time: time,
                 table: table,
                 cartItems: structuredCart,
-                status: 'walk-in'
+                status: 'approved'
             })
         });
 
