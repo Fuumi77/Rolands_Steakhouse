@@ -1678,7 +1678,7 @@ async function syncReservations() {
         await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'approved' })
+            body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'Approved' })
         });
     } catch (e) {
         console.error('Failed to sync approval to DB:', e);
@@ -1724,7 +1724,7 @@ window.rejectReservation = async function (resNum) {
         await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: r.reservationNumber, status: 'cancelled' })
+            body: JSON.stringify({ id: r.reservationNumber, status: 'Cancelled' })
         });
     } catch (e) {}
 
@@ -1760,7 +1760,7 @@ window.rejectReservation = async function (resNum) {
                     fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'seated' })
+                        body: JSON.stringify({ id: r.reservationNumber || r.id || resNum, status: 'Seated' })
                     }).catch(err => console.warn('Sync notice:', err));
                 } catch (e) { }
 
@@ -2420,21 +2420,41 @@ window.rejectReservation = async function (resNum) {
                 }
             };
 
-            // 👉 FIX 2: Fixed Floor Plan Toast Reject Loop
+            // 👉 FIX: Added missing Database connections for Floor Plan buttons
 window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     const hist = getReservationHistory();
     if (idx >= 0 && idx < hist.length) {
         const targetRes = hist[idx];
         
         if (newStatus === 'completed') {
+            // 👉 ADDED: Tell MySQL the reservation is Completed!
+            try {
+                await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: targetRes.reservationNumber, status: 'Completed' })
+                });
+            } catch (e) {}
+
             targetRes.completedAt = new Date().toISOString();
             targetRes.approvalStatus = 'completed';
+            
         } else if (newStatus === 'seated') {
+            // 👉 ADDED: Tell MySQL the guest is Seated!
+            try {
+                await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: targetRes.reservationNumber, status: 'Seated' })
+                });
+            } catch (e) {}
+
             targetRes.approvalStatus = 'seated';
             targetRes.seatedAt = new Date().toISOString();
             const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
             overrides[tId] = 'seated';
             localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+            
         } else if (newStatus === 'rejected') {
             const confirmed = await superModal({
                 title: 'Cancel Reservation? ❌',
@@ -2443,12 +2463,12 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             });
             if (!confirmed) return;
 
-            // 👉 This is what was missing! Tell MySQL to cancel it!
+            // Notice the Capital 'C'
             try {
                 await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: targetRes.reservationNumber, status: 'cancelled' })
+                    body: JSON.stringify({ id: targetRes.reservationNumber, status: 'Cancelled' })
                 });
             } catch (e) {}
 
@@ -2479,6 +2499,11 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         try {
             window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
             window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: safeJsonParse(localStorage.getItem('tableOverrides'), {}) }));
+            if (typeof BroadcastChannel !== 'undefined') {
+                const bc = new BroadcastChannel('inventory_sync_channel');
+                bc.postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                bc.postMessage({ action: 'tableOverridesUpdated', payload: safeJsonParse(localStorage.getItem('tableOverrides'), {}) });
+            }
         } catch (e) {}
 
         renderFloorPlan();
@@ -4697,7 +4722,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 time: time,
                 table: table,
                 cartItems: structuredCart,
-                status: 'pending'
+                status: 'Pending'
             })
         });
 
