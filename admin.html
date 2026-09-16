@@ -1174,7 +1174,7 @@
                 return tb - ta;
             });
         }
-        // 👉 FIX 1: Strict One-Way Sync with safe WI- matching delay
+        // 👉 FIX 1: Strict One-Way Sync with Case-Insensitive Status Matching
 async function syncReservations() {
     try {
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -1201,14 +1201,17 @@ async function syncReservations() {
                 }
             }
 
+            // 👉 FIX: Force database status to lowercase so it always matches!
+            let dbStatus = String(dbRes.status || 'pending').toLowerCase().trim();
+            if (dbStatus === 'walk-in') dbStatus = 'approved';
+
             if (match) {
-                const newStatus = dbRes.status === 'walk-in' ? 'approved' : dbRes.status;
-                const isPending = !newStatus || newStatus === 'pending' || newStatus === 'walk-in';
+                const isPending = dbStatus === 'pending';
                 
-                if (!isPending && match.approvalStatus !== newStatus) {
-                    match.approvalStatus = newStatus;
-                    if (newStatus === 'seated') match.paymentStatus = 'verified';
-                    if (newStatus === 'cancelled' || newStatus === 'rejected') match.kdsStatus = 'cancelled';
+                if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                    match.approvalStatus = dbStatus;
+                    if (dbStatus === 'seated') match.paymentStatus = 'verified';
+                    if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
                     updated = true;
                 }
             } else {
@@ -1220,7 +1223,7 @@ async function syncReservations() {
                     arrivalDate: dbRes.arrivalDate,
                     arrivalTime: dbRes.arrivalTime,
                     arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
-                    approvalStatus: dbRes.status === 'walk-in' ? 'approved' : (dbRes.status || 'pending'),
+                    approvalStatus: dbStatus,
                     paymentStatus: 'pending',
                     foods: [], 
                     paymentAmount: 0 
@@ -1229,7 +1232,6 @@ async function syncReservations() {
             }
         });
 
-        // Give Walk-ins 30 seconds to match the database before deleting them!
         const originalLength = localHistory.length;
         localHistory = localHistory.filter(h => {
             if (String(h.reservationNumber).startsWith('WI-')) {
@@ -1452,7 +1454,7 @@ async function syncReservations() {
                     const resKey = r.reservationNumber || r.id || r.resNumber || '';
                     const tdActions = document.createElement('td');
                     let approvalBtns = '';
-                    const aStatus = r.approvalStatus || 'pending';
+                    const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
                     if (aStatus === 'pending') {
                         approvalBtns = `
                             <button type="button" style="background:#16a34a; color:white; padding: 6px 10px; font-size: 12px; border:none; border-radius:4px; margin-top:4px; width:100%; cursor:pointer; font-weight:bold; position:relative; z-index:2;" onclick="event.stopPropagation(); window.approveReservation('${resKey}')">Approve</button>
@@ -4719,7 +4721,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             paymentStatus: 'pending',
             approvalStatus: 'pending',
             bookedBy: 'staff',
-            completedAt: new Date().toISOString(),
+            completedAt: null, // 👉 FIX: Keeps the reservation active on the Floor Plan!
             cartItems: structuredCart,
             stockDeducted: true
         };
