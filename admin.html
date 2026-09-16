@@ -1174,7 +1174,7 @@
                 return tb - ta;
             });
         }
-        // 👉 FIX 1: Strict One-Way Sync with Case-Insensitive Status Matching
+        // 👉 FIX 1: Strict One-Way Sync with MySQL Blank Failsafe
 async function syncReservations() {
     try {
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -1201,13 +1201,15 @@ async function syncReservations() {
                 }
             }
 
-            // 👉 FIX: Force database status to lowercase so it always matches!
-            let dbStatus = String(dbRes.status || 'pending').toLowerCase().trim();
+            // 👉 THE FIX: If MySQL sends a blank space, treat it as Pending!
+            let rawStatus = dbRes.status;
+            if (!rawStatus || String(rawStatus).trim() === '') rawStatus = 'Pending';
+            
+            let dbStatus = String(rawStatus).toLowerCase().trim();
             if (dbStatus === 'walk-in') dbStatus = 'approved';
 
             if (match) {
                 const isPending = dbStatus === 'pending';
-                
                 if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
                     match.approvalStatus = dbStatus;
                     if (dbStatus === 'seated') match.paymentStatus = 'verified';
@@ -1250,7 +1252,6 @@ async function syncReservations() {
         console.error("Sync error:", err);
     }
 }
-
         function setAdminSession(username) {
             sessionStorage.setItem('adminLoggedInUser', username);
         }
@@ -1454,7 +1455,8 @@ async function syncReservations() {
                     const resKey = r.reservationNumber || r.id || r.resNumber || '';
                     const tdActions = document.createElement('td');
                     let approvalBtns = '';
-                    const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
+                    let aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
+                    if (!aStatus || aStatus === '') aStatus = 'pending';
                     if (aStatus === 'pending') {
                         approvalBtns = `
                             <button type="button" style="background:#16a34a; color:white; padding: 6px 10px; font-size: 12px; border:none; border-radius:4px; margin-top:4px; width:100%; cursor:pointer; font-weight:bold; position:relative; z-index:2;" onclick="event.stopPropagation(); window.approveReservation('${resKey}')">Approve</button>
@@ -2184,7 +2186,13 @@ window.rejectReservation = async function (resNum) {
                     const tId = t.id;
                     const status = overrides[tId] || 'available';
 
-                    const tableReservations = hist.filter(r => r.bookedTable === tId);
+                    // 👉 FIX 3: Hide completed/cancelled reservations from Floor Plan badge
+                    const tableReservations = hist.filter(r => 
+                        r.bookedTable === tId && 
+                        !r.completedAt && 
+                        r.approvalStatus !== 'rejected' && 
+                        r.approvalStatus !== 'cancelled'
+                    );const tableReservations = hist.filter(r => r.bookedTable === tId);
                     const nextRes = tableReservations.find(r => !r.completedAt);
                     const metaText = nextRes ? `${nextRes.arrivalDate || ''} @ ${nextRes.arrivalTime || '?'}` : '';
 
@@ -2248,7 +2256,13 @@ window.rejectReservation = async function (resNum) {
                 listEl.innerHTML = '';
                 footerEl.innerHTML = '';
 
-                const tableRes = hist.filter(r => r.bookedTable === tId);
+                // 👉 FIX 4: Hide completed/cancelled reservations from Toast menu
+                const tableRes = hist.filter(r => 
+                    r.bookedTable === tId && 
+                    !r.completedAt && 
+                    r.approvalStatus !== 'rejected' && 
+                    r.approvalStatus !== 'cancelled'
+                );
 
                 if (tableRes.length === 0) {
                     noResEl.style.display = 'block';
