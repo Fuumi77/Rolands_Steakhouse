@@ -358,14 +358,12 @@
                 const isMatchingTable = r.bookedTable === tId && r.arrivalDate === chosenDate;
                 if (!isMatchingTable) return false;
 
-                // 👉 FIX 3: Completely ignore Completed reservations so the table frees up instantly.
+                // 👉 FIX: Completely ignore Completed reservations so the table frees up instantly.
                 if (r.completedAt) return false;
 
                 const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
-                if (aStatus === 'completed' || aStatus === 'rejected' || aStatus === 'cancelled') return false;
                 
-                // 👉 FIX 4: Only show as taken if it is Approved, Seated, or Pending
-                // (Note: We keep 'pending' active so online customers can't steal a table while you are typing in a Walk-in!)
+                // 👉 FIX: Only show as taken if it is Approved, Seated, or Pending
                 if (aStatus !== 'approved' && aStatus !== 'seated' && aStatus !== 'pending') return false;
                 
                 return true;
