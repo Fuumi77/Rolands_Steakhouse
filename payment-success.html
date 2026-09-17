@@ -59,13 +59,23 @@
         if (entry) {
             entry.paymentStatus = 'paid';
 
+            // 👉 NEW: Send successful PayMongo reservation directly to MySQL!
+            fetch(`${API_BASE_URL}/reserve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: entry.customerName || 'Guest',
+                    email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                    date: entry.arrivalDate,
+                    time: entry.arrivalTime,
+                    table: entry.bookedTable || 'Unassigned',
+                    cartItems: entry.cartItems || [],
+                    status: 'Approved' // Auto-approve since they paid securely via PayMongo!
+                })
+            }).catch(err => console.error("Database save failed:", err));
+
             // Deduct raw ingredients now that payment is confirmed
             if (!entry.stockDeducted && entry.cartItems && entry.cartItems.length > 0) {
-                if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
-                    window.InventorySystem.deductIngredientsForOrder(entry.cartItems, 'PayMongo Verified Payment', entry.reservationNumber);
-                    entry.stockDeducted = true;
-                }
-            }
 
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
