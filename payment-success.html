@@ -59,20 +59,15 @@
         if (entry) {
             entry.paymentStatus = 'paid';
 
-            // 👉 FIX: Send successful PayMongo reservation directly to MySQL!
-            fetch(`${API_BASE_URL}/reserve`, {
+            // 👉 FIX: Update the existing DB reservation to Approved!
+            fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: entry.customerName || 'Guest',
-                    email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
-                    date: entry.arrivalDate,
-                    time: entry.arrivalTime,
-                    table: entry.bookedTable || 'Unassigned',
-                    cartItems: entry.cartItems || [],
-                    status: 'Approved' // Auto-approve since they paid securely!
+                    id: resNo, 
+                    status: 'Approved' 
                 })
-            }).catch(err => console.error("Database save failed:", err));
+            }).catch(err => console.error("Database update failed:", err));
 
             // Deduct raw ingredients now that payment is confirmed
             if (!entry.stockDeducted && entry.cartItems && entry.cartItems.length > 0) {
