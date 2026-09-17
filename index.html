@@ -721,7 +721,6 @@
         })();
 
 
-        // Chat logic
         function toggleChat() {
             const panel = document.getElementById('chatPanel');
             panel.classList.toggle('active');
@@ -736,7 +735,12 @@
                     renderChatLoginGate();
                 } else {
                     renderChatContent();
-                    loadChatMessages();
+                    // 👉 FIX 1: Respect the current tab view when reopening chat
+                    if (_currentChatView === 'chat') {
+                        loadChatMessages();
+                    } else {
+                        showReservationHistory();
+                    }
                     checkActiveReservation();
                 }
             }
@@ -1111,7 +1115,10 @@
 
         setInterval(() => {
             if (document.getElementById('chatPanel').classList.contains('active')) {
-                loadChatMessages();
+                // 👉 FIX 2: Only auto-reload chat messages if we are actually looking at the Chat tab!
+                if (_currentChatView === 'chat') {
+                    loadChatMessages();
+                }
             }
         }, 3000);
 
