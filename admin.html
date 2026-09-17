@@ -1465,7 +1465,7 @@ async function syncReservations() {
                     let approvalBtns = '';
                     let aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
                     if (!aStatus || aStatus === '') aStatus = 'pending';
-                    if (aStatus === 'pending') {
+                    if (aStatus === 'pending' || aStatus === 'pending_paymongo') {
                         approvalBtns = `
                             <button type="button" style="background:#16a34a; color:white; padding: 6px 10px; font-size: 12px; border:none; border-radius:4px; margin-top:4px; width:100%; cursor:pointer; font-weight:bold; position:relative; z-index:2;" onclick="event.stopPropagation(); window.approveReservation('${resKey}')">Approve</button>
                             <button type="button" style="background:#ef4444; color:white; padding: 6px 10px; font-size: 12px; border:none; border-radius:4px; margin-top:4px; width:100%; cursor:pointer; font-weight:bold; position:relative; z-index:2;" onclick="event.stopPropagation(); window.rejectReservation('${resKey}')">Reject</button>
@@ -4660,7 +4660,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     const errorEl = document.getElementById('walkin-error');
     errorEl.style.display = 'none';
 
-    // 👉 NEW: Grab the button to create a Loading State
+    // Grab the button to create a Loading State
     const submitBtn = document.querySelector('button[onclick="submitWalkinReservation()"]');
     const originalBtnHtml = submitBtn.innerHTML;
 
@@ -4679,7 +4679,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     if (time < '10:30' || time > '21:00') { 
         errorEl.textContent = 'Reservations must be between 10:30 AM and 9:00 PM.'; 
         errorEl.style.display = 'block'; 
-        return; }
+        return; 
+    }
+    
     const selectedDateTime = new Date(date + 'T' + time);
     const currentDateTime = new Date();
     currentDateTime.setMinutes(currentDateTime.getMinutes() - 5); 
@@ -4690,20 +4692,13 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         return;
     }
     if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
-    
 
-    // 👉 NEW: Start Loading State
-    submitBtn.innerHTML = '⏳ Saving to Database...';
-    submitBtn.disabled = true;
-    submitBtn.style.opacity = '0.7';
-
+    // 👉 1. Prepare data for the confirmation receipt
     const d = new Date(date + 'T' + time);
     const displayDt = isNaN(d) ? date + ' ' + time : d.toLocaleString(undefined, {
         weekday: 'short', month: 'short', day: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: false
     });
-
-    const resNo = 'WI-' + Math.floor(100000 + Math.random() * 900000);
 
     const invItems = getInventory();
     const foodArray = [];
@@ -4725,6 +4720,35 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         }
     }
 
+    // 👉 2. Show Confirmation Modal BEFORE saving
+    const receiptHtml = `
+        <div style="text-align: left; font-size: 14px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px;">
+            <div style="margin-bottom: 8px;"><strong>Customer:</strong> ${name}</div>
+            <div style="margin-bottom: 8px;"><strong>Table:</strong> ${table}</div>
+            <div style="margin-bottom: 8px;"><strong>Arrival:</strong> ${displayDt}</div>
+            <div style="margin-bottom: 8px;"><strong>Type:</strong> ${walkinType === 'priority' ? '⭐ Priority' : '🪑 Standard'}</div>
+            <div style="margin-bottom: 8px;"><strong>Guests:</strong> ${guests || 'N/A'}</div>
+            ${orderSummary ? `<div style="margin-bottom: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Food Order:</strong><br>${orderSummary}</div>` : ''}
+            <div style="margin-top: 12px; font-size: 16px; color: #1b5e20; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Total Payment:</strong> ₱${payment.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <p style="margin-top: 15px; font-size: 13px; color: #64748b;">Please verify these details before saving the reservation.</p>
+    `;
+
+    const confirmed = await superModal({
+        title: 'Confirm Walk-in Details 📋',
+        message: receiptHtml,
+        type: 'confirm',
+        confirmText: 'Confirm & Save',
+        cancelText: 'Edit Details'
+    });
+
+    if (!confirmed) return;
+
+    // 👉 3. Start Loading State
+    submitBtn.innerHTML = '⏳ Saving to Database...';
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
+
     if (structuredCart.length > 0 && window.InventorySystem) {
         if (typeof window.InventorySystem.validateOrderIngredients === 'function') {
             const check = window.InventorySystem.validateOrderIngredients(structuredCart);
@@ -4735,19 +4759,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 } else {
                     alert(`Cannot save walk-in due to kitchen shortage: ${list}`);
                 }
-                // Stop Loading State
-                submitBtn.innerHTML = originalBtnHtml;
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                return;
-            }
-        }
-
-        if (typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
-            const deductResult = window.InventorySystem.deductIngredientsForOrder(structuredCart, 'Admin Walk-in', resNo);
-            if (!deductResult.success) {
-                alert('Stock deduction failed: ' + (deductResult.error || 'Insufficient stock'));
-                // Stop Loading State
                 submitBtn.innerHTML = originalBtnHtml;
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
@@ -4757,7 +4768,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     }
 
     try {
-        // 1. Save to live MySQL database FIRST to get the official Sequential ID
+        // 👉 4. Save to MySQL FIRST to get official sequential ID
         const res = await fetch(`${API_BASE_URL}/reserve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4775,10 +4786,22 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         if (!res.ok) throw new Error('Database rejected the save');
         const dbData = await res.json();
         
-        // 👉 FIX: Apply the official Database ID!
+        // Apply official DB ID
         const resNo = 'WI-' + dbData.reservationId; 
 
-        // 2. Save the rich object to local memory
+        // Deduct inventory using the REAL ID
+        if (structuredCart.length > 0 && window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+            const deductResult = window.InventorySystem.deductIngredientsForOrder(structuredCart, 'Admin Walk-in', resNo);
+            if (!deductResult.success) {
+                alert('Stock deduction failed: ' + (deductResult.error || 'Insufficient stock'));
+                submitBtn.innerHTML = originalBtnHtml;
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                return;
+            }
+        }
+
+        // 👉 5. Save to local memory
         const reservation = {
             reservationNumber: resNo,
             reservationType: walkinType,
@@ -4820,7 +4843,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         const now = new Date();
         document.getElementById('walkin-date').value = now.toISOString().split('T')[0];
         
-        // 👉 NEW: Clamped Reset
         let tStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
         if (tStr < '10:30') tStr = '10:30';
         if (tStr > '21:00') tStr = '21:00';
@@ -4841,7 +4863,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         errorEl.textContent = 'Failed to connect to live database.';
         errorEl.style.display = 'block';
     } finally {
-        // 👉 NEW: Remove Loading State
         submitBtn.innerHTML = originalBtnHtml;
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
