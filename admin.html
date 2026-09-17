@@ -1196,8 +1196,10 @@ async function syncReservations() {
                     const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
                     const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
                     
-                    // 👉 FIX: Catch BOTH 'WI-' walk-ins AND long random 'RES-326710' online IDs!
-                    const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).length > 8;
+                    // 👉 Catch WI-, POS-, and random long online IDs!
+                    const isTempId = String(local.reservationNumber).startsWith('WI-') || 
+                                     String(local.reservationNumber).startsWith('POS-') || 
+                                     String(local.reservationNumber).length > 8;
                     
                     return localName === dbName && localTab === dbTab && isTempId;
                 });
