@@ -87,6 +87,19 @@
 
         <!-- ── Table grid (Standard & Priority) ── -->
         <div id="table-grid-container">
+            
+            <!-- 👉 NEW: Quick Time Change Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; background: #f8fafc; padding: 16px 20px; border-radius: 14px; border: 1px solid #e2e8f0; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+                <div>
+                    <div style="font-size: 11px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Arrival Schedule</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #1e293b;" id="display-current-schedule">Loading...</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="time" id="quick-change-time" min="10:30" max="21:00" style="padding: 10px 14px; border-radius: 10px; border: 1.5px solid #cbd5e1; font-size: 14px; font-weight: 700; color: #1b5e20; outline: none; background: white;">
+                    <button id="quick-change-btn" style="background:#1b5e20; color:white; border:none; padding:11px 16px; border-radius:10px; font-weight:800; cursor:pointer; font-size: 13px; transition: 0.2s;" onmouseover="this.style.background='#2e7d32'" onmouseout="this.style.background='#1b5e20'">Update Time</button>
+                </div>
+            </div>
+
             <p id="instruction-text" style="font-size: 14px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
                 Step 2: Choose Your Table
             </p>
@@ -272,7 +285,41 @@
         // TABLE AVAILABILITY & SELECTION (Standard / Priority)
         // ──────────────────────────────────────────────────────────
         const chosenDate = localStorage.getItem('arrivalDate') || '';
-        const chosenTime = localStorage.getItem('arrivalTime') || '';
+        let chosenTime = localStorage.getItem('arrivalTime') || '';
+
+        // 👉 NEW: Quick Time Changer Logic
+        const scheduleDisplay = document.getElementById('display-current-schedule');
+        const quickTimeInput = document.getElementById('quick-change-time');
+        
+        if (scheduleDisplay) {
+            const dObj = new Date(`${chosenDate}T${chosenTime}`);
+            scheduleDisplay.textContent = isNaN(dObj) ? `${chosenDate} @ ${chosenTime}` : dObj.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        if (quickTimeInput) quickTimeInput.value = chosenTime;
+
+        document.getElementById('quick-change-btn')?.addEventListener('click', () => {
+            const newTime = quickTimeInput.value;
+            if (newTime < '10:30' || newTime > '21:00') {
+                if (typeof superModal === 'function') superModal({title:'Invalid Time 🕒', message:'Please select a time between 10:30 AM and 9:00 PM.'});
+                else alert('Please select a time between 10:30 AM and 9:00 PM.');
+                quickTimeInput.value = chosenTime;
+                return;
+            }
+            
+            const now = new Date();
+            const selectedDateTime = new Date(`${chosenDate}T${newTime}`);
+            now.setMinutes(now.getMinutes() - 5); // 5-minute grace period
+            
+            if (selectedDateTime < now) {
+                 if (typeof superModal === 'function') superModal({title:'Time Passed ⚠️', message:'Cannot select a time in the past. Please choose a future time.'});
+                 quickTimeInput.value = chosenTime;
+                 return;
+            }
+
+            // Save new time and instantly refresh the table grid to update availability!
+            localStorage.setItem('arrivalTime', newTime);
+            location.reload(); 
+        });
 
         // Guard Check: Block Holiday / Closed Dates
         if (chosenDate && typeof window.checkHolidayOrBlockedDate === 'function') {
