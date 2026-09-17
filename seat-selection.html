@@ -311,18 +311,17 @@
                 const isMatchingTable = r.bookedTable === tId && r.arrivalDate === chosenDate;
                 if (!isMatchingTable) return false;
 
-                // User Request: "unpaid will not reserve a table"
-                // Status check (case-insensitive)
-                const status = (r.paymentStatus || "").toLowerCase();
-                const isUnpaid = status.includes('unpaid') || status.includes('failed') || status.includes('pending_paymongo');
+                // 👉 FIX: Check if reservation is active (Approved, Pending, Seated). Ignore Cancelled/Rejected.
+                const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
+                if (aStatus === 'rejected' || aStatus === 'cancelled') return false;
                 
-                return !isUnpaid;
+                return true;
             });
             
-            // Check if any booking is within 2.5 hours (150 mins) of the chosen time
+            // 👉 FIX: 2.5 hours (150 minutes) gap check before and after!
             const timeTaken  = bookings.some(r => {
                 const bMins = parseTimeMins(r.arrivalTime);
-                return Math.abs(bMins - chosenMins) < 150;
+                return Math.abs(bMins - chosenMins) < 150; 
             });
 
             // "Taken HH:MM" tags
@@ -336,8 +335,6 @@
                     if (isConflict) tableHasConflict = true;
 
                     const tag = document.createElement('span');
-                    
-                    // Display in 24-hour (military) format per request
                     const displayTime = b.arrivalTime || 'today';
 
                     tag.textContent = `Taken ${displayTime}`;
@@ -352,19 +349,30 @@
                 if (lbl) lbl.after(row);
             }
 
+            // 👉 FIX: Visually grey out the table so the customer knows it is unavailable
+            if (timeTaken || locked) {
+                table.classList.remove('available');
+                table.style.opacity = '0.5';
+                table.style.filter = 'grayscale(1)';
+            }
+
             // Click to select
             table.addEventListener('click', () => {
                 if (locked) {
-                    superModal({ title: 'Table Locked 🔒', message: 'This table is currently unavailable for management reasons.' });
+                    if (typeof superModal === 'function') {
+                        superModal({ title: 'Table Locked 🔒', message: 'This table is currently unavailable for management reasons.' });
+                    } else alert('Table Locked.');
                     return;
                 }
 
                 if (timeTaken) {
-                    // Still allow pressing, but show a warning
-                    superModal({ 
-                        title: 'Time Conflict ⚠️', 
-                        message: `This table is already reserved within 2.5 hours of your arrival (${chosenTime}). Please choose another table or a different time.` 
-                    });
+                    // Stop the user from selecting it and explain why
+                    if (typeof superModal === 'function') {
+                        superModal({ 
+                            title: 'Table Unavailable ⚠️', 
+                            message: `This table already has a confirmed booking within 2.5 hours of your arrival time (${chosenTime}). Please choose another table or change your time.` 
+                        });
+                    } else alert('Table Unavailable due to time conflict.');
                     return;
                 }
 
