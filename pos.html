@@ -921,8 +921,7 @@
             if (totalValEl) totalValEl.textContent = `₱${finalTotal.toLocaleString()}`;
         }
 
-        /* --- CHECKOUT --- */
-        function processCheckout() {
+        async function processCheckout() {
             if (Object.keys(cart).length === 0) return superModal({ title: 'Empty Cart 🛒', message: 'Please add items to the order before finalizing.' });
 
             const table = document.getElementById('order-table').value;
@@ -931,150 +930,187 @@
 
             if (!table) return superModal({ title: 'Table Required 📍', message: 'Please select a table to complete the transaction.' });
 
-            const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            let oldCart = {};
-            let isEdit = !!editingTransactionId;
-            let existingRes = null;
+            // 👉 NEW: Grab Checkout Button for Loading State
+            const checkoutBtn = document.querySelector('button[onclick="processCheckout()"]');
+            const originalBtnHtml = checkoutBtn.innerHTML;
+            checkoutBtn.innerHTML = '⏳ Processing to Database...';
+            checkoutBtn.disabled = true;
 
-            if (isEdit) {
-                existingRes = history.find(r => r.reservationNumber === editingTransactionId);
-                if (existingRes && existingRes.foods) {
-                    const liveItems = getInventory();
-                    existingRes.foods.forEach(fStr => {
-                        const match = fStr.match(/^(\d+)x\s+(.+)$/);
-                        if (match) {
-                            const qty = parseInt(match[1], 10);
-                            const item = liveItems.find(i => (i.title || i.name) === match[2]);
-                            if (item && item.id) oldCart[item.id] = qty;
-                        }
-                    });
-                }
-            }
-
-            // 1. Build raw cart items list
-            const rawCartItems = [];
-            const liveItems = getInventory();
-            for (const id in cart) {
-                const item = liveItems.find(i => i.id === id);
-                if (item) {
-                    rawCartItems.push({
-                        id: id,
-                        name: item.title || item.name || id,
-                        title: item.title || item.name || id,
-                        quantity: cart[id]
-                    });
-                }
-            }
-
-            // 2. Pre-flight Validation Check (Stop POS order if raw ingredients are insufficient)
-            if (window.InventorySystem && typeof window.InventorySystem.validateOrderIngredients === 'function') {
-                const check = window.InventorySystem.validateOrderIngredients(rawCartItems);
-                if (!check.isValid) {
-                    const list = check.shortages.map(s => `• <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} remaining`).join('<br>');
-                    return superModal({
-                        title: 'Stock Shortage 📉',
-                        message: `Cannot finalize POS order due to kitchen shortages:<br><br>${list}`
-                    });
-                }
-            }
-
-            // 3. Save Order History & Deduct Raw Ingredients in Enterprise Inventory
-            const resNo = isEdit ? editingTransactionId : 'POS-' + Math.floor(1000 + Math.random() * 9000);
-            const orderList = [];
-            let subtotalAmt = 0;
-            for (const id in cart) {
-                const item = liveItems.find(i => i.id === id);
-                orderList.push(`${cart[id]}x ${item.title || item.name}`);
-                subtotalAmt += item.price * cart[id];
-            }
-
-            // Discount
-            const disc = getPosDiscount(subtotalAmt);
-            const totalAmt = subtotalAmt - disc.amount;
-            const discountIdNo = (document.getElementById('pos-discount-id')?.value || '').trim();
-
-            if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
-                window.InventorySystem.deductIngredientsForOrder(rawCartItems, 'POS Order', resNo);
-            }
-
-            if (isEdit && existingRes) {
-                existingRes.customerName = name;
-                existingRes.bookedTable = table;
-                existingRes.numberOfGuests = guests;
-                existingRes.foods = orderList;
-                existingRes.subtotalAmount = subtotalAmt;
-                existingRes.discountType = disc.type;
-                existingRes.discountAmount = disc.amount;
-                existingRes.discountIdNo = discountIdNo;
-                existingRes.paymentAmount = totalAmt;
-                existingRes.modified = true;
-                existingRes.approvalStatus = 'pending'; // Needs re-approval
-                existingRes.kdsStatus = 'pending'; // Reset kitchen status to pending
-            } else {
-                const reservation = {
-                    reservationNumber: resNo,
-                    customerName: name,
-                    bookedTable: table,
-                    numberOfGuests: guests,
-                    reservationType: 'standard',
-                    foods: orderList,
-                    subtotalAmount: subtotalAmt,
-                    discountType: disc.type,
-                    discountAmount: disc.amount,
-                    discountIdNo: discountIdNo,
-                    paymentAmount: totalAmt,
-                    paymentStatus: 'pending_check',
-                    approvalStatus: 'pending',
-                    bookedBy: 'staff',
-                    completedAt: new Date().toISOString(),
-                    arrivalDateTimeDisplay: 'POS Walk-in'
-                };
-                history.push(reservation);
-            }
-            localStorage.setItem('reservationHistory', JSON.stringify(history));
             try {
-                window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: history }));
-                if (typeof BroadcastChannel !== 'undefined') {
-                    new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
-                }
-            } catch (e) {}
+                const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let oldCart = {};
+                let isEdit = !!editingTransactionId;
+                let existingRes = null;
 
-            // Update table occupancy status
-            if (table && table !== 'Takeout') {
-                const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                overrides[table] = 'occupied';
-                localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
+                if (isEdit) {
+                    existingRes = history.find(r => r.reservationNumber === editingTransactionId);
+                    if (existingRes && existingRes.foods) {
+                        const liveItems = getInventory();
+                        existingRes.foods.forEach(fStr => {
+                            const match = fStr.match(/^(\d+)x\s+(.+)$/);
+                            if (match) {
+                                const qty = parseInt(match[1], 10);
+                                const item = liveItems.find(i => (i.title || i.name) === match[2]);
+                                if (item && item.id) oldCart[item.id] = qty;
+                            }
+                        });
+                    }
+                }
+
+                // 1. Build raw cart items list
+                const rawCartItems = [];
+                const liveItems = getInventory();
+                let subtotalAmt = 0;
+                const orderList = [];
+
+                for (const id in cart) {
+                    const item = liveItems.find(i => i.id === id);
+                    if (item) {
+                        rawCartItems.push({
+                            id: id,
+                            name: item.title || item.name || id,
+                            title: item.title || item.name || id,
+                            quantity: cart[id]
+                        });
+                        orderList.push(`${cart[id]}x ${item.title || item.name}`);
+                        subtotalAmt += item.price * cart[id];
+                    }
+                }
+
+                // 2. Pre-flight Validation Check
+                if (window.InventorySystem && typeof window.InventorySystem.validateOrderIngredients === 'function') {
+                    const check = window.InventorySystem.validateOrderIngredients(rawCartItems);
+                    if (!check.isValid) {
+                        const list = check.shortages.map(s => `• <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} remaining`).join('<br>');
+                        checkoutBtn.innerHTML = originalBtnHtml;
+                        checkoutBtn.disabled = false;
+                        return superModal({
+                            title: 'Stock Shortage 📉',
+                            message: `Cannot finalize POS order due to kitchen shortages:<br><br>${list}`
+                        });
+                    }
+                }
+
+                // Discount
+                const disc = getPosDiscount(subtotalAmt);
+                const totalAmt = subtotalAmt - disc.amount;
+                const discountIdNo = (document.getElementById('pos-discount-id')?.value || '').trim();
+
+                let resNo = isEdit ? editingTransactionId : '';
+
+                // 👉 3. Send to Database FIRST to get Sequential ID
+                if (!isEdit) {
+                    const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: name,
+                            email: `pos-${Date.now()}@temp.com`, // 👉 Identifies this as a POS transaction to the backend
+                            date: new Date().toISOString().split('T')[0],
+                            time: new Date().toTimeString().substring(0,5),
+                            table: table,
+                            cartItems: rawCartItems, 
+                            status: 'pending_check'
+                        })
+                    });
+                    
+                    if (!dbRes.ok) throw new Error('Database rejected the save');
+                    const dbData = await dbRes.json();
+                    
+                    // 👉 Apply the official Sequential Database ID
+                    resNo = 'POS-' + dbData.reservationId;
+                }
+
+                if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+                    window.InventorySystem.deductIngredientsForOrder(rawCartItems, 'POS Order', resNo);
+                }
+
+                if (isEdit && existingRes) {
+                    existingRes.customerName = name;
+                    existingRes.bookedTable = table;
+                    existingRes.numberOfGuests = guests;
+                    existingRes.foods = orderList;
+                    existingRes.subtotalAmount = subtotalAmt;
+                    existingRes.discountType = disc.type;
+                    existingRes.discountAmount = disc.amount;
+                    existingRes.discountIdNo = discountIdNo;
+                    existingRes.paymentAmount = totalAmt;
+                    existingRes.modified = true;
+                    existingRes.approvalStatus = 'pending'; 
+                    existingRes.kdsStatus = 'pending'; 
+                } else {
+                    const reservation = {
+                        reservationNumber: resNo,
+                        customerName: name,
+                        bookedTable: table,
+                        numberOfGuests: guests,
+                        reservationType: 'standard',
+                        foods: orderList,
+                        subtotalAmount: subtotalAmt,
+                        discountType: disc.type,
+                        discountAmount: disc.amount,
+                        discountIdNo: discountIdNo,
+                        paymentAmount: totalAmt,
+                        paymentStatus: 'pending_check',
+                        approvalStatus: 'pending',
+                        bookedBy: 'pos', // Mark specifically as POS
+                        createdAt: new Date().toISOString(),
+                        completedAt: null,
+                        arrivalDateTimeDisplay: 'POS Walk-in'
+                    };
+                    history.push(reservation);
+                }
+                localStorage.setItem('reservationHistory', JSON.stringify(history));
+                
                 try {
+                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: history }));
                     if (typeof BroadcastChannel !== 'undefined') {
-                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
                     }
                 } catch (e) {}
-            }
 
-            // 3. Reset
-            clearCart();
-            if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
-            if (document.getElementById('order-guests')) document.getElementById('order-guests').value = '';
-            if (document.getElementById('order-name')) document.getElementById('order-name').value = '';
-            renderPosTableSelect();
-            // Reset discount
-            document.getElementById('pos-discount-type').value = 'none';
-            document.getElementById('pos-discount-id').classList.remove('show');
-            document.getElementById('pos-discount-id').value = '';
-            editingTransactionId = null; // Clear edit state
+                // Update table occupancy status
+                if (table && table !== 'Takeout') {
+                    const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+                    overrides[table] = 'occupied';
+                    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                    window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
+                    try {
+                        if (typeof BroadcastChannel !== 'undefined') {
+                            new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
+                        }
+                    } catch (e) {}
+                }
 
-            renderProducts();
+                // 4. Reset
+                clearCart();
+                if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
+                if (document.getElementById('order-guests')) document.getElementById('order-guests').value = '';
+                if (document.getElementById('order-name')) document.getElementById('order-name').value = '';
+                renderPosTableSelect();
+                document.getElementById('pos-discount-type').value = 'none';
+                document.getElementById('pos-discount-id').classList.remove('show');
+                document.getElementById('pos-discount-id').value = '';
+                editingTransactionId = null; 
 
-            lastTransactionId = resNo;
-            if (typeof superModal === 'function') {
-                superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen.` });
-            } else {
-                alert(`Order ${resNo} has been successfully sent to the kitchen.`);
+                renderProducts();
+
+                lastTransactionId = resNo;
+                if (typeof superModal === 'function') {
+                    superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen and database.` });
+                } else {
+                    alert(`Order ${resNo} has been successfully sent to the kitchen.`);
+                }
+
+            } catch (err) {
+                console.error(err);
+                if (typeof superModal === 'function') superModal({ title: 'Error ❌', message: 'Failed to connect to database. Make sure your server is running.' });
+                else alert('Database Error');
+            } finally {
+                checkoutBtn.innerHTML = originalBtnHtml;
+                checkoutBtn.disabled = false;
             }
         }
-
-
 
         function getReservationPaidAmount(r) {
             if (!r) return 0;
