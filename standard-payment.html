@@ -172,14 +172,41 @@
             clearStatus();
 
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Connecting to PayMongo...';
-
-            const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
-            localStorage.setItem('reservationNumber', resNo);
+            btn.innerHTML = '<span class="spinner"></span> Securing Table...';
 
             const depositLabel = isVip ? "VIP Room Down Payment" : "Standard Reservation Deposit";
 
             try {
+                // 👉 1. Insert into Database FIRST to get the official ID
+                let cartItems = [];
+                try {
+                    const cartObj = JSON.parse(localStorage.getItem('currentCartObj') || '{}');
+                    cartItems = Object.keys(cartObj).map(id => ({ id, quantity: cartObj[id].qty }));
+                } catch(e) {}
+
+                const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: customerName,
+                        email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                        date: arrivalDate,
+                        time: arrivalTime,
+                        table: bookedTable,
+                        cartItems: cartItems,
+                        status: 'pending_paymongo' // Keeps table locked during checkout
+                    })
+                });
+                
+                if (!dbRes.ok) throw new Error('Database could not be reached.');
+                const dbData = await dbRes.json();
+                
+                const resNo = 'RES-' + dbData.reservationId; // 👉 Grab Sequential ID!
+                localStorage.setItem('reservationNumber', resNo);
+
+                // 👉 2. Proceed to PayMongo
+                btn.innerHTML = '<span class="spinner"></span> Connecting to PayMongo...';
+                
                 const nodeRes = await fetch(`${API_BASE_URL}/api/paymongo/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -281,11 +308,11 @@
                 return;
             }
             clearStatus();
-            const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
 
-            // 👉 FIX: Send manual customer reservations directly to MySQL Database!
+            // 👉 NEW: Send to Database FIRST to get Sequential ID
+            let dbData = { reservationId: Math.floor(100000 + Math.random() * 900000) }; // Fallback
             try {
-                await fetch(`${API_BASE_URL}/reserve`, {
+                const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -298,12 +325,12 @@
                         status: 'Pending'
                     })
                 });
-            } catch (err) {
-                console.error("Database save failed:", err);
-            }
+                dbData = await dbRes.json();
+            } catch (err) { console.error("Database save failed:", err); }
+
+            const resNo = 'RES-' + dbData.reservationId;
 
             const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            // ... (leave the rest of the function untouched)
             hist.push({
                 reservationNumber:      resNo,
                 reservationType:        isVip ? 'vip' : 'standard',
