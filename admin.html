@@ -1235,7 +1235,8 @@ async function syncReservations() {
                     paymentStatus: 'pending',
                     createdAt: new Date().toISOString(),
                     foods: [], 
-                    paymentAmount: 0 
+                    paymentAmount: 0,
+                    bookedBy: dbRes.bookedBy // 👉 Ensures the UI knows it's a Walk-in or Online!
                 });
                 updated = true;
             }
@@ -4756,7 +4757,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     }
 
     try {
-        // 1. Save to live MySQL database
+        // 1. Save to live MySQL database FIRST to get the official Sequential ID
         const res = await fetch(`${API_BASE_URL}/reserve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4772,8 +4773,12 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         });
 
         if (!res.ok) throw new Error('Database rejected the save');
+        const dbData = await res.json();
+        
+        // 👉 FIX: Apply the official Database ID!
+        const resNo = 'WI-' + dbData.reservationId; 
 
-        // 2. 👉 FIX: Save the rich object to local memory first so 'bookedBy: staff' and foods are kept!
+        // 2. Save the rich object to local memory
         const reservation = {
             reservationNumber: resNo,
             reservationType: walkinType,
@@ -4792,7 +4797,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             createdAt: new Date().toISOString(),
             approvalStatus: 'pending',
             bookedBy: 'staff',
-            completedAt: null, // 👉 FIX: Keeps the reservation active on the Floor Plan!
+            completedAt: null, 
             cartItems: structuredCart,
             stockDeducted: true
         };
@@ -4801,12 +4806,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         history.push(reservation);
         localStorage.setItem('reservationHistory', JSON.stringify(history));
 
-        // 3. Force the smart merge to update the WI- ID to the official MySQL RES- ID
         if (typeof syncReservations === 'function') await syncReservations();
-
-        if (typeof renderMenuManagement === 'function') {
-            renderMenuManagement();
-        }
+        if (typeof renderMenuManagement === 'function') renderMenuManagement();
 
         const toast = document.getElementById('walkin-toast');
         toast.textContent = `✅ Reservation saved for ${name} — ${table}`;
