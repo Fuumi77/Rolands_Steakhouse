@@ -363,8 +363,9 @@
 
                 const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
                 
-                // 👉 FIX: Only show as taken if it is Approved, Seated, or Pending
-                if (aStatus !== 'approved' && aStatus !== 'seated' && aStatus !== 'pending') return false;
+                // 👉 FIX: ONLY show the table as taken if it is strictly 'approved' or 'seated'.
+                // (Pending reservations won't lock the table visually until you confirm them!)
+                if (aStatus !== 'approved' && aStatus !== 'seated') return false;
                 
                 return true;
             });
