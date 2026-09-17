@@ -4721,6 +4721,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     }
 
     // 👉 2. Show Confirmation Modal BEFORE saving
+    const finalPaymentAmount = walkinType === 'priority' ? payment : 200;
+
     const receiptHtml = `
         <div style="text-align: left; font-size: 14px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px;">
             <div style="margin-bottom: 8px;"><strong>Customer:</strong> ${name}</div>
@@ -4729,7 +4731,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             <div style="margin-bottom: 8px;"><strong>Type:</strong> ${walkinType === 'priority' ? '⭐ Priority' : '🪑 Standard'}</div>
             <div style="margin-bottom: 8px;"><strong>Guests:</strong> ${guests || 'N/A'}</div>
             ${orderSummary ? `<div style="margin-bottom: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Food Order:</strong><br>${orderSummary}</div>` : ''}
-            <div style="margin-top: 12px; font-size: 16px; color: #1b5e20; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Total Payment:</strong> ₱${payment.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div style="margin-top: 12px; font-size: 16px; color: #1b5e20; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Total Payment:</strong> ₱${finalPaymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
         <p style="margin-top: 15px; font-size: 13px; color: #64748b;">Please verify these details before saving the reservation.</p>
     `;
