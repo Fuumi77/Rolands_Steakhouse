@@ -437,9 +437,10 @@ app.get('/reservations', async (req, res) => {
         const mappedData = rows.map(r => {
             const d = new Date(r.reservation_time);
             
-            // 👉 NEW: Assign WI- for staff, RES- for online customers
+            // 👉 Assign WI- for staff, POS- for terminal, RES- for online
             const isStaff = r.booked_by === 'staff';
-            const prefix = isStaff ? 'WI-' : 'RES-';
+            const isPos = r.booked_by === 'pos';
+            const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : 'RES-');
 
             return {
                 reservationNumber: `${prefix}${r.reservation_id}`,
@@ -484,9 +485,10 @@ app.post('/reserve', async (req, res) => {
         const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 0;
         const reservationTime = `${date} ${time}:00`;
 
-        // 👉 Determine Origin (Walk-ins use a specific hidden email pattern)
+        // 👉 Determine Origin
         const isWalkin = email && String(email).includes('walkin-');
-        const bookedBy = isWalkin ? 'staff' : 'online';
+        const isPos = email && String(email).includes('pos-'); // 👉 NEW
+        const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); // 👉 NEW
 
         // 3. Insert the reservation
         const [result] = await db.query(
