@@ -34,10 +34,11 @@ const pool = mysql.createPool({
 const db = pool.promise();
 
 db.query('SELECT 1')
-    .then(() => {
+    .then(async () => {
         console.log('✅ Connected to Hostinger MySQL Database!');
-        // 👉 FIX: Upgrade the strict status column so it flawlessly accepts Approved, Seated, and Completed
-        db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
+        await db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
+        // 👉 NEW: Add a column to track Walk-ins vs Online!
+        await db.query("ALTER TABLE reservation_log ADD COLUMN booked_by VARCHAR(50) DEFAULT 'online'").catch(()=>{});
     })
     .catch(err => console.error('❌ MySQL Connection Failed:', err));
 
@@ -426,24 +427,29 @@ app.delete('/api/staff/:username', async (req, res) => {
 /* RESERVATIONS */
 app.get('/reservations', async (req, res) => {
     try {
-        // Fetch all reservations and join with customer data
+        // Fetch all reservations including the new booked_by column
         const [rows] = await db.query(`
-            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status
+            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by
             FROM reservation_log r
             JOIN customer_credentials c ON r.customer_id = c.customer_id
         `);
 
-        // Map the SQL columns to match what your frontend JS expects
         const mappedData = rows.map(r => {
             const d = new Date(r.reservation_time);
+            
+            // 👉 NEW: Assign WI- for staff, RES- for online customers
+            const isStaff = r.booked_by === 'staff';
+            const prefix = isStaff ? 'WI-' : 'RES-';
+
             return {
-                reservationNumber: `RES-${r.reservation_id}`,
+                reservationNumber: `${prefix}${r.reservation_id}`,
                 customerName: r.name,
                 arrivalDate: d.toISOString().split('T')[0],
                 arrivalTime: d.toTimeString().substring(0, 5),
                 bookedTable: `Table ${r.table_number}`,
-                reservationType: 'priority',
-                status: r.status
+                reservationType: 'standard',
+                status: r.status,
+                bookedBy: r.booked_by // Pass this to the frontend!
             };
         });
 
@@ -478,10 +484,14 @@ app.post('/reserve', async (req, res) => {
         const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 0;
         const reservationTime = `${date} ${time}:00`;
 
+        // 👉 Determine Origin (Walk-ins use a specific hidden email pattern)
+        const isWalkin = email && String(email).includes('walkin-');
+        const bookedBy = isWalkin ? 'staff' : 'online';
+
         // 3. Insert the reservation
-        await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status) VALUES (?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'pending']
+        const [result] = await db.query(
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by) VALUES (?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy]
         );
 
         // 4. Deduct Stock if items were ordered
@@ -489,7 +499,8 @@ app.post('/reserve', async (req, res) => {
             await deductStock(cartItems);
         }
 
-        res.json({ success: true });
+        // 👉 NEW: Send the official sequential ID back to the browser!
+        res.json({ success: true, reservationId: result.insertId }); 
 
     } catch (err) {
         console.error("Save Reservation Error:", err);
