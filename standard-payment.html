@@ -283,7 +283,7 @@
             clearStatus();
             const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
 
-            // 👉 NEW: Send customer reservation directly to MySQL Database!
+            // 👉 FIX: Send manual customer reservations directly to MySQL Database!
             try {
                 await fetch(`${API_BASE_URL}/reserve`, {
                     method: 'POST',
@@ -294,7 +294,7 @@
                         date: arrivalDate,
                         time: arrivalTime,
                         table: bookedTable,
-                        cartItems: [], // Standard manual payments have no food pre-orders
+                        cartItems: [], 
                         status: 'Pending'
                     })
                 });
@@ -303,6 +303,7 @@
             }
 
             const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            // ... (leave the rest of the function untouched)
             hist.push({
                 reservationNumber:      resNo,
                 reservationType:        isVip ? 'vip' : 'standard',
