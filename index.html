@@ -317,8 +317,10 @@
             event.preventDefault();
             const nameInput = document.getElementById('customer-name-input');
             const emailInput = document.getElementById('customer-email-input');
+            const phoneInput = document.querySelector('input[type="tel"]'); // 👉 NEW: Grabs phone number
             const arrivalDateInput = document.getElementById('arrival-date-input');
             const arrivalTimeInput = document.getElementById('arrival-time-input');
+            const partySizeInput = document.getElementById('party-size-select'); // 👉 NEW: Grabs party size
 
             // Enforce time bounds manually for older browsers
             if (arrivalDateInput && arrivalTimeInput && arrivalTimeInput.value) {
@@ -355,10 +357,13 @@
                 }
             }
 
+            // 👉 NEW: Save all fields to browser memory
             localStorage.setItem('customerName', (nameInput?.value || '').trim());
             localStorage.setItem('customerEmail', (emailInput?.value || '').trim());
+            localStorage.setItem('customerPhone', (phoneInput?.value || '').trim()); 
             localStorage.setItem('arrivalDate', arrivalDateInput?.value || '');
             localStorage.setItem('arrivalTime', arrivalTimeInput?.value || '');
+            localStorage.setItem('partySize', partySizeInput?.value || ''); 
 
             // Clear any stale cart/pre-order data for a fresh start
             localStorage.removeItem('preOrderCart');
@@ -409,6 +414,30 @@
             goLoginPageBtn.addEventListener('click', () => {
                 window.location.href = "login.html";
             });
+        })();
+        // 👉 NEW: Auto-refill the form if the user clicked "Go Back" from seat selection
+        (function restoreFormState() {
+            const savedName = localStorage.getItem('customerName');
+            const savedEmail = localStorage.getItem('customerEmail');
+            const savedPhone = localStorage.getItem('customerPhone');
+            const savedDate = localStorage.getItem('arrivalDate');
+            const savedTime = localStorage.getItem('arrivalTime');
+            const savedParty = localStorage.getItem('partySize');
+
+            if (savedName) document.getElementById('customer-name-input').value = savedName;
+            if (savedEmail) document.getElementById('customer-email-input').value = savedEmail;
+            if (savedPhone) {
+                const phoneInput = document.querySelector('input[type="tel"]');
+                if (phoneInput) phoneInput.value = savedPhone;
+            }
+            if (savedParty) document.getElementById('party-size-select').value = savedParty;
+            
+            if (savedDate) {
+                document.getElementById('arrival-date-input').value = savedDate;
+                // Force the date logic to run so the time bounds sync correctly
+                document.getElementById('arrival-date-input').dispatchEvent(new Event('change'));
+                if (savedTime) document.getElementById('arrival-time-input').value = savedTime;
+            }
         })();
 
         (function initMenuGestures() {
