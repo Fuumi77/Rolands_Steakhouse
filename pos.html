@@ -999,13 +999,15 @@
                 let resNo = isEdit ? editingTransactionId : '';
 
                 // 👉 3. Send to Database FIRST to get Sequential ID
+                const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app'; // 👉 ADD THIS LINE HERE!
+
                 if (!isEdit) {
                     const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             name: name,
-                            email: `pos-${Date.now()}@temp.com`, // 👉 Identifies this as a POS transaction to the backend
+                            email: `pos-${Date.now()}@temp.com`, 
                             date: new Date().toISOString().split('T')[0],
                             time: new Date().toTimeString().substring(0,5),
                             table: table,
