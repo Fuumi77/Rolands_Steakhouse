@@ -282,6 +282,26 @@
             }
             clearStatus();
             const resNo = 'RES-' + Math.floor(100000 + Math.random() * 900000);
+
+            // 👉 NEW: Send customer reservation directly to MySQL Database!
+            try {
+                await fetch(`${API_BASE_URL}/reserve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: customerName,
+                        email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                        date: arrivalDate,
+                        time: arrivalTime,
+                        table: bookedTable,
+                        cartItems: [], // Standard manual payments have no food pre-orders
+                        status: 'Pending'
+                    })
+                });
+            } catch (err) {
+                console.error("Database save failed:", err);
+            }
+
             const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             hist.push({
                 reservationNumber:      resNo,
