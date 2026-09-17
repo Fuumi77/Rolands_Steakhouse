@@ -1409,20 +1409,41 @@
         function showReservationHistory() {
             const body  = document.getElementById('chatBody');
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-            const cName = localStorage.getItem('customerName');
+            const savedName = localStorage.getItem('customerName');
+            const savedPhone = localStorage.getItem('customerPhone'); // The phone number we saved earlier!
             const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
             let myRes = [];
-            if (guestRes && guestRes.reservationNumber) {
-                const gNum = (guestRes.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
-                myRes = hist.filter(r => (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '') === gNum);
-            }
-            if (myRes.length === 0 && cName) {
-                myRes = hist.filter(r => r.customerName === cName).reverse();
-            }
+
+            // 👉 NEW: Device-Based Tracking & Staff Filter
+            hist.forEach(r => {
+                // 1. NEVER show staff walk-ins to online customers
+                if (r.bookedBy === 'staff') return; 
+
+                let isMatch = false;
+
+                // 2. Strongly match this specific device's Phone Number or Name
+                if (savedPhone && r.contactNumber === savedPhone) {
+                    isMatch = true;
+                } else if (savedName && savedName !== 'Guest' && r.customerName === savedName) {
+                    isMatch = true;
+                }
+                
+                // 3. Keep manual chat code entries visible
+                if (guestRes && guestRes.reservationNumber) {
+                    const gNum = guestRes.reservationNumber.toString().toUpperCase().replace(/^#/, '');
+                    const rNum = (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
+                    if (rNum === gNum) isMatch = true;
+                }
+
+                if (isMatch) myRes.push(r);
+            });
+
+            // Deduplicate in case of overlaps
+            myRes = [...new Map(myRes.map(item => [item.reservationNumber, item])).values()].reverse();
 
             if (myRes.length === 0) {
-                body.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;">No reservations found yet.<br>Please enter your reservation code in Live Support.</div>`;
+                body.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;">No reservations found for this device yet.<br>Please enter your reservation code in Live Support if you booked on another device.</div>`;
                 return;
             }
 
