@@ -1712,14 +1712,8 @@ async function syncReservations() {
     r.paymentStatus = 'verified'; // Instantly verifies payment
     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-    // Automatically set the floor plan table to "Reserved"
-    if (r.bookedTable) {
-        try {
-            const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-            overrides[r.bookedTable] = 'reserved';
-            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-        } catch(e) {}
-    }
+    // 👉 Let the Smart Engine evaluate the table!
+    if (r.bookedTable) window.smartTableStatusUpdate(r.bookedTable);
 
     if (window.showToast) {
         window.showToast(`Reservation ${resNum} Approved! Table reserved.`, 'success', 3500);
@@ -1758,14 +1752,8 @@ window.rejectReservation = async function (resNum) {
     r.completedAt = new Date().toISOString();
     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
-    // 3. Free the table
-    if (r.bookedTable) {
-        try {
-            const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-            overrides[r.bookedTable] = 'available';
-            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-        } catch(e) {}
-    }
+    // 👉 Let the Smart Engine free the table (if no other reservations exist)
+    if (r.bookedTable) window.smartTableStatusUpdate(r.bookedTable);
 
     if (window.showToast) window.showToast(`Reservation ${resNum} Rejected Successfully`, 'info', 3000);
 
@@ -1794,11 +1782,8 @@ window.rejectReservation = async function (resNum) {
                     window.showToast(`Reservation ${resNum} Marked Seated!`, 'success', 3500);
                 }
 
-                if (r.bookedTable) {
-                    const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-                    overrides[r.bookedTable] = 'seated'; // We'll update the floor plan cycle as well
-                    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                }
+                // 👉 Let the Smart Engine apply the seated status!
+                if (r.bookedTable) window.smartTableStatusUpdate(r.bookedTable);
 
                 renderDashboard();
                 if (typeof renderFloorPlan === 'function') renderFloorPlan();
@@ -2454,14 +2439,74 @@ window.rejectReservation = async function (resNum) {
                 }
             };
 
-            // 👉 FIX: Added missing Database connections for Floor Plan buttons
+            // 👉 NEW: Smart Table Status Engine
+window.smartTableStatusUpdate = function(tId) {
+    if (!tId || tId === 'Takeout') return;
+    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+    const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+
+    // Find all remaining ACTIVE reservations for this specific table
+    const activeRes = hist.filter(r => r.bookedTable === tId && !r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled');
+
+    if (overrides[tId] === 'unavailable' || overrides[tId] === 'cleaning') {
+        // Leave manual overrides alone
+    } else if (activeRes.length === 0) {
+        overrides[tId] = 'available'; // No reservations left!
+    } else {
+        // Evaluate remaining reservations to find the highest priority status
+        const isSeated = activeRes.some(r => r.approvalStatus === 'seated');
+        const isApproved = activeRes.some(r => r.approvalStatus === 'approved');
+        
+        if (isSeated) overrides[tId] = 'seated';
+        else if (isApproved) overrides[tId] = 'reserved';
+        else overrides[tId] = 'available';
+    }
+    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+};
+
+// 👉 NEW: "Done Eating" Button Logic
+window.markTableAvailableAndDone = function(tId) {
+    let hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+    let updated = false;
+
+    // Automatically complete any active 'Seated' reservations on this table
+    hist.forEach(r => {
+        if (r.bookedTable === tId && r.approvalStatus === 'seated') {
+            r.approvalStatus = 'completed';
+            r.completedAt = new Date().toISOString();
+            updated = true;
+            try {
+                fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
+                });
+            } catch(e) {}
+        }
+    });
+
+    if (updated) localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+    // Force override to available, then let the smart engine check for other reservations
+    const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+    overrides[tId] = 'available';
+    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+    
+    window.smartTableStatusUpdate(tId);
+    
+    renderFloorPlan();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    
+    const toast = document.getElementById('floor-toast');
+    if (toast) toast.style.display = 'none';
+};
+
 window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     const hist = getReservationHistory();
     if (idx >= 0 && idx < hist.length) {
         const targetRes = hist[idx];
         
         if (newStatus === 'completed') {
-            // 👉 ADDED: Tell MySQL the reservation is Completed!
             try {
                 await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                     method: 'POST',
@@ -2474,7 +2519,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             targetRes.approvalStatus = 'completed';
             
         } else if (newStatus === 'seated') {
-            // 👉 ADDED: Tell MySQL the guest is Seated!
             try {
                 await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                     method: 'POST',
@@ -2485,9 +2529,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
             targetRes.approvalStatus = 'seated';
             targetRes.seatedAt = new Date().toISOString();
-            const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-            overrides[tId] = 'seated';
-            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
             
         } else if (newStatus === 'rejected') {
             const confirmed = await superModal({
@@ -2497,7 +2538,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             });
             if (!confirmed) return;
 
-            // Notice the Capital 'C'
             try {
                 await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                     method: 'POST',
@@ -2520,15 +2560,10 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             targetRes.completedAt = new Date().toISOString();
         }
 
-        // Check remaining active reservations for this table
-        const activeRes = hist.filter(r => r.bookedTable === tId && !r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled');
-        if (activeRes.length === 0) {
-            const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
-            overrides[tId] = 'available';
-            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-        }
-
         localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+        // 👉 Let the Smart Engine evaluate the table's new status!
+        window.smartTableStatusUpdate(tId);
 
         try {
             window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
