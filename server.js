@@ -583,30 +583,42 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
     }
 });
 
-/* DEDUCT STOCK HELPER */
-async function deductStock(cartItems, branch = 'General Santos City') {
-    console.log(`Deducting stock for ${cartItems.length} items at ${branch}...`);
+/* ==========================================
+   UNIVERSAL INVENTORY SYNC ROUTE
+========================================== */
+app.post('/api/inventory/sync-movement', async (req, res) => {
+    const { action, ingredientId, ingredientName, changeQty, newStock, unit, operator } = req.body;
+    
     try {
-        for (const item of cartItems) {
-            const qty = item.quantity || 1;
-            
-            // 1. Deduct from the live master inventory
-            await db.query(
-                'UPDATE master_inventory SET current_stock = current_stock - ? WHERE (item_id = ? OR item_name = ?) AND branch_location = ?',
-                [qty, item.id, item.name || item.title || item.id, branch]
-            );
+        // 1. Check if ingredient exists in MySQL yet
+        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ?', [ingredientId]);
+        let prevStock = 0;
 
-            // 2. (Optional but recommended) Record the change in your log table
-            // You would normally grab the previous stock first, but this keeps the log flowing!
+        if (current.length > 0) {
+            prevStock = current[0].current_stock;
+            // Update existing ingredient
+            await db.query('UPDATE master_inventory SET current_stock = ?, item_name = ? WHERE item_id = ?', [newStock, ingredientName, ingredientId]);
+        } else {
+            // Auto-create missing ingredient in MySQL
             await db.query(
-                'INSERT INTO menu_stock_change_log (item_name, previous_stock, new_stock, updated_by) VALUES (?, ?, ?, ?)',
-                [item.name || item.title, 0, 0, 1] // 1 represents a generic system/admin ID
+                'INSERT INTO master_inventory (item_id, item_name, current_stock, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?)', 
+                [ingredientId, ingredientName, newStock, unit || 'g', 'General Santos City']
             );
+            prevStock = newStock - changeQty; 
         }
+
+        // 2. Save the exact math to the Raw Ingredients Change Log!
+        await db.query(
+            'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [ingredientName, prevStock, newStock, unit || 'g', operator || 'System']
+        );
+
+        res.json({ success: true });
     } catch (err) {
-        console.error("Stock Deduction Error:", err);
+        console.error("MySQL Inventory Sync Error:", err);
+        res.status(500).json({ error: "Failed to sync inventory" });
     }
-}
+});
 
 /* UPDATE RESERVATION STATUS */
 app.post('/api/reservations/update-status', async (req, res) => {
