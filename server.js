@@ -28,7 +28,9 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    enableKeepAlive: true, // 👉 NEW: Prevents Hostinger from killing the connection
+    keepAliveInitialDelay: 10000 // 👉 NEW: Pings the database continuously
 });
 
 const db = pool.promise();
