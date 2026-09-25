@@ -496,11 +496,6 @@ app.post('/reserve', async (req, res) => {
             [customerId, tableInt, reservationTime, status || 'Pending', bookedBy]
         );
 
-        // 4. Deduct Stock if items were ordered
-        if (cartItems && cartItems.length > 0) {
-            await deductStock(cartItems);
-        }
-
         // 👉 NEW: Send the official sequential ID back to the browser!
         res.json({ success: true, reservationId: result.insertId }); 
 
@@ -518,7 +513,6 @@ app.post('/reserve', async (req, res) => {
 app.get('/api/inventory/raw', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM master_inventory');
-        // Map MySQL columns to the frontend's expected format
         const mappedData = rows.map(r => ({
             id: r.item_id,
             name: r.item_name,
@@ -538,13 +532,16 @@ app.get('/api/inventory/raw', async (req, res) => {
 app.post('/api/inventory/restock', async (req, res) => {
     const { id, name, addAmount, unit, updatedBy } = req.body;
     try {
-        // Grab previous stock for the log
         const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [id, name]);
         const prevStock = current.length > 0 ? current[0].current_stock : 0;
         const newStock = prevStock + Number(addAmount);
 
-        // Update Master Inventory
-        await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, id, name]);
+        // Auto-create item in MySQL if it doesn't exist yet!
+        if (current.length > 0) {
+            await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, id, name]);
+        } else {
+            await db.query('INSERT INTO master_inventory (item_id, item_name, current_stock, unit_of_measurement) VALUES (?, ?, ?, ?)', [id, name, newStock, unit]);
+        }
 
         // Insert into the Raw Ingredients Change Log
         await db.query(
@@ -559,18 +556,28 @@ app.post('/api/inventory/restock', async (req, res) => {
     }
 });
 
-// 3. Add a brand new raw ingredient
-app.post('/api/inventory/add', async (req, res) => {
-    const { id, name, category, unit, stock, minThreshold } = req.body;
+// 3. Deduct raw ingredients directly (Called by Frontend Recipe BOM)
+app.post('/api/inventory/deduct-raw', async (req, res) => {
+    const { items, operator, orderRef } = req.body;
     try {
-        await db.query(
-            'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [id || `ING-${Date.now()}`, name, category || 'General', stock || 0, minThreshold || 10, unit || 'g', 'General Santos City']
-        );
+        for (let i of items) {
+            const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [i.id, i.name]);
+            const prevStock = current.length > 0 ? current[0].current_stock : 0;
+            const newStock = Math.max(0, prevStock - Number(i.deductQty));
+
+            if (current.length > 0) {
+                await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, i.id, i.name]);
+            }
+
+            await db.query(
+                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+                [i.name, prevStock, newStock, i.unit || 'g', operator || 'System']
+            );
+        }
         res.json({ success: true });
     } catch (err) {
-        console.error("Add Ingredient Error:", err);
-        res.status(500).json({ error: "Failed to add new ingredient" });
+        console.error("Deduct Error:", err);
+        res.status(500).json({ error: "Failed to deduct" });
     }
 });
 
