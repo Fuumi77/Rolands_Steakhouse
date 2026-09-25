@@ -510,6 +510,70 @@ app.post('/reserve', async (req, res) => {
     }
 });
 
+/* ==========================================
+   LIVE INVENTORY & INGREDIENT APIs
+========================================== */
+
+// 1. Fetch live raw ingredients from MySQL
+app.get('/api/inventory/raw', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM master_inventory');
+        // Map MySQL columns to the frontend's expected format
+        const mappedData = rows.map(r => ({
+            id: r.item_id,
+            name: r.item_name,
+            category: r.category,
+            stock: r.current_stock,
+            minThreshold: r.min_threshold,
+            unit: r.unit_of_measurement
+        }));
+        res.json(mappedData);
+    } catch (err) {
+        console.error("Fetch Inventory Error:", err);
+        res.status(500).json({ error: "Failed to fetch inventory" });
+    }
+});
+
+// 2. Restock ingredient and save to Change Log
+app.post('/api/inventory/restock', async (req, res) => {
+    const { id, name, addAmount, unit, updatedBy } = req.body;
+    try {
+        // Grab previous stock for the log
+        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [id, name]);
+        const prevStock = current.length > 0 ? current[0].current_stock : 0;
+        const newStock = prevStock + Number(addAmount);
+
+        // Update Master Inventory
+        await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, id, name]);
+
+        // Insert into the Raw Ingredients Change Log
+        await db.query(
+            'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [name, prevStock, newStock, unit || 'g', updatedBy || 'Admin']
+        );
+
+        res.json({ success: true, newStock: newStock });
+    } catch (err) {
+        console.error("Restock Error:", err);
+        res.status(500).json({ error: "Failed to restock ingredient" });
+    }
+});
+
+// 3. Add a brand new raw ingredient
+app.post('/api/inventory/add', async (req, res) => {
+    const { id, name, category, unit, stock, minThreshold } = req.body;
+    try {
+        await db.query(
+            'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [id || `ING-${Date.now()}`, name, category || 'General', stock || 0, minThreshold || 10, unit || 'g', 'General Santos City']
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Add Ingredient Error:", err);
+        res.status(500).json({ error: "Failed to add new ingredient" });
+    }
+});
+
 /* DEDUCT STOCK HELPER */
 async function deductStock(cartItems, branch = 'General Santos City') {
     console.log(`Deducting stock for ${cartItems.length} items at ${branch}...`);
