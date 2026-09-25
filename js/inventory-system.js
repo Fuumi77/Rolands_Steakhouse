@@ -1940,3 +1940,107 @@
     } catch (e) {}
 
 })(window);
+
+/* ==========================================
+   MYSQL DATABASE SYNC BRIDGE
+   Connects frontend BOM logic directly to MySQL
+========================================== */
+(function initDatabaseBridge() {
+    const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+
+    // 1. Background Poller: Fetches live DB stock every 5s
+    setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/inventory/raw`);
+            if (res.ok) {
+                const liveData = await res.json();
+                if (liveData && liveData.length > 0) {
+                    let rawList = JSON.parse(localStorage.getItem('rawIngredients') || '[]');
+                    let updated = false;
+                    
+                    liveData.forEach(dbItem => {
+                        const localItem = rawList.find(i => i.id === dbItem.id || i.name === dbItem.name);
+                        if (localItem) {
+                            if (localItem.stock !== dbItem.stock) {
+                                localItem.stock = dbItem.stock;
+                                updated = true;
+                            }
+                        } else {
+                            rawList.push(dbItem);
+                            updated = true;
+                        }
+                    });
+
+                    if (updated) {
+                        localStorage.setItem('rawIngredients', JSON.stringify(rawList));
+                        window.dispatchEvent(new Event('rawIngredientsUpdated'));
+                    }
+                }
+            }
+        } catch (e) {}
+    }, 5000);
+
+    // 2. Override Quick Restock to push to MySQL
+    const originalRestock = window.InventorySystem.restockRawIngredient;
+    window.InventorySystem.restockRawIngredient = function(ingId, addAmount, operator, notes) {
+        let rawList = JSON.parse(localStorage.getItem('rawIngredients') || '[]');
+        let ing = rawList.find(i => i.id === ingId);
+        
+        if (ing) {
+            fetch(`${API_BASE_URL}/api/inventory/restock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: ing.id,
+                    name: ing.name,
+                    addAmount: addAmount,
+                    unit: ing.unit,
+                    updatedBy: operator || 'Admin Staff'
+                })
+            }).catch(e => console.error(e));
+            
+            return originalRestock(ingId, addAmount, operator, notes);
+        }
+        return null;
+    };
+
+    // 3. Override Order Deductions (For POS, Walk-ins, Pre-orders)
+    const originalDeduct = window.InventorySystem.deductIngredientsForOrder;
+    window.InventorySystem.deductIngredientsForOrder = function(cartItems, operator, orderRef) {
+        const result = originalDeduct(cartItems, operator, orderRef);
+        
+        if (result && result.success) {
+            const normalized = window.InventorySystem.normalizeCartItemsInput(cartItems);
+            const rawList = window.InventorySystem.getRawIngredients();
+            const dbDeductions = [];
+
+            normalized.forEach(cartItem => {
+                const recipe = window.InventorySystem.getItemRecipe(cartItem.id, cartItem);
+                const qtyOrdered = Number(cartItem.quantity) || 1;
+                if (recipe && recipe.length > 0) {
+                    recipe.forEach(r => {
+                        const rawIng = rawList.find(i => i.id === r.ingredientId);
+                        if (rawIng) {
+                            dbDeductions.push({
+                                id: rawIng.id,
+                                name: rawIng.name,
+                                deductQty: (Number(r.qty) || 0) * qtyOrdered,
+                                unit: rawIng.unit
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Push calculated raw ingredient deductions to MySQL Change Log
+            if (dbDeductions.length > 0) {
+                fetch(`${API_BASE_URL}/api/inventory/deduct-raw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: dbDeductions, operator: operator, orderRef: orderRef })
+                }).catch(e => console.error(e));
+            }
+        }
+        return result;
+    };
+})();
