@@ -597,10 +597,10 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             // Update existing ingredient
             await db.query('UPDATE master_inventory SET current_stock = ?, item_name = ? WHERE item_id = ?', [newStock, ingredientName, ingredientId]);
         } else {
-            // Auto-create missing ingredient in MySQL
+            // 👉 FIX: Added category and min_threshold so MySQL strict-mode accepts the row!
             await db.query(
-                'INSERT INTO master_inventory (item_id, item_name, current_stock, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?)', 
-                [ingredientId, ingredientName, newStock, unit || 'g', 'General Santos City']
+                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+                [ingredientId, ingredientName, 'General', newStock, 10, unit || 'g', 'General Santos City']
             );
             prevStock = newStock - changeQty; 
         }
@@ -614,7 +614,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error("MySQL Inventory Sync Error:", err);
-        res.status(500).json({ error: "Failed to sync inventory" });
+        res.status(500).json({ error: err.message }); // Show the true error if it fails
     }
 });
 
