@@ -1989,7 +1989,7 @@
                 }
             }
         } catch (e) {}
-    }, 30000);
+    }, 60000);
 
     // 2. Intercept the frontend's perfect math log
     const originalLog = window.InventorySystem.logStockMovement;
