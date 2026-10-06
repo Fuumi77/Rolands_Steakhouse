@@ -1951,7 +1951,7 @@
 })(window);
 
 /* ==========================================
-   MYSQL DATABASE SYNC BRIDGE v2
+   MYSQL DATABASE SYNC BRIDGE v3
    Captures ALL inventory movements automatically
 ========================================== */
 (function initDatabaseBridge() {
@@ -1959,7 +1959,7 @@
 
     if (!window.InventorySystem) return;
 
-    // 1. Background Poller: Fetches live DB stock every 5s
+    // 1. Background Poller
     setInterval(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/inventory/raw`);
@@ -1968,20 +1968,16 @@
                 if (liveData && liveData.length > 0) {
                     let rawList = JSON.parse(localStorage.getItem('rawIngredients') || '[]');
                     let updated = false;
-                    
                     liveData.forEach(dbItem => {
                         const localItem = rawList.find(i => i.id === dbItem.id || i.name === dbItem.name);
-                        if (localItem) {
-                            if (localItem.stock !== dbItem.stock) {
-                                localItem.stock = dbItem.stock;
-                                updated = true;
-                            }
-                        } else {
+                        if (localItem && localItem.stock !== dbItem.stock) {
+                            localItem.stock = dbItem.stock;
+                            updated = true;
+                        } else if (!localItem) {
                             rawList.push(dbItem);
                             updated = true;
                         }
                     });
-
                     if (updated) {
                         localStorage.setItem('rawIngredients', JSON.stringify(rawList));
                         window.dispatchEvent(new Event('rawIngredientsUpdated'));
@@ -1995,10 +1991,8 @@
     const originalLog = window.InventorySystem.logStockMovement;
 
     window.InventorySystem.logStockMovement = function(entry) {
-        // Run the normal local calculation so the UI updates instantly
-        const result = originalLog(entry);
+        const result = originalLog(entry); // <--- This contains the final calculated newStock!
 
-        // Push this EXACT calculation to MySQL in the background
         if (entry && entry.ingredientId && entry.action !== 'SYS-RESET') {
             fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
                 method: 'POST',
@@ -2008,13 +2002,12 @@
                     ingredientId: entry.ingredientId,
                     ingredientName: entry.ingredientName,
                     changeQty: entry.changeQty,
-                    newStock: entry.newStock,
+                    newStock: result ? result.newStock : entry.newStock, // 👉 GUARANTEED to have the exact new stock!
                     unit: entry.unit,
-                    operator: 1 // 👉 FORCE ID 1 so MySQL never rejects the Foreign Key!
+                    operator: 1 
                 })
             }).catch(e => console.error("MySQL Sync Error:", e));
         }
-
         return result;
     };
 })();
