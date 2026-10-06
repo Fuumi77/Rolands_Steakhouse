@@ -597,15 +597,15 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             // Update existing ingredient
             await db.query('UPDATE master_inventory SET current_stock = ?, item_name = ? WHERE item_id = ?', [newStock, ingredientName, ingredientId]);
         } else {
-            // 👉 FIX: Added category and min_threshold so MySQL strict-mode accepts the row!
+            // 👉 FIX: Removed 'unit_of_measurement' since your master_inventory table doesn't have it!
             await db.query(
-                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-                [ingredientId, ingredientName, 'General', newStock, 10, unit || 'g', 'General Santos City']
+                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, branch_location) VALUES (?, ?, ?, ?, ?, ?)', 
+                [ingredientId, ingredientName, 'General', newStock, 10, 'General Santos City']
             );
             prevStock = newStock - changeQty; 
         }
 
-        // 2. Save the exact math to the Raw Ingredients Change Log!
+        // 2. Save the exact math to the Raw Ingredients Change Log (This table DOES have unit_of_measurement)
         await db.query(
             'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
             [ingredientName, prevStock, newStock, unit || 'g', operator || 'System']
@@ -614,7 +614,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error("MySQL Inventory Sync Error:", err);
-        res.status(500).json({ error: err.message }); // Show the true error if it fails
+        res.status(500).json({ error: err.message });
     }
 });
 
