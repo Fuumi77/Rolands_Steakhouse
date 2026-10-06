@@ -310,7 +310,6 @@
         try {
             const logs = getAuditLogs();
             
-            // 👉 FIX: If newStock is missing but we have an ingredient ID, grab the latest stock value!
             let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
             if (finalNewStock === null && entry.ingredientId && entry.ingredientId !== 'FINANCIAL') {
                 const rawList = getRawIngredients();
@@ -325,16 +324,35 @@
                 ingredientId: entry.ingredientId || 'N/A',
                 ingredientName: entry.ingredientName || 'General',
                 changeQty: Number(entry.changeQty) || 0,
-                newStock: finalNewStock, // 👉 Now guaranteed to have a value!
+                newStock: finalNewStock,
                 unit: entry.unit || '',
                 operator: entry.operator || 'System',
                 notes: entry.notes || '',
                 financialValue: Number(entry.financialValue) || 0
             };
+            
             logs.unshift(newEntry);
             if (logs.length > 500) logs.pop();
             localStorage.setItem('inventory_audit_logs', JSON.stringify(logs));
             broadcastSync('auditLogAdded', newEntry);
+
+            // 👉 THE ULTIMATE FIX: The sync is now inside the core function! It cannot be bypassed!
+            if (entry && entry.ingredientId && entry.action !== 'SYS-RESET' && entry.ingredientId !== 'FINANCIAL') {
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/sync-movement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: entry.action,
+                        ingredientId: entry.ingredientId,
+                        ingredientName: entry.ingredientName,
+                        changeQty: entry.changeQty,
+                        newStock: finalNewStock, 
+                        unit: entry.unit,
+                        operator: 1 
+                    })
+                }).catch(e => console.error("MySQL Sync Error:", e));
+            }
+
             return newEntry;
         } catch (e) {
             console.error('Error logging stock movement:', e);
@@ -1951,14 +1969,13 @@
 })(window);
 
 /* ==========================================
-   MYSQL DATABASE SYNC BRIDGE v5 (Direct Mirror)
-   Copies frontend Stock Movement directly to DB
+   MYSQL DATABASE SYNC (Core Poller)
 ========================================== */
 (function initDatabaseBridge() {
     const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
     if (!window.InventorySystem) return;
 
-    // 1. Background Poller
+    // Background Poller: Keeps UI synced with other terminals every 60s
     setInterval(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/inventory/raw`);
@@ -1985,28 +2002,4 @@
             }
         } catch (e) {}
     }, 60000);
-
-    // 2. Direct Mirror: Copies every movement straight to MySQL
-    const originalLog = window.InventorySystem.logStockMovement;
-    window.InventorySystem.logStockMovement = function(entry) {
-        const result = originalLog(entry); // Let the frontend do the perfect math first
-        
-        if (entry && entry.ingredientId && entry.action !== 'SYS-RESET') {
-            // 👉 Send the exact math straight to the Universal Sync route!
-            fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: entry.action,
-                    ingredientId: entry.ingredientId,
-                    ingredientName: entry.ingredientName,
-                    changeQty: entry.changeQty,
-                    newStock: result ? result.newStock : entry.newStock, 
-                    unit: entry.unit,
-                    operator: 1 
-                })
-            }).catch(e => console.error(e));
-        }
-        return result;
-    };
 })();
