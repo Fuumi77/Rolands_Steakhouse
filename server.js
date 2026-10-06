@@ -597,7 +597,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             // Update existing ingredient
             await db.query('UPDATE master_inventory SET current_stock = ?, item_name = ? WHERE item_id = ?', [newStock, ingredientName, ingredientId]);
         } else {
-            // 👉 FIX: Removed 'unit_of_measurement' since your master_inventory table doesn't have it!
+            // Auto-create missing ingredient in MySQL
             await db.query(
                 'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, branch_location) VALUES (?, ?, ?, ?, ?, ?)', 
                 [ingredientId, ingredientName, 'General', newStock, 10, 'General Santos City']
@@ -605,10 +605,13 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             prevStock = newStock - changeQty; 
         }
 
-        // 2. Save the exact math to the Raw Ingredients Change Log (This table DOES have unit_of_measurement)
+        // 👉 FIX: Convert operator text into a valid numeric ID (defaults to 1) for the Foreign Key!
+        const staffId = parseInt(operator) || 1; 
+
+        // 2. Save the exact math to the Raw Ingredients Change Log
         await db.query(
             'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [ingredientName, prevStock, newStock, unit || 'g', operator || 'System']
+            [ingredientName, prevStock, newStock, unit || 'g', staffId]
         );
 
         res.json({ success: true });
