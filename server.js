@@ -28,9 +28,7 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true, // 👉 NEW: Prevents Hostinger from killing the connection
-    keepAliveInitialDelay: 10000 // 👉 NEW: Pings the database continuously
+    queueLimit: 0
 });
 
 const db = pool.promise();
@@ -503,7 +501,7 @@ app.post('/reserve', async (req, res) => {
 
     } catch (err) {
         console.error("Save Reservation Error:", err);
-        res.status(500).send("Error saving to database");
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -526,7 +524,7 @@ app.get('/api/inventory/raw', async (req, res) => {
         res.json(mappedData);
     } catch (err) {
         console.error("Fetch Inventory Error:", err);
-        res.status(500).json({ error: "Failed to fetch inventory" });
+        res.status(500).json({ error: err.message });
     }
 });
 
