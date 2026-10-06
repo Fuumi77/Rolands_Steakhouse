@@ -309,6 +309,15 @@
     function logStockMovement(entry) {
         try {
             const logs = getAuditLogs();
+            
+            // 👉 FIX: If newStock is missing but we have an ingredient ID, grab the latest stock value!
+            let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
+            if (finalNewStock === null && entry.ingredientId && entry.ingredientId !== 'FINANCIAL') {
+                const rawList = getRawIngredients();
+                const matchedIng = rawList.find(i => i.id === entry.ingredientId);
+                if (matchedIng) finalNewStock = Number(matchedIng.stock);
+            }
+
             const newEntry = {
                 id: 'LOG-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
                 timestamp: new Date().toISOString(),
@@ -316,7 +325,7 @@
                 ingredientId: entry.ingredientId || 'N/A',
                 ingredientName: entry.ingredientName || 'General',
                 changeQty: Number(entry.changeQty) || 0,
-                newStock: entry.newStock !== undefined ? Number(entry.newStock) : null,
+                newStock: finalNewStock, // 👉 Now guaranteed to have a value!
                 unit: entry.unit || '',
                 operator: entry.operator || 'System',
                 notes: entry.notes || '',
