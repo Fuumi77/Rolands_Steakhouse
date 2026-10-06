@@ -1951,15 +1951,13 @@
 })(window);
 
 /* ==========================================
-   MYSQL DATABASE SYNC BRIDGE v3
+   MYSQL DATABASE SYNC BRIDGE v4
    Captures ALL inventory movements automatically
 ========================================== */
 (function initDatabaseBridge() {
     const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
-
     if (!window.InventorySystem) return;
 
-    // 1. Background Poller
     setInterval(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/inventory/raw`);
@@ -1987,13 +1985,48 @@
         } catch (e) {}
     }, 60000);
 
-    // 2. Intercept the frontend's perfect math log
+    const originalDeduct = window.InventorySystem.deductIngredientsForOrder;
+    window.InventorySystem.deductIngredientsForOrder = function(cartItems, operator, orderRef) {
+        const result = originalDeduct(cartItems, operator, orderRef);
+        
+        if (result && result.success) {
+            const normalized = window.InventorySystem.normalizeCartItemsInput(cartItems);
+            const rawList = window.InventorySystem.getRawIngredients();
+            const dbDeductions = [];
+
+            normalized.forEach(cartItem => {
+                const recipe = window.InventorySystem.getItemRecipe(cartItem.id, cartItem);
+                const qtyOrdered = Number(cartItem.quantity) || 1;
+                if (recipe && recipe.length > 0) {
+                    recipe.forEach(r => {
+                        const rawIng = rawList.find(i => i.id === r.ingredientId);
+                        if (rawIng) {
+                            dbDeductions.push({
+                                id: rawIng.id,
+                                name: rawIng.name,
+                                deductQty: (Number(r.qty) || 0) * qtyOrdered,
+                                unit: rawIng.unit
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (dbDeductions.length > 0) {
+                fetch(`${API_BASE_URL}/api/inventory/deduct-raw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: dbDeductions, operator: 1, orderRef: orderRef }) 
+                }).catch(e => console.error(e));
+            }
+        }
+        return result;
+    };
+
     const originalLog = window.InventorySystem.logStockMovement;
-
     window.InventorySystem.logStockMovement = function(entry) {
-        const result = originalLog(entry); // <--- This contains the final calculated newStock!
-
-        if (entry && entry.ingredientId && entry.action !== 'SYS-RESET') {
+        const result = originalLog(entry);
+        if (entry && entry.ingredientId && entry.action !== 'SYS-RESET' && entry.action !== 'ORDER_DEDUCTION') {
             fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2002,11 +2035,11 @@
                     ingredientId: entry.ingredientId,
                     ingredientName: entry.ingredientName,
                     changeQty: entry.changeQty,
-                    newStock: result ? result.newStock : entry.newStock, // 👉 GUARANTEED to have the exact new stock!
+                    newStock: result ? result.newStock : entry.newStock,
                     unit: entry.unit,
                     operator: 1 
                 })
-            }).catch(e => console.error("MySQL Sync Error:", e));
+            }).catch(e => console.error(e));
         }
         return result;
     };
