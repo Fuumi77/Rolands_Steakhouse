@@ -556,10 +556,12 @@ app.post('/api/inventory/restock', async (req, res) => {
     }
 });
 
-// 3. Deduct raw ingredients directly (Called by Frontend Recipe BOM)
+// 3. Deduct raw ingredients directly (Called by Cached Frontend Clients)
 app.post('/api/inventory/deduct-raw', async (req, res) => {
     const { items, operator, orderRef } = req.body;
     try {
+        const staffId = parseInt(operator) || 1; // 👉 FIX: Bypass the Foreign Key block for cached browsers!
+
         for (let i of items) {
             const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [i.id, i.name]);
             const prevStock = current.length > 0 ? current[0].current_stock : 0;
@@ -571,7 +573,7 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
 
             await db.query(
                 'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-                [i.name, prevStock, newStock, i.unit || 'g', operator || 'System']
+                [i.name, prevStock, newStock, i.unit || 'g', staffId]
             );
         }
         res.json({ success: true });
