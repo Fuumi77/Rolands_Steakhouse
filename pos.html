@@ -1016,7 +1016,10 @@
                         })
                     });
                     
-                    if (!dbRes.ok) throw new Error('Database rejected the save');
+                    if (!dbRes.ok) {
+                        const errData = await dbRes.json().catch(() => ({ error: 'Database crashed.' }));
+                        throw new Error(`MySQL Error: ${errData.error}`);
+                    }
                     const dbData = await dbRes.json();
                     
                     // 👉 Apply the official Sequential Database ID
@@ -1106,8 +1109,8 @@
 
             } catch (err) {
                 console.error(err);
-                if (typeof superModal === 'function') superModal({ title: 'Error ❌', message: 'Failed to connect to database. Make sure your server is running.' });
-                else alert('Database Error');
+                if (typeof superModal === 'function') superModal({ title: 'Database Error ❌', message: err.message });
+                else alert(err.message);
             } finally {
                 checkoutBtn.innerHTML = originalBtnHtml;
                 checkoutBtn.disabled = false;
