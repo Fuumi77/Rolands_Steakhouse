@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2'); // REPLACED SUPABASE WITH MYSQL
+const mysql = require('mysql2');
 
 const app = express();
 app.use(cors());
@@ -461,73 +461,7 @@ app.get('/reservations', async (req, res) => {
     }
 });
 
-/* SAVE NEW RESERVATION */
-app.post('/reserve', async (req, res) => {
-    console.log("Saving new reservation for:", req.body.name);
-    const { name, email, date, time, table, cartItems, status } = req.body;
-
-    try {
-        // 1. Check if customer exists, or create a temporary guest account
-        let [customers] = await db.query('SELECT customer_id FROM customer_credentials WHERE name = ? OR email = ? LIMIT 1', [name, email || '']);
-        let customerId;
-
-        if (customers.length > 0) {
-            customerId = customers[0].customer_id;
-        } else {
-            const [result] = await db.query(
-                'INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)', 
-                [name, email || `guest-${Date.now()}@temp.com`, 'guest-no-password']
-            );
-            customerId = result.insertId;
-        }
-
-        // 2. Parse the table string (e.g., "Table 4") into an integer for the database
-        const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 0;
-        const reservationTime = `${date} ${time}:00`;
-
-        // 👉 Determine Origin
-        const isWalkin = email && String(email).includes('walkin-');
-        const isPos = email && String(email).includes('pos-'); // 👉 NEW
-        const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); // 👉 NEW
-
-        // 3. Insert the reservation
-        const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by) VALUES (?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy]
-        );
-
-        // 👉 NEW: Send the official sequential ID back to the browser!
-        res.json({ success: true, reservationId: result.insertId }); 
-
-    } catch (err) {
-        console.error("Save Reservation Error:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-/* ==========================================
-   LIVE INVENTORY & INGREDIENT APIs
-========================================== */
-
-// 1. Fetch live raw ingredients from MySQL
-app.get('/api/inventory/raw', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM master_inventory');
-        const mappedData = rows.map(r => ({
-            id: r.item_id,
-            name: r.item_name,
-            category: r.category,
-            stock: r.current_stock,
-            minThreshold: r.min_threshold,
-            unit: r.unit_of_measurement
-        }));
-        res.json(mappedData);
-    } catch (err) {
-        console.error("Fetch Inventory Error:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
+app.get('/reservations', async (req, res) => {
 // 2. Restock ingredient and save to Change Log
 app.post('/api/inventory/restock', async (req, res) => {
     const { id, name, addAmount, unit, updatedBy } = req.body;
