@@ -1957,6 +1957,8 @@
 (function initDatabaseBridge() {
     const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
 
+    if (!window.InventorySystem) return;
+
     // 1. Background Poller: Fetches live DB stock every 5s
     setInterval(async () => {
         try {
@@ -1989,9 +1991,6 @@
         } catch (e) {}
     }, 5000);
 
-    // Make sure the object exists
-    if (!window.InventorySystem) return;
-
     // 2. Intercept the frontend's perfect math log
     const originalLog = window.InventorySystem.logStockMovement;
 
@@ -2004,7 +2003,15 @@
             fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry)
+                body: JSON.stringify({
+                    action: entry.action,
+                    ingredientId: entry.ingredientId,
+                    ingredientName: entry.ingredientName,
+                    changeQty: entry.changeQty,
+                    newStock: entry.newStock,
+                    unit: entry.unit,
+                    operator: 1 // 👉 FORCE ID 1 so MySQL never rejects the Foreign Key!
+                })
             }).catch(e => console.error("MySQL Sync Error:", e));
         }
 
