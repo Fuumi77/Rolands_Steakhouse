@@ -188,17 +188,22 @@
                 <h2 class="section-title">All Records</h2>
                 <div class="row">
                     <input id="search-input" type="text" placeholder="Search by name or order #...">
-                    <select id="filter-type" title="Filter by Order Type" aria-label="Filter by Order Type" onchange="applySearch()">
-                        <option value="">All Types</option>
-                        <option value="priority">Priority</option>
-                        <option value="standard">Standard / POS</option>
-                    </select>
-                    <select id="filter-status" title="Filter by Order Status" aria-label="Filter by Order Status" onchange="applySearch()">
-                        <option value="">All Statuses</option>
-                        <option value="cooking">Cooking</option>
-                        <option value="ready">Ready / Cooked</option>
-                        <option value="served">Served</option>
-                    </select>
+                    <!-- 👉 NEW: Checklist Filters -->
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <div style="display:flex; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span style="font-size:11px; font-weight:800; color:#64748b;">TYPE:</span>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="priority" onchange="applySearch()" checked> PRIO</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="standard" onchange="applySearch()" checked> STD</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="pos" onchange="applySearch()" checked> POS</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="wi" onchange="applySearch()" checked> WI</label>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span style="font-size:11px; font-weight:800; color:#64748b;">STATUS:</span>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="pending" onchange="applySearch()" checked> Pending</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="completed" onchange="applySearch()" checked> Completed</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="cancelled" onchange="applySearch()" checked> Cancelled</label>
+                        </div>
+                    </div>
                     <div class="stat-filter-switch" id="records-date-switch">
                         <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
                         <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
@@ -219,7 +224,8 @@
                             <th>Table</th>
                             <th>Type</th>
                             <th>Items / KDS</th>
-                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -1629,6 +1635,31 @@
                         refundBadge = `<div style="font-size:10px; color:#fbbf24; font-weight:700;">⚠️ REFUND PENDING</div>`;
                     }
 
+                    // 👉 NEW: Payment Verified/Unverified Logic
+                    let paymentBadge = '';
+                    const isPaidVerified = r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || (r.bookedBy === 'staff' && r.completedAt);
+                    if (isPaidVerified) {
+                        paymentBadge = `<div style="font-size:10px; font-weight:800; color:#16a34a; margin-top:2px;">VERIFIED</div>`;
+                    } else if (Number(r.paymentAmount || 0) === 0) {
+                        paymentBadge = `<div style="font-size:10px; font-weight:800; color:#d97706; margin-top:2px;">PENDING CHECK</div>`;
+                    } else {
+                        paymentBadge = `<div style="font-size:10px; font-weight:800; color:#64748b; margin-top:2px;">UNVERIFIED</div>`;
+                    }
+
+                    // 👉 NEW: Reservation Status Logic
+                    let overallStatus = String(r.approvalStatus || 'pending').toLowerCase();
+                    if (r.completedAt) overallStatus = 'completed';
+                    if (r.approvalStatus === 'rejected' || r.kdsStatus === 'cancelled' || r.approvalStatus === 'cancelled') overallStatus = 'cancelled';
+                    
+                    let statusHtml = '';
+                    if (overallStatus === 'completed') {
+                        statusHtml = `<span style="color:#16a34a; font-weight:800; font-size:12px;">Completed</span>`;
+                    } else if (overallStatus === 'cancelled') {
+                        statusHtml = `<span style="color:#ef4444; font-weight:800; font-size:12px;">Cancelled</span>`;
+                    } else {
+                        statusHtml = `<span style="color:#d97706; font-weight:800; font-size:12px;">Pending</span>`;
+                    }
+
                     tr.innerHTML = `
                         <td>${isNew ? '<span class="new-badge">NEW</span>' : ''}<strong style="font-size:12px;">${r.reservationNumber || 'N/A'}</strong></td>
                         <td style="font-size:12px; color:var(--sa-muted);">${dateStr}</td>
@@ -1636,7 +1667,12 @@
                         <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
                         <td class="foods-cell"></td>
-                        <td style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#4ade80'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}${refundBadge}</td>
+                        <td>
+                            <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            ${paymentBadge}
+                            ${refundBadge}
+                        </td>
+                        <td>${statusHtml}</td>
                         <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">🗑️</button></td>
                     `;
 
@@ -1686,8 +1722,8 @@
 
             function applySearch() {
                 const q = (searchInput.value || '').trim().toLowerCase();
-                const typeFilter = document.getElementById('filter-type')?.value || '';
-                const statusFilter = document.getElementById('filter-status')?.value || '';
+                const activeTypes = Array.from(document.querySelectorAll('.filter-type-cb:checked')).map(cb => cb.value);
+                const activeStatuses = Array.from(document.querySelectorAll('.filter-status-cb:checked')).map(cb => cb.value);
                 const dateFilter = currentRecordsDateFilter;
 
                 const now = new Date();
@@ -1699,8 +1735,23 @@
 
                 let filtered = historyTotal.filter(r => {
                     const matchQ = !q || (r.reservationNumber || '').toLowerCase().includes(q) || (r.customerName || '').toLowerCase().includes(q);
-                    const matchType = !typeFilter || r.reservationType === typeFilter;
-                    const matchStatus = !statusFilter || r.kdsStatus === statusFilter;
+                    // Check Type Checklist
+                    let rType = 'standard';
+                    const resNumStr = String(r.reservationNumber || '');
+                    if (resNumStr.startsWith('WI-')) rType = 'wi';
+                    else if (resNumStr.startsWith('POS-')) rType = 'pos';
+                    else if (r.reservationType === 'priority') rType = 'priority';
+                    const matchType = activeTypes.includes(rType);
+
+                    // Check Status Checklist
+                    let overallStatus = String(r.approvalStatus || 'pending').toLowerCase();
+                    if (r.completedAt) overallStatus = 'completed';
+                    if (overallStatus === 'rejected' || r.kdsStatus === 'cancelled') overallStatus = 'cancelled';
+                    
+                    let normalizedStatus = 'pending';
+                    if (overallStatus === 'completed') normalizedStatus = 'completed';
+                    if (overallStatus === 'cancelled') normalizedStatus = 'cancelled';
+                    const matchStatus = activeStatuses.includes(normalizedStatus);
                     
                     let recTime = 0;
                     if (r.arrivalDate) {
