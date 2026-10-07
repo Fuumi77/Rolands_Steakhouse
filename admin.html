@@ -127,19 +127,30 @@
             box-shadow: none !important;
         }
 
-        /* 3. BULLETPROOF FIX FOR JUMPING BUTTONS & FLICKERING BADGES */
+        /* 3. SMOOTH ANIMATION FIX FOR JUMPING BUTTONS */
         #history-tbody td button {
-            transition: all 0.2s ease-out !important;
+            /* Force hardware acceleration and prevent layout shifts */
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             font-weight: 700 !important; 
             font-size: 11.5px !important; 
             margin: 0 !important; 
+            border: 1px solid transparent !important; /* Prevents border-collapse glitches */
+            box-sizing: border-box !important;
+            /* Backface visibility stops text anti-aliasing flicker in WebKit */
+            backface-visibility: hidden !important; 
+            -webkit-font-smoothing: subpixel-antialiased !important;
+            transform: translateZ(0) !important; /* Hardware acceleration */
+            will-change: transform, box-shadow;
         }
         
         #history-tbody td button:hover {
-            font-weight: 700 !important;
-            font-size: 11.5px !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important; 
+            font-weight: 700 !important; /* Locked to match resting state */
+            font-size: 11.5px !important; /* Locked to match resting state */
             margin: 0 !important;
+            border: 1px solid transparent !important;
+            /* Re-introduce the physical lift, but smoothly! */
+            transform: translateY(-2px) translateZ(0) !important; 
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important; 
         }
         
         /* Stops the NEW badge from pulsing/blinking */
