@@ -16,8 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 </head>
-
-    <style>
+<style>
         /* Transform dashboard into a full-width Super Admin clone layout */
         body { margin: 0; background: #f8fafc; overflow-x: hidden; }
         
@@ -57,32 +56,35 @@
             margin: 16px 0 8px 12px;
         }
         
-        /* Sidebar Links & Icons */
+        /* Sidebar Links & Icons - OVERRIDING DEFAULT BUTTON STYLES */
         .sidebar .tab-link {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: none;
-            background: transparent;
-            color: #475569;
-            font-size: 14px;
-            font-weight: 600;
+            padding: 10px 14px !important;
+            border-radius: 8px !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #475569 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
             text-align: left;
             cursor: pointer;
             transition: all 0.2s;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .sidebar .tab-link:hover {
-            background: #f1f5f9;
-            color: #0f172a;
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
         }
         
         .sidebar .tab-link.active {
             background: #dcfce7 !important;
             color: #166534 !important;
-            font-weight: 700;
+            font-weight: 700 !important;
         }
         
         .sidebar .tab-icon {
