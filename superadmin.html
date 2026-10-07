@@ -1623,9 +1623,32 @@
                         typePill = `<span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
                     }
 
-                    let dateStr = r.arrivalDateTimeDisplay || r.arrivalDate || 'Walk-in';
-                    if (r.completedAt && !r.arrivalDate) {
-                        try { dateStr = new Date(r.completedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { }
+                    // 👉 NEW: Unified Date Formatter
+                    let dateStr = 'Walk-in';
+                    const rawDateToParse = r.arrivalDateTimeDisplay || (r.arrivalDate ? `${r.arrivalDate} ${r.arrivalTime || ''}` : null) || r.completedAt;
+                    
+                    if (rawDateToParse) {
+                        try {
+                            // Fix common seed data format "YYYY-MM-DD HH:MM" for Safari/iOS compatibility
+                            const safeDateStr = String(rawDateToParse).replace(/-/g, '/');
+                            const d = new Date(safeDateStr);
+                            
+                            if (!isNaN(d.getTime())) {
+                                dateStr = d.toLocaleString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric', 
+                                    hour: 'numeric', 
+                                    minute: '2-digit', 
+                                    hour12: true 
+                                });
+                            } else {
+                                // Fallback if JavaScript cannot read the date string at all
+                                dateStr = rawDateToParse; 
+                            }
+                        } catch (e) {
+                            dateStr = rawDateToParse;
+                        }
                     }
 
                     let refundBadge = '';
