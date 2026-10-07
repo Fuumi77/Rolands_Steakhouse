@@ -125,11 +125,13 @@
         </nav>
         <!-- MAIN CONTENT AREA -->
         <div class="main-content">
-            <!-- GLOBAL STORE STATUS CONTROL BANNER (ALWAYS VISIBLE) -->
-            <div id="global-superadmin-store-status"></div>
 
             <!-- OVERVIEW TAB -->
             <div id="tab-overview" class="superadmin-tab-content active">
+                
+                <!-- MOVED: Now it only shows on the Overview tab! -->
+                <div id="global-superadmin-store-status"></div>
+
                 <div class="stat-filter-row">
                     <h2 class="section-title" style="margin: 0; border: none; padding: 0;">System Overview</h2>
                     <div class="stat-filter-switch">
@@ -2374,7 +2376,7 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                             </span>
                             <div>
-                                <h4 style="margin:0; font-size:15px; font-weight:800; letter-spacing:0.5px;">SUPER ADMIN CONTROL: ${isStoreOpen ? 'STORE OPEN (ACCEPTING ORDERS)' : 'STORE CLOSED (NOT ACCEPTING ORDERS)'}</h4>
+                                <h4 style="margin:0; font-size:15px; font-weight:800; letter-spacing:0.5px;">MANAGER CONTROL: ${isStoreOpen ? 'STORE OPEN (ACCEPTING ORDERS)' : 'STORE CLOSED (NOT ACCEPTING ORDERS)'}</h4>
                                 <p style="margin:2px 0 0 0; font-size:12px; opacity:0.9;">
                                     ${isStoreOpen ? 'Website is currently accepting customer reservations and online pre-orders.' : 'Website reservations and pre-orders are DISABLED. Customer pages will show Closure Notice.'}
                                 </p>
@@ -2428,7 +2430,7 @@
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                             </span>
                             <div>
-                                <h4 style="margin:0; font-size:16px; font-weight:800; letter-spacing:0.5px;">SUPER ADMIN CONTROL: ${isOpen ? 'STORE OPEN (ACCEPTING ONLINE ORDERS & RESERVATIONS)' : 'STORE CLOSED (NOT ACCEPTING ONLINE ORDERS & RESERVATIONS)'}</h4>
+                                <h4 style="margin:0; font-size:16px; font-weight:800; letter-spacing:0.5px;">MANAGER CONTROL: ${isOpen ? 'STORE OPEN (ACCEPTING ONLINE ORDERS & RESERVATIONS)' : 'STORE CLOSED (NOT ACCEPTING ONLINE ORDERS & RESERVATIONS)'}</h4>
                                 <p style="margin:3px 0 0 0; font-size:12.5px; opacity:0.95;">
                                     ${isOpen ? 'Website is currently accepting customer table reservations and online pre-orders.' : 'Website reservations and pre-orders are DISABLED. Customer pages currently display the Closure Notice.'}
                                 </p>
@@ -2441,6 +2443,9 @@
                     </div>
                 `;
             };
+
+            // 👉 NEW: Force the banner to draw immediately on page load!
+            window.renderGlobalSuperAdminStoreStatusBanner();
 
             window.toggleSuperAdminStoreStatus = function () {
                 if (window.InventorySystem) {
