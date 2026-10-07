@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Dashboard | Roland's</title>
+    <title>Manager Dashboard | Roland's</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap"
         rel="stylesheet">
@@ -23,7 +23,7 @@
     <header>
         <div style="display:flex; align-items:center; gap:12px;">
             <button type="button" class="mobile-nav-toggle" onclick="window.toggleSuperAdminMobileNav()" aria-label="Toggle Navigation">☰ Menu</button>
-            <div class="brand">Roland's Steakhouse <span class="brand-badge">SUPER ADMIN</span></div>
+            <div class="brand">Roland's Steakhouse <span class="brand-badge">MANAGER</span></div>
         </div>
         <div class="header-right">
             <span id="live-clock"></span>
@@ -43,7 +43,7 @@
             <div style="text-align: center; margin-bottom: 12px;">
                 <span style="display: inline-flex; width: 60px; height: 60px; border-radius: 18px; background: rgba(27, 94, 32, 0.1); color: #1b5e20; font-size: 30px; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(27, 94, 32, 0.12);">🛡️</span>
             </div>
-            <h1 class="auth-title">Super Admin</h1>
+            <h1 class="auth-title">Manager</h1>
             <p class="auth-subtitle">Roland's Steakhouse Operations Center</p>
             <div class="auth-card">
                 <div id="super-admin-login">
@@ -60,7 +60,7 @@
             </div>
             <div style="margin-top: 22px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: 13px;">
                 <a href="admin.html" style="color: var(--sa-primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                    ← Staff Admin Portal
+                    ← Staff Portal
                 </a>
                 <span style="color: #cbd5e1;">•</span>
                 <a href="index.html" style="color: #64748b; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
@@ -79,7 +79,7 @@
         <nav class="sidebar" id="sa-sidebar">
             <div class="sidebar-header-mobile">
                 <div style="font-weight: 800; font-size: 14px; color: var(--sa-primary); display: flex; align-items: center; gap: 6px;">
-                    <span>🛡️</span> Super Admin Menu
+                    <span>🛡️</span> Manager Menu
                 </div>
                 <button type="button" class="sidebar-close-btn" onclick="window.toggleSuperAdminMobileNav(false)" aria-label="Close Navigation">✕</button>
             </div>
@@ -694,7 +694,7 @@
                         Security & Access Control
                     </div>
                     <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#1b5e20; margin:0 0 6px 0; font-weight:700;">Operations Security Passcodes</h2>
-                    <p style="color:#64748b; font-size:14px; margin:0;">Configure access PINs for operational terminals. Super Admin master authorization is required for updating codes.</p>
+                    <p style="color:#64748b; font-size:14px; margin:0;">Configure access PINs for operational terminals. Manager master authorization is required for updating codes.</p>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:24px; max-width:1050px;">
@@ -769,10 +769,10 @@
                             </div>
                             <div>
                                 <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">Master Security Policy</h3>
-                                <span style="font-size:12px; font-weight:700; color:#7c3aed; background:#f3e8ff; padding:3px 8px; border-radius:12px; border:1px solid #e9d5ff;">Super Admin Level</span>
+                                <span style="font-size:12px; font-weight:700; color:#7c3aed; background:#f3e8ff; padding:3px 8px; border-radius:12px; border:1px solid #e9d5ff;">Manager Level</span>
                             </div>
                         </div>
-                        <p style="color:#64748b; font-size:13px; margin-bottom:16px; line-height:1.6;">Changes to terminal PINs require authorization via the Super Admin Master Passcode (Default: <code style="background:#f1f5f9; padding:2px 6px; border-radius:6px; color:#6b21a8; font-weight:700;">789456</code>).</p>
+                        <p style="color:#64748b; font-size:13px; margin-bottom:16px; line-height:1.6;">Changes to terminal PINs require authorization via the Manager Master Passcode (Default: <code style="background:#f1f5f9; padding:2px 6px; border-radius:6px; color:#6b21a8; font-weight:700;">789456</code>).</p>
                         
                         <div style="background:#faf5ff; border:1.5px dashed #d8b4fe; border-radius:12px; padding:14px; margin-bottom:14px;">
                             <div style="font-size:12px; font-weight:800; color:#6b21a8; margin-bottom:4px;">Default Terminal PINs:</div>
