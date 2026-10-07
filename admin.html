@@ -15,9 +15,8 @@
     <script src="js/inventory-system.js?v=6.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
-</head>
-<style>
-        /* Transform dashboard into a full-width Super Admin clone layout */
+    <style>
+        /* 1. FULL-WIDTH SUPER ADMIN CLONE LAYOUT */
         body { margin: 0; background: #f8fafc; overflow-x: hidden; }
         
         .container {
@@ -34,7 +33,6 @@
             border-top: 1px solid #e2e8f0;
         }
         
-        /* The sleek white sidebar */
         .sidebar {
             width: 250px;
             background: white;
@@ -47,7 +45,6 @@
             box-sizing: border-box;
         }
         
-        /* EXACT ALIGNMENT & FONT FOR LABELS */
         .sidebar-label {
             font-size: 11px !important;
             font-family: 'Roboto', sans-serif !important;
@@ -60,11 +57,10 @@
             display: block !important;
         }
         
-        /* EXACT ALIGNMENT & FONT FOR LINKS */
         .sidebar .tab-link {
             display: flex !important;
             align-items: center !important;
-            justify-content: flex-start !important; /* FORCES LEFT ALIGNMENT */
+            justify-content: flex-start !important;
             gap: 12px !important;
             padding: 10px 16px !important; 
             border-radius: 8px !important;
@@ -96,14 +92,13 @@
         
         .sidebar .tab-icon {
             opacity: 0.7;
-            flex-shrink: 0; /* Prevents icons from squishing */
+            flex-shrink: 0;
         }
         .sidebar .tab-link.active .tab-icon {
             opacity: 1;
             color: #166534;
         }
         
-        /* The right-side content area */
         .main-content {
             flex: 1;
             padding: 30px 40px;
@@ -112,13 +107,41 @@
             margin: 0 auto;
         }
 
-        /* Keep it mobile friendly */
         @media (max-width: 850px) {
             #dashboard-section { flex-direction: column; }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; padding: 16px; }
             .main-content { padding: 20px; }
         }
+
+        /* 2. ROLAND'S BRANDED CHECKBOXES */
+        input[type="checkbox"] {
+            accent-color: #16a34a;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+        
+        input[type="checkbox"]:focus,
+        input[type="checkbox"]:active {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 3. FIX FOR JUMPING BUTTONS ON HOVER */
+        td button {
+            box-sizing: border-box !important;
+            transition: transform 0.2s ease !important;
+            backface-visibility: hidden !important; 
+        }
+        
+        td button:hover {
+            transform: translateY(-2px) !important; 
+            font-weight: inherit !important; 
+            margin: auto !important; 
+        }
     </style>
+</head>
+
 <body>
     <header>
         <div class="brand">Roland's Staff</div>
@@ -3311,7 +3334,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             renderPayments();
             renderPromosAdmin();
 
-            // Reservation History Alarm Logic
+           // Reservation History Alarm Logic
+            let notifiedPayments = []; // 👉 NEW: The memory tracker array!
             let storageDebounceTimer = null;
             window.addEventListener('storage', (e) => {
                 if (e.key === 'reservationHistory') {
@@ -3337,7 +3361,11 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                             const prev = oldVal.find(p => p.reservationNumber === res.reservationNumber);
                             return (res.paymentStatus === 'paid' || res.paymentStatus === 'verified') && !prev;
                         });
-                        if (newPaid) {
+                        
+                        // 👉 NEW: Check memory tracker to prevent infinite pop-up loops!
+                        if (newPaid && !notifiedPayments.includes(newPaid.reservationNumber)) {
+                            notifiedPayments.push(newPaid.reservationNumber); // Add to memory
+                            
                             if (Date.now() - (parseInt(localStorage.getItem('lastPaymentAlarm') || '0')) > 2000) {
                                 localStorage.setItem('lastPaymentAlarm', Date.now().toString());
                                 playPaymentAlarm(newPaid.customerName, newPaid.paymentAmount);
