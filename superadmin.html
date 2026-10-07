@@ -134,11 +134,21 @@
 
                 <div class="stat-filter-row">
                     <h2 class="section-title" style="margin: 0; border: none; padding: 0;">System Overview</h2>
-                    <div class="stat-filter-switch">
-                        <button class="filter-btn active" onclick="setStatFilter('all')">All Time</button>
-                        <button class="filter-btn" onclick="setStatFilter('year')">This Year</button>
-                        <button class="filter-btn" onclick="setStatFilter('week')">This Week</button>
-                        <button class="filter-btn" onclick="setStatFilter('day')">Today</button>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                        <div class="stat-filter-switch" style="display:flex; flex-wrap:wrap; gap:4px;">
+                            <button class="filter-btn active" onclick="setStatFilter('all')">All Time</button>
+                            <button class="filter-btn" onclick="setStatFilter('year')">This Year</button>
+                            <button class="filter-btn" onclick="setStatFilter('month')">This Month</button>
+                            <button class="filter-btn" onclick="setStatFilter('week')">This Week</button>
+                            <button class="filter-btn" onclick="setStatFilter('day')">Today</button>
+                            <button class="filter-btn" onclick="toggleCustomDatePopup()">Custom Range</button>
+                        </div>
+                        <div id="custom-date-range-container" style="display:none; align-items:center; gap:8px; margin-top:10px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                            <input type="date" id="custom-start-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <span style="font-size:12px; font-weight:bold; color:#64748b;">to</span>
+                            <input type="date" id="custom-end-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <button onclick="applyCustomDateRange()" style="background:#16a34a; color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">Apply</button>
+                        </div>
                     </div>
                 </div>
                 <div class="grid">
@@ -155,7 +165,7 @@
                         <div class="value" id="stat-revenue">₱0</div>
                     </div>
                     <div class="card">
-                        <h3>Staff Admins Registered</h3>
+                        <h3>Staff Registered</h3>
                         <div class="value" id="stat-admins">0</div>
                     </div>
                     <div class="card">
@@ -1075,14 +1085,19 @@
         };
 
         // --- DASHBOARD FILTER LOGIC ---
-        let currentStatFilter = 'all'; // all, year, week, day
+        let currentStatFilter = 'all'; // all, year, month, week, day, custom
+        let customStartDate = null;
+        let customEndDate = null;
         let trendChart = null;
         let typeChart = null;
 
         window.setStatFilter = function (filter) {
             currentStatFilter = filter;
+            const customContainer = document.getElementById('custom-date-range-container');
+            if (filter !== 'custom' && customContainer) customContainer.style.display = 'none';
+
             // Update UI buttons
-            const btns = document.querySelectorAll('.stat-filter-switch .filter-btn');
+            const btns = document.querySelectorAll('#tab-overview .stat-filter-switch .filter-btn');
             btns.forEach(b => {
                 const onclickAttr = b.getAttribute('onclick') || '';
                 b.classList.toggle('active', onclickAttr.includes(`'${filter}'`));
@@ -1090,6 +1105,31 @@
             renderDashboard();
         };
 
+        window.toggleCustomDatePopup = function() {
+            const container = document.getElementById('custom-date-range-container');
+            if(container) container.style.display = container.style.display === 'none' ? 'flex' : 'none';
+        };
+
+        window.applyCustomDateRange = function() {
+            const start = document.getElementById('custom-start-date').value;
+            const end = document.getElementById('custom-end-date').value;
+            if(!start || !end) {
+                alert("Please select both start and end dates.");
+                return;
+            }
+            customStartDate = new Date(start);
+            customStartDate.setHours(0,0,0,0);
+            customEndDate = new Date(end);
+            customEndDate.setHours(23,59,59,999);
+            
+            currentStatFilter = 'custom';
+            document.querySelectorAll('#tab-overview .stat-filter-switch .filter-btn').forEach(b => b.classList.remove('active'));
+            const customBtn = Array.from(document.querySelectorAll('#tab-overview .stat-filter-switch .filter-btn')).find(b => b.textContent === 'Custom Range');
+            if(customBtn) customBtn.classList.add('active');
+            
+            renderDashboard();
+        };
+        
         function getFilteredHistory() {
             const history = getReservationHistory();
             const now = new Date();
@@ -1098,7 +1138,6 @@
             if (currentStatFilter === 'day') {
                 return history.filter(r => r.arrivalDate === todayStr);
             } else if (currentStatFilter === 'week') {
-                // Last 7 days
                 const weekAgo = new Date();
                 weekAgo.setDate(now.getDate() - 7);
                 weekAgo.setHours(0, 0, 0, 0);
@@ -1107,12 +1146,27 @@
                     const d = new Date(r.arrivalDate);
                     return d >= weekAgo && d <= now;
                 });
+            } else if (currentStatFilter === 'month') {
+                const thisMonth = now.getMonth();
+                const thisYear = now.getFullYear();
+                return history.filter(r => {
+                    if (!r.arrivalDate) return false;
+                    const d = new Date(r.arrivalDate);
+                    return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
+                });
             } else if (currentStatFilter === 'year') {
                 const thisYear = now.getFullYear();
                 return history.filter(r => {
                     if (!r.arrivalDate) return false;
                     const d = new Date(r.arrivalDate);
                     return d.getFullYear() === thisYear;
+                });
+            } else if (currentStatFilter === 'custom') {
+                if(!customStartDate || !customEndDate) return history;
+                return history.filter(r => {
+                    if (!r.arrivalDate) return false;
+                    const d = new Date(r.arrivalDate);
+                    return d >= customStartDate && d <= customEndDate;
                 });
             }
             return history;
