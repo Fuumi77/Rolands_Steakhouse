@@ -92,10 +92,6 @@
             box-shadow: 0 4px 12px rgba(71, 85, 105, 0.15);
         }
 
-        button.secondary:hover {
-            background: #334155;
-            box-shadow: 0 6px 16px rgba(51, 65, 85, 0.25);
-        }
 
         button.danger {
             background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
