@@ -127,20 +127,32 @@
             box-shadow: none !important;
         }
 
-        /* 3. FINAL HARD-LOCKED ANIMATION FIX FOR JUMPING BUTTONS */
+        /* 3. FINAL HOVER JITTER FIX FOR BUTTONS */
         #history-tbody td button {
+            position: relative !important; /* Needed to anchor the invisible hitbox */
             transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
             font-weight: 700 !important; 
             font-size: 11.5px !important; 
-            margin: 4px 0 0 0 !important; /* Locks external spacing */
-            padding: 6px 10px !important; /* Forces internal padding to never change */
-            height: 28px !important; /* Hard-locks the vertical dimension */
-            border: none !important; /* Kills the 1px transparent border shift */
+            margin: 4px 0 0 0 !important; 
+            padding: 6px 10px !important; 
+            height: 28px !important; 
+            border: none !important; 
             box-sizing: border-box !important;
             backface-visibility: hidden !important; 
             -webkit-font-smoothing: antialiased !important;
             transform: translateZ(0) !important; 
             will-change: transform, box-shadow;
+        }
+        
+        /* 👉 THE MAGIC FIX: An invisible safety net that hangs off the bottom to catch your mouse */
+        #history-tbody td button::after {
+            content: '';
+            position: absolute;
+            bottom: -6px; /* Stretches the hover area down by 6px */
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: transparent;
         }
         
         #history-tbody td button:hover {
