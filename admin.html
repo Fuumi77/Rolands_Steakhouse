@@ -127,23 +127,21 @@
             box-shadow: none !important;
         }
 
-        /* 3. THE PERFECT JITTER-FREE BUTTON ANIMATION */
+        /* 3. THE SINGLE, CLEAN BUTTON HOVER */
         #history-tbody td button {
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-            font-weight: 700 !important; 
-            font-size: 11.5px !important; 
-            margin: 4px 0 0 0 !important; 
-            padding: 6px 10px !important; 
-            border: none !important; 
-            transform-origin: center !important; /* Anchors the button perfectly */
-            transform: scale(1) translateZ(0) !important; 
+            transition: all 0.2s ease !important;
+            transform: none !important; /* Neutralizes the clashing global styles */
+            margin: 2px 0 !important;
         }
         
+        #history-tbody td button:hover {
+            transform: scale(1.06) !important; /* One single, perfectly smooth pop */
+            box-shadow: 0 6px 14px rgba(0,0,0,0.15) !important;
+            filter: brightness(1.1) !important;
+        }
         
-
-        /* Stops the NEW badge from pulsing/blinking violently */
-        .new-badge {
-            animation: none !important;
+        .new-badge { 
+            animation: none !important; /* Stops the violent pulsing */
         }
     </style>
 </head>
