@@ -999,10 +999,11 @@
             if (!Array.isArray(hist) || hist.length === 0) {
                 hist = seedSampleReservationHistoryIfEmpty();
             }
+            // 👉 FIX: Extract the true database ID to interleave WI, POS, and RES perfectly
             return hist.sort((a, b) => {
-                const ta = parseRecordDate(a).getTime();
-                const tb = parseRecordDate(b).getTime();
-                return tb - ta;
+                const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                return idB - idA;
             });
         }
 
@@ -3942,9 +3943,9 @@
                     const recordsToExport = (filteredRecords && filteredRecords.length > 0) ? filteredRecords : allRecords;
 
                     recordsToExport.sort((a, b) => {
-                        const ta = parseRecordDate(a).getTime();
-                        const tb = parseRecordDate(b).getTime();
-                        return tb - ta;
+                        const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                        const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                        return idB - idA;
                     });
 
                     const headers = [
