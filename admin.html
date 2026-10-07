@@ -133,7 +133,6 @@
             font-weight: 700 !important; 
             font-size: 11.5px !important; 
             margin: 0 !important; 
-            transform: none !important; /* Kills the physical jump completely */
         }
         
         #history-tbody td button:hover {
@@ -142,7 +141,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important; 
             filter: brightness(1.15) !important; /* Smoothly brightens instead of moving */
             margin: 0 !important;
-            transform: none !important; /* Stays perfectly still */
         }
         
         /* Stops the NEW badge from pulsing/blinking */
@@ -4604,7 +4602,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const onlineList = document.getElementById('online-list');
                 if (statOnline) statOnline.textContent = `${count} Active`;
                 if (onlineList) onlineList.textContent = activeNames.length ? activeNames.join(', ') : 'None';
-
             }
             updateOnlineStatus(); // Initial run
             setInterval(updateOnlineStatus, 5000); // Poll every 5 seconds
