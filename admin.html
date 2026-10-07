@@ -127,23 +127,23 @@
             box-shadow: none !important;
         }
 
-        /* 3. BULLETPROOF FIX FOR JUMPING BUTTONS */
+        /* 1. STOP THE "NEW" BADGE FROM FLICKERING/PULSING */
+        .new-badge, .new-order-row {
+            animation: none !important;
+        }
+
+        /* 2. PERFECTLY STILL BUTTONS (GLOW EFFECT INSTEAD OF MOVEMENT) */
         #history-tbody td button {
-            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background 0.15s ease-out !important;
-            font-weight: 700 !important; /* Locks font thickness so it NEVER shifts */
-            font-size: 11.5px !important; /* Locks font size */
-            margin: 0 !important; /* Locks spacing */
-            border: 1px solid transparent !important; /* Prevents border shifts */
-            transform: translateZ(0) !important; /* Forces hardware-accelerated smoothness */
-            will-change: transform, box-shadow;
+            /* Only animate color and shadow, NEVER layout or position */
+            transition: filter 0.15s ease-out, box-shadow 0.15s ease-out !important;
+            transform: none !important; 
+            will-change: filter, box-shadow;
         }
         
         #history-tbody td button:hover {
-            transform: translateY(-2px) !important; 
-            font-weight: 700 !important; /* Must match exactly */
-            font-size: 11.5px !important;
+            transform: none !important; /* Keep it perfectly still */
+            filter: brightness(1.15) !important; /* Make it light up smoothly */
             box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important; 
-            margin: 0 !important;
         }
     </style>
 </head>
