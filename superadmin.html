@@ -1865,8 +1865,14 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong style="color: #0f172a;">${u.username}</strong> ${statusBadge}</td>
-                        <td><button type="button" class="danger" style="padding: 6px 12px; font-size: 12px; border-radius: 4px;" onclick="window.deleteStaffUser(${i}, '${u.username}')">Delete</button></td>
+                        <td><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.resetStaffPassword('${u.username}')">Reset Pass</button>
+                                <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser(${i}, '${u.username}')">Delete</button>
+                            </div>
+                        </td>
                     `;
                     staffTbody.appendChild(tr);
                 });
