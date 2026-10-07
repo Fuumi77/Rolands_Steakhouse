@@ -1278,10 +1278,13 @@
             const adminStatus = document.getElementById('admin-status');
             const logoutBtn = document.getElementById('logout-admin-btn');
 
+            // 👉 FIX: Extract the true database ID to interleave WI and POS perfectly
             const history = getReservationHistory().sort((a, b) => {
-                const ta = new Date(a.createdAt || a.arrivalDate || 0).getTime();
-                const tb = new Date(b.createdAt || b.arrivalDate || 0).getTime();
-                return tb - ta;
+                const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                
+                // Sort descending so the highest/newest number is always at the top
+                return idB - idA;
             });
             const priorityHistory = history.filter(r => r.reservationType === 'priority');
 
@@ -3264,9 +3267,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             window.applySearch = function () {
                 const q = normalizeText(searchInput.value);
                 const history = getReservationHistory().sort((a, b) => {
-                    const ta = new Date(a.createdAt || a.arrivalDate || 0).getTime();
-                    const tb = new Date(b.createdAt || b.arrivalDate || 0).getTime();
-                    return tb - ta;
+                    const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                    const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                    return idB - idA;
                 });
 
                 const filtered = history.filter(r => {
