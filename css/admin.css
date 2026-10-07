@@ -60,23 +60,30 @@
             border: 1px solid transparent;
             border-radius: 10px;
             cursor: pointer;
-            font-weight: 700;
-            font-size: 13px;
+            font-weight: 700 !important; /* Locks font thickness permanently */
+            font-size: 13px !important; /* Locks font size permanently */
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
             color: white;
             box-shadow: 0 4px 12px rgba(27, 94, 32, 0.2);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); /* Only animate what moves */
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            will-change: transform, box-shadow, filter; /* Forces GPU hardware acceleration */
+            transform: translateZ(0); /* Prevents pixel snapping */
+            backface-visibility: hidden; /* Stops text flickering on Windows Chrome */
         }
 
         button:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px); /* Restores the smooth jump */
             box-shadow: 0 6px 18px rgba(27, 94, 32, 0.3);
             filter: brightness(1.05);
+            font-weight: 700 !important; /* Ensures no shift */
+            font-size: 13px !important; /* Ensures no shift */
         }
 
         button.secondary {
