@@ -153,12 +153,12 @@
                         <div class="half">
                             <div>
                                 <label for="admin-username">Username</label>
-                                <input id="admin-username" type="text" placeholder="Your admin username"
+                                <input id="admin-username" type="text" placeholder="Staff username"
                                     autocomplete="off">
                             </div>
                             <div>
                                 <label for="admin-password">Password</label>
-                                <input id="admin-password" type="password" placeholder="Your admin password"
+                                <input id="admin-password" type="password" placeholder="Staff password"
                                     autocomplete="new-password">
                             </div>
                         </div>
@@ -3669,7 +3669,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                             <div style="display:flex; gap:10px; align-items:center;">
                                 ${storeBadgeHtml}
                                 <span style="font-size:11px; background:rgba(46,125,50,0.1); color:#1b5e20; padding:4px 10px; border-radius:12px; font-weight:700; border:1px solid rgba(46,125,50,0.2);">
-                                    ⚡ Admin & Super Admin Sync Active
+                                    ⚡ Live Staff & Manager Sync Active
                                 </span>
                                 ${(summary.lowCount > 0 || summary.outCount > 0) ? `
                                     <button onclick="triggerSmartAutoRestockAll()" style="background:#16a34a; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.25); display:flex; align-items:center; gap:6px;">
