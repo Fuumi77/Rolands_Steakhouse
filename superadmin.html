@@ -1623,32 +1623,39 @@
                         typePill = `<span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
                     }
 
-                    // 👉 NEW: Unified Date Formatter
+                    // 👉 NEW: Unified & Robust Date Formatter
                     let dateStr = 'Walk-in';
-                    const rawDateToParse = r.arrivalDateTimeDisplay || (r.arrivalDate ? `${r.arrivalDate} ${r.arrivalTime || ''}` : null) || r.completedAt;
+                    let targetDateObj = null;
+
+                    // 1. Give priority to exact timestamps for POS & Walk-ins
+                    if (r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')) {
+                        if (r.completedAt) targetDateObj = new Date(r.completedAt);
+                        else if (r.createdAt) targetDateObj = new Date(r.createdAt);
+                    }
                     
-                    if (rawDateToParse) {
-                        try {
-                            // Fix common seed data format "YYYY-MM-DD HH:MM" for Safari/iOS compatibility
-                            const safeDateStr = String(rawDateToParse).replace(/-/g, '/');
-                            const d = new Date(safeDateStr);
-                            
-                            if (!isNaN(d.getTime())) {
-                                dateStr = d.toLocaleString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric', 
-                                    hour: 'numeric', 
-                                    minute: '2-digit', 
-                                    hour12: true 
-                                });
-                            } else {
-                                // Fallback if JavaScript cannot read the date string at all
-                                dateStr = rawDateToParse; 
-                            }
-                        } catch (e) {
-                            dateStr = rawDateToParse;
+                    // 2. Fallback to arrival dates for Online Reservations
+                    if (!targetDateObj || isNaN(targetDateObj.getTime())) {
+                        if (r.arrivalDate) targetDateObj = new Date(`${r.arrivalDate} ${r.arrivalTime || '12:00'}`.replace(/-/g, '/'));
+                        else if (r.arrivalDateTimeDisplay) targetDateObj = new Date(String(r.arrivalDateTimeDisplay).replace(/-/g, '/'));
+                        else if (r.completedAt) targetDateObj = new Date(r.completedAt);
+                        else if (r.createdAt) targetDateObj = new Date(r.createdAt);
+                    }
+
+                    // 3. Format it beautifully and fix the 2001 bug
+                    if (targetDateObj && !isNaN(targetDateObj.getTime())) {
+                        // Fix the Javascript "2001" bug when a legacy date string is missing a year
+                        if (targetDateObj.getFullYear() < 2024) {
+                            targetDateObj.setFullYear(new Date().getFullYear());
                         }
+                        
+                        dateStr = targetDateObj.toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric', 
+                            hour: 'numeric', 
+                            minute: '2-digit', 
+                            hour12: true 
+                        });
                     }
 
                     let refundBadge = '';
