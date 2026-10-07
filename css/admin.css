@@ -78,14 +78,6 @@
             backface-visibility: hidden; /* Stops text flickering on Windows Chrome */
         }
 
-        button:hover {
-            transform: translateY(-2px); /* Restores the smooth jump */
-            box-shadow: 0 6px 18px rgba(27, 94, 32, 0.3);
-            filter: brightness(1.05);
-            font-weight: 700 !important; /* Ensures no shift */
-            font-size: 13px !important; /* Ensures no shift */
-        }
-
         button.secondary {
             background: #475569;
             color: white;
