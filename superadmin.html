@@ -294,7 +294,7 @@
 
             <!-- STAFF TAB -->
             <div id="tab-staff" class="superadmin-tab-content">
-                <h2 class="section-title">Staff Admin Management</h2>
+                <h2 class="section-title">Staff Management</h2>
                 <div class="card" style="margin-bottom:24px;">
                     <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
                         <input type="text" id="new-staff-username" placeholder="New Username"
@@ -2401,7 +2401,7 @@
                             </div>
                             <div style="display:flex; gap:10px; align-items:center;">
                                 <span style="font-size:11px; background:rgba(46,125,50,0.1); color:#1b5e20; padding:4px 10px; border-radius:12px; font-weight:700; border:1px solid rgba(46,125,50,0.2);">
-                                    Admin & Super Admin Sync Active
+                                    Staff & Manager Sync Active
                                 </span>
                                 ${(summary.lowCount > 0 || summary.outCount > 0) ? `
                                     <button onclick="triggerSmartAutoRestockAll()" style="background:#16a34a; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.25); display:flex; align-items:center; gap:6px;">
@@ -4363,7 +4363,7 @@
             auth.style.setProperty('display', 'none', 'important');
             dashboard.classList.remove('hidden');
             dashboard.style.removeProperty('display');
-            adminStatus.textContent = '🟢 Super Admin';
+            adminStatus.textContent = '🟢 Manager';
             logoutBtn.classList.remove('hidden');
         }
 
