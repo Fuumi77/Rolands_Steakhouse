@@ -137,7 +137,8 @@
         td button:hover {
             transform: translateY(-2px) !important; 
             font-weight: inherit !important; 
-            margin: auto !important; 
+            /* Removed the margin rule that was causing the layout shift! */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; /* Adds a nice shadow instead */
         }
     </style>
 </head>
@@ -4597,7 +4598,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                 // REFRESH RESERVATION TABLE (to update NEW highlights)
                 if (document.getElementById('tab-overview') && !document.getElementById('tab-overview').classList.contains('hidden')) {
-                    applySearch();
+                    // applySearch(); <-- DISABLED
                 }
             }
             updateOnlineStatus(); // Initial run
