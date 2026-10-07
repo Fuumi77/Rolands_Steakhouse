@@ -17,6 +17,74 @@
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 </head>
 
+    <style>
+        /* Transform dashboard into a side-by-side layout */
+        #dashboard-section {
+            display: flex;
+            gap: 28px;
+            align-items: flex-start;
+            padding-top: 10px;
+        }
+        
+        /* The new vertical sidebar */
+        .admin-sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            position: sticky;
+            top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        
+        /* Sidebar Button styling */
+        .admin-sidebar .tab-link {
+            text-align: left;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+            font-size: 13.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Hover and Active states */
+        .admin-sidebar .tab-link:hover {
+            background: #f8fafc;
+            color: #0f172a;
+            transform: translateX(4px);
+        }
+        .admin-sidebar .tab-link.active {
+            background: #dcfce7 !important;
+            color: #166534 !important;
+            box-shadow: 0 2px 6px rgba(22,163,74,0.15);
+        }
+        
+        /* Forces the active tab content to fill the remaining space */
+        .admin-tab-content {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+        }
+
+        /* Keep it mobile friendly */
+        @media (max-width: 850px) {
+            #dashboard-section { flex-direction: column; }
+            .admin-sidebar { width: 100%; position: static; }
+        }
+    </style>
 <body>
     <header>
         <div class="brand">Roland's Staff Admin</div>
@@ -103,14 +171,18 @@
         </div>
 
         <div id="dashboard-section" class="hidden">
-            <div class="admin-tabs">
-                <button class="tab-link active" onclick="switchAdminTab('overview', this)">Dashboard Overview</button>
-                <button class="tab-link" onclick="switchAdminTab('walkin', this)">Manual Reservation</button>
-                <button class="tab-link" onclick="switchAdminTab('floorplan', this)">Floor Plan</button>
-                <button class="tab-link" onclick="switchAdminTab('menu', this)">Live Inventory</button>
-                <button class="tab-link" onclick="switchAdminTab('chat', this)">Live Chat</button>
-                <button class="tab-link" onclick="switchAdminTab('promotions', this)">Promotions</button>
-                <button class="tab-link" onclick="switchAdminTab('payments', this)">Payments</button>
+            <!-- Vertical Sidebar Layout -->
+            <div class="admin-sidebar">
+                <div style="font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 15px 5px;">Operations</div>
+                <button class="tab-link active" onclick="switchAdminTab('overview', this)">📊 Dashboard Overview</button>
+                <button class="tab-link" onclick="switchAdminTab('walkin', this)">📝 Manual Bookings</button>
+                <button class="tab-link" onclick="switchAdminTab('floorplan', this)">🪑 Floor Plan</button>
+                <button class="tab-link" onclick="switchAdminTab('menu', this)">📦 Live Inventory</button>
+                <button class="tab-link" onclick="switchAdminTab('payments', this)">💳 Payments</button>
+                
+                <div style="font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; padding: 15px 15px 5px; border-top: 1px solid #f1f5f9; margin-top: 10px;">Engage</div>
+                <button class="tab-link" onclick="switchAdminTab('chat', this)">💬 Live Chat</button>
+                <button class="tab-link" onclick="switchAdminTab('promotions', this)">📢 Promotions</button>
             </div>
 
             <!-- WALK-IN RESERVATION TAB -->
