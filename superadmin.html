@@ -1877,6 +1877,60 @@
                     staffTbody.appendChild(tr);
                 });
             }
+            // 👉 NEW: Secure Password Reset Logic
+            window.resetStaffPassword = async function(username) {
+                const pin = await superModal({
+                    title: '🔒 Security Authorization',
+                    message: `Enter Master PIN to authorize password reset for <b>${username}</b>:`,
+                    showInput: true,
+                    placeholder: 'Enter 6-digit pin',
+                    confirmText: 'Verify PIN'
+                });
+
+                if (pin === "789456") {
+                    const newPass = await superModal({
+                        title: `🔑 Reset Password for ${username}`,
+                        message: 'Enter the new passphrase for this staff account:',
+                        showInput: true,
+                        inputType: 'text', // Shows the password briefly while typing
+                        placeholder: 'New passphrase (min 4 chars)',
+                        confirmText: 'Update Password'
+                    });
+
+                    if (newPass && newPass.length >= 4) {
+                        const passwordHash = await sha256Hex(newPass);
+                        
+                        // Update Local Storage
+                        const users = getAdminUsers();
+                        const uInfo = users.find(u => u.username === username);
+                        if (uInfo) uInfo.passwordHash = passwordHash;
+                        localStorage.setItem('adminUsers', JSON.stringify(users));
+
+                        // Sync to MySQL Database
+                        try {
+                            await fetch(`${API_BASE_URL}/api/staff/${username}/password`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ passwordHash })
+                            });
+                        } catch(e) {}
+
+                        await superModal({
+                            title: '✅ Password Updated',
+                            message: `The password for <b>${username}</b> has been successfully changed.`,
+                            confirmText: 'Done'
+                        });
+                    } else if (newPass !== null) {
+                        alert("Password must be at least 4 characters.");
+                    }
+                } else if (pin !== null) {
+                    await superModal({
+                        title: '❌ Access Denied',
+                        message: 'Invalid Pincode. Operation cancelled.',
+                        confirmText: 'Back'
+                    });
+                }
+            };
 
             window.deleteStaffUser = async function (index, usernameTarget) {
                 const users = getAdminUsers();
