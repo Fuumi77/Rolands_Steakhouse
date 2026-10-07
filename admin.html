@@ -1342,8 +1342,43 @@
                 return span;
             }
 
+            // 👉 NEW: Unified & Robust Date Formatter for Admin Dashboard
             function formatArrival(r) {
-                return r.arrivalDateTimeDisplay || r.arrivalDate || '';
+                let dateStr = 'Walk-in';
+                let targetDateObj = null;
+
+                // 1. Give priority to exact timestamps for POS & Walk-ins
+                if (r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')) {
+                    if (r.completedAt) targetDateObj = new Date(r.completedAt);
+                    else if (r.createdAt) targetDateObj = new Date(r.createdAt);
+                }
+                
+                // 2. Fallback to arrival dates for Online Reservations
+                if (!targetDateObj || isNaN(targetDateObj.getTime())) {
+                    if (r.arrivalDate) targetDateObj = new Date(`${r.arrivalDate} ${r.arrivalTime || '12:00'}`.replace(/-/g, '/'));
+                    else if (r.arrivalDateTimeDisplay) targetDateObj = new Date(String(r.arrivalDateTimeDisplay).replace(/-/g, '/'));
+                    else if (r.completedAt) targetDateObj = new Date(r.completedAt);
+                    else if (r.createdAt) targetDateObj = new Date(r.createdAt);
+                }
+
+                // 3. Format it beautifully and fix the 2001 bug
+                if (targetDateObj && !isNaN(targetDateObj.getTime())) {
+                    // Fix the Javascript "2001" bug when a legacy date string is missing a year
+                    if (targetDateObj.getFullYear() < 2024) {
+                        targetDateObj.setFullYear(new Date().getFullYear());
+                    }
+                    
+                    dateStr = targetDateObj.toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit', 
+                        hour12: true 
+                    });
+                }
+
+                return dateStr;
             }
 
             function renderRows(rows) {
