@@ -1819,8 +1819,16 @@
                     } else if (!r.completedAt && resDate < todayStart) {
                         // Genuine past reservation (yesterday or older)
                         r.completedAt = new Date().toISOString();
+                        r.approvalStatus = 'completed'; // 👉 Force local UI to hide it
                         r.autoExpired = true;
                         mutatedHistory = true;
+
+                        // 👉 FIX: Tell MySQL to permanently close this ghost reservation!
+                        fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
+                        }).catch(e => console.warn(e));
                     }
                 }
             });
