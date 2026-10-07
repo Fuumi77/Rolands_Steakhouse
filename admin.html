@@ -1279,8 +1279,8 @@
             const logoutBtn = document.getElementById('logout-admin-btn');
 
             const history = getReservationHistory().sort((a, b) => {
-                const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-                const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+                const ta = new Date(a.createdAt || a.arrivalDate || 0).getTime();
+                const tb = new Date(b.createdAt || b.arrivalDate || 0).getTime();
                 return tb - ta;
             });
             const priorityHistory = history.filter(r => r.reservationType === 'priority');
@@ -3264,8 +3264,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             window.applySearch = function () {
                 const q = normalizeText(searchInput.value);
                 const history = getReservationHistory().sort((a, b) => {
-                    const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-                    const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+                    const ta = new Date(a.createdAt || a.arrivalDate || 0).getTime();
+                    const tb = new Date(b.createdAt || b.arrivalDate || 0).getTime();
                     return tb - ta;
                 });
 
