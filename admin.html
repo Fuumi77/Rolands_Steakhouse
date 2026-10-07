@@ -1176,8 +1176,7 @@
                 return tb - ta;
             });
         }
-        // 👉 FIX 1: Strict One-Way Sync with MySQL Blank Failsafe
-async function syncReservations() {
+        async function syncReservations() {
     try {
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
         if (!res.ok) return;
@@ -1196,7 +1195,6 @@ async function syncReservations() {
                     const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
                     const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
                     
-                    // 👉 Catch WI-, POS-, and random long online IDs!
                     const isTempId = String(local.reservationNumber).startsWith('WI-') || 
                                      String(local.reservationNumber).startsWith('POS-') || 
                                      String(local.reservationNumber).length > 8;
@@ -1204,12 +1202,11 @@ async function syncReservations() {
                     return localName === dbName && localTab === dbTab && isTempId;
                 });
                 if (match) {
-                    match.reservationNumber = dbRes.reservationNumber; // Lock in the clean DB ID!
+                    match.reservationNumber = dbRes.reservationNumber; 
                     updated = true;
                 }
             }
 
-            // 👉 THE FIX: If MySQL sends a blank space, treat it as Pending!
             let rawStatus = dbRes.status;
             if (!rawStatus || String(rawStatus).trim() === '') rawStatus = 'Pending';
             
@@ -1222,6 +1219,11 @@ async function syncReservations() {
                     match.approvalStatus = dbStatus;
                     if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
                     if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
+                    
+                    // 👉 FIX: If MySQL says it is completed, force local to hide it!
+                    if (dbStatus === 'completed' && !match.completedAt) {
+                        match.completedAt = new Date().toISOString();
+                    }
                     updated = true;
                 }
             } else {
@@ -1234,25 +1236,18 @@ async function syncReservations() {
                     arrivalTime: dbRes.arrivalTime,
                     arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                     approvalStatus: dbStatus,
-                    paymentStatus: 'pending',
+                    paymentStatus: dbStatus === 'completed' ? 'paid' : 'pending',
+                    completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
                     createdAt: new Date().toISOString(),
                     foods: [], 
                     paymentAmount: 0,
-                    bookedBy: dbRes.bookedBy // 👉 Ensures the UI knows it's a Walk-in or Online!
+                    bookedBy: dbRes.bookedBy 
                 });
                 updated = true;
             }
         });
 
-        const originalLength = localHistory.length;
-        localHistory = localHistory.filter(h => {
-            if (String(h.reservationNumber).startsWith('WI-')) {
-                const age = Date.now() - new Date(h.completedAt || Date.now()).getTime();
-                return age < 30000; 
-            }
-            return true;
-        });
-        if (localHistory.length !== originalLength) updated = true;
+        // 👉 FIX: Completely deleted the code that was violently erasing WI- reservations from memory!
 
         if (updated) {
             localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
