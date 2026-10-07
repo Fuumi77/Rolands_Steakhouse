@@ -4276,7 +4276,10 @@
             window.renderRevenueTab = function () {
                 const hist = getReservationHistory();
                 const totalRev = hist.reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
-                const posRev = hist.filter(r => r.bookedBy === 'staff').reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
+                
+                // 👉 Upgraded POS/Walk-in detection to capture all offline revenue
+                const posRev = hist.filter(r => r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')).reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
+                
                 const priorityRev = hist.filter(r => r.reservationType === 'priority').reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
                 const avg = hist.length ? totalRev / hist.length : 0;
 
@@ -4299,6 +4302,9 @@
                 const labels = Object.keys(dayMap).map(d => { const dt = new Date(d); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); });
                 const vals = Object.values(dayMap);
 
+                // 👉 FIX: Define the 'ctx' variable so the chart actually knows where to draw!
+                const ctx = document.getElementById('revenueChart');
+                
                 if (ctx) {
                     if (typeof Chart !== 'undefined') {
                         if (revenueChart) revenueChart.destroy();
@@ -4314,22 +4320,27 @@
 
                 // Top 5 items
                 const itemCount = {};
-                hist.forEach(r => { (r.foods || []).forEach(f => { const name = f.replace(/^\d+x\s+/, ''); itemCount[name] = (itemCount[name] || 0) + 1; }); });
+                hist.forEach(r => { 
+                    (r.foods || []).forEach(f => { 
+                        const name = String(f).replace(/^\d+x\s+/, '').trim();
+                        if (name) itemCount[name] = (itemCount[name] || 0) + 1; 
+                    }); 
+                });
                 const sorted = Object.entries(itemCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
                 const el = document.getElementById('top-items-list');
                 if (el) {
                     const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
                     el.innerHTML = sorted.length ? sorted.map((e, i) =>
-                        `<div class="top-item"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name">${e[0]}</span><span class="top-item-count">${e[1]}x</span></div>`
+                        `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${e[0]}</span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${e[1]}x</span></div>`
                     ).join('') : '<div class="muted" style="padding:20px; text-align:center;">No item data yet.</div>';
                 }
 
-                // Popular tables (by completed orders with payment + revenue)
+                // Popular tables (by orders with payment + revenue)
                 const tableAgg = {};
                 hist.forEach(r => {
                     const tbl = (r.bookedTable || '').toString().trim();
                     if (!tbl || tbl.toLowerCase() === 'none') return;
-                    if (!r.completedAt) return;
+                    
                     const amt = Number(r.paymentAmount || 0);
                     if (!tableAgg[tbl]) tableAgg[tbl] = { count: 0, revenue: 0 };
                     tableAgg[tbl].count += 1;
@@ -4344,8 +4355,7 @@
                     tel.innerHTML = tableSorted.length ? tableSorted.map((e, i) => {
                         const name = e[0];
                         const { count, revenue } = e[1];
-                        const sub = `${count} order${count !== 1 ? 's' : ''} · ₱${Math.round(revenue).toLocaleString()}`;
-                        return `<div class="top-item"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name">${name}<div class="top-item-sub">${sub}</div></span><span class="top-item-count">${count}x</span></div>`;
+                        return `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${name}<div class="top-item-sub" style="font-size:11px; color:#64748b; font-weight:normal;">₱${Math.round(revenue).toLocaleString()} generated</div></span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${count} orders</span></div>`;
                     }).join('') : '<div class="muted" style="padding:20px; text-align:center;">No table data yet.</div>';
                 }
             };
