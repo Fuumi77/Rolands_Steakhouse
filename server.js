@@ -115,6 +115,28 @@ app.post('/api/staff/log-login', async (req, res) => {
         res.json({ success: true });
     } catch (err) { res.status(500).send("Database error"); }
 });
+/* DELETE STAFF ACCOUNT */
+app.delete('/api/staff/:username', async (req, res) => {
+    try {
+        await db.query('DELETE FROM staff_credentials WHERE username = ?', [req.params.username]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Delete Staff Error:", err);
+        res.status(500).send("Database error");
+    }
+});
+
+/* UPDATE STAFF PASSWORD */
+app.put('/api/staff/:username/password', async (req, res) => {
+    const { passwordHash } = req.body;
+    try {
+        await db.query('UPDATE staff_credentials SET password_hash = ? WHERE username = ?', [passwordHash, req.params.username]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Update Staff Password Error:", err);
+        res.status(500).send("Database error");
+    }
+});
 
 app.get('/api/staff', async (req, res) => {
     try {
