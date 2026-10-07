@@ -1602,12 +1602,19 @@
                     const isNew = createdTime && (Date.now() - createdTime < 60000);
                     if (isNew) tr.classList.add('new-order-row');
 
-                    let typeStr = r.reservationType || '';
-                    if (r.bookedBy === 'staff') typeStr = 'pos';
                     let typePill = '';
-                    if (typeStr === 'priority') typePill = '<span class="pill">PRO</span>';
-                    else if (typeStr === 'pos') typePill = '<span class="pill pos">POS</span>';
-                    else typePill = '<span class="pill std">STD</span>';
+                    const resNum = String(r.reservationNumber || '');
+                    const resType = String(r.reservationType || '').toLowerCase();
+                    
+                    if (resNum.startsWith('WI-')) {
+                        typePill = `<span style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
+                    } else if (resNum.startsWith('POS-')) {
+                        typePill = `<span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
+                    } else if (resType === 'priority') {
+                        typePill = `<span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
+                    } else {
+                        typePill = `<span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
+                    }
 
                     let dateStr = r.arrivalDateTimeDisplay || r.arrivalDate || 'Walk-in';
                     if (r.completedAt && !r.arrivalDate) {
@@ -4172,7 +4179,19 @@
                         return `${Math.floor(secs / 3600)}h ago`;
                     })() : '';
                     const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Order';
-                    const typeTag = r.bookedBy === 'staff' ? '<span class="pill pos" style="font-size:10px;">POS</span>' : (r.reservationType === 'priority' ? '<span class="pill" style="font-size:10px;">PRO</span>' : '<span class="pill std" style="font-size:10px;">STD</span>');
+                    let typeTag = '';
+                    const feedResNum = String(r.reservationNumber || '');
+                    const feedResType = String(r.reservationType || '').toLowerCase();
+                    
+                    if (feedResNum.startsWith('WI-')) {
+                        typeTag = `<span style="background:#dbeafe; color:#1e3a8a; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
+                    } else if (feedResNum.startsWith('POS-')) {
+                        typeTag = `<span style="background:#e0e7ff; color:#3730a3; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
+                    } else if (feedResType === 'priority') {
+                        typeTag = `<span style="background:#fef3c7; color:#92400e; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
+                    } else {
+                        typeTag = `<span style="background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
+                    }
                     return `<div class="activity-item">
                         <div class="activity-dot ${si.cls}"></div>
                         <div style="flex:1; min-width:0;">
