@@ -4829,7 +4829,17 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             dashboard.classList.remove('hidden');
 
             const username = sessionStorage.getItem('adminLoggedInUser') || '';
-            adminStatus.textContent = username ? `Signed in as ${username}` : '';
+            
+            // 👉 UPDATED LOGIC FOR NEW GREEN PILL
+            const statusText = document.getElementById('admin-status-text');
+            const statusPill = document.getElementById('admin-status-pill');
+            if (username) {
+                statusText.textContent = username;
+                statusPill.style.visibility = 'visible';
+            } else {
+                statusPill.style.visibility = 'hidden';
+            }
+            
             logoutBtn.classList.remove('hidden');
 
             // Online activity tracking heartbeat
@@ -5495,6 +5505,33 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
         // Auto-render recent walk-ins when tab loads
         document.querySelector('[onclick="switchAdminTab(\'walkin\', this)"]')?.addEventListener('click', renderRecentWalkins);
+
+        // ── LIVE CLOCK & MOBILE MENU LOGIC ──
+        function updateHeaderClock() {
+            const clockEl = document.getElementById('live-clock');
+            if (!clockEl) return;
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            clockEl.innerHTML = `${dateStr},<br>${timeStr}`;
+        }
+        setInterval(updateHeaderClock, 1000);
+        updateHeaderClock();
+
+        window.toggleMobileSidebar = function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+            const overlay = document.getElementById('sidebar-overlay');
+            if(overlay) overlay.classList.toggle('active');
+        };
+
+        // Automatically close mobile menu when a tab is clicked!
+        document.querySelectorAll('.tab-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelector('.sidebar').classList.remove('active');
+                const overlay = document.getElementById('sidebar-overlay');
+                if(overlay) overlay.classList.remove('active');
+            });
+        });
     </script>
 
     <!-- RECIPE EDITOR MODAL -->
