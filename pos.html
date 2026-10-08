@@ -1183,9 +1183,13 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // Get active orders from today created by POS/staff (exclude completed)
-            const posOrders = history.filter(r => r.bookedBy === 'staff' && r.reservationNumber.startsWith('POS-') && r.approvalStatus !== 'completed').reverse();
-
+            // 👉 FIX: Check for the 'POS-' ticket prefix directly instead of relying on the strict 'staff' tag
+            const posOrders = history.filter(r => 
+                r.reservationNumber && 
+                String(r.reservationNumber).startsWith('POS-') && 
+                r.approvalStatus !== 'completed'
+            ).reverse();
+            
             if (posOrders.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#94a3b8;">No POS orders found yet.</div>`;
                 return;
