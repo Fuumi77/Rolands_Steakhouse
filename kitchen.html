@@ -465,6 +465,25 @@
             if (hist[idx]) {
                 hist[idx].kdsStatus = newStatus;
                 hist[idx].kdsUpdateAt = new Date().toISOString();
+                
+                // 👉 NEW: Auto-seat the table on the Staff/Manager Floor Plan when served
+                if (newStatus === 'served') {
+                    hist[idx].approvalStatus = 'seated';
+                    
+                    const bookedTable = hist[idx].bookedTable;
+                    if (bookedTable && bookedTable !== 'Takeout') {
+                        const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+                        overrides[bookedTable] = 'seated';
+                        localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                        
+                        try {
+                            if (typeof BroadcastChannel !== 'undefined') {
+                                new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
+                            }
+                        } catch (e) {}
+                    }
+                }
+
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 
                 try {
@@ -477,42 +496,6 @@
                 if (typeof showToast === 'function') {
                     const label = newStatus === 'cooking' ? 'Started Cooking' : (newStatus === 'ready' ? 'Marked as Ready' : 'Order Dismissed');
                     showToast(`Order status updated: ${label}`, 'success');
-                }
-                renderKitchenQueue(true);
-            }
-        }
-
-        async function cancelOrder(idx) {
-            let confirmed = true;
-            if (typeof superModal === 'function') {
-                confirmed = await superModal({
-                    title: 'Cancel Food Order?',
-                    message: 'Are you sure you want to CANCEL this order? It will be removed from the kitchen display.',
-                    type: 'confirm',
-                    confirmText: 'Yes, Cancel Order',
-                    cancelText: 'Keep Cooking'
-                });
-            } else {
-                confirmed = confirm('Are you sure you want to cancel this food order?');
-            }
-
-            if (!confirmed) return;
-
-            const hist = getReservationHistory();
-            if (hist[idx]) {
-                hist[idx].kdsStatus = 'cancelled';
-                hist[idx].kdsUpdateAt = new Date().toISOString();
-                localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                
-                try {
-                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
-                    if (typeof BroadcastChannel !== 'undefined') {
-                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
-                    }
-                } catch (e) {}
-                
-                if (typeof showToast === 'function') {
-                    showToast('Order cancelled', 'warning');
                 }
                 renderKitchenQueue(true);
             }
