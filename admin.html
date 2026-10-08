@@ -3332,8 +3332,12 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     renderPromosAdmin();
                 }, 60000);
                 window.isPollingActive = true;
+                
+                // 👉 THE FIX: Move this INSIDE the brackets so it only fetches ONCE on load!
+                syncReservations(); 
             }
-            syncReservations();
+            
+            // Allow the UI to draw normally
             renderFloorPlan();
             renderPayments();
             renderPromosAdmin();
