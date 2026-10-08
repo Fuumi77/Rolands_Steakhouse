@@ -1076,7 +1076,7 @@
                     existingRes.discountIdNo = discountIdNo;
                     existingRes.paymentAmount = totalAmt;
                     existingRes.modified = true;
-                    existingRes.approvalStatus = 'pending'; 
+                    existingRes.approvalStatus = 'seated'; // 👉 CHANGED to seated
                     existingRes.kdsStatus = 'pending'; 
                 } else {
                     const reservation = {
@@ -1091,9 +1091,9 @@
                         discountAmount: disc.amount,
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
-                        paymentStatus: 'pending_check',
-                        approvalStatus: 'pending',
-                        bookedBy: 'pos', // Mark specifically as POS
+                        paymentStatus: 'paid', // 👉 CHANGED to paid (since it's POS)
+                        approvalStatus: 'seated', // 👉 CHANGED to seated
+                        bookedBy: 'pos',
                         createdAt: new Date().toISOString(),
                         completedAt: null,
                         arrivalDateTimeDisplay: 'POS Walk-in'
@@ -1112,8 +1112,9 @@
                 // Update table occupancy status
                 if (table && table !== 'Takeout') {
                     const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                    overrides[table] = 'occupied';
+                    overrides[table] = 'seated'; // 👉 CHANGED from 'occupied' to 'seated'
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                    
                     window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
