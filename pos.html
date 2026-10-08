@@ -993,7 +993,7 @@
             // 👉 NEW: Grab Checkout Button for Loading State
             const checkoutBtn = document.querySelector('button[onclick="processCheckout()"]');
             const originalBtnHtml = checkoutBtn.innerHTML;
-            checkoutBtn.innerHTML = '⏳ Processing to Database...';
+            checkoutBtn.innerHTML = '⏳ Processing...';
             checkoutBtn.disabled = true;
 
             try {
@@ -1171,6 +1171,9 @@
 
                 renderProducts();
 
+                // 👉 NEW: Instantly flip the POS to the Order Status screen!
+                switchMode('status');
+
                 lastTransactionId = resNo;
                 if (typeof superModal === 'function') {
                     superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen and database.` });
@@ -1219,10 +1222,10 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: Check for the 'POS-' ticket prefix directly instead of relying on the strict 'staff' tag
+            // 👉 FIX: Look for both POS orders and Walk-in (WI) orders so they can both be billed out!
             const posOrders = history.filter(r => 
                 r.reservationNumber && 
-                String(r.reservationNumber).startsWith('POS-') && 
+                (String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')) && 
                 r.approvalStatus !== 'completed'
             ).reverse();
             
