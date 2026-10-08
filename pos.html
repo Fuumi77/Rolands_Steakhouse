@@ -143,9 +143,11 @@
         <section class="cart-side">
             <div class="cart-scroll-area">
                 <div class="cart-header">
-                    <h2>Current Order</h2>
-                    <span id="cart-count-badge"
-                        style="background:var(--primary-light); color:var(--primary); padding:4px 10px; border-radius:20px; font-weight:bold; font-size:13px;">0 items</span>
+                    <h2 id="cart-title">Current Order</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button id="btn-cancel-edit" onclick="cancelEdit()" style="display:none; background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">Cancel Edit</button>
+                        <span id="cart-count-badge" style="background:var(--primary-light); color:var(--primary); padding:4px 10px; border-radius:20px; font-weight:bold; font-size:13px;">0 items</span>
+                    </div>
                 </div>
 
                 <div class="cart-items" id="cart-list">
@@ -793,8 +795,31 @@
             const searchModal = document.getElementById('modal-reservation-search');
             if (searchModal) searchModal.style.display = 'none';
 
+            // 👉 NEW: Instantly mark the table as 'Seated' in the Hostess floor plan!
+            if (res.bookedTable && res.bookedTable !== 'Takeout') {
+                const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+                overrides[res.bookedTable] = 'seated';
+                localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                
+                try {
+                    window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
+                    }
+                } catch(e) {}
+            }
+
+            // 👉 NEW: Update the reservation status locally so it stays seated
+            res.approvalStatus = 'seated';
+            localStorage.setItem('reservationHistory', JSON.stringify(history));
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
+                }
+            } catch(e) {}
+
             if (window.showToast) {
-                window.showToast(`Loaded Reservation #${res.reservationNumber} for ${res.customerName}`, 'success', 3000);
+                window.showToast(`Loaded Reservation #${res.reservationNumber}. Table marked as Seated!`, 'success', 3500);
             }
         }
 
