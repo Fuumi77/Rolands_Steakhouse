@@ -3567,12 +3567,14 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 applySearch();
             };
 
+            // 👉 FIXED: The state variables must be OUTSIDE the applySearch function!
+            window.currentRowLimit = 'all';
+            window.setRowLimit = function (limit) {
+                window.currentRowLimit = limit;
+                applySearch();
+            };
+
             window.applySearch = function () {
-                window.currentRowLimit = 'all';
-                window.setRowLimit = function (limit) {
-                    window.currentRowLimit = limit;
-                    applySearch();
-                };
                 const q = normalizeText(searchInput.value);
                 const history = getReservationHistory().sort((a, b) => {
                     const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
@@ -3617,9 +3619,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     // 4. Filter by Date
                     let matchesDate = true;
                     if (window.currentDateFilter !== 'all') {
-                        const targetDateObj = parseRecordDate(r); // Uses existing system parser
+                        const targetDateObj = parseRecordDate(r); 
                         if (!targetDateObj || isNaN(targetDateObj.getTime())) {
-                            matchesDate = false; // Hide invalid dates if filtering
+                            matchesDate = false; 
                         } else {
                             const recYear = targetDateObj.getFullYear();
                             const recMonth = targetDateObj.getMonth();
@@ -3641,7 +3643,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     return matchesText && matchesStatus && matchesType && matchesDate;
                 });
                 
-                // 👉 NEW: Slice the array based on the selected row limit
+                // 👉 Slice the array based on the selected row limit
                 let displayedRows = filtered;
                 if (window.currentRowLimit !== 'all') {
                     const limit = parseInt(window.currentRowLimit, 10);
@@ -3650,7 +3652,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 
                 renderRows(displayedRows);
                 
-                // 👉 Updates text to reflect exactly what is visible vs total filtered
+                // Updates text to reflect exactly what is visible vs total filtered
                 if (window.currentRowLimit !== 'all' && filtered.length > displayedRows.length) {
                     summaryLine.innerHTML = `Showing <b>${displayedRows.length}</b> of <b>${filtered.length}</b> filtered reservations.`;
                 } else {
@@ -3659,7 +3661,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 
                 return filtered;
             };
-
+            
             applySearch();
 
             if (!searchInput.dataset.listenerAttached) {
