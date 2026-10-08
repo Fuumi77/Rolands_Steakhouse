@@ -651,23 +651,42 @@
                 </div>
 
 
-                <div class="row" style="gap: 12px; align-items: center;">
-                    <input id="search-input" type="text" placeholder="Search by Reservation # or Customer name..."
-                        style="flex: 1;">
-
-                    <div style="display:flex; background-color:#f1f5f9; border-radius:8px; padding:4px; gap: 4px;">
-                        <button id="filter-all" type="button" onclick="setResFilter('all')"
-                            class="status-filter active">All</button>
-                        <button id="filter-paid" type="button" onclick="setResFilter('paid')" class="status-filter">Paid</button>
-                        <button id="filter-unpaid" type="button" onclick="setResFilter('unpaid')"
-                            class="status-filter">Unpaid/Failed</button>
-                        <button id="filter-pending" type="button" onclick="setResFilter('pending')"
-                            class="status-filter">Pending</button>
-                        <button id="filter-discounted" type="button" onclick="setResFilter('discounted')"
-                            class="status-filter">Discounted</button>
+                <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px; background:white; padding:16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                    <!-- Top Row: Search, Dates, Export -->
+                    <div style="display:flex; gap: 12px; align-items: center; flex-wrap:wrap;">
+                        <input id="search-input" type="text" placeholder="Search by Reservation # or Customer name..." style="flex: 1; min-width:250px; padding:10px 14px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <select id="date-filter-select" onchange="setDateFilter(this.value)" style="padding:10px 14px; border:1px solid #cbd5e1; border-radius:8px; background:white; font-weight:600; color:#334155; cursor:pointer;">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                        <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin:0;">Export CSV</button>
                     </div>
 
-                    <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()">Export CSV</button>
+                    <!-- Bottom Row: Status and Type Pills -->
+                    <div style="display:flex; gap: 12px; flex-wrap:wrap; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Status:</span>
+                            <div style="display:flex; background-color:#f1f5f9; border-radius:8px; padding:4px; gap: 4px; flex-wrap:wrap;">
+                                <button id="filter-all" type="button" onclick="setResFilter('all')" class="status-filter active">All</button>
+                                <button id="filter-paid" type="button" onclick="setResFilter('paid')" class="status-filter">Paid</button>
+                                <button id="filter-unpaid" type="button" onclick="setResFilter('unpaid')" class="status-filter">Failed/Unpaid</button>
+                                <button id="filter-pending" type="button" onclick="setResFilter('pending')" class="status-filter">Pending</button>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; margin-left:8px;">Type:</span>
+                            <div style="display:flex; background-color:#f1f5f9; border-radius:8px; padding:4px; gap: 4px; flex-wrap:wrap;">
+                                <button id="type-filter-all" type="button" onclick="setTypeFilter('all')" class="status-filter active">All</button>
+                                <button id="type-filter-prio" type="button" onclick="setTypeFilter('priority')" class="status-filter" style="color:#92400e;">⭐ PRIO</button>
+                                <button id="type-filter-std" type="button" onclick="setTypeFilter('standard')" class="status-filter" style="color:#475569;">🪑 STD</button>
+                                <button id="type-filter-pos" type="button" onclick="setTypeFilter('pos')" class="status-filter" style="color:#3730a3;">POS</button>
+                                <button id="type-filter-wi" type="button" onclick="setTypeFilter('wi')" class="status-filter" style="color:#1e3a8a;">WI</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="muted" id="summary-line"></div>
@@ -3480,6 +3499,34 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 applySearch();
             };
 
+            // 👉 NEW: Expanded Filtering State
+            window.currentStatusFilter = window.currentStatusFilter || 'all';
+            window.currentTypeFilter = window.currentTypeFilter || 'all';
+            window.currentDateFilter = window.currentDateFilter || 'all';
+
+            window.setResFilter = function (filterValue) {
+                window.currentStatusFilter = filterValue;
+                const statusBtns = document.querySelectorAll('[id^="filter-"]');
+                statusBtns.forEach(b => b.classList.remove('active'));
+                const activeBtn = document.getElementById('filter-' + filterValue);
+                if(activeBtn) activeBtn.classList.add('active');
+                applySearch();
+            };
+
+            window.setTypeFilter = function (typeValue) {
+                window.currentTypeFilter = typeValue;
+                const typeBtns = document.querySelectorAll('[id^="type-filter-"]');
+                typeBtns.forEach(b => b.classList.remove('active'));
+                const activeBtn = document.getElementById('type-filter-' + (typeValue === 'priority' ? 'prio' : typeValue === 'standard' ? 'std' : typeValue));
+                if(activeBtn) activeBtn.classList.add('active');
+                applySearch();
+            };
+
+            window.setDateFilter = function (dateValue) {
+                window.currentDateFilter = dateValue;
+                applySearch();
+            };
+
             window.applySearch = function () {
                 const q = normalizeText(searchInput.value);
                 const history = getReservationHistory().sort((a, b) => {
@@ -3488,28 +3535,67 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     return idB - idA;
                 });
 
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+
                 const filtered = history.filter(r => {
-                    // Filter by Text
+                    // 1. Filter by Text Search
                     const rn = normalizeText(r.reservationNumber);
                     const cn = normalizeText(r.customerName);
                     const matchesText = !q || rn.includes(q) || cn.includes(q);
 
-                    // Filter by Status
+                    // 2. Filter by Status
                     let matchesStatus = true;
                     const s = (r.paymentStatus || '').toLowerCase();
-
-                    if (window.currentPaymentFilter === 'paid') {
+                    if (window.currentStatusFilter === 'paid') {
                         matchesStatus = (s === 'paid' || s === 'verified' || s === 'walk-in');
-                    } else if (window.currentPaymentFilter === 'unpaid') {
+                    } else if (window.currentStatusFilter === 'unpaid') {
                         matchesStatus = (s === 'pending_paymongo' || s === 'rejected');
-                    } else if (window.currentPaymentFilter === 'pending') {
+                    } else if (window.currentStatusFilter === 'pending') {
                         matchesStatus = (s === 'pending');
-                    } else if (window.currentPaymentFilter === 'discounted') {
-                        matchesStatus = (r.discountType && r.discountType !== 'none');
                     }
 
-                    return matchesText && matchesStatus;
+                    // 3. Filter by Type (WI, POS, PRIO, STD)
+                    let matchesType = true;
+                    const resNumStr = String(r.reservationNumber || '');
+                    const resTypeStr = String(r.reservationType || '').toLowerCase();
+                    if (window.currentTypeFilter === 'wi') {
+                        matchesType = resNumStr.startsWith('WI-');
+                    } else if (window.currentTypeFilter === 'pos') {
+                        matchesType = resNumStr.startsWith('POS-');
+                    } else if (window.currentTypeFilter === 'priority') {
+                        matchesType = resTypeStr === 'priority' && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
+                    } else if (window.currentTypeFilter === 'standard') {
+                        matchesType = resTypeStr === 'standard' && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
+                    }
+
+                    // 4. Filter by Date
+                    let matchesDate = true;
+                    if (window.currentDateFilter !== 'all') {
+                        const targetDateObj = parseRecordDate(r); // Uses existing system parser
+                        if (!targetDateObj || isNaN(targetDateObj.getTime())) {
+                            matchesDate = false; // Hide invalid dates if filtering
+                        } else {
+                            const recYear = targetDateObj.getFullYear();
+                            const recMonth = targetDateObj.getMonth();
+                            const recDateStr = targetDateObj.toISOString().split('T')[0];
+
+                            if (window.currentDateFilter === 'today') {
+                                matchesDate = recDateStr === todayStr;
+                            } else if (window.currentDateFilter === 'week') {
+                                const weekAgo = new Date();
+                                weekAgo.setDate(now.getDate() - 7);
+                                weekAgo.setHours(0, 0, 0, 0);
+                                matchesDate = targetDateObj >= weekAgo && targetDateObj <= now;
+                            } else if (window.currentDateFilter === 'month') {
+                                matchesDate = recYear === now.getFullYear() && recMonth === now.getMonth();
+                            }
+                        }
+                    }
+
+                    return matchesText && matchesStatus && matchesType && matchesDate;
                 });
+                
                 renderRows(filtered);
                 summaryLine.textContent = `Showing ${filtered.length} of ${history.length} reservations.`;
                 return filtered;
