@@ -718,7 +718,18 @@
                     </div>
                 </div>
 
-                <div class="muted" id="summary-line"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; margin-top: 4px;">
+                    <div class="muted" id="summary-line" style="font-weight: 500;"></div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Show rows:</span>
+                        <select id="row-limit-select" onchange="setRowLimit(this.value)" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; color:#334155; cursor:pointer; background: white;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="all" selected>All</option>
+                        </select>
+                    </div>
+                </div>
 
                 <div style="height: 12px;"></div>
 
@@ -3557,6 +3568,11 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             };
 
             window.applySearch = function () {
+                window.currentRowLimit = 'all';
+                window.setRowLimit = function (limit) {
+                    window.currentRowLimit = limit;
+                    applySearch();
+                };
                 const q = normalizeText(searchInput.value);
                 const history = getReservationHistory().sort((a, b) => {
                     const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
@@ -3625,8 +3641,22 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     return matchesText && matchesStatus && matchesType && matchesDate;
                 });
                 
-                renderRows(filtered);
-                summaryLine.textContent = `Showing ${filtered.length} of ${history.length} reservations.`;
+                // 👉 NEW: Slice the array based on the selected row limit
+                let displayedRows = filtered;
+                if (window.currentRowLimit !== 'all') {
+                    const limit = parseInt(window.currentRowLimit, 10);
+                    displayedRows = filtered.slice(0, limit);
+                }
+                
+                renderRows(displayedRows);
+                
+                // 👉 Updates text to reflect exactly what is visible vs total filtered
+                if (window.currentRowLimit !== 'all' && filtered.length > displayedRows.length) {
+                    summaryLine.innerHTML = `Showing <b>${displayedRows.length}</b> of <b>${filtered.length}</b> filtered reservations.`;
+                } else {
+                    summaryLine.innerHTML = `Showing all <b>${displayedRows.length}</b> filtered reservations.`;
+                }
+                
                 return filtered;
             };
 
