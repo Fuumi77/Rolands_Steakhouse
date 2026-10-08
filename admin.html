@@ -1618,6 +1618,74 @@
             const walkinCount = history.filter(r => r.bookedBy === 'staff').length;
             const revenue = priorityHistory.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
 
+            // 👉 NEW: Dynamically calculate Top Foods and Reservations By Date
+            const foodCounts = {};
+            priorityHistory.forEach(r => {
+                if (r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' && Array.isArray(r.foods)) {
+                    r.foods.forEach(f => {
+                        // Extract the quantity and name (e.g., "2x Fillet Mignon")
+                        const match = String(f).trim().match(/^(\d+)x\s*(.*)$/i);
+                        let qty = 1;
+                        let name = String(f).trim();
+                        if (match) {
+                            qty = parseInt(match[1], 10) || 1;
+                            name = match[2].trim();
+                        }
+                        if (!foodCounts[name]) foodCounts[name] = 0;
+                        foodCounts[name] += qty;
+                    });
+                }
+            });
+
+            // Sort by most ordered, take the top 5
+            const sortedFoods = Object.entries(foodCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const topFoodsEl = document.getElementById('top-foods');
+            if (topFoodsEl) {
+                if (sortedFoods.length > 0) {
+                    topFoodsEl.innerHTML = sortedFoods.map(f => 
+                        `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#334155; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:10px;">${f[0]}</span>
+                            <span style="color:#1b5e20; font-size:11px; font-weight:800; background:#dcfce7; padding:3px 8px; border-radius:12px; white-space:nowrap;">${f[1]} ordered</span>
+                        </div>`
+                    ).join('');
+                } else {
+                    topFoodsEl.innerHTML = '<span style="color:#94a3b8; font-style:italic; font-size:13px;">No priority foods ordered yet.</span>';
+                }
+            }
+
+            const dateCounts = {};
+            history.forEach(r => {
+                // Group all active reservations by their arrival date
+                if (r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled') {
+                    let d = r.arrivalDate;
+                    if (!d && r.createdAt) d = r.createdAt.split('T')[0];
+                    if (d) {
+                        if (!dateCounts[d]) dateCounts[d] = 0;
+                        dateCounts[d]++;
+                    }
+                }
+            });
+
+            // Sort dates descending (newest/upcoming first), take top 5
+            const sortedDates = Object.keys(dateCounts).sort().reverse().slice(0, 5);
+            const byDateEl = document.getElementById('by-date');
+            if (byDateEl) {
+                if (sortedDates.length > 0) {
+                    byDateEl.innerHTML = sortedDates.map(d => {
+                        const dateObj = new Date(d);
+                        if(dateObj.getFullYear() < 2024) dateObj.setFullYear(new Date().getFullYear()); // Catch year bugs
+                        const niceDate = isNaN(dateObj) ? d : dateObj.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+                        
+                        return `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#334155; font-size:13px; font-weight:600;">${niceDate}</span>
+                            <span style="color:#0369a1; font-size:11px; font-weight:800; background:#e0f2fe; padding:3px 8px; border-radius:12px;">${dateCounts[d]} bookings</span>
+                        </div>`;
+                    }).join('');
+                } else {
+                    byDateEl.innerHTML = '<span style="color:#94a3b8; font-style:italic; font-size:13px;">No upcoming dates found.</span>';
+                }
+            }
+
             document.getElementById('stat-total').textContent = total;
             document.getElementById('stat-priority').textContent = priorityCount;
             document.getElementById('stat-walkins').textContent = walkinCount;
