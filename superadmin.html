@@ -36,47 +36,69 @@
         }
 
         @media (max-width: 768px) {
-            /* Neatly stack the header on mobile */
+            /* 1. Neatly stack the header into two rows */
             header {
                 flex-direction: column !important;
                 align-items: stretch !important;
-                padding: 12px 16px !important;
+                padding: 12px !important;
                 gap: 12px !important;
                 height: auto !important;
             }
             
-            /* Allow the brand/title area to wrap cleanly */
+            /* 2. TOP ROW: Force Menu, Title, and Badge onto ONE line */
             header > div:first-child, 
             header .brand {
                 display: flex !important;
-                flex-wrap: wrap !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important; /* Prevents wrapping under the menu button */
                 align-items: center !important;
                 gap: 8px !important;
-                font-size: 16px !important;
+                font-size: 16px !important; /* Scaled down slightly to fit */
+                white-space: nowrap !important;
             }
 
-            /* Push the logout/profile actions to a new row with a separator */
+            /* Scale down the MANAGER badge slightly for phones */
+            header .brand-badge {
+                font-size: 9px !important;
+                padding: 3px 6px !important;
+            }
+
+            /* 3. BOTTOM ROW: Push clock, status, and logout to a clean bottom row */
             header .actions {
                 width: 100% !important;
                 display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
                 justify-content: space-between !important;
                 align-items: center !important;
                 padding-top: 12px !important;
                 border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
                 margin: 0 !important;
+                gap: 6px !important;
             }
             
-            /* Scale down the live clock if it exists so it fits */
+            /* 4. Fix the green dot "Manager" pill from squishing */
+            #admin-status {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 6px !important;
+                white-space: nowrap !important; /* Prevents text from going under the dot */
+                font-size: 12px !important;
+                padding: 4px 10px !important;
+                margin: 0 !important;
+            }
+            
             #live-clock {
                 font-size: 11px !important;
                 margin-left: 0 !important;
+                white-space: nowrap !important;
             }
             
-            /* Ensure the Manager store-control banner doesn't break the width */
-            #superadmin-store-status {
-                width: 100% !important;
-                box-sizing: border-box !important;
-                margin: 10px 0 !important;
+            header button.logout-btn {
+                padding: 6px 12px !important;
+                font-size: 12px !important;
+                white-space: nowrap !important;
             }
         }
     </style>
