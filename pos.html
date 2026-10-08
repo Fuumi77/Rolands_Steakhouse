@@ -1222,11 +1222,12 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: Look for both POS orders and Walk-in (WI) orders so they can both be billed out!
+            // Now ALL active reservations (Standard, Priority, Walk-in, POS) show up here so cashiers can add items and bill them out.
             const posOrders = history.filter(r => 
                 r.reservationNumber && 
-                (String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')) && 
-                r.approvalStatus !== 'completed'
+                r.approvalStatus !== 'completed' && 
+                r.approvalStatus !== 'rejected' && 
+                r.approvalStatus !== 'cancelled'
             ).reverse();
             
             if (posOrders.length === 0) {
