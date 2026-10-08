@@ -1076,8 +1076,20 @@
                     existingRes.discountIdNo = discountIdNo;
                     existingRes.paymentAmount = totalAmt;
                     existingRes.modified = true;
-                    existingRes.approvalStatus = 'seated'; // 👉 CHANGED to seated instantly
+                    existingRes.approvalStatus = 'seated'; 
                     existingRes.kdsStatus = 'pending'; 
+
+                    // 👉 FIX: Force the Live MySQL Database to permanently lock this as 'Seated'
+                    try {
+                        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: existingRes.reservationNumber, status: 'Seated' })
+                        });
+                    } catch (e) {
+                        console.error('Failed to sync seated status to DB:', e);
+                    }
                 } else {
                     const reservation = {
                         reservationNumber: resNo,
