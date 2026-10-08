@@ -1231,12 +1231,37 @@
                 const payStatus = String(r.paymentStatus || '').toLowerCase().trim();
                 const genStatus = String(r.status || '').toLowerCase().trim();
                 
-                // If it is officially completed, refunded, cancelled, or rejected, HIDE IT.
-                if (r.completedAt) return false;
-                if (appStatus === 'completed' || genStatus === 'completed') return false;
-                if (appStatus === 'rejected' || appStatus === 'cancelled') return false;
-                if (genStatus === 'cancelled' || genStatus === 'rejected') return false;
-                if (payStatus === 'refunded' || r.refundStatus === 'refunded') return false;
+                if (isEdit && existingRes) {
+                    existingRes.customerName = name;
+                    existingRes.bookedTable = table;
+                    existingRes.numberOfGuests = guests;
+                    existingRes.foods = orderList;
+                    existingRes.subtotalAmount = subtotalAmt;
+                    existingRes.discountType = disc.type;
+                    existingRes.discountAmount = disc.amount;
+                    existingRes.discountIdNo = discountIdNo;
+                    existingRes.paymentAmount = totalAmt;
+                    existingRes.modified = true;
+                    existingRes.approvalStatus = 'seated'; 
+                    existingRes.kdsStatus = 'pending'; 
+                    
+                    // 👉 NEW: If you reopen an old order, strip away the "completed" tags so it shows up in Order Status!
+                    existingRes.status = 'seated';
+                    existingRes.paymentStatus = 'paid';
+                    if (existingRes.completedAt) delete existingRes.completedAt;
+
+                    // 👉 FIX: Force the Live MySQL Database to permanently lock this as 'Seated'
+                    try {
+                        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: existingRes.reservationNumber, status: 'Seated' })
+                        });
+                    } catch (e) {
+                        console.error('Failed to sync seated status to DB:', e);
+                    }
+                } else {
 
                 // Otherwise, it is an ACTIVE order (Seated, Pending, Approved, etc.), so SHOW IT!
                 return true;
