@@ -74,30 +74,35 @@
                 padding-top: 12px !important;
                 border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
                 margin: 0 !important;
-                gap: 6px !important;
+                gap: 4px !important; /* Tighter gap to save space */
             }
             
-            /* 4. Fix the green dot "Manager" pill from squishing */
+            /* 4. Force the clock to cleanly stack Date on top of Time */
+            #live-clock {
+                font-size: 11px !important;
+                line-height: 1.3 !important;
+                margin-left: 0 !important;
+                white-space: normal !important; /* Allows wrapping */
+                max-width: 90px !important; /* Forces the wrap to happen perfectly */
+                text-align: left !important;
+            }
+
+            /* 5. Shrink the Manager pill slightly */
             #admin-status {
                 display: flex !important;
                 flex-direction: row !important;
                 align-items: center !important;
-                gap: 6px !important;
-                white-space: nowrap !important; /* Prevents text from going under the dot */
-                font-size: 12px !important;
-                padding: 4px 10px !important;
+                gap: 4px !important;
+                white-space: nowrap !important;
+                font-size: 11px !important;
+                padding: 4px 8px !important;
                 margin: 0 !important;
             }
             
-            #live-clock {
-                font-size: 11px !important;
-                margin-left: 0 !important;
-                white-space: nowrap !important;
-            }
-            
+            /* 6. Shrink the Logout button slightly */
             header button.logout-btn {
-                padding: 6px 12px !important;
-                font-size: 12px !important;
+                padding: 5px 10px !important;
+                font-size: 11px !important;
                 white-space: nowrap !important;
             }
         }
