@@ -1076,7 +1076,7 @@
                     existingRes.discountIdNo = discountIdNo;
                     existingRes.paymentAmount = totalAmt;
                     existingRes.modified = true;
-                    existingRes.approvalStatus = 'seated'; // 👉 CHANGED to seated
+                    existingRes.approvalStatus = 'seated'; // 👉 CHANGED to seated instantly
                     existingRes.kdsStatus = 'pending'; 
                 } else {
                     const reservation = {
@@ -1091,9 +1091,9 @@
                         discountAmount: disc.amount,
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
-                        paymentStatus: 'paid', // 👉 CHANGED to paid (since it's POS)
-                        approvalStatus: 'seated', // 👉 CHANGED to seated
-                        bookedBy: 'pos',
+                        paymentStatus: 'paid', // 👉 CHANGED to paid (cashier processed it)
+                        approvalStatus: 'seated', // 👉 CHANGED to seated instantly
+                        bookedBy: 'pos', 
                         createdAt: new Date().toISOString(),
                         completedAt: null,
                         arrivalDateTimeDisplay: 'POS Walk-in'
@@ -1114,7 +1114,6 @@
                     const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
                     overrides[table] = 'seated'; // 👉 CHANGED from 'occupied' to 'seated'
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                    
                     window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
@@ -1122,7 +1121,6 @@
                         }
                     } catch (e) {}
                 }
-
                 // 4. Reset
                 clearCart();
                 if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
