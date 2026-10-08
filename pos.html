@@ -1297,12 +1297,25 @@
             document.getElementById('confirm-bill-msg').innerHTML = `Are you sure you want to bill out <b>${resNo}</b>? It will be marked as paid and transferred to History.`;
             document.getElementById('modal-confirm-bill').style.display = 'flex';
 
-            document.getElementById('btn-confirm-bill').onclick = function () {
+            // 👉 FIX: Made this function async so it can talk to the database
+            document.getElementById('btn-confirm-bill').onclick = async function () {
                 const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 const idx = history.findIndex(h => h.reservationNumber === resNo);
 
                 if (idx > -1) {
-                    // Transfer to Admin/Super history by marking it paid and completed
+                    // 👉 NEW: Tell the live MySQL database that this order is officially COMPLETED
+                    try {
+                        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: resNo, status: 'Completed' })
+                        });
+                    } catch (e) {
+                        console.error('Failed to sync bill out to database:', e);
+                    }
+
+                    // Transfer to Admin/Super history by marking it paid and completed locally
                     history[idx].paymentStatus = 'paid';
                     history[idx].approvalStatus = 'completed';
                     history[idx].completedAt = new Date().toISOString();
@@ -1322,6 +1335,13 @@
                     }
 
                     localStorage.setItem('reservationHistory', JSON.stringify(history));
+                    
+                    // 👉 NEW: Broadcast the completion so the Admin dashboard updates instantly
+                    try {
+                        if (typeof BroadcastChannel !== 'undefined') {
+                            new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
+                        }
+                    } catch (e) {}
                 }
 
                 closeModals();
@@ -1334,7 +1354,6 @@
                 renderOrderStatus();
             };
         }
-
         /* --- MODE LOGIC --- */
         function switchMode(mode) {
             document.getElementById('mode-ordering').classList.toggle('active', mode === 'ordering');
