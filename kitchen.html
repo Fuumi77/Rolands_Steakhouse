@@ -334,6 +334,7 @@
                     r.paymentStatus === 'paid' || 
                     r.paymentStatus === 'walk-in' || 
                     r.approvalStatus === 'approved' || 
+                    r.approvalStatus === 'seated' || // 👉 FIX: Tell the kitchen to accept 'seated' orders!
                     r.paymentStatus === 'pending_check' || 
                     r.bookedBy === 'staff' || 
                     r.bookedBy === 'admin' ||
