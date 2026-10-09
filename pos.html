@@ -1236,32 +1236,35 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: The Ultimate Filter + Strict Chronological Sorting.
+            // 👉 FIX: The Ultimate Filter + Strict Numeric ID Sorting.
             const posOrders = history.filter(r => {
-                if (!r || !r.reservationNumber) return false; // Must have an ID
+                if (!r || !r.reservationNumber) return false; 
                 
-                // Check all possible status locations
                 const appStatus = String(r.approvalStatus || '').toLowerCase().trim();
                 const payStatus = String(r.paymentStatus || '').toLowerCase().trim();
                 const genStatus = String(r.status || '').toLowerCase().trim();
                 
-                // If it is officially completed, refunded, cancelled, or rejected, HIDE IT.
                 if (r.completedAt) return false;
                 if (appStatus === 'completed' || genStatus === 'completed') return false;
                 if (appStatus === 'rejected' || appStatus === 'cancelled') return false;
                 if (genStatus === 'cancelled' || genStatus === 'rejected') return false;
                 if (payStatus === 'refunded' || r.refundStatus === 'refunded') return false;
 
-                // Otherwise, it is an ACTIVE order (Seated, Pending, Approved, etc.), so SHOW IT!
                 return true;
             }).sort((a, b) => {
-                // 👉 FIX: Force them into strict chronological order (Oldest at the top)
-                // We use createdAt, or fallback to arrivalDate for older online bookings
-                const timeA = new Date(a.createdAt || a.arrivalDate || 0).getTime();
-                const timeB = new Date(b.createdAt || b.arrivalDate || 0).getTime();
-                return timeA - timeB; 
+                // 👉 FIX: Strip away all letters (POS-, WI-, etc.) and ONLY look at the core numbers
+                const extractNumber = (id) => {
+                    const match = String(id).match(/\d+/);
+                    return match ? parseInt(match[0], 10) : 0;
+                };
+                
+                const numA = extractNumber(a.reservationNumber);
+                const numB = extractNumber(b.reservationNumber);
+                
+                // Sort mathematically: Lowest number (Oldest) at the top, Highest (Recent) at the bottom
+                return numA - numB; 
             });
-
+            
             let html = '';
             posOrders.forEach(r => {
                 const status = r.approvalStatus || r.status || 'pending';
