@@ -1792,7 +1792,7 @@
 
                     // NEW HIGHLIGHT LOGIC: Less than 1 minute old
                     const createdTime = r.createdAt ? new Date(r.createdAt).getTime() : 0;
-                    const isNew = createdTime && (Date.now() - createdTime < 60000);
+                    const isNew = createdTime && (Date.now() - createdTime < 10000);
 
                     if (isNew) {
                         tr.classList.add('new-order-row');
@@ -2247,7 +2247,7 @@ window.rejectReservation = async function (resNum) {
                 }
             }
             checkMidnightReset();
-            setInterval(checkMidnightReset, 60000); // Check every minute
+            setInterval(checkMidnightReset, 10000); // Check every minute
 
             window.openProofModal = function (r) {
                 const modal = document.getElementById('proof-modal');
