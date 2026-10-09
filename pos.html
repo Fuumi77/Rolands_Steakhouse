@@ -1236,7 +1236,7 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: The Ultimate Filter. Catches POS, Walk-ins, Standard, and Priority tickets securely.
+            // 👉 FIX: The Ultimate Filter + Strict Chronological Sorting.
             const posOrders = history.filter(r => {
                 if (!r || !r.reservationNumber) return false; // Must have an ID
                 
@@ -1254,12 +1254,13 @@
 
                 // Otherwise, it is an ACTIVE order (Seated, Pending, Approved, etc.), so SHOW IT!
                 return true;
-            }); // 👉 FIX: Removed .reverse() so the list flows Oldest to Newest!
-
-            if (posOrders.length === 0) {
-                list.innerHTML = `<div style="text-align:center; padding:30px; color:#94a3b8; font-weight: 500;">No active orders found yet.</div>`;
-                return;
-            }
+            }).sort((a, b) => {
+                // 👉 FIX: Force them into strict chronological order (Oldest at the top)
+                // We use createdAt, or fallback to arrivalDate for older online bookings
+                const timeA = new Date(a.createdAt || a.arrivalDate || 0).getTime();
+                const timeB = new Date(b.createdAt || b.arrivalDate || 0).getTime();
+                return timeA - timeB; 
+            });
 
             let html = '';
             posOrders.forEach(r => {
