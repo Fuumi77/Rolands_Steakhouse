@@ -1254,7 +1254,7 @@
 
                 // Otherwise, it is an ACTIVE order (Seated, Pending, Approved, etc.), so SHOW IT!
                 return true;
-            }).reverse();
+            }); // 👉 FIX: Removed .reverse() so the list flows Oldest to Newest!
 
             if (posOrders.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#94a3b8; font-weight: 500;">No active orders found yet.</div>`;
