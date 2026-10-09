@@ -1107,7 +1107,13 @@
                     
                     // Strip away the "completed" tags so it shows up in Order Status!
                     existingRes.status = 'seated';
-                    existingRes.paymentStatus = 'paid';
+                    
+                    // 👉 FIX: If they reopen a paid ticket to add items, it goes back to unpaid. 
+                    // But if it is 'verified' (online deposit), we safely preserve the 'verified' tag!
+                    if (existingRes.paymentStatus === 'paid') {
+                        existingRes.paymentStatus = 'unpaid';
+                    }
+                    
                     if (existingRes.completedAt) delete existingRes.completedAt;
 
                     // Force the Live MySQL Database to permanently lock this as 'Seated'
@@ -1134,7 +1140,7 @@
                         discountAmount: disc.amount,
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
-                        paymentStatus: 'paid', // 👉 CHANGED to paid (cashier processed it)
+                        paymentStatus: 'unpaid', // 👉 FIX: Stays unpaid until "Bill Out" is clicked!
                         approvalStatus: 'seated', // 👉 CHANGED to seated instantly
                         bookedBy: 'pos', 
                         createdAt: new Date().toISOString(),
