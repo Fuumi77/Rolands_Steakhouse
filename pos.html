@@ -1090,7 +1090,7 @@
                     window.InventorySystem.deductIngredientsForOrder(rawCartItems, 'POS Order', resNo);
                 }
 
-                // 👉 NEW FIX: Update existing reservation or handle edit
+                // 👉 FIX: Update existing reservation or handle edit
                 if (isEdit && existingRes) {
                     existingRes.customerName = name;
                     existingRes.bookedTable = table;
@@ -1105,13 +1105,14 @@
                     existingRes.approvalStatus = 'seated'; 
                     existingRes.kdsStatus = 'pending'; 
                     
-                    // Strip away the "completed" tags so it shows up in Order Status!
+                    // Strip away the "completed" tags so it shows up in Order Status
                     existingRes.status = 'seated';
                     
-                    // 👉 FIX: If they reopen a paid ticket to add items, it goes back to unpaid. 
-                    // But if it is 'verified' (online deposit), we safely preserve the 'verified' tag!
+                    // 👉 FIX: Change it to 'verified' instead of 'paid' so it waits for the Bill Out button!
                     if (existingRes.paymentStatus === 'paid') {
-                        existingRes.paymentStatus = 'unpaid';
+                        existingRes.paymentStatus = 'verified'; 
+                    } else if (!existingRes.paymentStatus) {
+                        existingRes.paymentStatus = 'verified';
                     }
                     
                     if (existingRes.completedAt) delete existingRes.completedAt;
@@ -1140,8 +1141,8 @@
                         discountAmount: disc.amount,
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
-                        paymentStatus: 'unpaid', // 👉 FIX: Stays unpaid until "Bill Out" is clicked!
-                        approvalStatus: 'seated', // 👉 CHANGED to seated instantly
+                        paymentStatus: 'verified', // 👉 FIX: Set to 'verified'. It will only become 'paid' when billed out!
+                        approvalStatus: 'seated', 
                         bookedBy: 'pos', 
                         createdAt: new Date().toISOString(),
                         completedAt: null,
