@@ -1165,7 +1165,9 @@
                     } catch (e) {}
                 }
                 // 4. Reset
-                clearCart();
+                editingTransactionId = null; // 👉 FIX: Erase the edit memory FIRST!
+                clearCart();                 // 👉 Then clear the cart so the UI resets to "Current Order"
+                
                 if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
                 if (document.getElementById('order-guests')) document.getElementById('order-guests').value = '';
                 if (document.getElementById('order-name')) document.getElementById('order-name').value = '';
@@ -1173,11 +1175,10 @@
                 document.getElementById('pos-discount-type').value = 'none';
                 document.getElementById('pos-discount-id').classList.remove('show');
                 document.getElementById('pos-discount-id').value = '';
-                editingTransactionId = null; 
 
                 renderProducts();
 
-                // 👉 ADD THIS LINE: Automatically jumps to the Order Status tab!
+                // Automatically jumps to the Order Status tab!
                 switchMode('status');
 
                 lastTransactionId = resNo;
