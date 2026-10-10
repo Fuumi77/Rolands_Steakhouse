@@ -5429,7 +5429,11 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 time: time,
                 table: table,
                 cartItems: structuredCart,
-                status: 'Pending'
+                status: 'Pending',
+                // 👉 FIX: Ship the foods and money to the cloud!
+                reservationType: walkinType,
+                paymentAmount: finalPaymentAmount,
+                foods: foodArray
             })
         });
 
