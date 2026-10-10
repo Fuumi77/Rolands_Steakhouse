@@ -382,13 +382,34 @@
 
             <!-- LIVE ACTIVITY TAB -->
             <div id="tab-activity" class="superadmin-tab-content">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
                     <h2 class="section-title" style="margin:0;">Live Activity Feed</h2>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-size:12px; color:var(--sa-muted);">Auto-refreshes every 10s</span>
                         <div class="activity-dot ready"></div>
                     </div>
                 </div>
+
+                <!-- NEW: Filter Buttons and Row Limit -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; background:white; padding:12px 16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <div class="stat-filter-switch" id="activity-filters" style="display:flex; gap:6px; flex-wrap:wrap; margin:0;">
+                        <button class="filter-btn active" onclick="setActivityFilter('all')">All Activity</button>
+                        <button class="filter-btn" onclick="setActivityFilter('reserved')">New / Seated</button>
+                        <button class="filter-btn" onclick="setActivityFilter('kitchen')">Cooking / Ready</button>
+                        <button class="filter-btn" onclick="setActivityFilter('served')">Served</button>
+                        <button class="filter-btn" onclick="setActivityFilter('completed')">Billed & Completed</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Show rows:</span>
+                        <select id="activity-row-limit" onchange="setActivityLimit(this.value)" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; font-weight:700; color:#1e293b; cursor:pointer; background:#f8fafc; outline:none;">
+                            <option value="10">10 Rows</option>
+                            <option value="30" selected>30 Rows</option>
+                            <option value="50">50 Rows</option>
+                            <option value="100">100 Rows</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div id="activity-feed">
                     <div style="text-align:center; padding:60px; color:var(--sa-muted);">Loading activity...</div>
                 </div>
@@ -4459,24 +4480,59 @@
             };
 
             // ── LIVE ACTIVITY FEED ──
+            window.currentActivityFilter = 'all';
+            window.currentActivityLimit = 30;
+
+            window.setActivityFilter = function(filter) {
+                window.currentActivityFilter = filter;
+                const btns = document.querySelectorAll('#activity-filters .filter-btn');
+                btns.forEach(b => {
+                    const onclickAttr = b.getAttribute('onclick') || '';
+                    b.classList.toggle('active', onclickAttr.includes(`'${filter}'`));
+                });
+                renderActivityFeed();
+            };
+
+            window.setActivityLimit = function(limit) {
+                window.currentActivityLimit = parseInt(limit, 10) || 30;
+                renderActivityFeed();
+            };
+
             window.renderActivityFeed = function () {
                 const hist = getReservationHistory();
                 const cutoff = Date.now() - 24 * 60 * 60 * 1000; // last 24h
                 
-                // 👉 FIX: Capture ALL active and recently completed orders, newest first!
                 const recent = hist.filter(r => {
                     const eventTime = new Date(r.completedAt || r.createdAt || r.arrivalDate || Date.now()).getTime();
-                    return eventTime > cutoff;
+                    if (eventTime <= cutoff) return false;
+
+                    const isCompleted = !!r.completedAt;
+                    const isCancelled = r.approvalStatus === 'cancelled' || r.approvalStatus === 'rejected';
+
+                    // Apply the new category filters
+                    if (window.currentActivityFilter === 'completed') {
+                        return isCompleted || isCancelled;
+                    }
+                    if (window.currentActivityFilter === 'kitchen') {
+                        return !isCompleted && !isCancelled && (r.kdsStatus === 'cooking' || r.kdsStatus === 'ready');
+                    }
+                    if (window.currentActivityFilter === 'served') {
+                        return !isCompleted && !isCancelled && r.kdsStatus === 'served';
+                    }
+                    if (window.currentActivityFilter === 'reserved') {
+                        return !isCompleted && !isCancelled && r.kdsStatus !== 'cooking' && r.kdsStatus !== 'ready' && r.kdsStatus !== 'served';
+                    }
+                    return true; // 'all'
                 }).sort((a, b) => {
                     const timeA = new Date(a.completedAt || a.createdAt || a.arrivalDate || 0).getTime();
                     const timeB = new Date(b.completedAt || b.createdAt || b.arrivalDate || 0).getTime();
                     return timeB - timeA; 
-                }).slice(0, 30); // Show top 30 recent events
+                }).slice(0, window.currentActivityLimit); // Apply the new row limit
 
                 const el = document.getElementById('activity-feed');
                 if (!el) return;
                 if (!recent.length) {
-                    el.innerHTML = '<div style="text-align:center; padding:60px; color:var(--sa-muted);">No activity in the last 24 hours.</div>';
+                    el.innerHTML = '<div style="text-align:center; padding:60px; color:var(--sa-muted); font-weight: 500;">No activity found for this category.</div>';
                     return;
                 }
 
@@ -4485,7 +4541,6 @@
                     let eventLabel = 'New Order';
                     let eventColor = '#3b82f6'; // blue
 
-                    // 👉 FIX: Track the exact current status of the order across all systems
                     if (r.completedAt) {
                         eventIcon = '💰'; eventLabel = 'Billed / Paid'; eventColor = '#16a34a'; 
                     } else if (r.approvalStatus === 'cancelled' || r.approvalStatus === 'rejected') {
@@ -4543,19 +4598,6 @@
                     </div>`;
                 }).join('');
             };
-            // Start polling
-            pollOnlineAdmins();
-            setInterval(pollOnlineAdmins, 5000);
-            setInterval(renderActivityFeed, 10000);
-
-            // UI Reveal
-            auth.classList.add('hidden');
-            auth.style.setProperty('display', 'none', 'important');
-            dashboard.classList.remove('hidden');
-            dashboard.style.removeProperty('display');
-            adminStatus.textContent = '🟢 Manager';
-            logoutBtn.classList.remove('hidden');
-        }
 
         // Authentication
         function initAuth() {
