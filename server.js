@@ -30,6 +30,11 @@ db.query('SELECT 1').then(async () => {
     console.log('✅ Connected to Hostinger MySQL Database!');
     await db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN booked_by VARCHAR(50) DEFAULT 'online'").catch(()=>{});
+    
+    // 👉 FIX: Automatically add the missing columns to your database so it can remember foods and payments!
+    await db.query("ALTER TABLE reservation_log ADD COLUMN reservation_type VARCHAR(50) DEFAULT 'standard'").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN payment_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN foods TEXT").catch(()=>{});
 }).catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 function escapeHtml(str) {
@@ -87,7 +92,6 @@ const transporter = nodemailer.createTransport({
 });
 
 app.post('/api/send-receipt', emailLimiter, async (req, res) => {
-    // Basic email logic
     res.status(200).json({ success: true, message: 'Email placeholder' });
 });
 
@@ -115,15 +119,13 @@ app.post('/api/staff/log-login', async (req, res) => {
         res.json({ success: true });
     } catch (err) { res.status(500).send("Database error"); }
 });
+
 /* DELETE STAFF ACCOUNT */
 app.delete('/api/staff/:username', async (req, res) => {
     try {
         await db.query('DELETE FROM staff_credentials WHERE username = ?', [req.params.username]);
         res.json({ success: true });
-    } catch (err) {
-        console.error("Delete Staff Error:", err);
-        res.status(500).send("Database error");
-    }
+    } catch (err) { res.status(500).send("Database error"); }
 });
 
 /* UPDATE STAFF PASSWORD */
@@ -132,10 +134,7 @@ app.put('/api/staff/:username/password', async (req, res) => {
     try {
         await db.query('UPDATE staff_credentials SET password_hash = ? WHERE username = ?', [passwordHash, req.params.username]);
         res.json({ success: true });
-    } catch (err) {
-        console.error("Update Staff Password Error:", err);
-        res.status(500).send("Database error");
-    }
+    } catch (err) { res.status(500).send("Database error"); }
 });
 
 app.get('/api/staff', async (req, res) => {
@@ -153,8 +152,9 @@ app.get('/reservations', async (req, res) => {
     try {
         if (cachedReservations && (Date.now() - resCacheTime < 5000)) return res.json(cachedReservations); 
         
+        // 👉 FIX: Pull the new columns from the database!
         const [rows] = await db.query(`
-            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by
+            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods
             FROM reservation_log r
             JOIN customer_credentials c ON r.customer_id = c.customer_id
         `);
@@ -164,11 +164,19 @@ app.get('/reservations', async (req, res) => {
             const isStaff = r.booked_by === 'staff';
             const isPos = r.booked_by === 'pos';
             const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : 'RES-');
+            
+            let parsedFoods = [];
+            try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
+
             return {
                 reservationNumber: `${prefix}${r.reservation_id}`, customerName: r.name,
                 arrivalDate: d.toISOString().split('T')[0], arrivalTime: d.toTimeString().substring(0, 5),
-                bookedTable: `Table ${r.table_number}`, reservationType: 'standard',
-                status: r.status, bookedBy: r.booked_by 
+                bookedTable: `Table ${r.table_number}`, 
+                status: r.status, bookedBy: r.booked_by,
+                // 👉 FIX: Send the rich data to the frontend
+                reservationType: r.reservation_type || 'standard',
+                paymentAmount: parseFloat(r.payment_amount) || 0,
+                foods: parsedFoods
             };
         });
         
@@ -178,7 +186,8 @@ app.get('/reservations', async (req, res) => {
 });
 
 app.post('/reserve', async (req, res) => {
-    const { name, email, date, time, table, status } = req.body;
+    // 👉 FIX: Accept the new fields from the frontend
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods } = req.body;
     try {
         let [customers] = await db.query('SELECT customer_id FROM customer_credentials WHERE name = ? OR email = ? LIMIT 1', [name, email || '']);
         let customerId;
@@ -193,10 +202,13 @@ app.post('/reserve', async (req, res) => {
         const isWalkin = email && String(email).includes('walkin-');
         const isPos = email && String(email).includes('pos-'); 
         const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
+        
+        const foodsJson = foods ? JSON.stringify(foods) : '[]';
 
+        // 👉 FIX: Save everything into the database
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by) VALUES (?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy]
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, reservationType || 'standard', paymentAmount || 0, foodsJson]
         );
 
         cachedReservations = null; // Clear cache
