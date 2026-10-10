@@ -1236,7 +1236,7 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: The Ultimate Filter + Strict Numeric ID Sorting.
+            // 👉 FIX: The Ultimate Filter + Strict Numeric ID Sorting (Highest at Top, Lowest at Bottom).
             const posOrders = history.filter(r => {
                 if (!r || !r.reservationNumber) return false; 
                 
@@ -1252,7 +1252,6 @@
 
                 return true;
             }).sort((a, b) => {
-                // 👉 FIX: Strip away all letters (POS-, WI-, etc.) and ONLY look at the core numbers
                 const extractNumber = (id) => {
                     const match = String(id).match(/\d+/);
                     return match ? parseInt(match[0], 10) : 0;
@@ -1261,8 +1260,9 @@
                 const numA = extractNumber(a.reservationNumber);
                 const numB = extractNumber(b.reservationNumber);
                 
-                // Sort mathematically: Lowest number (Oldest) at the top, Highest (Recent) at the bottom
-                return numA - numB; 
+                // 👉 FIX: Swapped to numB - numA. 
+                // This puts the Highest number (Newest) at the Top, and Lowest (Oldest) at the Bottom!
+                return numB - numA; 
             });
             
             let html = '';
