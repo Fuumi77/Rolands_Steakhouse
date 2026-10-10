@@ -1072,7 +1072,11 @@
                             time: new Date().toTimeString().substring(0,5),
                             table: table,
                             cartItems: rawCartItems, 
-                            status: 'Seated' // 👉 FIX: Tell the live database the customer is already seated!
+                            status: 'Seated', // 👉 FIX: Tell the live database the customer is already seated!
+                            // 👉 FIX: Send the foods and money to the cloud!
+                            reservationType: 'standard',
+                            paymentAmount: totalAmt,
+                            foods: orderList
                         })
                     });
                     
