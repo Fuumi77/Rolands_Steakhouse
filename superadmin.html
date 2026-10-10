@@ -4603,11 +4603,13 @@
                 }).join('');
             };
 
-            // 👉 FIX: Restored the logic that hides the login screen and opens the dashboard!
-            // Start polling
-            pollOnlineAdmins();
-            setInterval(pollOnlineAdmins, 5000);
-            setInterval(renderActivityFeed, 10000);
+            // 👉 FIX: Added a "lock" to prevent infinite polling loops that cause table flickering and network flooding!
+            if (!window.superAdminPollingActive) {
+                window.superAdminPollingActive = true;
+                pollOnlineAdmins();
+                setInterval(pollOnlineAdmins, 5000);
+                setInterval(renderActivityFeed, 10000);
+            }
 
             // UI Reveal
             auth.classList.add('hidden');
