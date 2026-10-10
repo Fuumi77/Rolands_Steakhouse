@@ -3058,6 +3058,10 @@
                         refreshActiveSuperAdminInvTab();
                         if (typeof renderSuperFloorPlan === 'function') renderSuperFloorPlan();
                         if (typeof renderSuperReservations === 'function') renderSuperReservations();
+                        
+                        // 👉 FIX: Instantly refresh Dashboard & Activity Feed on remote changes!
+                        if (typeof renderActivityFeed === 'function') renderActivityFeed();
+                        if (typeof renderDashboard === 'function') renderDashboard();
                     };
                 }
             } catch (e) {}
@@ -3069,6 +3073,10 @@
                 if (e.key === 'reservationHistory' || e.key === 'tableOverrides' || e.key === 'floorPlanConfig') {
                     if (typeof renderSuperFloorPlan === 'function') renderSuperFloorPlan();
                     if (typeof renderSuperReservations === 'function') renderSuperReservations();
+                    
+                    // 👉 FIX: Trigger the live updates for local storage events too
+                    if (typeof renderActivityFeed === 'function') renderActivityFeed();
+                    if (typeof renderDashboard === 'function') renderDashboard();
                 }
             });
 
@@ -4454,8 +4462,16 @@
             window.renderActivityFeed = function () {
                 const hist = getReservationHistory();
                 const cutoff = Date.now() - 24 * 60 * 60 * 1000; // last 24h
-                const recent = hist.filter(r => r.completedAt && new Date(r.completedAt).getTime() > cutoff)
-                    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+                
+                // 👉 FIX: Capture ALL active and recently completed orders, newest first!
+                const recent = hist.filter(r => {
+                    const eventTime = new Date(r.completedAt || r.createdAt || r.arrivalDate || Date.now()).getTime();
+                    return eventTime > cutoff;
+                }).sort((a, b) => {
+                    const timeA = new Date(a.completedAt || a.createdAt || a.arrivalDate || 0).getTime();
+                    const timeB = new Date(b.completedAt || b.createdAt || b.arrivalDate || 0).getTime();
+                    return timeB - timeA; 
+                }).slice(0, 30); // Show top 30 recent events
 
                 const el = document.getElementById('activity-feed');
                 if (!el) return;
@@ -4464,22 +4480,38 @@
                     return;
                 }
 
-                const statusInfo = {
-                    cooking: { cls: 'cooking', icon: '👨‍🍳', label: 'Cooking', color: '#f97316' },
-                    ready: { cls: 'ready', icon: '✅', label: 'Ready', color: '#22c55e' },
-                    served: { cls: 'served', icon: '🍽️', label: 'Served', color: '#818cf8' },
-                    cancelled: { cls: '', icon: '🚫', label: 'Cancelled', color: '#ef4444' }
-                };
-
                 el.innerHTML = recent.map(r => {
-                    const si = statusInfo[r.kdsStatus] || { cls: 'billed', icon: '💰', label: 'Billed / Paid', color: '#fbbf24' };
-                    const timeAgo = r.completedAt ? (() => {
-                        const secs = Math.floor((Date.now() - new Date(r.completedAt)) / 1000);
+                    let eventIcon = '🆕';
+                    let eventLabel = 'New Order';
+                    let eventColor = '#3b82f6'; // blue
+
+                    // 👉 FIX: Track the exact current status of the order across all systems
+                    if (r.completedAt) {
+                        eventIcon = '💰'; eventLabel = 'Billed / Paid'; eventColor = '#16a34a'; 
+                    } else if (r.approvalStatus === 'cancelled' || r.approvalStatus === 'rejected') {
+                        eventIcon = '🚫'; eventLabel = 'Cancelled'; eventColor = '#ef4444'; 
+                    } else if (r.kdsStatus === 'served') {
+                        eventIcon = '🍽️'; eventLabel = 'Served to Table'; eventColor = '#4f46e5'; 
+                    } else if (r.kdsStatus === 'ready') {
+                        eventIcon = '✅'; eventLabel = 'Cooked & Ready'; eventColor = '#10b981'; 
+                    } else if (r.kdsStatus === 'cooking') {
+                        eventIcon = '👨‍🍳'; eventLabel = 'Kitchen Cooking'; eventColor = '#f97316'; 
+                    } else if (r.approvalStatus === 'seated') {
+                        eventIcon = '🪑'; eventLabel = 'Customer Seated'; eventColor = '#0ea5e9'; 
+                    } else if (r.approvalStatus === 'approved') {
+                        eventIcon = '👍'; eventLabel = 'Approved / Waiting'; eventColor = '#8b5cf6'; 
+                    }
+
+                    const timeAgo = (() => {
+                        const eventTime = new Date(r.completedAt || r.createdAt || r.arrivalDate || Date.now()).getTime();
+                        const secs = Math.floor((Date.now() - eventTime) / 1000);
                         if (secs < 60) return `${secs}s ago`;
                         if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
                         return `${Math.floor(secs / 3600)}h ago`;
-                    })() : '';
-                    const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Order';
+                    })();
+
+                    const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Order placed';
+                    
                     let typeTag = '';
                     const feedResNum = String(r.reservationNumber || '');
                     const feedResType = String(r.reservationType || '').toLowerCase();
@@ -4493,25 +4525,24 @@
                     } else {
                         typeTag = `<span style="background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
                     }
-                    return `<div class="activity-item">
-                        <div class="activity-dot ${si.cls}"></div>
+                    
+                    return `<div class="activity-item" style="border-left: 4px solid ${eventColor}; margin-bottom: 12px; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between;">
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
-                                <strong style="font-size:13px;">${r.customerName || 'Walk-in Guest'}</strong>
+                                <strong style="font-size:14px; color: #0f172a;">${r.customerName || 'Walk-in Guest'}</strong>
                                 ${typeTag}
-                                <span style="font-size:11px; color:var(--sa-muted);">Table ${r.bookedTable || 'N/A'} · ${r.reservationNumber || ''}</span>
+                                <span style="font-size:11px; color:#64748b; font-weight: 600;">Table ${r.bookedTable || 'N/A'} · ${r.reservationNumber || ''}</span>
                             </div>
-                            <div style="font-size:12px; color:var(--sa-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${foods}</div>
+                            <div style="font-size:12px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${foods}</div>
                         </div>
                         <div style="text-align:right; flex-shrink:0;">
-                            <div style="font-size:13px; font-weight:800; color:#4ade80;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
-                            <div style="font-size:11px; color:${si.color}; margin-top:3px;">${si.icon} ${si.label}</div>
-                            <div style="font-size:10px; color:var(--sa-muted); margin-top:2px;">${timeAgo}</div>
+                            <div style="font-size:13px; font-weight:800; color:#1e293b;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            <div style="font-size:12px; color:${eventColor}; margin-top:4px; font-weight: 700;">${eventIcon} ${eventLabel}</div>
+                            <div style="font-size:10px; color:#94a3b8; margin-top:4px; font-weight: 600;">${timeAgo}</div>
                         </div>
                     </div>`;
                 }).join('');
             };
-
             // Start polling
             pollOnlineAdmins();
             setInterval(pollOnlineAdmins, 5000);
