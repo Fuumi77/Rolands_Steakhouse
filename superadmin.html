@@ -4510,7 +4510,7 @@
                         return `${Math.floor(secs / 3600)}h ago`;
                     })();
 
-                    const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Order placed';
+                    const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Table Reserved';
                     
                     let typeTag = '';
                     const feedResNum = String(r.reservationNumber || '');
