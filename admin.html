@@ -3281,7 +3281,18 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                             ${window.paymentFilter === 'pending' ? `
                                 <div style="font-size:13px; color:#64748b; margin-bottom:12px; font-style:italic;">Ref: ${r.paymentRef || '—'}</div>
-                                <button type="button" class="secondary" style="width:100%; margin-bottom:10px; padding:9px 0; font-size:13px; font-weight:700;" onclick='window.openProofModal(${JSON.stringify(r)})'>🧾 View Proof Attachment</button>
+                                
+                                <!-- 👉 NEW: Dynamic Upload & View Proof Buttons -->
+                                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                                    ${r.paymentProof ? `
+                                        <button type="button" class="secondary" style="flex:1; padding:9px 0; font-size:12px; font-weight:700;" onclick='window.openProofModal(${JSON.stringify(r)})'>🧾 View Proof</button>
+                                    ` : ''}
+                                    <label style="flex:1; padding:9px 0; font-size:12px; font-weight:700; background:#f8fafc; border:1.5px dashed #cbd5e1; color:#475569; text-align:center; border-radius:8px; cursor:pointer; display:block; transition: 0.2s;" onmouseover="this.style.borderColor='#94a3b8'; this.style.color='#0f172a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#475569'">
+                                        ${r.paymentProof ? '🔄 Replace' : '📤 Upload Proof'}
+                                        <input type="file" style="display:none;" accept="image/*" onchange="window.uploadPaymentProof('${r.reservationNumber}', this)">
+                                    </label>
+                                </div>
+
                                 <div style="display:flex; gap:10px;">
                                     <button type="button" style="flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:700;" onclick="rejectPayment(${rIdx})">Reject</button>
                                     <button type="button" style="flex:1; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:700;" onclick="verifyPayment(${rIdx})">Verify ✅</button>
@@ -3344,6 +3355,54 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     renderPayments();
                     renderDashboard(); // Refresh full history table
                 }
+            };
+            
+            // 👉 NEW: Payment Proof Uploader & Compressor
+            window.uploadPaymentProof = function(resNum, input) {
+                if (!input.files || !input.files[0]) return;
+                const file = input.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        // Compress the image before saving
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 600;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        // Save to database/storage
+                        const hist = getReservationHistory();
+                        const idx = hist.findIndex(h => h.reservationNumber === resNum);
+                        if (idx > -1) {
+                            hist[idx].paymentProof = dataUrl;
+                            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                            
+                            if (window.showToast) {
+                                window.showToast('Payment proof uploaded successfully!', 'success', 3000);
+                            } else {
+                                alert('Payment proof attached!');
+                            }
+                            
+                            renderPayments(); // Instantly refresh the UI!
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             };
 
             window.selectAdminChat = function (sId, isSilent = false) {
