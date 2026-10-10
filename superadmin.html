@@ -88,7 +88,7 @@
             }
 
             /* 5. Shrink the Manager pill slightly */
-            #admin-status {
+            #admin-status-pill {
                 display: flex !important;
                 flex-direction: row !important;
                 align-items: center !important;
@@ -118,7 +118,10 @@
         <div class="header-right">
             <span id="live-clock"></span>
             <div class="actions">
-                <div id="admin-status" class="muted"></div>
+                <div id="admin-status-pill" style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.1); padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); color:white; font-size:13px; font-weight:700; visibility:hidden;">
+                    <div style="width:10px; height:10px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px #4ade80;"></div>
+                    <span id="admin-status-text">Manager</span>
+                </div>
                 <button class="secondary hidden" id="logout-admin-btn" type="button" style="display:flex; align-items:center; gap:6px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     Logout
@@ -1673,7 +1676,8 @@
             if (document.getElementById('pos-password-input')) document.getElementById('pos-password-input').value = pPass;
             const dashboard = document.getElementById('dashboard-section');
             const auth = document.getElementById('auth-section');
-            const adminStatus = document.getElementById('admin-status');
+            const statusPill = document.getElementById('admin-status-pill');
+            const statusText = document.getElementById('admin-status-text');
             const logoutBtn = document.getElementById('logout-admin-btn');
 
             const historyTotal = getReservationHistory();
@@ -4599,6 +4603,24 @@
                 }).join('');
             };
 
+            // 👉 FIX: Restored the logic that hides the login screen and opens the dashboard!
+            // Start polling
+            pollOnlineAdmins();
+            setInterval(pollOnlineAdmins, 5000);
+            setInterval(renderActivityFeed, 10000);
+
+            // UI Reveal
+            auth.classList.add('hidden');
+            auth.style.setProperty('display', 'none', 'important');
+            dashboard.classList.remove('hidden');
+            dashboard.style.removeProperty('display');
+            
+            if (statusPill) statusPill.style.visibility = 'visible';
+            if (statusText) statusText.textContent = 'Manager';
+            
+            logoutBtn.classList.remove('hidden');
+        }
+
         // Authentication
         function initAuth() {
             const authMsg = document.getElementById('auth-message');
@@ -4611,7 +4633,7 @@
                 const dashboard = document.getElementById('dashboard-section');
                 const auth = document.getElementById('auth-section');
                 const logoutBtn = document.getElementById('logout-admin-btn');
-                const adminStatus = document.getElementById('admin-status');
+                const statusPill = document.getElementById('admin-status-pill');
                 if (dashboard) {
                     dashboard.classList.add('hidden');
                     dashboard.style.setProperty('display', 'none', 'important');
@@ -4621,7 +4643,7 @@
                     auth.style.removeProperty('display');
                 }
                 if (logoutBtn) logoutBtn.classList.add('hidden');
-                if (adminStatus) adminStatus.textContent = '';
+                if (statusPill) statusPill.style.visibility = 'hidden';
             }
 
             document.getElementById('admin-login-btn').addEventListener('click', () => {
