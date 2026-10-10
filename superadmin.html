@@ -1139,6 +1139,83 @@
             });
         }
 
+        async function syncReservations() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
+                if (!res.ok) return;
+                const dbReservations = await res.json();
+                
+                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let updated = false;
+
+                dbReservations.forEach(dbRes => {
+                    let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
+
+                    if (!match) {
+                        match = localHistory.find(local => {
+                            const localName = String(local.customerName).toLowerCase().trim();
+                            const dbName = String(dbRes.customerName).toLowerCase().trim();
+                            const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
+                            const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
+                            const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
+                            return localName === dbName && localTab === dbTab && isTempId;
+                        });
+                        if (match) {
+                            match.reservationNumber = dbRes.reservationNumber; 
+                            updated = true;
+                        }
+                    }
+
+                    let rawStatus = dbRes.status || 'Pending';
+                    let dbStatus = String(rawStatus).toLowerCase().trim();
+                    if (dbStatus === 'walk-in') dbStatus = 'approved';
+
+                    if (match) {
+                        const isPending = dbStatus === 'pending';
+                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                            match.approvalStatus = dbStatus;
+                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
+                            if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
+                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
+                            updated = true;
+                        }
+                        
+                        // 👉 FIX: If local storage lost the data (like in Incognito), restore it from the cloud!
+                        if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
+                        if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
+                        if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
+
+                    } else {
+                        // 👉 FIX: When grabbing a fresh record from the cloud, include the foods and money!
+                        localHistory.push({
+                            reservationNumber: dbRes.reservationNumber,
+                            reservationType: dbRes.reservationType || 'standard',
+                            customerName: dbRes.customerName,
+                            bookedTable: dbRes.bookedTable,
+                            arrivalDate: dbRes.arrivalDate,
+                            arrivalTime: dbRes.arrivalTime,
+                            arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
+                            approvalStatus: dbStatus,
+                            paymentStatus: dbStatus === 'completed' ? 'paid' : 'pending',
+                            completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
+                            createdAt: new Date().toISOString(),
+                            foods: dbRes.foods || [], 
+                            paymentAmount: dbRes.paymentAmount || 0,
+                            bookedBy: dbRes.bookedBy 
+                        });
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
+                    renderDashboard();
+                }
+            } catch (err) {
+                console.error("Sync error:", err);
+            }
+        }
+
         function getAdminUsers() {
             return safeJsonParse(localStorage.getItem('adminUsers'), []) || [];
         }
@@ -4606,6 +4683,11 @@
             // 👉 FIX: Added a "lock" to prevent infinite polling loops that cause table flickering and network flooding!
             if (!window.superAdminPollingActive) {
                 window.superAdminPollingActive = true;
+                
+                // 👉 FIX: Sync from the cloud immediately on load, then every 60 seconds!
+                syncReservations();
+                setInterval(syncReservations, 60000);
+                
                 pollOnlineAdmins();
                 setInterval(pollOnlineAdmins, 5000);
                 setInterval(renderActivityFeed, 10000);
