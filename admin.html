@@ -654,17 +654,18 @@
                     style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
                     <h2 style="margin:0; font-family:'Playfair Display',serif; color:#2e7d32; font-size:26px;">
                         Payment History</h2>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <div style="display:flex; background:#f1f5f9; padding:4px; border-radius:10px; gap:4px; border:1px solid #e2e8f0;">
+                    <!-- 👉 FIX: Added flex-wrap: wrap so the dropdown gracefully drops to the next line on mobile! -->
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <div style="display:flex; background:#f1f5f9; padding:4px; border-radius:10px; gap:4px; border:1px solid #e2e8f0; flex-wrap:wrap;">
                             <button class="payment-sub-tab active" onclick="switchPaymentFilter('pending', this)"
-                                style="padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; transition:0.2s;">
+                                style="flex:1; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; transition:0.2s; white-space:nowrap;">
                                 Pending Verification</button>
                             <button class="payment-sub-tab" onclick="switchPaymentFilter('history', this)"
-                                style="padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; transition:0.2s;">
+                                style="flex:1; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px; transition:0.2s; white-space:nowrap;">
                                 Payment History</button>
                         </div>
                         <select id="payment-time-filter" class="payment-time-filter" title="Payment Time Filter" aria-label="Payment Time Filter" onchange="renderPayments()"
-                            style="padding:8px 16px; border:1px solid #cbd5e1; border-radius:10px; background:white; font-weight:700; color:#1e3a8a; font-size:13px; cursor:pointer; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                            style="flex:1; min-width: 120px; padding:8px 16px; border:1px solid #cbd5e1; border-radius:10px; background:white; font-weight:700; color:#1e3a8a; font-size:13px; cursor:pointer; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
                             <option value="all">All Time</option>
                             <option value="day">Today</option>
                             <option value="week">This Week</option>
