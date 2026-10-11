@@ -1550,7 +1550,7 @@
                             updated = true;
                         }
                         
-                        // 👉 FIX: If local storage lost the data (like in Incognito), restore it from the cloud!
+                        // 👉 FIX: Pull missing cloud data into local memory!
                         if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
                         if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
                         if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
@@ -5418,7 +5418,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     }
 
     try {
-        try {
         // 👉 4. Save to MySQL FIRST to get official sequential ID
         const res = await fetch(`${API_BASE_URL}/reserve`, {
             method: 'POST',
@@ -5431,9 +5430,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 table: table,
                 cartItems: structuredCart,
                 status: 'Pending',
-                // 👉 FIX: Ship the exact food order and payment amount to the cloud database!
+                // 👉 FIX: Send the foods and money to the cloud!
                 reservationType: walkinType,
-                paymentAmount: walkinType === 'priority' ? payment : 200,
+                paymentAmount: finalPaymentAmount,
                 foods: foodArray
             })
         });
