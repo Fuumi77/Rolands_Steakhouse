@@ -182,9 +182,32 @@
         html, body {
             overflow-x: hidden !important;
             max-width: 100vw !important;
+            box-sizing: border-box !important;
+        }
+
+        *, *:before, *:after {
+            box-sizing: inherit;
         }
 
         @media (max-width: 768px) {
+            /* 👉 FIX: Stop right-side overlap by locking the main container width */
+            .main-content {
+                padding: 16px !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                box-sizing: border-box !important;
+            }
+
+            /* 👉 FIX: Make all data tables swipeable instead of breaking the screen */
+            table {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
             /* Show the Menu Button */
             #mobile-menu-btn { display: inline-flex !important; }
             
@@ -242,13 +265,13 @@
                 width: 100% !important;
                 display: flex !important;
                 flex-direction: row !important;
-                flex-wrap: nowrap !important;
+                flex-wrap: wrap !important; /* 👉 FIX: Allows buttons to wrap safely */
                 justify-content: space-between !important;
                 align-items: center !important;
                 padding-top: 12px !important;
                 border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
                 margin: 0 !important;
-                gap: 4px !important;
+                gap: 8px !important;
             }
             #admin-status-pill {
                 padding: 4px 8px !important;
