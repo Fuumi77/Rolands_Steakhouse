@@ -177,11 +177,16 @@
             const depositLabel = isVip ? "VIP Room Down Payment" : "Standard Reservation Deposit";
 
             try {
-                // 👉 1. Insert into Database FIRST to get the official ID
+               // 👉 1. Insert into Database FIRST to get the official ID
                 let cartItems = [];
+                let foodArray = [];
                 try {
                     const cartObj = JSON.parse(localStorage.getItem('currentCartObj') || '{}');
                     cartItems = Object.keys(cartObj).map(id => ({ id, quantity: cartObj[id].qty }));
+                    
+                    // 👉 NEW: Grab the foods they ordered from local memory!
+                    const summary = localStorage.getItem('orderSummary');
+                    if (summary) foodArray = summary.split(', ');
                 } catch(e) {}
 
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
@@ -194,7 +199,11 @@
                         time: arrivalTime,
                         table: bookedTable,
                         cartItems: cartItems,
-                        status: 'pending_paymongo' // Keeps table locked during checkout
+                        status: 'pending_paymongo', // Keeps table locked during checkout
+                        // 👉 FIX: Send the new columns to the database!
+                        reservationType: isVip ? 'vip' : 'standard',
+                        paymentAmount: depositAmt,
+                        foods: foodArray
                     })
                 });
                 
@@ -311,6 +320,13 @@
 
             // 👉 NEW: Send to Database FIRST to get Sequential ID
             let dbData = { reservationId: Math.floor(100000 + Math.random() * 900000) }; // Fallback
+            
+            let foodArray = [];
+            try {
+                const summary = localStorage.getItem('orderSummary');
+                if (summary) foodArray = summary.split(', ');
+            } catch(e) {}
+
             try {
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                     method: 'POST',
@@ -322,9 +338,14 @@
                         time: arrivalTime,
                         table: bookedTable,
                         cartItems: [], 
-                        status: 'Pending'
+                        status: 'Pending',
+                        // 👉 FIX: Send the new columns to the database!
+                        reservationType: isVip ? 'vip' : 'standard',
+                        paymentAmount: depositAmt,
+                        foods: foodArray
                     })
                 });
+                
                 dbData = await dbRes.json();
             } catch (err) { console.error("Database save failed:", err); }
 
