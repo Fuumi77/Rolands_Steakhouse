@@ -468,28 +468,29 @@
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Customer
-                                Name *</label>
+                                Name <span style="color:#ef4444;">*</span></label>
                             <input type="text" id="walkin-name" placeholder="e.g. Juan Dela Cruz" autocomplete="new-password"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
                         </div>
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Contact
-                                Number</label>
-                            <input type="text" id="walkin-contact" placeholder="e.g. 09XX-XXX-XXXX" autocomplete="new-password"
+                                Number <span style="color:#ef4444;">*</span></label>
+                            <!-- 👉 FIX: Restricted input to exactly 11 numbers -->
+                            <input type="tel" id="walkin-contact" placeholder="e.g. 09123456789" autocomplete="new-password" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
                         </div>
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Arrival
-                                Date *</label>
+                                Date <span style="color:#ef4444;">*</span></label>
                             <input type="date" id="walkin-date" title="Arrival Date" aria-label="Arrival Date"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
                         </div>
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Arrival
-                                Time *</label>
+                                Time <span style="color:#ef4444;">*</span></label>
                             <input type="time" id="walkin-time" title="Arrival Time" aria-label="Arrival Time" min="10:30" max="21:00"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
                             <!-- 👉 NEW: Helper text just like the customer side -->
@@ -498,7 +499,7 @@
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Table
-                                *</label>
+                                <span style="color:#ef4444;">*</span></label>
                             <select id="walkin-table" title="Select Table" aria-label="Select Table"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px; background:white;">
                                 <option value="">-- Select Table --</option>
@@ -529,7 +530,7 @@
                         <div style="margin-bottom:14px;">
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Food
-                                Selection *</label>
+                                Selection <span style="color:#ef4444;">*</span></label>
                             <button type="button" onclick="openWalkinFoodPicker()"
                                 style="width:100%; padding:10px; border-radius:8px; border:1px solid #1b5e20; background:white; color:#1b5e20; font-weight:700; font-size:14px; cursor:pointer; transition:0.2s;">
                                 Select Menu Items
@@ -5348,6 +5349,14 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     const notes = (document.getElementById('walkin-notes').value || '').trim();
 
     if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
+    
+    // 👉 FIX: Force exactly 11 digits for the Contact Number
+    if (!contact || contact.length !== 11) { 
+        errorEl.textContent = 'A valid 11-digit contact number is required.'; 
+        errorEl.style.display = 'block'; 
+        return; 
+    }
+    
     if (!date) { errorEl.textContent = 'Arrival date is required.'; errorEl.style.display = 'block'; return; }
     if (!time) { errorEl.textContent = 'Arrival time is required.'; errorEl.style.display = 'block'; return; }
     if (time < '10:30' || time > '21:00') { 
