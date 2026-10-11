@@ -817,8 +817,9 @@
 
                 <div style="display:flex; flex-direction:column; gap:12px; margin-top:24px; margin-bottom:16px; background:white; padding:16px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
                     <!-- Top Row: Search, Dates, Export -->
+                    <!-- 👉 FIX: Removed rigid min-width so the input shrinks cleanly on mobile -->
                     <div style="display:flex; gap: 12px; align-items: center; flex-wrap:wrap;">
-                        <input id="search-input" type="text" placeholder="Search by Reservation # or Customer name..." style="flex: 1; min-width:250px; padding:10px 14px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="search-input" type="text" placeholder="Search by Reservation # or Name..." style="flex: 1; min-width:120px; padding:10px 14px; border:1px solid #cbd5e1; border-radius:8px;">
                         <select id="date-filter-select" onchange="setDateFilter(this.value)" style="padding:10px 14px; border:1px solid #cbd5e1; border-radius:8px; background:white; font-weight:600; color:#334155; cursor:pointer;">
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
@@ -853,8 +854,9 @@
                     </div>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; margin-top: 4px;">
-                    <div class="muted" id="summary-line" style="font-weight: 500;"></div>
+                <!-- 👉 FIX: Added flex-wrap: wrap so the "Show rows" dropdown neatly falls to the next line on mobile -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom: 12px; margin-top: 4px;">
+                    <div class="muted" id="summary-line" style="font-weight: 500; min-width:180px;"></div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Show rows:</span>
                         <select id="row-limit-select" onchange="setRowLimit(this.value)" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; color:#334155; cursor:pointer; background: white;">
