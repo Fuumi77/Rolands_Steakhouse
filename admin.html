@@ -5418,6 +5418,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     }
 
     try {
+        try {
         // 👉 4. Save to MySQL FIRST to get official sequential ID
         const res = await fetch(`${API_BASE_URL}/reserve`, {
             method: 'POST',
@@ -5430,9 +5431,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 table: table,
                 cartItems: structuredCart,
                 status: 'Pending',
-                // 👉 FIX: Ship the foods and money to the cloud!
+                // 👉 FIX: Ship the exact food order and payment amount to the cloud database!
                 reservationType: walkinType,
-                paymentAmount: finalPaymentAmount,
+                paymentAmount: walkinType === 'priority' ? payment : 200,
                 foods: foodArray
             })
         });
