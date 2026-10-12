@@ -1666,11 +1666,16 @@
             const walkinCount = history.filter(r => r.bookedBy === 'staff').length;
             
             // 👉 FIX: Calculate total revenue across ALL valid paid orders (POS, Walk-in, Priority, and Standard)
+            // 👉 FIX: Calculate ALL verified revenue (POS, Walk-in, Standard, and Priority)
             const revenue = history.reduce((sum, r) => {
                 const s = (r.paymentStatus || '').toLowerCase();
-                // Only count the money if it has actually been paid/verified!
                 if (s === 'paid' || s === 'verified' || s === 'walk-in') {
-                    return sum + Number(r.paymentAmount || 0);
+                    let amt = Number(r.paymentAmount || 0);
+                    // 👉 FIX: Exclude the ₱200 online deposit from revenue unless they actually ordered food!
+                    if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) {
+                        amt = 0;
+                    }
+                    return sum + amt;
                 }
                 return sum;
             }, 0);
@@ -5470,8 +5475,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         }
     }
 
-    // 👉 2. Show Confirmation Modal BEFORE saving
-    const finalPaymentAmount = walkinType === 'priority' ? payment : 200;
+    // 👉 FIX: Standard Walk-ins no longer charge a forced ₱200 fee!
+    const finalPaymentAmount = walkinType === 'priority' ? payment : 0;
 
     const receiptHtml = `
         <div style="text-align: left; font-size: 14px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px;">
@@ -5571,7 +5576,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             foods: foodArray,
             orderSummary: orderSummary,
             beefNote: notes,
-            paymentAmount: walkinType === 'priority' ? payment : 200,
+            paymentAmount: finalPaymentAmount,
             paymentStatus: 'pending',
             createdAt: new Date().toISOString(),
             approvalStatus: 'pending',
