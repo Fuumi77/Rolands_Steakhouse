@@ -1093,16 +1093,6 @@
                         body: JSON.stringify({ id: resNo, kdsStatus: 'pending' })
                     }).catch(()=>{});
                 }
-                    
-                    if (!dbRes.ok) {
-                        const errData = await dbRes.json().catch(() => ({ error: 'Database crashed.' }));
-                        throw new Error(`MySQL Error: ${errData.error}`);
-                    }
-                    const dbData = await dbRes.json();
-                    
-                    // 👉 Apply the official Sequential Database ID
-                    resNo = 'POS-' + dbData.reservationId;
-                }
 
                 if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
                     window.InventorySystem.deductIngredientsForOrder(rawCartItems, 'POS Order', resNo);
