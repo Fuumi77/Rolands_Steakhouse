@@ -1188,8 +1188,22 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app'
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
         
+        // 👉 NEW: Force the Staff Portal to download the latest accounts from the MySQL cloud before logging in!
+        async function syncStaffAccountsFromCloud() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/staff?nocache=${Date.now()}`);
+                if (res.ok) {
+                    const users = await res.json();
+                    localStorage.setItem('adminUsers', JSON.stringify(users));
+                }
+            } catch (e) {
+                console.error("Cloud sync failed. Falling back to offline accounts.");
+            }
+        }
+        syncStaffAccountsFromCloud(); // Runs automatically when the page is opened
+
         window.launchTerminal = function (url) {
             console.log("🚀 Launching Terminal:", url);
             const win = window.open(url, '_blank');
