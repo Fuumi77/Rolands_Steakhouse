@@ -1058,9 +1058,6 @@
 
                 let resNo = isEdit ? editingTransactionId : '';
 
-                // 👉 3. Send to Database FIRST to get Sequential ID
-                const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app'; 
-
                 if (!isEdit) {
                     const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                         method: 'POST',
@@ -1079,6 +1076,23 @@
                             foods: orderList
                         })
                     });
+                    
+                    if (!dbRes.ok) {
+                        const errData = await dbRes.json().catch(() => ({ error: 'Database crashed.' }));
+                        throw new Error(`MySQL Error: ${errData.error}`);
+                    }
+                    const dbData = await dbRes.json();
+                    
+                    // 👉 Apply the official Sequential Database ID
+                    resNo = 'POS-' + dbData.reservationId;
+                    
+                    // 👉 FIX: Instantly sync the KDS status so the Kitchen Phone wakes up!
+                    fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNo, kdsStatus: 'pending' })
+                    }).catch(()=>{});
+                }
                     
                     if (!dbRes.ok) {
                         const errData = await dbRes.json().catch(() => ({ error: 'Database crashed.' }));
@@ -1163,11 +1177,19 @@
                     }
                 } catch (e) {}
 
-                // Update table occupancy status
+                // 👉 FIX: Update table occupancy status to the CLOUD!
                 if (table && table !== 'Takeout') {
                     const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                    overrides[table] = 'seated'; // 👉 CHANGED from 'occupied' to 'seated'
+                    overrides[table] = 'seated'; 
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                    
+                    // Push to Live MySQL Database so phones can see the floor plan change instantly
+                    fetch(`${API_BASE_URL}/api/memory/table-overrides`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(overrides)
+                    }).catch(()=>{});
+
                     window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
