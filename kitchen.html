@@ -466,6 +466,15 @@
             if (hist[idx]) {
                 hist[idx].kdsStatus = newStatus;
                 hist[idx].kdsUpdateAt = new Date().toISOString();
+
+                // 👉 FIX: Tell the live Cloud Database that the Kitchen is cooking/serving!
+                try {
+                    fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: hist[idx].reservationNumber, kdsStatus: newStatus })
+                    });
+                } catch(e) {}
                 
                 // 👉 NEW: Auto-seat the table on the Staff/Manager Floor Plan when served
                 if (newStatus === 'served') {
