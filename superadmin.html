@@ -1221,12 +1221,20 @@
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
 
                     if (match) {
-                        const isPending = dbStatus === 'pending';
-                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                        // 👉 FIX: Aggressive Sync - Force local data to instantly mirror the cloud status!
+                        if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
-                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
-                            if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
-                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
+                            
+                            if (dbStatus === 'cancelled' || dbStatus === 'rejected') {
+                                match.kdsStatus = 'cancelled';
+                                match.paymentStatus = 'rejected';
+                            } else if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') {
+                                match.paymentStatus = 'verified';
+                            }
+                            
+                            if (dbStatus === 'completed' && !match.completedAt) {
+                                match.completedAt = new Date().toISOString();
+                            }
                             updated = true;
                         }
                         
@@ -4771,9 +4779,9 @@
             if (!window.superAdminPollingActive) {
                 window.superAdminPollingActive = true;
                 
-                // 👉 FIX: Sync from the cloud immediately on load, then every 60 seconds!
+                // 👉 FIX: Sync from the cloud immediately on load, then every 10 seconds! (Aggressive Sync)
                 syncReservations();
-                setInterval(syncReservations, 60000);
+                setInterval(syncReservations, 10000);
                 
                 pollOnlineAdmins();
                 setInterval(pollOnlineAdmins, 5000);
