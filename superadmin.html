@@ -1271,8 +1271,8 @@
                             updated = true;
                         }
 
-                        // 👉 FIX: Force payment verification for Walk-ins and POS downloaded from cloud
-                        if ((dbRes.bookedBy === 'staff' || dbRes.bookedBy === 'pos') && match.paymentStatus === 'pending') {
+                        // 👉 FIX: Allow Walk-in reservations to stay 'pending' so they appear in Payment Verification!
+                        if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
                             match.paymentStatus = 'verified';
                             updated = true;
                         }
