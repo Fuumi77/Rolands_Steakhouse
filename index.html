@@ -52,6 +52,25 @@
             box-shadow: 0 0 6px #22c55e;
             display: inline-block;
         }
+        /* 👉 FIX: Lock the header flex container so logo and nav are perfectly centered from load */
+        header#main-header, header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        header#main-header .logo {
+            margin-left: 0 !important;
+            flex-shrink: 0 !important;
+        }
+
+        header#main-header nav ul {
+            display: flex !important;
+            align-items: center !important;
+            margin-right: 0 !important;
+        }
         @keyframes luxuryModalIn {
             from { opacity: 0; transform: scale(0.96) translateY(8px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
