@@ -219,8 +219,30 @@
                     let dbGenStatus = String(dbRes.status || '').toLowerCase().trim();
 
                     if (match) {
-                        // 1. Sync KDS Status
-                        if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
+                        // 👉 FIX: Anti-Bounce Shield! If we clicked a button less than 15 seconds ago, ignore the old cached cloud status!
+                        const isRecentlyModifiedHere = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
+
+                        if (!isRecentlyModifiedHere) {
+                            // 1. Sync KDS Status
+                            if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
+                                match.kdsStatus = dbRes.kdsStatus;
+                                updated = true;
+                            }
+                            
+                            // 2. Sync Main Status
+                            if (match.approvalStatus !== dbGenStatus) {
+                                match.approvalStatus = dbGenStatus;
+                                updated = true;
+                            }
+                            
+                            if (dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') {
+                                if (match.kdsStatus !== 'cancelled') { match.kdsStatus = 'cancelled'; updated = true; }
+                            }
+                            if (dbGenStatus === 'completed') {
+                                if (match.kdsStatus !== 'served') { match.kdsStatus = 'served'; updated = true; }
+                            }
+                        }
+                    } else {
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
@@ -524,12 +546,12 @@
             }, 3500);
         }
 
-        // ── STATUS UPDATES ──
         function updateStatus(idx, newStatus) {
             const hist = getReservationHistory();
             if (hist[idx]) {
                 hist[idx].kdsStatus = newStatus;
                 hist[idx].kdsUpdateAt = new Date().toISOString();
+                hist[idx].localUpdatedAt = Date.now(); // 👉 FIX: Activate the Anti-Bounce Shield
 
                 // 👉 FIX: Tell the live Cloud Database that the Kitchen is cooking/serving!
                 try {
