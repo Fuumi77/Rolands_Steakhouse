@@ -1191,6 +1191,16 @@
 
         async function syncReservations() {
             try {
+                // 👉 FIX: Instantly download the live Floor Plan from the Cloud!
+                try {
+                    const floorRes = await fetch(`${API_BASE_URL}/api/memory/table-overrides`);
+                    if (floorRes.ok) {
+                        const cloudFloor = await floorRes.json();
+                        localStorage.setItem('tableOverrides', JSON.stringify(cloudFloor));
+                        if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                    }
+                } catch(e) {}
+
                 const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
                 if (!res.ok) return;
                 const dbReservations = await res.json();
@@ -1241,6 +1251,12 @@
                         if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
                         if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
                         if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
+
+                        // 👉 FIX: Pull Live KDS Kitchen Status from the Cloud!
+                        if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
+                            match.kdsStatus = dbRes.kdsStatus;
+                            updated = true;
+                        }
 
                         // 👉 FIX: Force payment verification for Walk-ins and POS downloaded from cloud
                         if ((dbRes.bookedBy === 'staff' || dbRes.bookedBy === 'pos') && match.paymentStatus === 'pending') {
