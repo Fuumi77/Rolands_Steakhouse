@@ -3293,7 +3293,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                 // Separate pending vs completed
                 const pending = hist.filter(r => r.paymentStatus === 'pending');
-                const completed = hist.filter(r => (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in')).reverse();
+                // 👉 FIX 1: Removed .reverse() so the list stays sorted from Newest to Oldest!
+                const completed = hist.filter(r => (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in'));
 
                 let activeList = window.paymentFilter === 'pending' ? pending : completed;
 
@@ -3346,7 +3347,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                             <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:flex-start;">
                                 <div>
                                     <strong style="font-size:18px; color:#1e293b; display:block;">${r.reservationNumber}</strong>
-                                    <span style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">${r.arrivalDate} @ ${r.arrivalTime}</span>
+                                    <!-- 👉 FIX 2: Used the robust formatArrival function to instantly fix the POS Undefined bug! -->
+                                    <span style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">${formatArrival(r)}</span>
                                 </div>
                                 <span class="pill" style="background:${r.reservationType === 'priority' ? '#fef3c7' : '#e0f2fe'}; color:${r.reservationType === 'priority' ? '#92400e' : '#0369a1'}; font-weight:800; font-size:10px; padding:3px 8px;">
                                     ${r.reservationType.toUpperCase()}
