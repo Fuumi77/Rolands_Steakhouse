@@ -36,6 +36,19 @@
         }
 
         @media (max-width: 768px) {
+            /* 👉 FIX: Make tables mobile-friendly without breaking stacked layouts */
+            table {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            td {
+                white-space: normal !important; 
+                word-wrap: break-word !important;
+            }
+
             /* 1. Neatly stack the header into two rows */
             header {
                 flex-direction: column !important;
@@ -1187,13 +1200,19 @@
                             updated = true;
                         }
                         
-                        // 👉 FIX: If local storage lost the data (like in Incognito), restore it from the cloud!
                         if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
                         if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
                         if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
 
+                        // 👉 FIX: Force payment verification for Walk-ins and POS downloaded from cloud
+                        if ((dbRes.bookedBy === 'staff' || dbRes.bookedBy === 'pos') && match.paymentStatus === 'pending') {
+                            match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+
                     } else {
-                        // 👉 FIX: When grabbing a fresh record from the cloud, include the foods and money!
+                        // 👉 FIX: When grabbing a fresh record from the cloud, mark staff/pos orders as verified!
+                        const isStaffOrPos = dbRes.bookedBy === 'staff' || dbRes.bookedBy === 'pos';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -1203,7 +1222,7 @@
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: dbStatus === 'completed' ? 'paid' : 'pending',
+                            paymentStatus: dbStatus === 'completed' ? 'paid' : (isStaffOrPos ? 'verified' : 'pending'),
                             completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
                             createdAt: new Date().toISOString(),
                             foods: dbRes.foods || [], 
@@ -1212,7 +1231,6 @@
                         });
                         updated = true;
                     }
-                });
 
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
@@ -1962,9 +1980,42 @@
                     `;
 
                     const foodsCell = tr.querySelector('.foods-cell');
+                    
+                    // 👉 NEW: Smooth & Clean "See More" inline logic
                     const foodWrapper = document.createElement('div');
-                    foodWrapper.style.fontSize = '12px';
-                    foodWrapper.textContent = foodText(r);
+                    foodWrapper.style.cssText = 'white-space: normal; line-height: 1.5; color: #334155; font-size: 12px;';
+                    
+                    const foodsStr = foodText(r);
+                    
+                    if (foodsStr.length > 65) {
+                        const shortText = foodsStr.substring(0, 65) + '...';
+                        
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = shortText;
+                        
+                        const seeMoreBtn = document.createElement('span');
+                        seeMoreBtn.textContent = ' See more';
+                        seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline-block;';
+                        
+                        let isExpanded = false;
+                        seeMoreBtn.onclick = (e) => {
+                            e.stopPropagation(); 
+                            isExpanded = !isExpanded;
+                            if (isExpanded) {
+                                textSpan.textContent = foodsStr;
+                                seeMoreBtn.textContent = ' See less';
+                            } else {
+                                textSpan.textContent = shortText;
+                                seeMoreBtn.textContent = ' See more';
+                            }
+                        };
+                        
+                        foodWrapper.appendChild(textSpan);
+                        foodWrapper.appendChild(seeMoreBtn);
+                    } else {
+                        foodWrapper.textContent = foodsStr;
+                    }
+
                     foodsCell.appendChild(foodWrapper);
 
                     if (r.kdsStatus) {
