@@ -34,6 +34,10 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN payment_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN foods TEXT").catch(()=>{});
     
+    // 👉 FIX: Add Cloud Memory Columns for KDS (Kitchen) and Floor Plan (Table Overrides)
+    await db.query("ALTER TABLE reservation_log ADD COLUMN kds_status VARCHAR(50) DEFAULT 'pending'").catch(()=>{});
+    await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val JSON)").catch(()=>{});
+    
     await db.query("CREATE TABLE IF NOT EXISTS staff_credentials (staff_id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE, password_hash VARCHAR(255), role VARCHAR(50) DEFAULT 'Staff', last_active BIGINT DEFAULT 0)").catch(()=>{});
 
     // 👉 NEW: Automatically create the missing Inventory tables so the kitchen can return ingredients!
@@ -357,6 +361,31 @@ app.post('/api/reservations/update-status', async (req, res) => {
         const numericId = String(id).replace(/[^0-9]/g, '');
         if (numericId) await db.query('UPDATE reservation_log SET status = ? WHERE reservation_id = ?', [status, numericId]);
         cachedReservations = null;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 👉 NEW: KITCHEN AND FLOOR PLAN SYNC ROUTES */
+app.post('/api/reservations/update-kds', async (req, res) => {
+    const { id, kdsStatus } = req.body;
+    try {
+        const numericId = String(id).replace(/[^0-9]/g, '');
+        if (numericId) await db.query('UPDATE reservation_log SET kds_status = ? WHERE reservation_id = ?', [kdsStatus, numericId]);
+        cachedReservations = null;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/memory/table-overrides', async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'tableOverrides'");
+        res.json(rows.length ? rows[0].mem_val : {});
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/memory/table-overrides', async (req, res) => {
+    try {
+        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('tableOverrides', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(req.body), JSON.stringify(req.body)]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
