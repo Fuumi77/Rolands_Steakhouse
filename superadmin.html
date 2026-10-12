@@ -365,19 +365,26 @@
                         <div class="muted">Per transaction</div>
                     </div>
                 </div>
-                <div class="graph-container revenue-charts-split">
-                    <div class="card revenue-chart-main">
-                        <h3>Revenue Over Time (Last 7 Days)</h3><canvas id="revenueChart"
-                            style="max-height:260px;"></canvas>
-                    </div>
-                    <div class="revenue-side-stack">
-                        <div class="card">
-                            <h3>Top 5 Selling Items</h3>
+                <!-- 👉 FIX: Swapped positions & added flex-wrap so the graph never squishes on mobile! -->
+                <div class="graph-container" style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    
+                    <!-- Popular Tables & Items (Moved to be first) -->
+                    <div class="revenue-side-stack" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 20px;">
+                        <div class="card" style="margin: 0;">
+                            <h3 style="margin-top: 0;">Top 5 Selling Items</h3>
                             <div id="top-items-list" style="margin-top:10px;"></div>
                         </div>
-                        <div class="card">
-                            <h3>Popular Tables</h3>
+                        <div class="card" style="margin: 0;">
+                            <h3 style="margin-top: 0;">Popular Tables</h3>
                             <div id="top-tables-list" style="margin-top:10px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue Graph (Moved to second, automatically drops below the tables on mobile) -->
+                    <div class="card revenue-chart-main" style="flex: 2; min-width: 280px; margin: 0; display: flex; flex-direction: column;">
+                        <h3 style="margin-top: 0;">Revenue Over Time (Last 7 Days)</h3>
+                        <div style="position: relative; flex: 1; min-height: 260px; width: 100%;">
+                            <canvas id="revenueChart"></canvas>
                         </div>
                     </div>
                 </div>
