@@ -502,6 +502,67 @@
             }
         }
 
+        // 👉 NEW: Kitchen Cancel Order Function
+        window.cancelOrder = async function(idx) {
+            let confirmed = false;
+            if (typeof superModal === 'function') {
+                confirmed = await superModal({
+                    title: 'Cancel Order? ❌',
+                    message: 'Are you sure you want to cancel this order? It will be removed from the kitchen queue and ingredients will be returned to stock.',
+                    type: 'confirm'
+                });
+            } else {
+                confirmed = confirm('Are you sure you want to cancel this order?');
+            }
+            
+            if (!confirmed) return;
+
+            const hist = getReservationHistory();
+            if (hist[idx]) {
+                const targetRes = hist[idx];
+                
+                // 1. Revert inventory using the Smart Engine (if available)
+                if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
+                    window.InventorySystem.cancelReservationWithFood({
+                        reservationNumber: targetRes.reservationNumber,
+                        reason: 'Cancelled by Kitchen Staff',
+                        cancelledBy: 'kitchen',
+                        operator: 'Kitchen Terminal'
+                    });
+                }
+
+                // 2. Update local statuses so it drops off the KDS board
+                targetRes.kdsStatus = 'cancelled';
+                targetRes.approvalStatus = 'cancelled';
+                targetRes.paymentStatus = 'rejected';
+                targetRes.completedAt = new Date().toISOString();
+                
+                // 3. Sync the cancellation to the live Hostinger Database!
+                try {
+                    fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: targetRes.reservationNumber, status: 'Cancelled' })
+                    });
+                } catch (e) {}
+
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                
+                // 4. Force Manager & Staff Dashboards to update instantly
+                try {
+                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                    }
+                } catch (e) {}
+                
+                if (typeof showToast === 'function') {
+                    showToast('Order successfully cancelled.', 'success');
+                }
+                renderKitchenQueue(true);
+            }
+        };
+        
         // ── REAL-TIME EVENT LISTENERS ──
         window.addEventListener('storage', (e) => {
             if (e.key === 'reservationHistory' || e.key === 'tableOverrides') {
