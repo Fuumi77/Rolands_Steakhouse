@@ -391,4 +391,16 @@ app.post('/api/memory/table-overrides', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 👉 NEW: DELETE ALL RECORDS ROUTE */
+app.delete('/api/reservations/all', async (req, res) => {
+    try {
+        // Wipe the table clean
+        await db.query('DELETE FROM reservation_log');
+        // Reset the ID counter back to 1
+        await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1'); 
+        cachedReservations = null;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
