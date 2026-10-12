@@ -2139,21 +2139,21 @@
 
             async function renderStaffManagement(isPolling = false) {
                 let users = [];
+                
+                // 👉 FIX: Force a strict cloud fetch every single time!
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
-                        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
                     });
-                    if (response.ok) {
-                        users = await response.json();
-                        localStorage.setItem('adminUsers', JSON.stringify(users)); // Force sync down to local
-                    } else {
-                        users = safeJsonParse(localStorage.getItem('adminUsers'), []);
-                    }
+                    if (!response.ok) throw new Error("Cloud fetch failed");
+                    users = await response.json();
+                    localStorage.setItem('adminUsers', JSON.stringify(users)); // Sync down
                 } catch (e) {
+                    console.error("Using offline fallback for staff accounts.");
                     users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                 }
 
-                // 👉 FIX: Restored the Online/Offline tracking system!
+                // 👉 FIX: Re-enable the Online/Offline status tracking!
                 const onlineAdmins = safeJsonParse(localStorage.getItem('onlineAdmins'), {});
                 const now = Date.now();
 
@@ -2183,8 +2183,20 @@
                     staffTbody.appendChild(tr);
                 });
             }
-
+            
             window.resetStaffPassword = async function(username) {
+                // 👉 FIX: Check the live database for duplicates, not the offline memory!
+                let currentUsers = [];
+                try {
+                    const checkRes = await fetch(`${API_BASE_URL}/api/staff?nocache=` + Date.now());
+                    if (checkRes.ok) currentUsers = await checkRes.json();
+                } catch(e) {
+                    currentUsers = getAdminUsers(); // Fallback
+                }
+                
+                if (currentUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+                    return await superModal({ title: '⚠️ Duplicate Username', message: `The username <b>${username}</b> is already taken.`, confirmText: 'Try Another' });
+                }
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
                     message: `Enter Master PIN to authorize password reset for <b>${username}</b>:`,
