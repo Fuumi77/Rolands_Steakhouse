@@ -36,6 +36,9 @@ db.query('SELECT 1').then(async () => {
     
     // 👉 FIX: Guarantee the staff table exists so accounts don't fail to save!
     await db.query("CREATE TABLE IF NOT EXISTS staff_credentials (staff_id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE, password_hash VARCHAR(255), role VARCHAR(50) DEFAULT 'Staff')").catch(()=>{});
+    
+    // 👉 NEW: Add a column to track REAL cloud-based online status across devices!
+    await db.query("ALTER TABLE staff_credentials ADD COLUMN last_active BIGINT DEFAULT 0").catch(()=>{});
 }).catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 function escapeHtml(str) {
@@ -151,6 +154,29 @@ app.post('/api/staff', async (req, res) => {
     } catch (err) {
         console.error("Create Staff Error:", err);
         res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/* 👉 RESTORED: GET STAFF ACCOUNTS (This was missing, causing the blank lists!) */
+app.get('/api/staff', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT username, password_hash, role, last_active FROM staff_credentials');
+        res.json(rows);
+    } catch (err) {
+        console.error("Staff Fetch Error:", err);
+        res.status(500).send("Database error");
+    }
+});
+
+/* 👉 NEW: REAL CLOUD ONLINE STATUS TRACKER */
+app.post('/api/staff/heartbeat', async (req, res) => {
+    try {
+        if (req.body.username) {
+            await db.query('UPDATE staff_credentials SET last_active = ? WHERE username = ?', [Date.now(), req.body.username]);
+        }
+        res.json({success: true});
+    } catch (err) {
+        res.status(500).send("Database error");
     }
 });
 
