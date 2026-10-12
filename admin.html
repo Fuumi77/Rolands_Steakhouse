@@ -3274,6 +3274,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             // Live payments logic
             window.paymentFilter = 'pending'; // 'pending' or 'history'
 
+            // 👉 FIX 1: Make renderPayments globally accessible so the HTML dropdown can trigger it!
+            window.renderPayments = renderPayments;
+            
             function renderPayments() {
                 const hist = getReservationHistory();
                 const listEl = document.getElementById('payment-history-list');
@@ -3290,9 +3293,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (timeFilter && timeFilter.value !== 'all') {
                     const now = new Date();
                     activeList = activeList.filter(r => {
-                        let dateStr = r.completedAt || r.arrivalDate || r.createdAt;
-                        if (!dateStr) return true;
-                        const rDate = new Date(dateStr);
+                        // 👉 FIX 2: Use the robust date parser so Philippine timezones don't accidentally push "Today" into "Tomorrow"!
+                        const rDate = parseRecordDate(r); 
                         if (isNaN(rDate.getTime())) return true;
                         
                         if (timeFilter.value === 'day') {
@@ -5725,7 +5727,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 else if (typeof renderMenuManagement === 'function') renderMenuManagement();
             }
             if (tab === 'promotions' && typeof renderPromotions === 'function') renderPromotions();
-            if (tab === 'payments' && typeof renderPaymentHistory === 'function') renderPaymentHistory();
+            // 👉 FIX 3: Call the correct rendering function when switching back to the Payments tab!
+            if (tab === 'payments' && typeof window.renderPayments === 'function') window.renderPayments();
         };
 
         // Auto-render recent walk-ins when tab loads
