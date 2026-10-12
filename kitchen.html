@@ -551,7 +551,7 @@
             if (hist[idx]) {
                 hist[idx].kdsStatus = newStatus;
                 hist[idx].kdsUpdateAt = new Date().toISOString();
-                hist[idx].localUpdatedAt = Date.now(); // 👉 FIX: Activate the Anti-Bounce Shield
+                hist[idx].localUpdatedAt = Date.now(); // 👉 SHIELD ACTIVATED
 
                 // 👉 FIX: Tell the live Cloud Database that the Kitchen is cooking/serving!
                 try {
