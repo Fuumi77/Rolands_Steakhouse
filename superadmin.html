@@ -1181,9 +1181,10 @@
 
         function getReservationHistory() {
             let hist = safeJsonParse(localStorage.getItem('reservationHistory'), []) || [];
-            if (!Array.isArray(hist) || hist.length === 0) {
-                hist = seedSampleReservationHistoryIfEmpty();
-            }
+            
+            // 👉 FIX: Removed the fake sample data injection! If the database is empty, stay empty!
+            if (!Array.isArray(hist)) hist = [];
+
             // 👉 FIX: Extract the true database ID to interleave WI, POS, and RES perfectly
             return hist.sort((a, b) => {
                 const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
