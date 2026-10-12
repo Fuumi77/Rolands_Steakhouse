@@ -5630,13 +5630,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         // Reset form
         document.getElementById('walkin-name').value = '';
         document.getElementById('walkin-contact').value = '';
-        const now = new Date();
-        document.getElementById('walkin-date').value = now.toISOString().split('T')[0];
-        
-        let tStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-        if (tStr < '10:30') tStr = '10:30';
-        if (tStr > '21:00') tStr = '21:00';
-        document.getElementById('walkin-time').value = tStr;
+        document.getElementById('walkin-date').value = '';
+        document.getElementById('walkin-time').value = '';
         document.getElementById('walkin-table').value = '';
         document.getElementById('walkin-guests').value = '';
         document.getElementById('walkin-payment').value = '';
@@ -5759,20 +5754,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             }
             if (tab === 'walkin') {
-                const dateInput = document.getElementById('walkin-date');
-                const timeInput = document.getElementById('walkin-time');
-                // Auto-set date to today if empty
-                if (dateInput && !dateInput.value) {
-                    dateInput.value = new Date().toISOString().split('T')[0];
-                }
-                // Auto-set time to now if empty (with clamps)
-                if (timeInput && !timeInput.value) {
-                    const now = new Date();
-                    let tStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-                    if (tStr < '10:30') tStr = '10:30';
-                    if (tStr > '21:00') tStr = '21:00';
-                    timeInput.value = tStr;
-                }
                 renderRecentWalkins();
             }
             if (tab === 'menu') {
