@@ -1833,7 +1833,12 @@
             const revenue = history.reduce((sum, r) => {
                 const s = (r.paymentStatus || '').toLowerCase();
                 if (s === 'paid' || s === 'verified' || s === 'walk-in') {
-                    return sum + Number(r.paymentAmount || 0);
+                    let amt = Number(r.paymentAmount || 0);
+                    // 👉 FIX: Exclude the ₱200 online deposit from revenue unless they actually ordered food!
+                    if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) {
+                        amt = 0;
+                    }
+                    return sum + amt;
                 }
                 return sum;
             }, 0);
@@ -4570,13 +4575,21 @@
             let revenueChart = null;
             window.renderRevenueTab = function () {
                 const hist = getReservationHistory();
-                const totalRev = hist.reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
                 
-                // 👉 Upgraded POS/Walk-in detection to capture all offline revenue
-                const posRev = hist.filter(r => r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')).reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
+                // 👉 FIX: Reusable function to filter out the ₱200 deposits across the entire Revenue Tab
+                const getTrueAmount = (r) => {
+                    const s = (r.paymentStatus || '').toLowerCase();
+                    if (s !== 'paid' && s !== 'verified' && s !== 'walk-in') return 0; // Only count verified payments
+                    let amt = Number(r.paymentAmount || 0);
+                    if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) return 0;
+                    return amt;
+                };
+
+                const totalRev = hist.reduce((s, r) => s + getTrueAmount(r), 0);
                 
-                const priorityRev = hist.filter(r => r.reservationType === 'priority').reduce((s, r) => s + Number(r.paymentAmount || 0), 0);
-                const avg = hist.length ? totalRev / hist.length : 0;
+                const posRev = hist.filter(r => r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')).reduce((s, r) => s + getTrueAmount(r), 0);
+                
+                const priorityRev = hist.filter(r => r.reservationType === 'priority').reduce((s, r) => s + getTrueAmount(r), 0);
 
                 document.getElementById('rev-total').textContent = '₱' + totalRev.toLocaleString();
                 document.getElementById('rev-pos').textContent = '₱' + posRev.toLocaleString();
