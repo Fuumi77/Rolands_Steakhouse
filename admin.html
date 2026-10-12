@@ -1865,35 +1865,44 @@
                     const tdType = document.createElement('td');
                     tdType.appendChild(createTypePill(r));
 
-                    // 👉 NEW: "See More" truncation logic for long food orders
+                    // 👉 NEW: Smooth & Clean "See More" inline logic (Fixed Borders & Shadows)
                     const tdFoods = document.createElement('td');
-                    tdFoods.style.maxWidth = '250px'; 
+                    // Removed the 250px maxWidth that was breaking the mobile border!
 
                     const foodWrapper = document.createElement('div');
-                    foodWrapper.style.cssText = 'display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.4; transition: all 0.3s ease;';
-                    foodWrapper.textContent = foods;
-                    tdFoods.appendChild(foodWrapper);
-
-                    // Only add the button if the food list is long
-                    if (foods.length > 50) {
-                        const seeMoreBtn = document.createElement('button');
-                        seeMoreBtn.textContent = 'See more';
-                        seeMoreBtn.style.cssText = 'background:none; border:none; color:#2563eb; font-size:11px; font-weight:700; cursor:pointer; padding:6px 0 0 0; display:block; outline:none;';
+                    foodWrapper.style.cssText = 'white-space: normal; line-height: 1.5; color: #334155; font-size: 13px;';
+                    
+                    if (foods.length > 65) {
+                        const shortText = foods.substring(0, 65) + '...';
+                        
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = shortText;
+                        
+                        const seeMoreBtn = document.createElement('span');
+                        seeMoreBtn.textContent = ' See more';
+                        // Using a simple span styled like a link entirely avoids the weird global button shadows!
+                        seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline-block;';
                         
                         let isExpanded = false;
                         seeMoreBtn.onclick = (e) => {
-                            e.stopPropagation(); // Prevents row clicks
+                            e.stopPropagation(); 
                             isExpanded = !isExpanded;
                             if (isExpanded) {
-                                foodWrapper.style.webkitLineClamp = 'unset';
-                                seeMoreBtn.textContent = 'See less';
+                                textSpan.textContent = foods;
+                                seeMoreBtn.textContent = ' See less';
                             } else {
-                                foodWrapper.style.webkitLineClamp = '2';
-                                seeMoreBtn.textContent = 'See more';
+                                textSpan.textContent = shortText;
+                                seeMoreBtn.textContent = ' See more';
                             }
                         };
-                        tdFoods.appendChild(seeMoreBtn);
+                        
+                        foodWrapper.appendChild(textSpan);
+                        foodWrapper.appendChild(seeMoreBtn);
+                    } else {
+                        foodWrapper.textContent = foods;
                     }
+
+                    tdFoods.appendChild(foodWrapper);
 
                     if (r.kdsStatus) {
                         const kdsBadge = document.createElement('div');
