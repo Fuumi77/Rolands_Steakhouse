@@ -442,12 +442,13 @@
             <div id="tab-staff" class="superadmin-tab-content">
                 <h2 class="section-title">Staff Management</h2>
                 <div class="card" style="margin-bottom:24px;">
-                    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                    <!-- 👉 FIX: Switched to align-items: stretch and forced full width on small screens -->
+                    <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:stretch;">
                         <input type="text" id="new-staff-username" placeholder="New Username"
-                            style="flex:1; min-width:160px; padding:10px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit;">
+                            style="flex:1; min-width:200px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
                         <input type="password" id="new-staff-password" placeholder="Passphrase"
-                            style="flex:1; min-width:160px; padding:10px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit;">
-                        <button type="button" id="create-staff-btn">+ Create Account</button>
+                            style="flex:1; min-width:200px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
+                        <button type="button" id="create-staff-btn" style="flex:1; min-width:200px; padding:12px 14px; box-sizing:border-box;">+ Create Account</button>
                     </div>
                     <div id="staff-error-msg"
                         style="color:var(--sa-danger); margin-bottom:12px; font-size:13px; display:none;"></div>
@@ -2145,9 +2146,8 @@
                     });
                     if (response.ok) {
                         users = await response.json();
-                        if (users && users.length > 0) {
-                            localStorage.setItem('adminUsers', JSON.stringify(users)); // Sync cloud down
-                        }
+                        // 👉 FIX: Always sync the database down to the browser, even if the list is empty!
+                        localStorage.setItem('adminUsers', JSON.stringify(users)); 
                     } else {
                         usingCloud = false;
                     }
