@@ -5085,20 +5085,15 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             updateOnlineStatus(); // Initial run
             setInterval(updateOnlineStatus, 5000); // Poll every 5 seconds
 
-            // Staff heartbeat
+            // 👉 NEW: Real Cloud Heartbeat (Pings the database every 5 seconds)
             setInterval(() => {
                 const me = sessionStorage.getItem('adminLoggedInUser');
                 if (me) {
-                    const onlineAdmins = safeJsonParse(localStorage.getItem('onlineAdmins'), {});
-                    onlineAdmins[me] = Date.now();
-
-                    // Cleanup stale admins
-                    for (const a in onlineAdmins) {
-                        if (Date.now() - onlineAdmins[a] > 15000) {
-                            delete onlineAdmins[a];
-                        }
-                    }
-                    localStorage.setItem('onlineAdmins', JSON.stringify(onlineAdmins));
+                    fetch(`${API_BASE_URL}/api/staff/heartbeat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: me })
+                    }).catch(()=>{});
                 }
             }, 5000);
 
