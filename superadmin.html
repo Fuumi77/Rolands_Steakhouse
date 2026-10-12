@@ -2139,49 +2139,55 @@
 
             async function renderStaffManagement(isPolling = false) {
                 let users = [];
-                
-                // 👉 FIX: Force a strict cloud fetch every single time!
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
                         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
                     });
-                    if (!response.ok) throw new Error("Cloud fetch failed");
-                    users = await response.json();
-                    localStorage.setItem('adminUsers', JSON.stringify(users)); // Sync down
+                    if (response.ok) {
+                        users = await response.json();
+                        localStorage.setItem('adminUsers', JSON.stringify(users)); // Sync down
+                    } else {
+                        users = safeJsonParse(localStorage.getItem('adminUsers'), []);
+                    }
                 } catch (e) {
-                    console.error("Using offline fallback for staff accounts.");
                     users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                 }
 
-                // 👉 FIX: Re-enable the Online/Offline status tracking!
-                const onlineAdmins = safeJsonParse(localStorage.getItem('onlineAdmins'), {});
-                const now = Date.now();
+                const staffTbody = document.getElementById('staff-list-tbody');
+                if (!staffTbody) return;
 
-                staffTbody.innerHTML = '';
+                const now = Date.now();
+                let newHtml = '';
+                
                 if (users.length === 0) {
-                    staffTbody.innerHTML = '<tr><td colspan="3" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
-                    return;
+                    newHtml = '<tr><td colspan="3" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
+                } else {
+                    users.forEach((u) => {
+                        // 👉 FIX: Check the exact cloud timestamp! If they pinged within 15 seconds, they are ONLINE across the globe.
+                        const isOnline = u.last_active && (now - u.last_active < 15000);
+                        const statusBadge = isOnline
+                            ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">🟢 Online</span>`
+                            : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">⚪ Offline</span>`;
+
+                        newHtml += `
+                            <tr>
+                                <td><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></td>
+                                <td>${statusBadge}</td>
+                                <td>
+                                    <div style="display:flex; gap:6px;">
+                                        <button type="button" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.resetStaffPassword('${u.username}')">Reset Pass</button>
+                                        <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser('${u.username}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
                 }
                 
-                users.forEach((u) => {
-                    const isOnline = onlineAdmins[u.username] && (now - onlineAdmins[u.username] < 15000);
-                    const statusBadge = isOnline
-                        ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">🟢 Online</span>`
-                        : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">⚪ Offline</span>`;
-
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            <div style="display:flex; gap:6px;">
-                                <button type="button" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.resetStaffPassword('${u.username}')">Reset Pass</button>
-                                <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser('${u.username}')">Delete</button>
-                            </div>
-                        </td>
-                    `;
-                    staffTbody.appendChild(tr);
-                });
+                // 👉 FIX: Only replace HTML if it actually changed, completely eliminating screen flickering!
+                if (staffTbody.innerHTML !== newHtml) {
+                    staffTbody.innerHTML = newHtml;
+                }
             }
             
             window.resetStaffPassword = async function(username) {
