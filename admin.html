@@ -2966,6 +2966,8 @@ window.rejectReservation = async function (resNum) {
                     } else {
                         overrides[tId] = nextStatus;
                         localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                        // 👉 FIX: Push manual Toast updates to the Cloud!
+                        fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(overrides) }).catch(()=>{});
                         renderFloorPlan();
                         toast.style.display = 'none';
                     }
@@ -2981,6 +2983,8 @@ window.rejectReservation = async function (resNum) {
                     } else {
                         overrides[tId] = 'unavailable';
                         localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                        // 👉 FIX: Push manual Toast updates to the Cloud!
+                        fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(overrides) }).catch(()=>{});
                         renderFloorPlan();
                         toast.style.display = 'none';
                     }
@@ -3042,11 +3046,20 @@ window.smartTableStatusUpdate = function(tId) {
         const isApproved = activeRes.some(r => r.approvalStatus === 'approved');
         
         if (isSeated) overrides[tId] = 'seated';
-        else if (isApproved) overrides[tId] = 'reserved';
-        else overrides[tId] = 'available';
-    }
-    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-};
+                else if (isApproved) overrides[tId] = 'reserved';
+                else overrides[tId] = 'available';
+            }
+            localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+
+            // 👉 FIX: Permanently sync the smart calculation to the Cloud so it perfectly mirrors to all devices!
+            try {
+                fetch(`${API_BASE_URL}/api/memory/table-overrides`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(overrides)
+                }).catch(()=>{});
+            } catch(e) {}
+        };
 
 // 👉 NEW: "Done Eating" Button Logic
 window.markTableAvailableAndDone = function(tId) {
