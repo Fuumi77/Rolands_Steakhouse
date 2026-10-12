@@ -1628,6 +1628,12 @@
                             updated = true;
                         }
 
+                        // 👉 FIX: Allow Walk-in reservations to stay 'pending' so they appear in Payment Verification!
+                        if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
+                            match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+
                     } else {
                         // 👉 FIX: When grabbing a fresh record from the cloud, include the foods and money!
                         localHistory.push({
@@ -5504,8 +5510,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         }
     }
 
-    // 👉 FIX: Standard Walk-ins no longer charge a forced ₱200 fee!
-    const finalPaymentAmount = walkinType === 'priority' ? payment : 0;
+    // 👉 FIX: Restored the ₱200 reservation fee for Standard Walk-ins!
+    const finalPaymentAmount = walkinType === 'priority' ? payment : 200;
 
     const receiptHtml = `
         <div style="text-align: left; font-size: 14px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px;">
