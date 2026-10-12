@@ -308,31 +308,40 @@
             <!-- RECORDS TAB -->
             <div id="tab-records" class="superadmin-tab-content">
                 <h2 class="section-title">All Records</h2>
-                <div class="row">
-                    <input id="search-input" type="text" placeholder="Search by name or order #...">
-                    <!-- 👉 NEW: Checklist Filters -->
-                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <div style="display:flex; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                
+                <!-- 👉 FIX: Mobile-responsive flex container for search and filters -->
+                <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; width: 100%; box-sizing: border-box;">
+                    
+                    <!-- Search Bar -->
+                    <input id="search-input" type="text" placeholder="Search by name or order #..." style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px;">
+
+                    <!-- Checklist Filters -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
+                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 250px; box-sizing: border-box;">
                             <span style="font-size:11px; font-weight:800; color:#64748b;">TYPE:</span>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="priority" onchange="applySearch()" checked> PRIO</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="standard" onchange="applySearch()" checked> STD</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="pos" onchange="applySearch()" checked> POS</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="wi" onchange="applySearch()" checked> WI</label>
                         </div>
-                        <div style="display:flex; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 250px; box-sizing: border-box;">
                             <span style="font-size:11px; font-weight:800; color:#64748b;">STATUS:</span>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="pending" onchange="applySearch()" checked> Pending</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="completed" onchange="applySearch()" checked> Completed</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="cancelled" onchange="applySearch()" checked> Cancelled</label>
                         </div>
                     </div>
-                    <div class="stat-filter-switch" id="records-date-switch">
-                        <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
-                        <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
-                        <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
-                        <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
+
+                    <!-- Action Row: Date Filters & Export -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="stat-filter-switch" id="records-date-switch" style="display: flex; flex-wrap: wrap; gap: 4px; margin: 0;">
+                            <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
+                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
+                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
+                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
+                        </div>
+                        <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export CSV</button>
                     </div>
-                    <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()">Export CSV</button>
                 </div>
                 <div id="summary-line"></div>
                 <div style="height: 12px;"></div>
