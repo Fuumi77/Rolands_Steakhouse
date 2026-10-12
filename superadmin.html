@@ -4656,6 +4656,10 @@
                 
                 const priorityRev = hist.filter(r => r.reservationType === 'priority').reduce((s, r) => s + getTrueAmount(r), 0);
 
+                // 👉 FIX: Calculate avg safely without throwing a ReferenceError
+                const validPaidOrders = hist.filter(r => getTrueAmount(r) > 0);
+                const avg = validPaidOrders.length ? (totalRev / validPaidOrders.length) : 0;
+
                 document.getElementById('rev-total').textContent = '₱' + totalRev.toLocaleString();
                 document.getElementById('rev-pos').textContent = '₱' + posRev.toLocaleString();
                 document.getElementById('rev-priority').textContent = '₱' + priorityRev.toLocaleString();
@@ -4670,12 +4674,13 @@
                 }
                 hist.forEach(r => {
                     const d = r.arrivalDate || (r.completedAt ? r.completedAt.split('T')[0] : null);
-                    if (d && dayMap[d] !== undefined) dayMap[d] += Number(r.paymentAmount || 0);
+                    if (d && dayMap[d] !== undefined) {
+                        dayMap[d] += getTrueAmount(r); // 👉 FIX: Uses getTrueAmount so it matches the metric cards
+                    }
                 });
                 const labels = Object.keys(dayMap).map(d => { const dt = new Date(d); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); });
                 const vals = Object.values(dayMap);
 
-                // 👉 FIX: Define the 'ctx' variable so the chart actually knows where to draw!
                 const ctx = document.getElementById('revenueChart');
                 
                 if (ctx) {
@@ -4691,12 +4696,14 @@
                     }
                 }
 
-                // Top 5 items
+                // Top 5 items with actual order multiplier support
                 const itemCount = {};
                 hist.forEach(r => { 
                     (r.foods || []).forEach(f => { 
-                        const name = String(f).replace(/^\d+x\s+/, '').trim();
-                        if (name) itemCount[name] = (itemCount[name] || 0) + 1; 
+                        const match = String(f).match(/^(\d+)x\s*(.*)$/);
+                        const qty = match ? parseInt(match[1], 10) : 1;
+                        const name = match ? match[2].trim() : String(f).trim();
+                        if (name) itemCount[name] = (itemCount[name] || 0) + qty; 
                     }); 
                 });
                 const sorted = Object.entries(itemCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
