@@ -2153,6 +2153,10 @@
                     users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                 }
 
+                // 👉 FIX: Restored the Online/Offline tracking system!
+                const onlineAdmins = safeJsonParse(localStorage.getItem('onlineAdmins'), {});
+                const now = Date.now();
+
                 staffTbody.innerHTML = '';
                 if (users.length === 0) {
                     staffTbody.innerHTML = '<tr><td colspan="3" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
@@ -2160,8 +2164,10 @@
                 }
                 
                 users.forEach((u) => {
-                    // 👉 FIX: Replaced the fake "Online" dot with a sleek, accurate Role badge
-                    const statusBadge = `<span style="background:#f0fdf4; color:#166534; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:800; border:1px solid #bbf7d0; letter-spacing:0.5px;">STAFF</span>`;
+                    const isOnline = onlineAdmins[u.username] && (now - onlineAdmins[u.username] < 15000);
+                    const statusBadge = isOnline
+                        ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">🟢 Online</span>`
+                        : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">⚪ Offline</span>`;
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
