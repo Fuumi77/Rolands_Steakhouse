@@ -403,4 +403,21 @@ app.delete('/api/reservations/all', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 👉 NEW: UPDATE ENTIRE ORDER DETAILS (Foods, Payment, Status) */
+app.post('/api/reservations/update-order', async (req, res) => {
+    const { id, paymentAmount, foods, status, kdsStatus } = req.body;
+    try {
+        const numericId = String(id).replace(/[^0-9]/g, '');
+        const foodsJson = foods ? JSON.stringify(foods) : '[]';
+        if (numericId) {
+            await db.query(
+                'UPDATE reservation_log SET payment_amount = ?, foods = ?, status = ?, kds_status = ? WHERE reservation_id = ?', 
+                [paymentAmount, foodsJson, status, kdsStatus, numericId]
+            );
+        }
+        cachedReservations = null;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
