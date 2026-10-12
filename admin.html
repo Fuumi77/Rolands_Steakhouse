@@ -5546,7 +5546,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
     if (!confirmed) return;
 
     // 👉 3. Start Loading State
-    submitBtn.innerHTML = '⏳ Saving to Database...';
+    submitBtn.innerHTML = '⏳ Saving Reservation...';
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.7';
 
@@ -5637,10 +5637,16 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         if (typeof syncReservations === 'function') await syncReservations();
         if (typeof renderMenuManagement === 'function') renderMenuManagement();
 
-        const toast = document.getElementById('walkin-toast');
-        toast.textContent = `✅ Reservation saved for ${name} — ${table}`;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 5000);
+        // 👉 FIX: Replaced the small text toast with a beautiful center Pop-up Modal!
+        if (typeof superModal === 'function') {
+            await superModal({
+                title: 'Reservation Saved! 🎉',
+                message: `Walk-in reservation for <b>${name}</b> at <b>${table}</b> has been successfully saved to the database.`,
+                confirmText: 'Done'
+            });
+        } else {
+            alert(`✅ Reservation saved for ${name} — ${table}`);
+        }
 
         // Reset form
         document.getElementById('walkin-name').value = '';
