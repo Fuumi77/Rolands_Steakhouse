@@ -1211,6 +1211,15 @@
                 let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let updated = false;
 
+                // 👉 FIX: The Cloud is the absolute source of truth! If a record was wiped from the cloud, wipe it locally!
+                const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
+                const oldLength = localHistory.length;
+                localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
+                
+                if (localHistory.length !== oldLength) {
+                    updated = true;
+                }
+
                 dbReservations.forEach(dbRes => {
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
