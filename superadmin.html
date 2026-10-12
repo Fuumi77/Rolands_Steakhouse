@@ -1863,18 +1863,14 @@
                     onlineList.textContent = activeNames.length ? activeNames.join(', ') : 'No customers browsing right now.';
                 }
 
-                // REFRESH RECORDS TABLE (to update NEW highlights)
-                // Skip if user is currently typing in the search input to guarantee zero lag/jank!
-                if (document.activeElement !== searchInput) {
-                    applySearch();
-                }
+                // 👉 FIX: Removed the aggressive applySearch() that was destroying the table every 5 seconds!
 
                 // Update staff management table too
                 if (typeof renderStaffManagement === 'function') {
-                    renderStaffManagement(true); // pass true to prevent input focus stripping if any
+                    renderStaffManagement(true); 
                 }
             }
-
+            
             const historyTbody = document.getElementById('history-tbody');
             const searchInput = document.getElementById('search-input');
             const summaryLine = document.getElementById('summary-line');
@@ -2021,7 +2017,7 @@
                     
                     const foodsCell = tr.querySelector('.foods-cell');
                     
-                    // 👉 NEW: Smooth & Clean "See More" inline logic
+                    // 👉 NEW: Smooth & Clean "See More" inline logic with Memory!
                     const foodWrapper = document.createElement('div');
                     foodWrapper.style.cssText = 'white-space: normal; line-height: 1.5; color: #334155; font-size: 12px;';
                     
@@ -2029,22 +2025,31 @@
                     
                     if (foodsStr.length > 65) {
                         const shortText = foodsStr.substring(0, 65) + '...';
-                        
                         const textSpan = document.createElement('span');
-                        textSpan.textContent = shortText;
-                        
                         const seeMoreBtn = document.createElement('span');
-                        seeMoreBtn.textContent = ' See more';
                         seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline-block;';
                         
-                        let isExpanded = false;
+                        // 👉 FIX: Save the expanded state in global memory so it survives any table refreshes!
+                        window.expandedFoodsMemory = window.expandedFoodsMemory || new Set();
+                        let isExpanded = window.expandedFoodsMemory.has(r.reservationNumber);
+
+                        if (isExpanded) {
+                            textSpan.textContent = foodsStr;
+                            seeMoreBtn.textContent = ' See less';
+                        } else {
+                            textSpan.textContent = shortText;
+                            seeMoreBtn.textContent = ' See more';
+                        }
+                        
                         seeMoreBtn.onclick = (e) => {
                             e.stopPropagation(); 
                             isExpanded = !isExpanded;
                             if (isExpanded) {
+                                window.expandedFoodsMemory.add(r.reservationNumber);
                                 textSpan.textContent = foodsStr;
                                 seeMoreBtn.textContent = ' See less';
                             } else {
+                                window.expandedFoodsMemory.delete(r.reservationNumber);
                                 textSpan.textContent = shortText;
                                 seeMoreBtn.textContent = ' See more';
                             }
