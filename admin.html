@@ -1546,10 +1546,14 @@
         function getReservationHistory() {
             let hist = safeJsonParse(localStorage.getItem('reservationHistory'), []) || [];
             
+            // 👉 FIX: Removed the fake sample data injection! If the database is empty, stay empty!
+            if (!Array.isArray(hist)) hist = [];
+
+            // 👉 FIX: Extract the true database ID to interleave WI, POS, and RES perfectly
             return hist.sort((a, b) => {
-                const ta = parseRecordDate(a).getTime();
-                const tb = parseRecordDate(b).getTime();
-                return tb - ta;
+                const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
+                return idB - idA;
             });
         }
         
