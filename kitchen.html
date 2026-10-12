@@ -196,6 +196,14 @@
             if (activeBtn) activeBtn.classList.add('active');
             renderKitchenQueue(true);
         }
+        
+        function getReservationHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
 
         async function syncKitchenQueueFromCloud() {
             try {
