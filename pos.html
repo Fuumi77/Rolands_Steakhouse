@@ -120,8 +120,10 @@
                     style="background: white; border-radius: 20px; padding: 20px; max-width: 600px; margin: 20px auto; box-shadow: var(--card-shadow);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h2 style="font-family:'Playfair Display'; margin:0; color:var(--primary);">Order Status</h2>
-                        <button onclick="renderOrderStatus()"
-                            style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-weight:bold;">Refresh</button>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="fixGhostOrders()" style="background:#ef4444; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🧹 Fix Ghost Tables</button>
+                            <button onclick="downloadCloudToPos()" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">☁️ Cloud Sync</button>
+                        </div>
                     </div>
                     <div id="pos-order-status-list"></div>
                 </div>
@@ -1596,6 +1598,36 @@
 
         function closeModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+        async function downloadCloudToPos() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
+                const data = await res.json();
+                localStorage.setItem('reservationHistory', JSON.stringify(data));
+                renderOrderStatus();
+                if(typeof showToast === 'function') showToast('POS synced with Cloud', 'success');
+            } catch (e) { alert("Cloud sync failed"); }
+        }
+
+        async function fixGhostOrders() {
+            try {
+                document.querySelector('button[onclick="fixGhostOrders()"]').textContent = "Cleaning...";
+                const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
+                const data = await res.json();
+                for (const r of data) {
+                    // Hunt down the stuck Table 5 reservation and kill it in the cloud!
+                    if (r.bookedTable === 'Table 5' && r.status !== 'Completed' && r.status !== 'Cancelled') {
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
+                        });
+                    }
+                }
+                localStorage.removeItem('tableOverrides');
+                await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({})});
+                alert("Table 5 and Ghost Orders cleared! Reloading...");
+                location.reload();
+            } catch (e) { alert("Error fixing ghosts."); }
         }
 
         init();
