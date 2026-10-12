@@ -215,9 +215,9 @@ app.get('/reservations', async (req, res) => {
     try {
         if (cachedReservations && (Date.now() - resCacheTime < 5000)) return res.json(cachedReservations); 
         
-        // 👉 FIX: Pull the new columns from the database!
+        // 👉 FIX: Pull the KDS status from the database so the phone can see it!
         const [rows] = await db.query(`
-            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods
+            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods, r.kds_status
             FROM reservation_log r
             JOIN customer_credentials c ON r.customer_id = c.customer_id
         `);
@@ -236,10 +236,11 @@ app.get('/reservations', async (req, res) => {
                 arrivalDate: d.toISOString().split('T')[0], arrivalTime: d.toTimeString().substring(0, 5),
                 bookedTable: `Table ${r.table_number}`, 
                 status: r.status, bookedBy: r.booked_by,
-                // 👉 FIX: Send the rich data to the frontend
                 reservationType: r.reservation_type || 'standard',
                 paymentAmount: parseFloat(r.payment_amount) || 0,
-                foods: parsedFoods
+                foods: parsedFoods,
+                // 👉 FIX: Map the KDS status so it gets sent to the frontend
+                kdsStatus: r.kds_status || 'pending'
             };
         });
         
