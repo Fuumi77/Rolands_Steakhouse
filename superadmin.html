@@ -341,7 +341,10 @@
                             <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
                             <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
                         </div>
-                        <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export CSV</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="button" onclick="wipeAllRecords()" style="margin: 0; white-space: nowrap; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800; border-radius: 8px; padding: 8px 16px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.15);">🗑️ Wipe All Records</button>
+                            <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export CSV</button>
+                        </div>
                     </div>
                 </div>
                 <div id="summary-line"></div>
@@ -2139,13 +2142,49 @@
                 modal.classList.remove('hidden');
             };
 
-            window.deleteRecord = async function (resNum) {
-                const confirmed = await superModal({ title: '🗑️ Delete Record?', message: `Permanently delete record <b>${resNum}</b>? This cannot be undone.`, type: 'confirm', confirmText: 'Delete', cancelText: 'Cancel' });
+            // 👉 NEW: Master Wipe Function with PIN Guard
+            window.wipeAllRecords = async function () {
+                const confirmed = await superModal({
+                    title: '🚨 WIPE ALL RECORDS? 🚨',
+                    message: 'Are you absolutely sure you want to permanently delete ALL reservations, POS orders, and walk-ins? This will completely clear the restaurant history and reset the database to zero. This action CANNOT be undone!',
+                    type: 'confirm',
+                    confirmText: 'YES, WIPE EVERYTHING',
+                    cancelText: 'Cancel'
+                });
+
                 if (!confirmed) return;
-                const updated = getReservationHistory().filter(r => r.reservationNumber !== resNum);
-                localStorage.setItem('reservationHistory', JSON.stringify(updated));
-                applySearch();
-                summaryLine.textContent = `Showing ${updated.length} records.`;
+
+                const pin = await superModal({
+                    title: '🔒 Security Authorization',
+                    message: 'Enter Master PIN to authorize DATABASE WIPE:',
+                    showInput: true,
+                    placeholder: 'Enter 6-digit pin',
+                    confirmText: 'Authorize Wipe'
+                });
+
+                if (pin === "789456") {
+                    const btn = document.querySelector('button[onclick="wipeAllRecords()"]');
+                    if (btn) btn.textContent = 'Wiping...';
+                    
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/reservations/all`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error('Database wipe failed.');
+                        
+                        localStorage.setItem('reservationHistory', '[]');
+                        localStorage.removeItem('tableOverrides');
+                        
+                        // Push clear to cloud memory
+                        await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({})});
+                        
+                        await superModal({ title: '✅ Database Wiped', message: 'All records have been permanently deleted and the system has been reset.', confirmText: 'Done' });
+                        location.reload();
+                    } catch (e) {
+                        await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
+                        if (btn) btn.textContent = '🗑️ Wipe All Records';
+                    }
+                } else if (pin !== null) {
+                    await superModal({ title: '❌ Denied', message: 'Incorrect pincode. Wipe cancelled.', confirmText: 'Close' });
+                }
             };
 
             let currentRecordsDateFilter = 'all';
