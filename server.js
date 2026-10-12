@@ -30,11 +30,12 @@ db.query('SELECT 1').then(async () => {
     console.log('✅ Connected to Hostinger MySQL Database!');
     await db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN booked_by VARCHAR(50) DEFAULT 'online'").catch(()=>{});
-    
-    // 👉 FIX: Automatically add the missing columns to your database so it can remember foods and payments!
     await db.query("ALTER TABLE reservation_log ADD COLUMN reservation_type VARCHAR(50) DEFAULT 'standard'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN payment_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN foods TEXT").catch(()=>{});
+    
+    // 👉 FIX: Guarantee the staff table exists so accounts don't fail to save!
+    await db.query("CREATE TABLE IF NOT EXISTS staff_credentials (staff_id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE, password_hash VARCHAR(255), role VARCHAR(50) DEFAULT 'Staff')").catch(()=>{});
 }).catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 function escapeHtml(str) {
@@ -141,8 +142,9 @@ app.put('/api/staff/:username/password', async (req, res) => {
 app.post('/api/staff', async (req, res) => {
     const { username, passwordHash } = req.body;
     try {
+        // 👉 FIX: Explicitly include the role so MySQL doesn't reject it
         await db.query(
-            "INSERT INTO staff_credentials (username, password_hash) VALUES (?, ?)",
+            "INSERT INTO staff_credentials (username, password_hash, role) VALUES (?, ?, 'Staff')",
             [username, passwordHash]
         );
         res.json({ success: true });
