@@ -214,21 +214,35 @@
                 let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let updated = false;
 
-                // 👉 FIX: The Cloud is the absolute source of truth! If a record was wiped from the cloud, wipe it from the kitchen!
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
                 const oldLength = localHistory.length;
-                localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
                 
-                if (localHistory.length !== oldLength) {
-                    updated = true;
-                }
+                // 👉 FIX: Protect POS and Walk-in orders from being wiped before they connect to the cloud!
+                localHistory = localHistory.filter(local => {
+                    if (cloudIds.includes(local.reservationNumber)) return true;
+                    if (String(local.reservationNumber).startsWith('POS-') || String(local.reservationNumber).startsWith('WI-')) return true;
+                    return false;
+                });
+                
+                if (localHistory.length !== oldLength) updated = true;
 
                 dbReservations.forEach(dbRes => {
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
+                    
+                    if (!match) {
+                        match = localHistory.find(local => {
+                            const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
+                            return isTempId && local.bookedTable === dbRes.bookedTable;
+                        });
+                        if (match) {
+                            match.reservationNumber = dbRes.reservationNumber; 
+                            updated = true;
+                        }
+                    }
+
                     let dbGenStatus = String(dbRes.status || '').toLowerCase().trim();
 
                     if (match) {
-                        // 👉 THE SHIELD: Ignore the cloud if we clicked a button less than 15 seconds ago!
                         const isRecentlyModifiedHere = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
 
                         if (!isRecentlyModifiedHere) {
@@ -240,7 +254,11 @@
                                 match.approvalStatus = dbGenStatus;
                                 updated = true;
                             }
-                            // Auto-remove cancelled or completed orders
+                            // 👉 FIX: Aggressively pull foods list so the Kitchen never loses orders!
+                            if (JSON.stringify(match.foods) !== JSON.stringify(dbRes.foods || [])) {
+                                match.foods = dbRes.foods || [];
+                                updated = true;
+                            }
                             if (dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') {
                                 if (match.kdsStatus !== 'cancelled') { match.kdsStatus = 'cancelled'; updated = true; }
                             }
@@ -249,7 +267,6 @@
                             }
                         }
                     } else {
-                        // 👉 THE GHOST KILLER: Prevent downloading finished orders on startup
                         if (dbGenStatus === 'completed' || dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') return;
 
                         localHistory.push({
@@ -281,7 +298,7 @@
             setInterval(() => {
                 syncKitchenQueueFromCloud();
                 renderKitchenQueue(true);
-            }, 5000);
+            }, 12000);
         }
 
         // Elapsed Minutes Timer Calculation
