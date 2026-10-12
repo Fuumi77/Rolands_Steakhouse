@@ -805,7 +805,7 @@
                         <div class="value" id="stat-priority">0</div>
                     </div>
                     <div class="card">
-                        <h3>Total Revenue (Priority)</h3>
+                        <h3>Total Revenue</h3>
                         <div class="value" id="stat-revenue">₱0</div>
                     </div>
                     <div class="card">
@@ -1664,7 +1664,16 @@
             const total = history.length;
             const priorityCount = priorityHistory.length;
             const walkinCount = history.filter(r => r.bookedBy === 'staff').length;
-            const revenue = priorityHistory.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+            
+            // 👉 FIX: Calculate total revenue across ALL valid paid orders (POS, Walk-in, Priority, and Standard)
+            const revenue = history.reduce((sum, r) => {
+                const s = (r.paymentStatus || '').toLowerCase();
+                // Only count the money if it has actually been paid/verified!
+                if (s === 'paid' || s === 'verified' || s === 'walk-in') {
+                    return sum + Number(r.paymentAmount || 0);
+                }
+                return sum;
+            }, 0);
 
             // 👉 NEW: Dynamically calculate Top Foods and Reservations By Date
             const foodCounts = {};
