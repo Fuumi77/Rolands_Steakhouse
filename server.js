@@ -137,11 +137,19 @@ app.put('/api/staff/:username/password', async (req, res) => {
     } catch (err) { res.status(500).send("Database error"); }
 });
 
-app.get('/api/staff', async (req, res) => {
+/* CREATE NEW STAFF ACCOUNT */
+app.post('/api/staff', async (req, res) => {
+    const { username, passwordHash } = req.body;
     try {
-        const [rows] = await db.query('SELECT username, password_hash FROM staff_credentials');
-        res.json(rows);
-    } catch (err) { res.status(500).send("Database error"); }
+        await db.query(
+            "INSERT INTO staff_credentials (username, password_hash) VALUES (?, ?)",
+            [username, passwordHash]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Create Staff Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 /* ── ANTI-DDOS RAM CACHES ── */
