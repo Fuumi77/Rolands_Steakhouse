@@ -36,19 +36,23 @@
         }
 
         @media (max-width: 768px) {
-            /* 👉 FIX: Make tables mobile-friendly without breaking stacked layouts */
-            table {
+            /* 👉 FIX: Force mobile table cards to stretch perfectly to the edges */
+            table, tbody, tr {
                 display: block !important;
                 width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            table {
                 max-width: 100vw !important;
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch;
+                overflow-x: hidden !important; /* Prevents screen wobble */
             }
             td {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
                 white-space: normal !important; 
                 word-wrap: break-word !important;
             }
-
             /* 1. Neatly stack the header into two rows */
             header {
                 flex-direction: column !important;
