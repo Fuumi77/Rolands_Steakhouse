@@ -198,14 +198,17 @@
                 box-sizing: border-box !important;
             }
 
-            /* 👉 FIX: Make all data tables swipeable instead of breaking the screen */
+            /* 👉 FIX: Make tables mobile-friendly without breaking stacked layouts */
             table {
                 display: block !important;
                 width: 100% !important;
                 max-width: 100vw !important;
                 overflow-x: auto !important;
-                white-space: nowrap !important;
                 -webkit-overflow-scrolling: touch;
+            }
+            td {
+                white-space: normal !important; /* Allows long food text to wrap naturally */
+                word-wrap: break-word !important;
             }
 
             /* Show the Menu Button */
@@ -1862,10 +1865,35 @@
                     const tdType = document.createElement('td');
                     tdType.appendChild(createTypePill(r));
 
+                    // 👉 NEW: "See More" truncation logic for long food orders
                     const tdFoods = document.createElement('td');
+                    tdFoods.style.maxWidth = '250px'; 
+
                     const foodWrapper = document.createElement('div');
+                    foodWrapper.style.cssText = 'display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.4; transition: all 0.3s ease;';
                     foodWrapper.textContent = foods;
                     tdFoods.appendChild(foodWrapper);
+
+                    // Only add the button if the food list is long
+                    if (foods.length > 50) {
+                        const seeMoreBtn = document.createElement('button');
+                        seeMoreBtn.textContent = 'See more';
+                        seeMoreBtn.style.cssText = 'background:none; border:none; color:#2563eb; font-size:11px; font-weight:700; cursor:pointer; padding:6px 0 0 0; display:block; outline:none;';
+                        
+                        let isExpanded = false;
+                        seeMoreBtn.onclick = (e) => {
+                            e.stopPropagation(); // Prevents row clicks
+                            isExpanded = !isExpanded;
+                            if (isExpanded) {
+                                foodWrapper.style.webkitLineClamp = 'unset';
+                                seeMoreBtn.textContent = 'See less';
+                            } else {
+                                foodWrapper.style.webkitLineClamp = '2';
+                                seeMoreBtn.textContent = 'See more';
+                            }
+                        };
+                        tdFoods.appendChild(seeMoreBtn);
+                    }
 
                     if (r.kdsStatus) {
                         const kdsBadge = document.createElement('div');
