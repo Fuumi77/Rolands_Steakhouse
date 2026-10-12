@@ -3127,8 +3127,16 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 } catch (e) {}
             }
 
+            // 👉 FIX: Add a memory tracker to stop the notification echo!
+            window.notifiedCancellations = window.notifiedCancellations || [];
+
             window.showCustomerCancellationAlertBanner = function(payload) {
-                if (!payload) return;
+                if (!payload || !payload.reservationNumber) return;
+                
+                // 👉 FIX: Check the memory lock so a single cancellation doesn't spam multiple popups!
+                if (window.notifiedCancellations.includes(payload.reservationNumber)) return;
+                window.notifiedCancellations.push(payload.reservationNumber);
+
                 playCancellationAlertSound();
 
                 let container = document.getElementById('cancellation-alerts-container');
