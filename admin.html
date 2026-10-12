@@ -3677,7 +3677,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                         el.style.opacity = '0';
                         setTimeout(() => el.remove(), 300);
                     }
-                }, 5000);
+                }, 10000);
             };
 
             // Promotions logic
@@ -3780,7 +3780,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     renderAdminChats();
                     renderPayments();
                     renderPromosAdmin();
-                }, 5000); // 👉 FIX: Syncs every 5 seconds instead of 60!
+                }, 10000); // 👉 FIX: Syncs every 5 seconds instead of 60!
                 window.isPollingActive = true;
                 
                 syncReservations(); 
