@@ -1996,7 +1996,8 @@
                         <td style="font-weight:600;">${r.customerName || 'Walk-in Guest'}</td>
                         <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
-                        <td class="foods-cell"></td>
+                        <!-- 👉 FIX: Locked the width so expanding text forces a new line instead of shifting the whole table! -->
+                        <td class="foods-cell" style="max-width: 280px; min-width: 200px;"></td>
                         <td class="payment-cell">
                             <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             ${paymentBadge}${refundBadge}
@@ -2017,39 +2018,35 @@
                     
                     const foodsCell = tr.querySelector('.foods-cell');
                     
-                    // 👉 NEW: Smooth & Clean "See More" inline logic with Memory!
+                    // 👉 NEW: Smooth & Clean "See More" inline logic (With Memory!)
                     const foodWrapper = document.createElement('div');
-                    foodWrapper.style.cssText = 'white-space: normal; line-height: 1.5; color: #334155; font-size: 12px;';
+                    foodWrapper.style.cssText = 'white-space: normal; word-wrap: break-word; line-height: 1.5; color: #334155; font-size: 13px;';
                     
                     const foodsStr = foodText(r);
                     
-                    if (foodsStr.length > 65) {
-                        const shortText = foodsStr.substring(0, 65) + '...';
+                    // Shortened to 55 characters to match your Staff dashboard visual exactly
+                    if (foodsStr.length > 55) {
+                        const shortText = foodsStr.substring(0, 55) + '...';
+                        
                         const textSpan = document.createElement('span');
                         const seeMoreBtn = document.createElement('span');
-                        seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline-block;';
+                        seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline;';
                         
-                        // 👉 FIX: Save the expanded state in global memory so it survives any table refreshes!
-                        window.expandedFoodsMemory = window.expandedFoodsMemory || new Set();
-                        let isExpanded = window.expandedFoodsMemory.has(r.reservationNumber);
-
-                        if (isExpanded) {
-                            textSpan.textContent = foodsStr;
-                            seeMoreBtn.textContent = ' See less';
-                        } else {
-                            textSpan.textContent = shortText;
-                            seeMoreBtn.textContent = ' See more';
-                        }
+                        window.expandedFoodRows = window.expandedFoodRows || new Set();
+                        let isExpanded = window.expandedFoodRows.has(r.reservationNumber);
+                        
+                        textSpan.textContent = isExpanded ? foodsStr : shortText;
+                        seeMoreBtn.textContent = isExpanded ? ' See less' : ' See more';
                         
                         seeMoreBtn.onclick = (e) => {
                             e.stopPropagation(); 
                             isExpanded = !isExpanded;
                             if (isExpanded) {
-                                window.expandedFoodsMemory.add(r.reservationNumber);
+                                window.expandedFoodRows.add(r.reservationNumber);
                                 textSpan.textContent = foodsStr;
                                 seeMoreBtn.textContent = ' See less';
                             } else {
-                                window.expandedFoodsMemory.delete(r.reservationNumber);
+                                window.expandedFoodRows.delete(r.reservationNumber);
                                 textSpan.textContent = shortText;
                                 seeMoreBtn.textContent = ' See more';
                             }
