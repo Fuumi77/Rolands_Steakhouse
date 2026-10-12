@@ -1261,9 +1261,19 @@
                             updated = true;
                         }
                         
-                        if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
-                        if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
-                        if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
+                        // 👉 FIX: AGGRESSIVE SYNC! Always overwrite local data if the cloud has new foods or prices!
+                        if (JSON.stringify(match.foods) !== JSON.stringify(dbRes.foods || [])) { 
+                            match.foods = dbRes.foods || []; 
+                            updated = true; 
+                        }
+                        if (match.paymentAmount !== dbRes.paymentAmount) { 
+                            match.paymentAmount = dbRes.paymentAmount || 0; 
+                            updated = true; 
+                        }
+                        if (match.reservationType !== dbRes.reservationType) { 
+                            match.reservationType = dbRes.reservationType || 'standard'; 
+                            updated = true; 
+                        }
 
                         // 👉 FIX: Pull Live KDS Kitchen Status from the Cloud!
                         if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
