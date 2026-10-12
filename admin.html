@@ -1617,10 +1617,19 @@
                             updated = true;
                         }
                         
-                        // 👉 FIX: Pull missing cloud data into local memory!
-                        if (!match.foods || match.foods.length === 0) { match.foods = dbRes.foods || []; updated = true; }
-                        if (!match.paymentAmount) { match.paymentAmount = dbRes.paymentAmount || 0; updated = true; }
-                        if (match.reservationType !== dbRes.reservationType) { match.reservationType = dbRes.reservationType || 'standard'; updated = true; }
+                        // 👉 FIX: AGGRESSIVE SYNC! Always overwrite local data if the cloud has new foods or prices!
+                        if (JSON.stringify(match.foods) !== JSON.stringify(dbRes.foods || [])) { 
+                            match.foods = dbRes.foods || []; 
+                            updated = true; 
+                        }
+                        if (match.paymentAmount !== dbRes.paymentAmount) { 
+                            match.paymentAmount = dbRes.paymentAmount || 0; 
+                            updated = true; 
+                        }
+                        if (match.reservationType !== dbRes.reservationType) { 
+                            match.reservationType = dbRes.reservationType || 'standard'; 
+                            updated = true; 
+                        }
 
                         // 👉 FIX: Pull Live KDS Kitchen Status from the Cloud!
                         if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
@@ -3762,6 +3771,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 });
                 listEl.innerHTML = html;
             };
+            
             // Bind pollers
             if (!window.isPollingActive) {
                 setInterval(() => {
@@ -3770,10 +3780,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     renderAdminChats();
                     renderPayments();
                     renderPromosAdmin();
-                }, 60000);
+                }, 5000); // 👉 FIX: Syncs every 5 seconds instead of 60!
                 window.isPollingActive = true;
                 
-                // 👉 THE FIX: Move this INSIDE the brackets so it only fetches ONCE on load!
                 syncReservations(); 
             }
             
