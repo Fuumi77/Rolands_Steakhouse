@@ -456,7 +456,7 @@
                         <thead>
                             <tr>
                                 <th>Username</th>
-                                <th>Session Status</th>
+                                <th>Role</th>
                                 <th style="width:80px;">Actions</th>
                             </tr>
                         </thead>
@@ -2138,37 +2138,30 @@
             const staffTbody = document.getElementById('staff-list-tbody');
 
             async function renderStaffManagement(isPolling = false) {
-                let users = getAdminUsers();
-                let usingCloud = true;
-
+                let users = [];
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
-                        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
+                        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
                     });
                     if (response.ok) {
                         users = await response.json();
-                        // 👉 FIX: Always sync the database down to the browser, even if the list is empty!
-                        localStorage.setItem('adminUsers', JSON.stringify(users)); 
+                        localStorage.setItem('adminUsers', JSON.stringify(users)); // Force sync down to local
                     } else {
-                        usingCloud = false;
+                        users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                     }
                 } catch (e) {
-                    usingCloud = false; // Fallback silently
+                    users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                 }
-
-                const onlineAdmins = safeJsonParse(localStorage.getItem('onlineAdmins'), {});
-                const now = Date.now();
 
                 staffTbody.innerHTML = '';
                 if (users.length === 0) {
-                    staffTbody.innerHTML = '<tr><td colspan="2" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
+                    staffTbody.innerHTML = '<tr><td colspan="3" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
                     return;
                 }
-                users.forEach((u, i) => {
-                    const isOnline = onlineAdmins[u.username] && (now - onlineAdmins[u.username] < 15000);
-                    const statusBadge = isOnline
-                        ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">🟢 Online</span>`
-                        : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">⚪ Offline</span>`;
+                
+                users.forEach((u) => {
+                    // 👉 FIX: Replaced the fake "Online" dot with a sleek, accurate Role badge
+                    const statusBadge = `<span style="background:#f0fdf4; color:#166534; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:800; border:1px solid #bbf7d0; letter-spacing:0.5px;">STAFF</span>`;
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -2177,105 +2170,60 @@
                         <td>
                             <div style="display:flex; gap:6px;">
                                 <button type="button" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.resetStaffPassword('${u.username}')">Reset Pass</button>
-                                <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser(${i}, '${u.username}')">Delete</button>
+                                <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser('${u.username}')">Delete</button>
                             </div>
                         </td>
                     `;
                     staffTbody.appendChild(tr);
                 });
             }
-            // 👉 NEW: Secure Password Reset Logic
+
             window.resetStaffPassword = async function(username) {
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
                     message: `Enter Master PIN to authorize password reset for <b>${username}</b>:`,
-                    showInput: true,
-                    placeholder: 'Enter 6-digit pin',
-                    confirmText: 'Verify PIN'
+                    showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Verify PIN'
                 });
 
                 if (pin === "789456") {
                     const newPass = await superModal({
                         title: `🔑 Reset Password for ${username}`,
                         message: 'Enter the new passphrase for this staff account:',
-                        showInput: true,
-                        inputType: 'text', // Shows the password briefly while typing
-                        placeholder: 'New passphrase (min 4 chars)',
-                        confirmText: 'Update Password'
+                        showInput: true, inputType: 'text', placeholder: 'New passphrase (min 4 chars)', confirmText: 'Update Password'
                     });
 
                     if (newPass && newPass.length >= 4) {
                         const passwordHash = await sha256Hex(newPass);
-                        
-                        // Update Local Storage
-                        const users = getAdminUsers();
-                        const uInfo = users.find(u => u.username === username);
-                        if (uInfo) uInfo.passwordHash = passwordHash;
-                        localStorage.setItem('adminUsers', JSON.stringify(users));
-
-                        // Sync to MySQL Database
                         try {
-                            await fetch(`${API_BASE_URL}/api/staff/${username}/password`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
+                            const res = await fetch(`${API_BASE_URL}/api/staff/${username}/password`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ passwordHash })
                             });
-                        } catch(e) {}
-
-                        await superModal({
-                            title: '✅ Password Updated',
-                            message: `The password for <b>${username}</b> has been successfully changed.`,
-                            confirmText: 'Done'
-                        });
-                    } else if (newPass !== null) {
-                        alert("Password must be at least 4 characters.");
+                            if (!res.ok) throw new Error('Database connection failed.');
+                            await superModal({ title: '✅ Password Updated', message: `The password for <b>${username}</b> has been successfully changed in the database.`, confirmText: 'Done' });
+                        } catch(e) {
+                            await superModal({ title: '❌ Error', message: `Failed to update password: ${e.message}`, confirmText: 'Close' });
+                        }
                     }
-                } else if (pin !== null) {
-                    await superModal({
-                        title: '❌ Access Denied',
-                        message: 'Invalid Pincode. Operation cancelled.',
-                        confirmText: 'Back'
-                    });
                 }
             };
 
-            window.deleteStaffUser = async function (index, usernameTarget) {
-                const users = getAdminUsers();
-                let username = usernameTarget;
-                if (!username && users[index]) username = users[index].username;
-
+            window.deleteStaffUser = async function (username) {
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
                     message: `Enter Pincode to DELETE staff account: <b>${username}</b>`,
-                    showInput: true,
-                    placeholder: 'Enter 6-digit pin',
-                    confirmText: 'Delete Account'
+                    showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Delete Account'
                 });
 
                 if (pin === "789456") {
                     try {
-                        await fetch(`${API_BASE_URL}/api/staff/` + username, { method: 'DELETE' });
-                    } catch (e) { } // Ignore server disconnects
-
-                    const updatedUsers = users.filter(u => u.username !== username);
-                    localStorage.setItem('adminUsers', JSON.stringify(updatedUsers));
-
-                    // Update stats
-                    const statCount = document.getElementById('stat-admins');
-                    if (statCount) statCount.textContent = updatedUsers.length;
-
-                    await superModal({
-                        title: '✅ Success',
-                        message: `Staff account <b>${username}</b> has been removed.`,
-                        confirmText: 'OK'
-                    });
-                    renderStaffManagement();
-                } else if (pin !== null) {
-                    await superModal({
-                        title: '❌ Access Denied',
-                        message: 'Invalid Pincode. Operation cancelled.',
-                        confirmText: 'Back to Safety'
-                    });
+                        const res = await fetch(`${API_BASE_URL}/api/staff/` + username, { method: 'DELETE' });
+                        if (!res.ok) throw new Error('Could not delete from database.');
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> has been permanently removed.`, confirmText: 'OK' });
+                        renderStaffManagement();
+                    } catch (e) { 
+                        await superModal({ title: '❌ Database Error', message: e.message, confirmText: 'Close' });
+                    }
                 }
             };
 
@@ -2286,68 +2234,45 @@
                 const password = pInput.value;
 
                 if (!username || password.length < 4) {
-                    return await superModal({
-                        title: '⚠️ Input Required',
-                        message: 'Please provide a username and a password (min. 4 characters).',
-                        confirmText: 'Got it'
-                    });
+                    return await superModal({ title: '⚠️ Input Required', message: 'Please provide a username and a password (min. 4 characters).', confirmText: 'Got it' });
                 }
 
-                const users = getAdminUsers();
-                if (users.some(u => u.username === username)) {
-                    return await superModal({
-                        title: '⚠️ Duplicate Username',
-                        message: `The username <b>${username}</b> is already taken.`,
-                        confirmText: 'Try Another'
-                    });
-                }
-
-                // Show Pincode Modal
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
                     message: `Enter Pincode to authorize the creation of a new staff account: <b>${username}</b>`,
-                    showInput: true,
-                    placeholder: 'Enter 6-digit pin',
-                    confirmText: 'Authorize Creation'
+                    showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Authorize Creation'
                 });
 
                 if (pin === "789456") {
                     const passwordHash = await sha256Hex(password);
+                    const btn = document.getElementById('create-staff-btn');
+                    btn.textContent = 'Saving to Cloud...';
+                    btn.disabled = true;
 
-                    let savedToCloud = false;
                     try {
+                        // 👉 FIX: Strictly await the database response!
                         const res = await fetch(`${API_BASE_URL}/api/staff`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username, passwordHash })
                         });
-                        if (res.ok) savedToCloud = true;
-                    } catch (e) { } // Ignore disconnect
+                        
+                        if (!res.ok) {
+                            const errData = await res.json().catch(()=>({}));
+                            throw new Error(errData.error || 'Server rejected the request.');
+                        }
 
-                    users.push({ username, passwordHash });
-                    localStorage.setItem('adminUsers', JSON.stringify(users));
+                        uInput.value = ''; pInput.value = '';
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> was securely saved to the cloud database!`, confirmText: 'Done' });
+                        renderStaffManagement(); // Instantly downloads the fresh list from the cloud
 
-                    uInput.value = '';
-                    pInput.value = '';
-
-                    const statCount = document.getElementById('stat-admins');
-                    if (statCount) statCount.textContent = users.length;
-
-                    let msg = `Staff account for <b>${username}</b> has been created successfully!`;
-                    if (savedToCloud) msg += " (Synced to Cloud)";
-
-                    await superModal({
-                        title: '✅ Success',
-                        message: msg,
-                        confirmText: 'Done'
-                    });
-                    renderStaffManagement();
-                } else if (pin !== null) {
-                    await superModal({
-                        title: '❌ Denied',
-                        message: 'Incorrect pincode. Staff creation aborted.',
-                        confirmText: 'Close'
-                    });
+                    } catch (e) { 
+                        // 👉 FIX: Alerts you if the database fails instead of silently breaking!
+                        await superModal({ title: '❌ Database Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
+                    } finally {
+                        btn.textContent = '+ Create Account';
+                        btn.disabled = false;
+                    }
                 }
             };
 
