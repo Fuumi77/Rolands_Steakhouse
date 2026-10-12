@@ -2468,6 +2468,21 @@ window.rejectReservation = async function (resNum) {
                         hour: '2-digit', minute: '2-digit', hour12: false
                     });
 
+                    // 👉 FIX: Push edited foods to the Cloud so it syncs to other devices!
+                    try {
+                        fetch(`${API_BASE_URL}/api/reservations/update-order`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                id: hist[idx].reservationNumber, 
+                                paymentAmount: hist[idx].paymentAmount,
+                                foods: hist[idx].foods,
+                                status: hist[idx].status || hist[idx].approvalStatus,
+                                kdsStatus: hist[idx].kdsStatus
+                            })
+                        });
+                    } catch(e) {}
+
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
                     if (window.showToast) {
                         window.showToast('✅ Reservation details updated successfully!', 'success', 3000);
