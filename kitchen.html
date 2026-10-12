@@ -219,22 +219,19 @@
                     let dbGenStatus = String(dbRes.status || '').toLowerCase().trim();
 
                     if (match) {
-                        // 👉 FIX: Anti-Bounce Shield! If we clicked a button less than 15 seconds ago, ignore the old cached cloud status!
+                        // 👉 THE SHIELD: Ignore the cloud if we clicked a button less than 15 seconds ago!
                         const isRecentlyModifiedHere = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
 
                         if (!isRecentlyModifiedHere) {
-                            // 1. Sync KDS Status
                             if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
                                 match.kdsStatus = dbRes.kdsStatus;
                                 updated = true;
                             }
-                            
-                            // 2. Sync Main Status
                             if (match.approvalStatus !== dbGenStatus) {
                                 match.approvalStatus = dbGenStatus;
                                 updated = true;
                             }
-                            
+                            // Auto-remove cancelled or completed orders
                             if (dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') {
                                 if (match.kdsStatus !== 'cancelled') { match.kdsStatus = 'cancelled'; updated = true; }
                             }
@@ -243,25 +240,7 @@
                             }
                         }
                     } else {
-                            match.kdsStatus = dbRes.kdsStatus;
-                            updated = true;
-                        }
-                        
-                        // 2. Sync Main Status
-                        if (match.approvalStatus !== dbGenStatus) {
-                            match.approvalStatus = dbGenStatus;
-                            updated = true;
-                        }
-                        
-                        // 👉 FIX: If the POS or Manager cancelled/completed the order, automatically clear it from the Kitchen!
-                        if (dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') {
-                            if (match.kdsStatus !== 'cancelled') { match.kdsStatus = 'cancelled'; updated = true; }
-                        }
-                        if (dbGenStatus === 'completed') {
-                            if (match.kdsStatus !== 'served') { match.kdsStatus = 'served'; updated = true; }
-                        }
-                    } else {
-                        // 👉 FIX: Prevent the Kitchen from downloading old ghost orders that are already finished!
+                        // 👉 THE GHOST KILLER: Prevent downloading finished orders on startup
                         if (dbGenStatus === 'completed' || dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') return;
 
                         localHistory.push({
