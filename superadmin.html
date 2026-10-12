@@ -337,6 +337,7 @@
                         <div class="stat-filter-switch" id="records-date-switch" style="display: flex; flex-wrap: wrap; gap: 4px; margin: 0;">
                             <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
                             <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
+                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('month', this)">This Month</button>
                             <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
                             <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
                         </div>
@@ -740,6 +741,20 @@
                     </div>
                 </div>
 
+                <!-- 👉 NEW: PAYMENT PROOF MODAL -->
+                <div id="proof-modal" class="hidden super-modal-overlay" style="z-index: 99999;">
+                    <div class="super-modal-box" style="max-width: 520px;">
+                        <div class="super-modal-header">
+                            <h3>🧾 Payment Proof Attachment</h3>
+                            <div class="close-btn" onclick="document.getElementById('proof-modal').classList.add('hidden')">&times;</div>
+                        </div>
+                        <div class="super-modal-body">
+                            <div id="proof-modal-info" style="margin-bottom:16px; font-size:14px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;"></div>
+                            <img id="proof-modal-img" src="" style="width:100%; border-radius:10px; border:1px solid #e2e8f0; display:none;">
+                            <div id="proof-modal-noimg" style="color:#aaa; font-style:italic; text-align:center; padding:20px;">No screenshot uploaded.</div>
+                        </div>
+                    </div>
+                </div>
                 <!-- OCR SCANNER MODAL -->
                 <div id="ocr-modal" class="hidden super-modal-overlay">
                     <div class="super-modal-box" style="max-width: 800px;">
@@ -1985,15 +2000,24 @@
                         <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
                         <td class="foods-cell"></td>
-                        <td>
-                            <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
-                            ${paymentBadge}
-                            ${refundBadge}
+                        <td class="payment-cell">
+                            <div style="color:${(r.refundStatus === 'refunded' \vert{}\vert{} r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            ${paymentBadge}${refundBadge}
                         </td>
                         <td>${statusHtml}</td>
                         <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">🗑️</button></td>
                     `;
 
+                    // 👉 NEW: Add "View Proof" Button to Manager Dashboard
+                    const paymentCell = tr.querySelector('.payment-cell');
+                    if (r.paymentProof || r.paymentRef) {
+                        const proofBtn = document.createElement('button');
+                        proofBtn.textContent = '🧾 View Proof';
+                        proofBtn.style.cssText = 'font-size:11px; padding:4px 8px; margin-top:8px; background:#e0f2fe; border:1px solid #7ec8e3; color:#0369a1; border-radius:6px; cursor:pointer; display:block; font-weight:700; width:100%; outline:none; box-shadow:none;';
+                        proofBtn.onclick = () => window.openProofModal(r);
+                        paymentCell.appendChild(proofBtn);
+                    }
+                    
                     const foodsCell = tr.querySelector('.foods-cell');
                     
                     // 👉 NEW: Smooth & Clean "See More" inline logic
@@ -2049,6 +2073,39 @@
                     historyTbody.appendChild(tr);
                 });
             }
+
+            // 👉 NEW: Global Function to Open Payment Proofs in Manager Dashboard
+            window.openProofModal = function (r) {
+                const modal = document.getElementById('proof-modal');
+                const img = document.getElementById('proof-modal-img');
+                const noImg = document.getElementById('proof-modal-noimg');
+                const info = document.getElementById('proof-modal-info');
+
+                const name = r.customerName || 'Guest';
+                const ref = r.paymentRef || '—';
+                const amount = `₱${Number(r.paymentAmount || 0).toLocaleString()}`;
+                const resNum = r.reservationNumber || '';
+
+                info.innerHTML = `
+                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                        <tr><td style="padding:5px 0; color:#888; width:120px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a;">${amount}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
+                    </table>
+                `;
+
+                if (r.paymentProof) {
+                    img.src = r.paymentProof;
+                    img.style.display = 'block';
+                    noImg.style.display = 'none';
+                } else {
+                    img.src = '';
+                    img.style.display = 'none';
+                    noImg.style.display = 'block';
+                }
+                modal.classList.remove('hidden');
+            };
 
             window.deleteRecord = async function (resNum) {
                 const confirmed = await superModal({ title: '🗑️ Delete Record?', message: `Permanently delete record <b>${resNum}</b>? This cannot be undone.`, type: 'confirm', confirmText: 'Delete', cancelText: 'Cancel' });
@@ -2128,6 +2185,12 @@
                         if (!recTime) matchDate = false;
                         else {
                             matchDate = (new Date(recTime).getFullYear() === now.getFullYear());
+                        }
+                    } else if (dateFilter === 'month') {
+                        if (!recTime) matchDate = false;
+                        else {
+                            const d = new Date(recTime);
+                            matchDate = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth());
                         }
                     }
 
