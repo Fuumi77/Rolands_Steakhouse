@@ -227,12 +227,24 @@
                 if (localHistory.length !== oldLength) updated = true;
 
                 dbReservations.forEach(dbRes => {
+                    // 👉 THE FIX: If the cloud stored 'cartItems' instead of 'foods', automatically rebuild the list!
+                    let cloudFoods = dbRes.foods || [];
+                    if (cloudFoods.length === 0 && dbRes.cartItems) {
+                        try {
+                            const parsed = typeof dbRes.cartItems === 'string' ? JSON.parse(dbRes.cartItems) : dbRes.cartItems;
+                            if (Array.isArray(parsed)) cloudFoods = parsed.map(i => `${i.quantity}x ${i.name || i.title}`);
+                        } catch(e) {}
+                    }
+
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
-                    
+
+                    // 👉 THE FIX: Stop merging wrong orders! Force it to match BOTH Table AND Customer Name!
                     if (!match) {
                         match = localHistory.find(local => {
+                            const localName = String(local.customerName).toLowerCase().trim();
+                            const dbName = String(dbRes.customerName).toLowerCase().trim();
                             const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
-                            return isTempId && local.bookedTable === dbRes.bookedTable;
+                            return isTempId && local.bookedTable === dbRes.bookedTable && localName === dbName;
                         });
                         if (match) {
                             match.reservationNumber = dbRes.reservationNumber; 
@@ -240,33 +252,51 @@
                         }
                     }
 
-                    let dbGenStatus = String(dbRes.status || '').toLowerCase().trim();
+                    let rawStatus = dbRes.status || 'Pending';
+                    let dbStatus = String(rawStatus).toLowerCase().trim();
+                    if (dbStatus === 'walk-in') dbStatus = 'approved';
 
                     if (match) {
-                        const isRecentlyModifiedHere = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
-
-                        if (!isRecentlyModifiedHere) {
-                            if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
-                                match.kdsStatus = dbRes.kdsStatus;
-                                updated = true;
-                            }
-                            if (match.approvalStatus !== dbGenStatus) {
-                                match.approvalStatus = dbGenStatus;
-                                updated = true;
-                            }
-                            // 👉 FIX: Aggressively pull foods list so the Kitchen never loses orders!
-                            if (JSON.stringify(match.foods) !== JSON.stringify(dbRes.foods || [])) {
-                                match.foods = dbRes.foods || [];
-                                updated = true;
-                            }
-                            if (dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') {
-                                if (match.kdsStatus !== 'cancelled') { match.kdsStatus = 'cancelled'; updated = true; }
-                            }
-                            if (dbGenStatus === 'completed') {
-                                if (match.kdsStatus !== 'served') { match.kdsStatus = 'served'; updated = true; }
-                            }
+                        if (match.customerName !== dbRes.customerName) {
+                            match.customerName = dbRes.customerName;
+                            updated = true;
                         }
+
+                        const isPending = dbStatus === 'pending';
+                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                            match.approvalStatus = dbStatus;
+                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
+                            if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
+                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
+                            updated = true;
+                        }
+                        
+                        // 👉 Apply the rebuilt foods list so the Kitchen never loses items!
+                        if (cloudFoods.length > 0 && JSON.stringify(match.foods) !== JSON.stringify(cloudFoods)) { 
+                            match.foods = cloudFoods; 
+                            updated = true; 
+                        }
+                        if (match.paymentAmount !== dbRes.paymentAmount) { 
+                            match.paymentAmount = dbRes.paymentAmount || 0; 
+                            updated = true; 
+                        }
+                        if (match.reservationType !== dbRes.reservationType) { 
+                            match.reservationType = dbRes.reservationType || 'standard'; 
+                            updated = true; 
+                        }
+
+                        if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
+                            match.kdsStatus = dbRes.kdsStatus;
+                            updated = true;
+                        }
+
+                        if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
+                            match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+
                     } else {
+                        // 👉 Assign the rebuilt foods list to completely new devices (like your phone)!
                         if (dbGenStatus === 'completed' || dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') return;
 
                         localHistory.push({
@@ -276,10 +306,15 @@
                             bookedTable: dbRes.bookedTable,
                             arrivalDate: dbRes.arrivalDate,
                             arrivalTime: dbRes.arrivalTime,
-                            approvalStatus: dbGenStatus,
+                            arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
+                            approvalStatus: dbStatus,
+                            paymentStatus: dbStatus === 'completed' ? 'paid' : 'pending',
                             kdsStatus: dbRes.kdsStatus || 'pending',
-                            foods: dbRes.foods || [],
-                            paymentAmount: dbRes.paymentAmount || 0
+                            completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
+                            createdAt: new Date().toISOString(),
+                            foods: cloudFoods, 
+                            paymentAmount: dbRes.paymentAmount || 0,
+                            bookedBy: dbRes.bookedBy 
                         });
                         updated = true;
                     }
