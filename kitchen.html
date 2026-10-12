@@ -197,17 +197,53 @@
             renderKitchenQueue(true);
         }
 
-        function initKitchen() {
-            renderKitchenQueue(true);
-            setInterval(() => renderKitchenQueue(true), 3000);
+        async function syncKitchenQueueFromCloud() {
+            try {
+                const res = await fetch(`https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=${Date.now()}`);
+                if (!res.ok) return;
+                const dbReservations = await res.json();
+                
+                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let updated = false;
+
+                dbReservations.forEach(dbRes => {
+                    let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
+                    if (match) {
+                        if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
+                            match.kdsStatus = dbRes.kdsStatus;
+                            updated = true;
+                        }
+                    } else {
+                        localHistory.push({
+                            reservationNumber: dbRes.reservationNumber,
+                            reservationType: dbRes.reservationType || 'standard',
+                            customerName: dbRes.customerName,
+                            bookedTable: dbRes.bookedTable,
+                            arrivalDate: dbRes.arrivalDate,
+                            arrivalTime: dbRes.arrivalTime,
+                            approvalStatus: dbRes.status || 'pending',
+                            kdsStatus: dbRes.kdsStatus || 'pending',
+                            foods: dbRes.foods || [],
+                            paymentAmount: dbRes.paymentAmount || 0
+                        });
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
+                    renderKitchenQueue(true);
+                }
+            } catch (e) {}
         }
 
-        function getReservationHistory() {
-            try {
-                return JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            } catch (e) {
-                return [];
-            }
+        function initKitchen() {
+            syncKitchenQueueFromCloud();
+            renderKitchenQueue(true);
+            setInterval(() => {
+                syncKitchenQueueFromCloud();
+                renderKitchenQueue(true);
+            }, 5000);
         }
 
         // Elapsed Minutes Timer Calculation
