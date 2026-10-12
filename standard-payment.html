@@ -120,13 +120,79 @@
         // ── Detect VIP or Standard ──
         const resType      = localStorage.getItem('reservationType') || 'standard';
         const isVip        = resType === 'vip';
-        const depositAmt   = isVip ? 1000 : 200;
+        
+        // 👉 FIX: Set Standard deposit to 0
+        const depositAmt   = isVip ? 1000 : 0; 
+        
         const customerName = localStorage.getItem('customerName') || 'Guest';
         const arrivalDate  = localStorage.getItem('arrivalDate') || '';
         const arrivalTime  = localStorage.getItem('arrivalTime') || '';
         const bookedTable  = localStorage.getItem('bookedTable') || 'TBD';
 
         const d = new Date(arrivalDate + 'T' + arrivalTime);
+        const displayDt = isNaN(d) ? arrivalDate + ' ' + arrivalTime : d.toLocaleString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        localStorage.setItem('arrivalDateTimeDisplay', displayDt);
+
+        // 👉 FIX: Automatically process Standard Reservations for FREE and bypass this page entirely!
+        if (!isVip) {
+            // Hide the payment UI while it processes
+            document.body.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; flex-direction:column;"><div class="spinner" style="margin-bottom:20px; width:40px; height:40px; border-color:#1b5e20; border-right-color:transparent;"></div><h2 style="color:#1b5e20;">Confirming your reservation...</h2></div>';
+            
+            async function autoProcessStandard() {
+                try {
+                    const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: customerName,
+                            email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                            date: arrivalDate,
+                            time: arrivalTime,
+                            table: bookedTable,
+                            cartItems: [], 
+                            status: 'Pending',
+                            reservationType: 'standard',
+                            paymentAmount: 0,
+                            foods: []
+                        })
+                    });
+                    const dbData = await dbRes.json();
+                    const resNo = 'RES-' + dbData.reservationId;
+                    
+                    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                    hist.push({
+                        reservationNumber:      resNo,
+                        reservationType:        'standard',
+                        arrivalDate:            arrivalDate, 
+                        arrivalTime:            arrivalTime,
+                        arrivalDateTimeDisplay: displayDt,
+                        customerName:           customerName, 
+                        bookedTable:            bookedTable,
+                        orderSummary:           'Standard Reservation',
+                        foods:                  [],
+                        paymentAmount:          0,
+                        paymentRef:             '',
+                        paymentProof:           '',
+                        paymentStatus:          'verified', // Auto-verified since it's free!
+                        paymentMethod:          'none',
+                        createdAt:              new Date().toISOString()
+                    });
+                    
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                    localStorage.setItem('reservationNumber', resNo);
+                    
+                    // Route directly to the success page!
+                    window.location.href = 'payment-success.html?resno=' + resNo;
+                } catch (e) {
+                    alert("Database connection failed. Please try again.");
+                    window.location.href = 'seat-selection.html';
+                }
+            }
+            autoProcessStandard();
+        }
         const displayDt = isNaN(d) ? arrivalDate + ' ' + arrivalTime : d.toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: false
