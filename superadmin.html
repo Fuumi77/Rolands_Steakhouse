@@ -2001,7 +2001,7 @@
                         <td>${typePill}</td>
                         <td class="foods-cell"></td>
                         <td class="payment-cell">
-                            <div style="color:${(r.refundStatus === 'refunded' \vert{}\vert{} r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             ${paymentBadge}${refundBadge}
                         </td>
                         <td>${statusHtml}</td>
