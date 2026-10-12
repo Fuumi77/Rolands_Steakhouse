@@ -1130,16 +1130,22 @@
                     
                     if (existingRes.completedAt) delete existingRes.completedAt;
 
-                    // Force the Live MySQL Database to permanently lock this as 'Seated'
+                    // 👉 FIX: Send the FULL updated order (foods, payment, status) to the Live MySQL Database!
                     try {
                         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
-                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                        await fetch(`${API_BASE_URL}/api/reservations/update-order`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: existingRes.reservationNumber, status: 'Seated' })
+                            body: JSON.stringify({ 
+                                id: existingRes.reservationNumber, 
+                                status: 'Seated',
+                                kdsStatus: 'pending',
+                                paymentAmount: totalAmt,
+                                foods: orderList 
+                            })
                         });
                     } catch (e) {
-                        console.error('Failed to sync seated status to DB:', e);
+                        console.error('Failed to sync updated order to DB:', e);
                     }
                 } else {
                     const reservation = {
