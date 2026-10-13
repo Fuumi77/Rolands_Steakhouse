@@ -499,6 +499,21 @@ app.post('/api/memory/table-overrides', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 7. Cloud Live Chat Sync Engine
+app.get('/api/memory/live-chats', async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'liveChats'");
+        res.json(rows.length ? rows[0].mem_val : {});
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/memory/live-chats', async (req, res) => {
+    try {
+        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('liveChats', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(req.body), JSON.stringify(req.body)]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /* 👉 NEW: DELETE ALL RECORDS ROUTE */
 app.delete('/api/reservations/all', async (req, res) => {
     try {
