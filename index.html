@@ -120,7 +120,7 @@
         header#main-header .logo img {
             max-height: 90px !important;
             width: auto !important;
-            transform: scale(1.6); /* 🔍 Zooms the logo up by 60% */
+            transform: scale(1.7); /* 🔍 Zooms the logo up by 60% */
             transform-origin: left center; /* Keeps it anchored to the left on laptops */
             transition: all 0.3s ease;
         }
@@ -128,7 +128,7 @@
         @media (max-width: 768px) {
             header#main-header .logo img {
                 max-height: 70px !important; 
-                transform: scale(1.7); /* 🔍 Zooms the logo up by 50% on phones */
+                transform: scale(1.8); /* 🔍 Zooms the logo up by 50% on phones */
                 transform-origin: center center; /* Anchors it to the center for stacked mobile view */
                 margin-top: 15px !important;
                 margin-bottom: 5px !important;
@@ -138,6 +138,67 @@
             from { opacity: 0; transform: scale(0.96) translateY(8px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
+        /* 👉 FIX 1: Elegant Form Styling to match the screenshot */
+        #login-area.login-prompt {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .login-info { display: flex; flex-direction: column; gap: 4px; }
+        .muted-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .active-user { font-size: 14px; font-weight: 800; color: #1b5e20; }
+        .login-actions { display: flex; gap: 8px; }
+        .login-btn-small { padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .login-btn-small.outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
+        .login-btn-small:not(.outline) { background: #1b5e20; border: 1px solid #1b5e20; color: white; }
+
+        #booking-form .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        #booking-form input, #booking-form select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            color: #1e293b;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #booking-form input:focus, #booking-form select:focus { border-color: #1b5e20; }
+        #booking-form .phone-input-group { display: flex; }
+        #booking-form .phone-prefix {
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        #booking-form .phone-input-group input { border-radius: 0 8px 8px 0; }
+        #booking-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        #booking-form .form-group { margin-bottom: 16px; }
+        #booking-form .submit-booking-btn {
+            width: 100%; background: #1b5e20; color: white; border: none; padding: 14px;
+            border-radius: 10px; font-size: 14.5px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(27, 94, 32, 0.25); transition: transform 0.2s; margin-top: 8px;
+        }
+        #booking-form .submit-booking-btn:hover { transform: translateY(-2px); }
     </style>
 </head>
 
@@ -480,16 +541,19 @@
                 const cleanEmail = (email || '').trim();
 
                 if (cleanName || cleanEmail) {
-                    // Show email as the account identifier; leave Full Name blank for the customer to type
                     loggedInLabel.textContent = cleanEmail || cleanName;
-                    nameInput.value = ''; // Do NOT auto-fill — customer types their own name
+                    nameInput.value = ''; 
                     logoutBtn.disabled = false;
+                    logoutBtn.style.display = 'inline-block'; // 👉 Show Logout
                     goLoginPageBtn.disabled = true;
+                    goLoginPageBtn.style.display = 'none'; // 👉 Hide Login
                 } else {
                     loggedInLabel.textContent = 'Guest';
                     nameInput.value = '';
                     logoutBtn.disabled = true;
+                    logoutBtn.style.display = 'none'; // 👉 FIX 2: Hide Logout for Guests
                     goLoginPageBtn.disabled = false;
+                    goLoginPageBtn.style.display = 'inline-block'; // 👉 Show Login
                 }
             };
 
@@ -505,29 +569,9 @@
                 window.location.href = "login.html";
             });
         })();
-        // 👉 NEW: Auto-refill the form if the user clicked "Go Back" from seat selection
-        (function restoreFormState() {
-            const savedName = localStorage.getItem('customerName');
-            const savedEmail = localStorage.getItem('customerEmail');
-            const savedPhone = localStorage.getItem('customerPhone');
-            const savedDate = localStorage.getItem('arrivalDate');
-            const savedTime = localStorage.getItem('arrivalTime');
-            const savedParty = localStorage.getItem('partySize');
 
-            if (savedName) document.getElementById('customer-name-input').value = savedName;
-            if (savedEmail) document.getElementById('customer-email-input').value = savedEmail;
-            if (savedPhone) {
-                const phoneInput = document.querySelector('input[type="tel"]');
-                if (phoneInput) phoneInput.value = savedPhone;
-            }
-            if (savedParty) document.getElementById('party-size-select').value = savedParty;
-            
-            if (savedDate) {
-                document.getElementById('arrival-date-input').value = savedDate;
-                // Force the date logic to run so the time bounds sync correctly
-                document.getElementById('arrival-date-input').dispatchEvent(new Event('change'));
-                if (savedTime) document.getElementById('arrival-time-input').value = savedTime;
-            }
+        (function restoreFormState() {
+            // Intentionally left blank.
         })();
 
         (function initMenuGestures() {
