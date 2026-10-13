@@ -127,6 +127,102 @@ app.post('/api/send-receipt', emailLimiter, async (req, res) => {
 });
 
 /* AUTH ROUTES */
+// 👉 NEW: Helper function to generate 6-digit OTP codes
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// 1. Send OTP Code for New Account Signups
+app.post('/api/auth/send-signup-code', emailLimiter, async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+
+    try {
+        const [existing] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ?', [email]);
+        if (existing.length > 0) return res.json({ success: false, error: 'An account with this email already exists.' });
+
+        const code = generateOTP();
+        tempCodes[email] = { code, expires: Date.now() + 10 * 60 * 1000 }; // 10 minute expiry
+
+        try {
+            await transporter.sendMail({
+                from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: 'Your Roland\'s Steakhouse Verification Code',
+                html: `<h2>Welcome to Roland's!</h2><p>Your verification code is: <strong style="font-size:24px; color:#1b5e20;">${code}</strong></p><p>This code expires in 10 minutes.</p>`
+            });
+            res.json({ success: true });
+        } catch (error) {
+            console.log(`[DEV MODE] Email failed to send. The code for ${email} is: ${code}`);
+            res.json({ success: true, warning: 'Check Vercel Logs for the code if email is not configured.' });
+        }
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
+// 2. Verify the 6-digit OTP Code
+app.post('/api/auth/verify-code', authLimiter, (req, res) => {
+    const { email, code } = req.body;
+    const record = tempCodes[email];
+
+    if (!record) return res.json({ success: false, error: 'No verification code requested or code has expired.' });
+    if (Date.now() > record.expires) {
+        delete tempCodes[email];
+        return res.json({ success: false, error: 'Code expired. Please request a new one.' });
+    }
+    if (record.code !== code) return res.json({ success: false, error: 'Invalid verification code.' });
+
+    delete tempCodes[email]; // Consume code upon success
+    res.json({ success: true });
+});
+
+// 3. Create the actual Customer Account in the Database
+app.post('/signup', authLimiter, async (req, res) => {
+    const { name, email, password } = req.body;
+    try {
+        const [existing] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ?', [email]);
+        if (existing.length > 0) return res.status(400).json({ success: false, error: 'Email already exists' });
+
+        await db.query('INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)', [name, email, password]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
+// 4. Send OTP Code for Forgot Password
+app.post('/api/auth/send-code', emailLimiter, async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+
+    try {
+        const [existing] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ?', [email]);
+        if (existing.length === 0) return res.json({ success: false, error: 'No account found with that email address.' });
+
+        const code = generateOTP();
+        tempCodes[email] = { code, expires: Date.now() + 10 * 60 * 1000 };
+
+        try {
+            await transporter.sendMail({
+                from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: 'Password Reset Code - Roland\'s Steakhouse',
+                html: `<h2>Password Reset</h2><p>Your password reset code is: <strong style="font-size:24px; color:#1b5e20;">${code}</strong></p><p>This code expires in 10 minutes.</p>`
+            });
+            res.json({ success: true });
+        } catch (error) {
+            console.log(`[DEV MODE] Email failed to send. The reset code for ${email} is: ${code}`);
+            res.json({ success: true, warning: 'Check Vercel Logs for the code if email is not configured.' });
+        }
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
+// 5. Update Password in the Database
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        await db.query('UPDATE customer_credentials SET password_hash = ? WHERE email = ?', [password, email]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
 app.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
