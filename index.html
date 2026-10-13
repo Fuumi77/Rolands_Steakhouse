@@ -189,9 +189,29 @@
             font-size: 14px;
             font-weight: 600;
             color: #64748b;
+            display: flex;
+            align-items: center;
         }
-        #booking-form .phone-input-group input { border-radius: 0 8px 8px 0; }
-        #booking-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        #booking-form .phone-input-group input { 
+            border-radius: 0 8px 8px 0; 
+            flex: 1; /* 👉 FIX: Forces the phone input to fill the remaining space */
+            min-width: 0; 
+        }
+        #booking-form .form-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 16px; 
+            margin-bottom: 16px; 
+        }
+        
+        /* 👉 FIX: On mobile phones, stack the inputs top-to-bottom so they don't squish! */
+        @media (max-width: 600px) {
+            #booking-form .form-row { 
+                grid-template-columns: 1fr !important; 
+                gap: 12px !important;
+            }
+        }
+        
         #booking-form .form-group { margin-bottom: 16px; }
         #booking-form .submit-booking-btn {
             width: 100%; background: #1b5e20; color: white; border: none; padding: 14px;
@@ -371,7 +391,10 @@
                     </div>
 
                     <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>→</span></button>
-                    <div style="text-align:center; margin-top:14px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif;">Already have a reservation? <a href="javascript:void(0)" onclick="openManageBookingModal(); closeReservationModal();" style="color:#1b5e20; font-weight:700; text-decoration:underline; cursor:pointer;">Manage or Cancel Booking</a></div>
+                    <div style="text-align:center; margin-top:16px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif; line-height:1.6;">
+                        Already have a reservation?<br>
+                        <a href="javascript:void(0)" onclick="openManageBookingModal(); closeReservationModal();" style="color:#1b5e20; font-weight:700; text-decoration:underline; cursor:pointer;">Manage or Cancel Booking</a>
+                    </div>
                 </form>
             </div>
         </div>
