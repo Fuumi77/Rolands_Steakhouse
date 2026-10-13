@@ -105,7 +105,7 @@
         /* 👉 FIX 1: Kill the horizontal scroll white-space bug globally */
         html, body {
             overflow-x: hidden !important;
-            width: 100vw !important;
+            width: 100% !important; /* 👉 FIX: Switched to 100% to prevent scrollbar overlap */
             margin: 0 !important;
             padding: 0 !important;
         }
@@ -2346,6 +2346,7 @@
         window.closeReservationModal = function() {
             document.getElementById('reservation-modal-overlay').style.display = 'none';
         };
+    </script>
         
     <!-- 👤 CUSTOMER PROFILE MODAL -->
     <div id="profile-modal-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;" onclick="if(event.target === this) closeProfileModal()">
