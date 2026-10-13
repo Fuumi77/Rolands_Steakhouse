@@ -52,13 +52,15 @@
             box-shadow: 0 0 6px #22c55e;
             display: inline-block;
         }
-        /* 👉 FIX: Lock the header flex container so logo and nav are perfectly centered from load */
+        /* 👉 FIX: Responsive Header Lock (Stops mobile overstretching) */
         header#main-header, header {
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
+            max-width: 100vw !important; /* Strictly prevents horizontal scroll bugs */
             box-sizing: border-box !important;
+            flex-wrap: wrap !important; /* Allows items to stack if they run out of space */
         }
 
         header#main-header .logo {
@@ -69,7 +71,29 @@
         header#main-header nav ul {
             display: flex !important;
             align-items: center !important;
-            margin-right: 0 !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important; /* Lets links wrap to a second line instead of stretching */
+            margin: 0 !important;
+            padding: 0 !important;
+            gap: 12px !important;
+        }
+
+        /* Mobile Layout: Stack logo on top, menu below */
+        @media (max-width: 768px) {
+            header#main-header, header {
+                flex-direction: column !important;
+                justify-content: center !important;
+                gap: 12px !important;
+                padding: 15px !important;
+            }
+            header#main-header nav ul li a.nav-link {
+                font-size: 13px !important; /* Shrinks text slightly to fit phone screens cleanly */
+                padding: 4px 6px !important;
+            }
+            header#main-header nav ul li a.nav-manage-pill {
+                font-size: 12px !important;
+                padding: 6px 12px !important;
+            }
         }
         @keyframes luxuryModalIn {
             from { opacity: 0; transform: scale(0.96) translateY(8px); }
