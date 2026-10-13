@@ -919,7 +919,7 @@
             if (!allChats[sId]) allChats[sId] = [];
 
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-            let cName = localStorage.getItem('customerName') || 'Guest';
+            let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
             if (guestRes && guestRes.reservationNumber) {
                 const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
                 cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
@@ -954,7 +954,7 @@
                 if (!allChats[sId]) allChats[sId] = [];
 
                 const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-                let cName = localStorage.getItem('customerName') || 'Guest';
+                let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
                 if (guestRes && guestRes.reservationNumber) {
                     const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
                     cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
@@ -1172,7 +1172,7 @@
 
         function checkActiveReservation() {
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const cName = localStorage.getItem('customerName');
+            const cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName');
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
             const resInfo = document.getElementById('chatResInfo');
             if (!resInfo) return;
@@ -1259,7 +1259,7 @@
         function loadChatMessages() {
             const sId = getChatId();
             const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            const cName = localStorage.getItem('customerName');
+            const cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName');
 
             // Bring in any orphaned messages created by the Admin for this customer
             if (cName) {
