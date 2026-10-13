@@ -585,8 +585,10 @@
             <!-- LIVE CHAT TAB -->
             <div id="tab-chat" class="admin-tab-content hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h2 style="margin:0; font-family: 'Playfair Display', serif; color: #2e7d32; font-size: 26px;">Live
-                        Customer Support</h2>
+                    <h2 style="margin:0; font-family: 'Playfair Display', serif; color: #2e7d32; font-size: 26px;">Live Customer Support</h2>
+                    <button type="button" onclick="window.clearAllChats()" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:800; cursor:pointer; font-size:12px; box-shadow:0 2px 6px rgba(239,68,68,0.2);">
+                        🗑️ Clear All Chats
+                    </button>
                 </div>
                 <div class="chat-layout">
                     <div class="chat-sidebar" id="adminChatList"></div>
@@ -3645,6 +3647,22 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const listEl = document.getElementById('adminChatList');
                 if (listEl) {
                     // Chat list will be re-rendered on next poll
+                }
+            };
+            
+            window.clearAllChats = async function() {
+                if (confirm("🚨 Are you sure you want to permanently delete all active customer chats?")) {
+                    localStorage.setItem('liveChats', '{}');
+                    document.getElementById('adminChatMain').innerHTML = '<div class="chat-empty-state">All chats cleared. Select a new chat on the left.</div>';
+                    
+                    // 👉 Wipes the live cloud database clean
+                    await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({}) 
+                    }).catch(()=>{});
+                    
+                    renderAdminChats();
                 }
             };
 
