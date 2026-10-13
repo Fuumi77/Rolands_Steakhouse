@@ -897,16 +897,11 @@
                 bubbleIcon.textContent = panel.classList.contains('active') ? '✕' : '💬';
             }
             if (panel.classList.contains('active')) {
-                const isLoggedIn = !!localStorage.getItem('loggedInUserName');
-                const guestRes = !!sessionStorage.getItem('guestChatRes');
-                if (!isLoggedIn && !guestRes) {
-                    renderChatLoginGate();
-                } else {
-                    document.getElementById('chatResInfo').style.display = 'block';
-                    document.getElementById('chatFooter').style.display = 'flex'; // 👉 FIX: Forces the footer to show!
-                    loadChatMessages();
-                    checkActiveReservation();
-                }
+                // 👉 FIX: Completely bypass the login gate and ALWAYS show the chat bar!
+                document.getElementById('chatResInfo').style.display = 'block';
+                document.getElementById('chatFooter').style.display = 'flex'; 
+                loadChatMessages();
+                checkActiveReservation();
             }
         }
         
@@ -1020,12 +1015,8 @@
                     }
                 } catch(e) {}
                 
-                // Only reload UI if NOT in login gate
-                const isLoggedIn = !!localStorage.getItem('loggedInUserName');
-                const guestRes = !!sessionStorage.getItem('guestChatRes');
-                if (isLoggedIn || guestRes) {
-                    loadChatMessages();
-                }
+                // 👉 FIX: Always refresh the chat UI so guests can see incoming replies instantly!
+                loadChatMessages();
             }
         }, 3000);
 
