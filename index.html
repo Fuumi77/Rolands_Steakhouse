@@ -2405,7 +2405,28 @@
     </div>
 
     <script>
-        window.openProfileModal = function() {
+        // 👉 NEW: Profile Modal with Guest Lock
+        window.openProfileModal = async function() {
+            const isLoggedIn = localStorage.getItem('loggedInUserName') || localStorage.getItem('loggedInUserEmail');
+            
+            // If they are a GUEST, block access and show the message!
+            if (!isLoggedIn) {
+                const goToLogin = await superModal({
+                    title: 'Account Required 🔒',
+                    message: 'To view your complete reservation history, manage your security settings, and unlock exclusive dining privileges, please create a free account or sign in.',
+                    type: 'confirm',
+                    confirmText: 'Sign Up / Log In',
+                    cancelText: 'Maybe Later'
+                });
+                
+                // If they click confirm, send them to the login/signup page
+                if (goToLogin) {
+                    window.location.href = 'login.html';
+                }
+                return; // Stop the profile from opening
+            }
+
+            // If logged in, open the profile normally
             document.getElementById('profile-modal-overlay').style.display = 'flex';
             const cName = localStorage.getItem('loggedInUserName') || '';
             document.getElementById('profile-greet-name').textContent = 'Hi, ' + (cName ? cName.split(' ')[0] : 'Guest') + '!';
@@ -2533,8 +2554,17 @@
             if (typeof superModal === 'function') {
                 superModal({ title: 'Logged Out', message: 'You have successfully signed out of your account.' });
             } else {
-                alert('You have successfully signed out.');
-            }
+                    loggedInLabel.textContent = 'Guest';
+                    nameInput.value = '';
+                    logoutBtn.disabled = true;
+                    logoutBtn.style.display = 'none'; 
+                    goLoginPageBtn.disabled = false;
+                    goLoginPageBtn.style.display = 'inline-block'; 
+                    
+                    // 👉 FIX: Make Profile button visible to guests so they can click it and see the lock message!
+                    if (profBtn) profBtn.style.display = 'inline-flex';
+                    if (profName) profName.textContent = 'Profile';
+                }
         };
     </script>
 </body>
