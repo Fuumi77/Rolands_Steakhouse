@@ -1115,6 +1115,8 @@
 
         window.exitGuestChat = function() {
             sessionStorage.removeItem('guestChatRes');
+            localStorage.removeItem('customerName'); // 👉 FIX: Kills the stuck ghost name!
+            localStorage.removeItem('chatSessionId'); // 👉 FIX: Severs the old chat connection!
             renderChatLoginGate();
         };
 
@@ -2507,21 +2509,23 @@
         };
 
         window.executeProfileLogout = async function() {
-            // 1. Wipe the memory
+            // 1. Wipe ALL memory (including old ghost guest names!)
             localStorage.removeItem('loggedInUserName');
             localStorage.removeItem('loggedInUserEmail');
+            localStorage.removeItem('customerName'); // 👉 FIX: Wipe the offline form name!
+            localStorage.removeItem('chatSessionId'); // 👉 FIX: Sever the old chat connection!
+            sessionStorage.removeItem('guestChatRes');
             
-            // 2. Close the modal
             closeProfileModal();
             
-            // 3. Show the success popup first and wait for the user to click "OK"
+            // 2. Show the success popup
             if (typeof superModal === 'function') {
                 await superModal({ title: 'Logged Out 👋', message: 'You have successfully signed out of your account.' });
             } else {
                 alert('You have successfully signed out.');
             }
             
-            // 4. Force a clean page reload to instantly wipe the name from the header!
+            // 3. Force a clean page reload
             window.location.reload();
         };
     </script>
