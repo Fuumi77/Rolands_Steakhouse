@@ -903,16 +903,94 @@
                     renderChatLoginGate();
                 } else {
                     renderChatContent();
-                    // 👉 FIX 1: Respect the current tab view when reopening chat
-                    if (_currentChatView === 'chat') {
-                        loadChatMessages();
-                    } else {
-                        showReservationHistory();
-                    }
+                    loadChatMessages();
                     checkActiveReservation();
                 }
             }
         }
+        
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const sId = getChatId();
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            if (!allChats[sId]) allChats[sId] = [];
+
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            let cName = localStorage.getItem('customerName') || 'Guest';
+            if (guestRes && guestRes.reservationNumber) {
+                const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
+                cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
+            }
+
+            allChats[sId].push({
+                sender: 'customer',
+                name: cName,
+                text: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            localStorage.setItem('liveChats', JSON.stringify(allChats));
+            
+            // 👉 NEW: Send instantly to the live database!
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+
+            input.value = '';
+            loadChatMessages();
+        }
+
+        function sendChatPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const b64 = e.target.result;
+                const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
+
+                const sId = getChatId();
+                const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                if (!allChats[sId]) allChats[sId] = [];
+
+                const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+                let cName = localStorage.getItem('customerName') || 'Guest';
+                if (guestRes && guestRes.reservationNumber) {
+                    const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
+                    cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
+                }
+
+                allChats[sId].push({
+                    sender: 'customer',
+                    name: cName,
+                    text: txt,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+
+                localStorage.setItem('liveChats', JSON.stringify(allChats));
+                
+                // 👉 NEW: Send photo instantly to the live database!
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+
+                loadChatMessages();
+                input.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 👉 NEW: Aggressively download new chat messages from the cloud every 3 seconds!
+        setInterval(async () => {
+            if (document.getElementById('chatPanel').classList.contains('active')) {
+                try {
+                    const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats');
+                    if (res.ok) {
+                        const cloudChats = await res.json();
+                        if (Object.keys(cloudChats).length > 0) localStorage.setItem('liveChats', JSON.stringify(cloudChats));
+                    }
+                } catch(e) {}
+                loadChatMessages();
+            }
+        }, 3000);
 
         function renderChatLoginGate() {
             const body = document.getElementById('chatBody');
@@ -1698,29 +1776,6 @@
                 <button class="chat-close" onclick="toggleChat()">×</button>
             </div>
             <div class="chat-res-info" id="chatResInfo" style="cursor:default;">Loading reservation...</div>
-
-            <!-- Tab bar -->
-            <div id="chatTabBar" style="
-                display: flex;
-                border-bottom: 1.5px solid #e2e8f0;
-                background: #f8fafc;
-                flex-shrink: 0;
-            ">
-                <button id="tabChat" onclick="switchChatTab('chat')" style="
-                    flex:1; padding:9px 4px; font-size:12px; font-weight:700;
-                    font-family:'Roboto',sans-serif; border:none; cursor:pointer;
-                    background:transparent; color:#1b5e20;
-                    border-bottom: 2.5px solid #1b5e20;
-                    transition: background 0.15s;
-                ">💬 Chat</button>
-                <button id="tabHistory" onclick="switchChatTab('history')" style="
-                    flex:1; padding:9px 4px; font-size:12px; font-weight:700;
-                    font-family:'Roboto',sans-serif; border:none; cursor:pointer;
-                    background:transparent; color:#94a3b8;
-                    border-bottom: 2.5px solid transparent;
-                    transition: background 0.15s;
-                ">📋 My Reservations</button>
-            </div>
 
             <div class="chat-body" id="chatBody">
                 <div class="chat-msg staff">
