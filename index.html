@@ -594,10 +594,11 @@
             applyLoginState(storedName, storedEmail);
 
             logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('loggedInUserName');
-                localStorage.removeItem('loggedInUserEmail');
-                applyLoginState('', '');
-            });
+            localStorage.removeItem('loggedInUserName');
+            localStorage.removeItem('loggedInUserEmail');
+            localStorage.removeItem('chatSessionId'); // ← ADD THIS
+            applyLoginState('', '');
+        });
 
             goLoginPageBtn.addEventListener('click', () => {
                 window.location.href = "login.html";
