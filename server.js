@@ -223,6 +223,18 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
 
+// 6. Change Password (Inside Profile)
+app.post('/api/auth/change-password', authLimiter, async (req, res) => {
+    const { email, currentPassword, newPassword } = req.body;
+    try {
+        const [users] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ? AND password_hash = ?', [email, currentPassword]);
+        if (users.length === 0) return res.json({ success: false, error: 'Incorrect current password.' });
+        
+        await db.query('UPDATE customer_credentials SET password_hash = ? WHERE email = ?', [newPassword, email]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
 app.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
