@@ -233,8 +233,8 @@
                 <li><a href="#location" class="nav-link">Location</a></li>
                 <li><a href="#menu" class="nav-link">Menu</a></li>
                 <li><a href="javascript:void(0)" onclick="openManageBookingModal()" class="nav-manage-pill"><span class="pill-dot"></span><span>My Booking</span></a></li>
-                <!-- 👉 NEW: Profile Button (Hidden by default until logged in) -->
-                <li><a href="javascript:void(0)" id="header-profile-btn" onclick="openProfileModal()" class="nav-manage-pill" style="display:none; background:#1b5e20; color:white; border-color:#1b5e20;"><span class="pill-dot" style="background:#fff; box-shadow:none;"></span><span id="header-profile-name">Profile</span></a></li>
+                    <!-- 👉 NEW: Profile Button (Hidden by default until logged in) -->
+                <li><a href="javascript:void(0)" id="header-profile-btn" onclick="openProfileModal()" class="nav-manage-pill" style="display:none; background:#1b5e20; color:white; border-color:#1b5e20;"><span style="font-size:16px; margin-top:-2px;">☰</span><span id="header-profile-name">Profile</span></a></li>
             </ul>
         </nav>
     </header>
@@ -2506,25 +2506,23 @@
             }
         };
 
-        window.executeProfileLogout = function() {
+        window.executeProfileLogout = async function() {
+            // 1. Wipe the memory
             localStorage.removeItem('loggedInUserName');
             localStorage.removeItem('loggedInUserEmail');
-            if (typeof applyLoginState === 'function') applyLoginState('', '');
+            
+            // 2. Close the modal
             closeProfileModal();
+            
+            // 3. Show the success popup first and wait for the user to click "OK"
             if (typeof superModal === 'function') {
-                superModal({ title: 'Logged Out', message: 'You have successfully signed out of your account.' });
+                await superModal({ title: 'Logged Out 👋', message: 'You have successfully signed out of your account.' });
             } else {
-                    loggedInLabel.textContent = 'Guest';
-                    nameInput.value = '';
-                    logoutBtn.disabled = true;
-                    logoutBtn.style.display = 'none'; 
-                    goLoginPageBtn.disabled = false;
-                    goLoginPageBtn.style.display = 'inline-block'; 
-                    
-                    // 👉 FIX: Make Profile button visible to guests so they can click it and see the lock message!
-                    if (profBtn) profBtn.style.display = 'inline-flex';
-                    if (profName) profName.textContent = 'Profile';
-                }
+                alert('You have successfully signed out.');
+            }
+            
+            // 4. Force a clean page reload to instantly wipe the name from the header!
+            window.location.reload();
         };
     </script>
 </body>
