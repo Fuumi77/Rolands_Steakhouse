@@ -3665,6 +3665,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 });
 
                 localStorage.setItem('liveChats', JSON.stringify(allChats));
+                // 👉 NEW: Send response to the Cloud instantly
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+                
                 input.value = '';
                 selectAdminChat(window.currentActiveChat, false);
             };
@@ -3688,6 +3691,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     });
 
                     localStorage.setItem('liveChats', JSON.stringify(allChats));
+                    // 👉 NEW: Send photo to the Cloud instantly
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+                    
                     input.value = '';
                     selectAdminChat(window.currentActiveChat, false);
                 };
@@ -3818,13 +3824,23 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             
             // Bind pollers
             if (!window.isPollingActive) {
-                setInterval(() => {
+                setInterval(async () => {
                     syncReservations();
                     renderFloorPlan();
+                    
+                    // 👉 NEW: Download Live Chats from Cloud!
+                    try {
+                        const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats');
+                        if(res.ok) {
+                            const cloudChats = await res.json();
+                            if(Object.keys(cloudChats).length > 0) localStorage.setItem('liveChats', JSON.stringify(cloudChats));
+                        }
+                    } catch(e){}
                     renderAdminChats();
+                    
                     renderPayments();
                     renderPromosAdmin();
-                }, 10000); // 👉 FIX: Syncs every 5 seconds instead of 60!
+                }, 5000); // 👉 Dropped to 5s so chats feel highly responsive!
                 window.isPollingActive = true;
                 
                 syncReservations(); 
