@@ -594,11 +594,11 @@
             applyLoginState(storedName, storedEmail);
 
             logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('loggedInUserName');
-            localStorage.removeItem('loggedInUserEmail');
-            localStorage.removeItem('chatSessionId'); // ← ADD THIS
-            applyLoginState('', '');
-        });
+                localStorage.removeItem('loggedInUserName');
+                localStorage.removeItem('loggedInUserEmail');
+                localStorage.removeItem('chatSessionId');
+                applyLoginState('', '');
+            });
 
             goLoginPageBtn.addEventListener('click', () => {
                 window.location.href = "login.html";
@@ -907,6 +907,15 @@
         }
         
         function getChatId() {
+            // If the user is logged in, use their email as a stable ID so the
+            // same account always maps to the same chat session across devices.
+            const email = localStorage.getItem('loggedInUserEmail');
+            if (email) {
+                const accountId = 'acct_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+                localStorage.setItem('chatSessionId', accountId);
+                return accountId;
+            }
+            // Guests get a random per-device session.
             let id = localStorage.getItem('chatSessionId');
             if (!id) {
                 id = 'session_' + Math.random().toString(36).substr(2, 9);
@@ -917,22 +926,36 @@
 
         function loadChatMessages() {
             const sId = getChatId();
-            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            const myChat = allChats[sId] || [];
             const body = document.getElementById('chatBody');
 
-            body.innerHTML = `<div class="chat-msg staff">
+            const renderMessages = (allChats) => {
+                const myChat = allChats[sId] || [];
+                body.innerHTML = `<div class="chat-msg staff">
                 Hello! How can we help you today?
                 <div class="chat-msg-time">System</div>
             </div>`;
+                myChat.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
+                    div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
+                    body.appendChild(div);
+                });
+                body.scrollTop = body.scrollHeight;
+            };
 
-            myChat.forEach(m => {
-                const div = document.createElement('div');
-                div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
-                div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
-                body.appendChild(div);
-            });
-            body.scrollTop = body.scrollHeight;
+            // Try fetching from the cloud first for cross-device sync.
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats')
+                .then(r => r.json())
+                .then(allChats => {
+                    // Keep localStorage in sync with the latest cloud data.
+                    localStorage.setItem('liveChats', JSON.stringify(allChats));
+                    renderMessages(allChats);
+                })
+                .catch(() => {
+                    // Offline fallback: use whatever is cached in localStorage.
+                    const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                    renderMessages(allChats);
+                });
         }
 
         function sendChatMessage() {
