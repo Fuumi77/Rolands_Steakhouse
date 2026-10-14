@@ -551,6 +551,28 @@
             window.location.href = "seat-selection.html";
         }
 
+        window.syncBookingFormAutofill = function() {
+            const storedName  = (localStorage.getItem('loggedInUserName') || '').trim();
+            const storedEmail = (localStorage.getItem('loggedInUserEmail') || '').trim();
+            const storedPhone = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '').trim();
+
+            const nameInput  = document.getElementById('customer-name-input');
+            const emailInput = document.getElementById('customer-email-input');
+            const phoneInput = document.querySelector('#booking-form input[type="tel"]');
+
+            if (storedName || storedEmail) {
+                // Logged-in account: auto-fill provided profile details
+                if (nameInput && storedName) nameInput.value = storedName;
+                if (emailInput && storedEmail) emailInput.value = storedEmail;
+                if (phoneInput) phoneInput.value = storedPhone || '';
+            } else {
+                // Guest: keep all fields blank
+                if (nameInput) nameInput.value = '';
+                if (emailInput) emailInput.value = '';
+                if (phoneInput) phoneInput.value = '';
+            }
+        };
+
         (function initLocalLogin() {
             const storedName  = localStorage.getItem('loggedInUserName');
             const storedEmail = localStorage.getItem('loggedInUserEmail');
@@ -561,7 +583,7 @@
 
             if (!nameInput || !loggedInLabel || !logoutBtn || !goLoginPageBtn) return;
 
-            const applyLoginState = (name, email) => {
+            window.applyLoginState = (name, email) => {
                 const cleanName  = (name  || '').trim();
                 const cleanEmail = (email || '').trim();
                 const profBtn = document.getElementById('header-profile-btn');
@@ -569,35 +591,50 @@
 
                 if (cleanName || cleanEmail) {
                     loggedInLabel.textContent = cleanEmail || cleanName;
-                    nameInput.value = ''; 
                     logoutBtn.disabled = false;
                     logoutBtn.style.display = 'inline-block'; 
                     goLoginPageBtn.disabled = true;
                     goLoginPageBtn.style.display = 'none'; 
                     
-                    // 👉 NEW: Reveal Profile button in header
                     if (profBtn) profBtn.style.display = 'inline-flex';
                     if (profName) profName.textContent = cleanName ? cleanName.split(' ')[0] : 'Profile';
+
+                    // Fetch latest profile details (name & mobile number) from cloud
+                    if (cleanEmail) {
+                        fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/auth/profile?email=${encodeURIComponent(cleanEmail)}`)
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data && data.success) {
+                                    if (data.name) localStorage.setItem('loggedInUserName', data.name);
+                                    localStorage.setItem('loggedInUserPhone', data.phone || '');
+                                    window.syncBookingFormAutofill();
+                                }
+                            }).catch(() => {});
+                    }
                 } else {
                     loggedInLabel.textContent = 'Guest';
-                    nameInput.value = '';
                     logoutBtn.disabled = true;
                     logoutBtn.style.display = 'none'; 
                     goLoginPageBtn.disabled = false;
                     goLoginPageBtn.style.display = 'inline-block'; 
                     
-                    // 👉 NEW: Hide Profile button in header
-                    if (profBtn) profBtn.style.display = 'none';
+                    if (profBtn) profBtn.style.display = 'inline-flex';
+                    if (profName) profName.textContent = 'Profile';
                 }
+                window.syncBookingFormAutofill();
             };
 
-            applyLoginState(storedName, storedEmail);
+            window.applyLoginState(storedName, storedEmail);
 
             logoutBtn.addEventListener('click', () => {
                 localStorage.removeItem('loggedInUserName');
                 localStorage.removeItem('loggedInUserEmail');
+                localStorage.removeItem('loggedInUserPhone');
+                localStorage.removeItem('customerName');
+                localStorage.removeItem('customerEmail');
+                localStorage.removeItem('customerPhone');
                 localStorage.removeItem('chatSessionId');
-                applyLoginState('', '');
+                window.applyLoginState('', '');
             });
 
             goLoginPageBtn.addEventListener('click', () => {
@@ -2148,6 +2185,9 @@
         }
         // 👉 NEW: Reservation Modal Triggers
         window.openReservationModal = function() {
+            if (typeof window.syncBookingFormAutofill === 'function') {
+                window.syncBookingFormAutofill();
+            }
             document.getElementById('reservation-modal-overlay').style.display = 'flex';
         };
         window.closeReservationModal = function() {
@@ -2172,7 +2212,7 @@
 
             <div style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc; padding: 0 10px; font-family:'Roboto',sans-serif;">
                 <button id="prof-tab-history" onclick="switchProfileTab('history')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">📋 Reservation History</button>
-                <button id="prof-tab-security" onclick="switchProfileTab('security')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">🔒 Security</button>
+                <button id="prof-tab-security" onclick="switchProfileTab('security')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">📱 Mobile & Security</button>
             </div>
 
             <div style="padding:24px; overflow-y:auto; flex:1; background:#f8fafc; font-family:'Roboto',sans-serif;">
@@ -2180,9 +2220,27 @@
                     <div id="profile-history-list" style="display:flex; flex-direction:column; gap:12px;"></div>
                 </div>
 
-                <div id="profile-view-security" style="display:none;">
+                <div id="profile-view-security" style="display:none; flex-direction:column; gap:16px;">
+                    <!-- 👉 NEW: Mobile Number Management Card -->
+                    <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">📱 Mobile Number</h4>
+                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Save your number to automatically fill in your details when booking a table.</p>
+                        <form onsubmit="handleProfileUpdatePhone(event)">
+                            <div style="margin-bottom:14px;">
+                                <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Phone Number</label>
+                                <div style="display:flex;">
+                                    <span style="background:#f8fafc; border:1.5px solid #cbd5e1; border-right:none; border-radius:8px 0 0 8px; padding:10px 14px; font-size:14px; font-weight:600; color:#64748b; display:flex; align-items:center;">+63</span>
+                                    <input type="tel" id="prof-phone-input" placeholder="9XX XXX XXXX" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex:1; min-width:0; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:0 8px 8px 0; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                </div>
+                            </div>
+                            <div id="prof-phone-msg" style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;"></div>
+                            <button type="submit" id="prof-phone-btn" style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save Mobile Number</button>
+                        </form>
+                    </div>
+
+                    <!-- Change Password Card -->
                     <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">Change Password</h4>
+                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">🔒 Change Password</h4>
                         <form onsubmit="handleProfileChangePassword(event)">
                             <div style="margin-bottom:14px;">
                                 <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Current Password</label>
@@ -2212,11 +2270,9 @@
     </div>
 
     <script>
-        // 👉 NEW: Profile Modal with Guest Lock
         window.openProfileModal = async function() {
             const isLoggedIn = localStorage.getItem('loggedInUserName') || localStorage.getItem('loggedInUserEmail');
             
-            // If they are a GUEST, block access and show the message!
             if (!isLoggedIn) {
                 const goToLogin = await superModal({
                     title: 'Account Required 🔒',
@@ -2226,18 +2282,19 @@
                     cancelText: 'Maybe Later'
                 });
                 
-                // If they click confirm, send them to the login/signup page
                 if (goToLogin) {
                     window.location.href = 'login.html';
                 }
-                return; // Stop the profile from opening
+                return;
             }
 
-            // If logged in, open the profile normally
             document.getElementById('profile-modal-overlay').style.display = 'flex';
             const cName = localStorage.getItem('loggedInUserName') || '';
+            const cPhone = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '');
             document.getElementById('profile-greet-name').textContent = 'Hi, ' + (cName ? cName.split(' ')[0] : 'Guest') + '!';
             document.getElementById('profile-greet-email').textContent = localStorage.getItem('loggedInUserEmail') || 'Manage your account';
+            const phoneField = document.getElementById('prof-phone-input');
+            if (phoneField) phoneField.value = cPhone;
             switchProfileTab('history');
         };
 
@@ -2262,6 +2319,56 @@
                 hTab.style.color = '#94a3b8'; hTab.style.borderBottom = '2.5px solid transparent';
                 sView.style.display = 'block';
                 hView.style.display = 'none';
+                const phoneField = document.getElementById('prof-phone-input');
+                if (phoneField) phoneField.value = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '');
+            }
+        };
+
+        window.handleProfileUpdatePhone = async function(e) {
+            e.preventDefault();
+            const phone = (document.getElementById('prof-phone-input').value || '').trim();
+            const email = localStorage.getItem('loggedInUserEmail');
+            const msg = document.getElementById('prof-phone-msg');
+            const btn = document.getElementById('prof-phone-btn');
+
+            if (phone.length !== 10 || !phone.startsWith('9')) {
+                msg.textContent = '❌ Please enter a valid 10-digit mobile number starting with 9.';
+                msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                msg.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            msg.style.display = 'none';
+
+            try {
+                const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/auth/update-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, phone })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('loggedInUserPhone', phone);
+                    if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
+                    msg.textContent = '✅ Mobile number saved! It will now auto-fill when you book.';
+                    msg.style.color = '#166534'; msg.style.background = '#dcfce7';
+                    msg.style.display = 'block';
+                } else {
+                    msg.textContent = '❌ ' + (data.error || 'Failed to save mobile number.');
+                    msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                    msg.style.display = 'block';
+                }
+            } catch (err) {
+                localStorage.setItem('loggedInUserPhone', phone);
+                if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
+                msg.textContent = '✅ Mobile number saved to this device!';
+                msg.style.color = '#166534'; msg.style.background = '#dcfce7';
+                msg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Mobile Number';
             }
         };
 
@@ -2354,23 +2461,23 @@
         };
 
         window.executeProfileLogout = async function() {
-            // 1. Wipe ALL memory (including old ghost guest names!)
             localStorage.removeItem('loggedInUserName');
             localStorage.removeItem('loggedInUserEmail');
-            localStorage.removeItem('customerName'); // 👉 FIX: Wipe the offline form name!
-            localStorage.removeItem('chatSessionId'); // 👉 FIX: Sever the old chat connection!
+            localStorage.removeItem('loggedInUserPhone');
+            localStorage.removeItem('customerName');
+            localStorage.removeItem('customerEmail');
+            localStorage.removeItem('customerPhone');
+            localStorage.removeItem('chatSessionId');
             sessionStorage.removeItem('guestChatRes');
             
             closeProfileModal();
             
-            // 2. Show the success popup
             if (typeof superModal === 'function') {
                 await superModal({ title: 'Logged Out 👋', message: 'You have successfully signed out of your account.' });
             } else {
                 alert('You have successfully signed out.');
             }
             
-            // 3. Force a clean page reload
             window.location.reload();
         };
     </script>
