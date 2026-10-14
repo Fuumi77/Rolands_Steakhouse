@@ -193,11 +193,6 @@
             }
             autoProcessStandard();
         }
-        const displayDt = isNaN(d) ? arrivalDate + ' ' + arrivalTime : d.toLocaleString(undefined, {
-            weekday: 'short', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        localStorage.setItem('arrivalDateTimeDisplay', displayDt);
 
         // Apply VIP theme
         if (isVip) {
