@@ -890,6 +890,49 @@
         })();
 
 
+        function getActiveCustomerName() {
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            const acctName = localStorage.getItem('loggedInUserName');
+            const acctEmail = localStorage.getItem('loggedInUserEmail');
+            const formName = localStorage.getItem('customerName');
+
+            let baseName = 'Guest';
+            if (acctName && acctName !== 'undefined' && acctName !== 'null' && acctName.trim() !== '') {
+                baseName = acctName.trim();
+            } else if (acctEmail && acctEmail !== 'undefined' && acctEmail !== 'null' && acctEmail.trim() !== '') {
+                baseName = acctEmail.trim().split('@')[0];
+            } else if (formName && formName !== 'undefined' && formName !== 'null' && formName.trim() !== '') {
+                baseName = formName.trim();
+            }
+
+            if (guestRes && guestRes.reservationNumber) {
+                const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
+                return `${guestRes.customerName || baseName} (#${rClean})`;
+            }
+            return baseName;
+        }
+
+        function getChatId() {
+            const email = localStorage.getItem('loggedInUserEmail');
+            const name = localStorage.getItem('loggedInUserName');
+            if (email && email !== 'undefined' && email.trim() !== '') {
+                const accountId = 'acct_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+                localStorage.setItem('chatSessionId', accountId);
+                return accountId;
+            }
+            if (name && name !== 'undefined' && name.trim() !== '') {
+                const accountId = 'acct_' + name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+                localStorage.setItem('chatSessionId', accountId);
+                return accountId;
+            }
+            let id = localStorage.getItem('chatSessionId');
+            if (!id || id.startsWith('acct_')) {
+                id = 'session_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', id);
+            }
+            return id;
+        }
+
         function toggleChat() {
             const panel = document.getElementById('chatPanel');
             panel.classList.toggle('active');
@@ -898,80 +941,55 @@
                 bubbleIcon.textContent = panel.classList.contains('active') ? '✕' : '💬';
             }
             if (panel.classList.contains('active')) {
-                // 👉 FIX: Completely bypass the login gate and ALWAYS show the chat bar!
                 document.getElementById('chatResInfo').style.display = 'block';
-                document.getElementById('chatFooter').style.display = 'flex'; 
+                document.getElementById('chatFooter').style.display = 'flex';
                 loadChatMessages();
                 checkActiveReservation();
             }
         }
-        
-        function getChatId() {
-            // If the user is logged in, use their email as a stable ID so the
-            // same account always maps to the same chat session across devices.
-            const email = localStorage.getItem('loggedInUserEmail');
-            if (email) {
-                const accountId = 'acct_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-                localStorage.setItem('chatSessionId', accountId);
-                return accountId;
-            }
-            // Guests get a random per-device session.
-            let id = localStorage.getItem('chatSessionId');
-            if (!id) {
-                id = 'session_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('chatSessionId', id);
-            }
-            return id;
-        }
 
-        function loadChatMessages() {
+        function renderChatMessagesUI(allChats) {
             const sId = getChatId();
             const body = document.getElementById('chatBody');
+            if (!body) return;
 
-            const renderMessages = (allChats) => {
-                const myChat = allChats[sId] || [];
-                body.innerHTML = `<div class="chat-msg staff">
+            const myChat = (allChats && Array.isArray(allChats[sId])) ? allChats[sId] : [];
+            body.innerHTML = `<div class="chat-msg staff">
                 Hello! How can we help you today?
                 <div class="chat-msg-time">System</div>
             </div>`;
-                myChat.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
-                    div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
-                    body.appendChild(div);
-                });
-                body.scrollTop = body.scrollHeight;
-            };
 
-            // Try fetching from the cloud first for cross-device sync.
-            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats')
+            myChat.forEach(m => {
+                const div = document.createElement('div');
+                div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
+                div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
+                body.appendChild(div);
+            });
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function loadChatMessages() {
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now())
                 .then(r => r.json())
-                .then(allChats => {
-                    // Keep localStorage in sync with the latest cloud data.
-                    localStorage.setItem('liveChats', JSON.stringify(allChats));
-                    renderMessages(allChats);
+                .then(cloudChats => {
+                    const validChats = (cloudChats && typeof cloudChats === 'object') ? cloudChats : {};
+                    localStorage.setItem('liveChats', JSON.stringify(validChats));
+                    renderChatMessagesUI(validChats);
                 })
                 .catch(() => {
-                    // Offline fallback: use whatever is cached in localStorage.
-                    const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-                    renderMessages(allChats);
+                    const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                    renderChatMessagesUI(localChats);
                 });
         }
 
         function sendChatMessage() {
             const input = document.getElementById('chatInput');
-            if(!input) return;
+            if (!input) return;
             const text = input.value.trim();
             if (!text) return;
 
             const sId = getChatId();
-
-            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-            let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
-            if (guestRes && guestRes.reservationNumber) {
-                const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
-                cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
-            }
+            const cName = getActiveCustomerName();
 
             const message = {
                 sender: 'customer',
@@ -980,15 +998,13 @@
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
 
-            // Optimistically show the message immediately.
             const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            if (!allChatsLocal[sId]) allChatsLocal[sId] = [];
+            if (!Array.isArray(allChatsLocal[sId])) allChatsLocal[sId] = [];
             allChatsLocal[sId].push(message);
             localStorage.setItem('liveChats', JSON.stringify(allChatsLocal));
             input.value = '';
-            loadChatMessages();
+            renderChatMessagesUI(allChatsLocal);
 
-            // Send only this single message to the server (append-only, safe for multi-device).
             fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -996,15 +1012,12 @@
             })
             .then(r => r.json())
             .then(data => {
-                if (data.allChats) {
-                    // Sync localStorage with the authoritative server state.
+                if (data && data.allChats) {
                     localStorage.setItem('liveChats', JSON.stringify(data.allChats));
-                    loadChatMessages();
+                    renderChatMessagesUI(data.allChats);
                 }
             })
-            .catch(() => {
-                // Offline: message is already in localStorage, will sync next time.
-            });
+            .catch(() => {});
         }
 
         function sendChatPhoto(input) {
@@ -1016,13 +1029,7 @@
                 const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
 
                 const sId = getChatId();
-
-                const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-                let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
-                if (guestRes && guestRes.reservationNumber) {
-                    const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
-                    cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
-                }
+                const cName = getActiveCustomerName();
 
                 const message = {
                     sender: 'customer',
@@ -1031,15 +1038,13 @@
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
 
-                // Optimistically show photo immediately.
                 const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
-                if (!allChatsLocal[sId]) allChatsLocal[sId] = [];
+                if (!Array.isArray(allChatsLocal[sId])) allChatsLocal[sId] = [];
                 allChatsLocal[sId].push(message);
                 localStorage.setItem('liveChats', JSON.stringify(allChatsLocal));
-                loadChatMessages();
                 input.value = '';
+                renderChatMessagesUI(allChatsLocal);
 
-                // Append-only cloud sync.
                 fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1047,9 +1052,9 @@
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.allChats) {
+                    if (data && data.allChats) {
                         localStorage.setItem('liveChats', JSON.stringify(data.allChats));
-                        loadChatMessages();
+                        renderChatMessagesUI(data.allChats);
                     }
                 })
                 .catch(() => {});
@@ -1057,120 +1062,19 @@
             reader.readAsDataURL(file);
         }
 
-        // Live Chat Cloud Poller
-        setInterval(async () => {
-            if (document.getElementById('chatPanel').classList.contains('active')) {
-                try {
-                    const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats');
-                    if (res.ok) {
-                        const cloudChats = await res.json();
-                        if (Object.keys(cloudChats).length > 0) localStorage.setItem('liveChats', JSON.stringify(cloudChats));
-                    }
-                } catch(e) {}
-                
-                // 👉 FIX: Always refresh the chat UI so guests can see incoming replies instantly!
+        // Live Chat Cloud Poller (Every 3 seconds)
+        setInterval(() => {
+            if (document.getElementById('chatPanel')?.classList.contains('active')) {
                 loadChatMessages();
             }
         }, 3000);
 
-        function renderChatLoginGate() {
-            const body = document.getElementById('chatBody');
-            const footer = document.getElementById('chatFooter');
-            const resInfo = document.getElementById('chatResInfo');
-
-            if (resInfo) resInfo.style.display = 'none';
-            if (footer) footer.style.display = 'none';
-
-            const lastRes = localStorage.getItem('reservationNumber') || '';
-            const prefill = lastRes ? (lastRes.startsWith('#') ? lastRes : '#' + lastRes) : '';
-
-            body.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 100%; padding: 24px 16px; text-align: center; gap: 14px; box-sizing: border-box;">
-                    <div style="width: 50px; height: 50px; border-radius: 16px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto;">💬</div>
-                    <div>
-                        <h3 style="font-family: 'Playfair Display', serif; font-size: 19px; color: #1b5e20; margin: 0 0 4px;">Live Support</h3>
-                        <p style="font-size: 12.5px; color: #64748b; line-height: 1.45; margin: 0;">Connect with our team for questions about your reservation, table, or special requests.</p>
-                    </div>
-
-                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:14px; padding:14px; text-align:left; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                            <label for="chat-res-code-input" style="font-size:11px; font-weight:800; color:#1e293b; text-transform:uppercase; letter-spacing:0.5px;">🎫 Use Reservation Code</label>
-                            <span style="font-size:10px; font-weight:700; color:#166534; background:#dcfce7; padding:2px 7px; border-radius:6px;">No Account Needed</span>
-                        </div>
-                        <div style="display:flex; gap:6px;">
-                            <input type="text" id="chat-res-code-input" placeholder="e.g. RES-376881" value="${prefill}" style="flex:1; min-width:0; padding:10px 12px; border:1.5px solid #94a3b8; border-radius:8px; font-size:13px; font-weight:700; color:#0f172a; outline:none; text-transform:uppercase; background:white;" onkeypress="if(event.key === 'Enter') handleGuestChatByCode()">
-                            <button type="button" onclick="handleGuestChatByCode()" style="background:#1b5e20; color:white; border:none; border-radius:8px; padding:0 14px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap; transition:all 0.15s; box-shadow:0 2px 6px rgba(27,94,32,0.25);" onmouseover="this.style.background='#2e7d32'" onmouseout="this.style.background='#1b5e20'">Start Chat</button>
-                        </div>
-                        <div id="chat-res-code-error" style="display:none; color:#dc2626; font-size:11.5px; font-weight:600; margin-top:6px;"></div>
-                        <div style="font-size:11px; color:#64748b; margin-top:6px; line-height:1.4;">Already booked? Enter your receipt code to link your chat directly to your reservation.</div>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:11px; font-weight:700;">
-                        <div style="flex:1; height:1px; background:#e2e8f0;"></div><span>OR</span><div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                    </div>
-
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button onclick="window.location.href='login.html'" style="background: white; color: #1b5e20; border: 1.5px solid #1b5e20; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 700; font-family: 'Roboto', sans-serif; cursor: pointer; transition: all 0.15s;" onmouseover="this.style.background='#f0fdf4';" onmouseout="this.style.background='white';">👤 Log In / Sign Up with Account</button>
-                        <button type="button" onclick="startGuestChatWithoutCode()" style="background: transparent; border: none; color: #64748b; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px;">No reservation yet? Chat as General Guest</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        window.handleGuestChatByCode = function() {
-            const input = document.getElementById('chat-res-code-input');
-            const err = document.getElementById('chat-res-code-error');
-            if (!input) return;
-            const rawVal = input.value.trim();
-            if (!rawVal) {
-                if (err) { err.textContent = 'Please enter your reservation code.'; err.style.display = 'block'; }
-                return;
-            }
-
-            const cleanCode = rawVal.toUpperCase().replace(/^#/, '');
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const found = hist.find(r => {
-                const rNum = (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
-                return rNum === cleanCode || rNum === ('RES-' + cleanCode) || ('RES-' + rNum) === cleanCode;
-            });
-
-            if (found) {
-                sessionStorage.setItem('guestChatRes', JSON.stringify(found));
-                localStorage.setItem('customerName', found.customerName || 'Guest');
-                localStorage.setItem('reservationNumber', found.reservationNumber);
-                document.getElementById('chatResInfo').style.display = 'block';
-                document.getElementById('chatFooter').style.display = 'flex';
-                loadChatMessages();
-                checkActiveReservation();
-            } else {
-                const tempRes = { reservationNumber: cleanCode, customerName: localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest', bookedTable: 'Inquiry Table', arrivalDate: 'Upcoming', arrivalTime: '', foods: [] };
-                sessionStorage.setItem('guestChatRes', JSON.stringify(tempRes));
-                localStorage.setItem('reservationNumber', cleanCode);
-                document.getElementById('chatResInfo').style.display = 'block';
-                document.getElementById('chatFooter').style.display = 'flex';
-                loadChatMessages();
-                checkActiveReservation();
-            }
-        };
-
-        window.startGuestChatWithoutCode = function() {
-            let name = prompt('Please enter your name for Live Support:');
-            if (name === null) return;
-            name = name.trim() || 'Guest';
-            const guestObj = { reservationNumber: 'INQUIRY-' + Math.floor(1000 + Math.random() * 9000), customerName: name, bookedTable: 'General Chat', foods: [] };
-            sessionStorage.setItem('guestChatRes', JSON.stringify(guestObj));
-            localStorage.setItem('customerName', name);
-            document.getElementById('chatResInfo').style.display = 'block';
-            document.getElementById('chatFooter').style.display = 'flex';
-            loadChatMessages();
-            checkActiveReservation();
-        };
-
         window.exitGuestChat = function() {
             sessionStorage.removeItem('guestChatRes');
-            localStorage.removeItem('customerName'); // 👉 FIX: Kills the stuck ghost name!
-            localStorage.removeItem('chatSessionId'); // 👉 FIX: Severs the old chat connection!
-            renderChatLoginGate();
+            localStorage.removeItem('customerName');
+            localStorage.removeItem('chatSessionId');
+            loadChatMessages();
+            checkActiveReservation();
         };
 
         function checkActiveReservation() {
@@ -1212,123 +1116,11 @@
                 const isCancelled = myRes.approvalStatus === 'rejected' || myRes.approvalStatus === 'cancelled' || myRes.kdsStatus === 'cancelled';
                 const isServed = myRes.kdsStatus === 'served' || myRes.approvalStatus === 'completed';
 
-                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer;">Switch Code</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || 'Guest'} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
+                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || getActiveCustomerName()} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
                 return;
             }
-            resInfo.textContent = 'No active reservation found.';
+            resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span></div>`;
         }
-
-        function loadChatMessages() {
-            const sId = getChatId();
-            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            const cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName');
-
-            // Bring in any orphaned messages created by the Admin for this customer
-            if (cName) {
-                for (let otherId in allChats) {
-                    if (otherId !== sId) {
-                        const hasCust = allChats[otherId].some(m => m.name === cName || (m.sender === 'staff' && m.text.includes(cName)) || (m.sender === 'customer' && m.name === cName));
-                        if (hasCust) {
-                            // Merge them into our actual session
-                            if (!allChats[sId]) allChats[sId] = [];
-                            allChats[sId] = allChats[sId].concat(allChats[otherId]);
-                            delete allChats[otherId];
-                            localStorage.setItem('liveChats', JSON.stringify(allChats));
-                        }
-                    }
-                }
-            }
-
-            const myChat = allChats[sId] || [];
-            const body = document.getElementById('chatBody');
-
-            body.innerHTML = `<div class="chat-msg staff">
-                Hello! How can we help you today?
-                <div class="chat-msg-time">System</div>
-            </div>`;
-
-            myChat.forEach(m => {
-                const div = document.createElement('div');
-                div.className = `chat-msg ${m.sender === 'staff' ? 'staff' : 'customer'}`;
-                div.innerHTML = `${m.text} <div class="chat-msg-time">${m.time}</div>`;
-                body.appendChild(div);
-            });
-            body.scrollTop = body.scrollHeight;
-        }
-
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            const sId = getChatId();
-            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            if (!allChats[sId]) allChats[sId] = [];
-
-            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-            let cName = localStorage.getItem('customerName') || 'Guest';
-            if (guestRes && guestRes.reservationNumber) {
-                const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
-                cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
-            }
-
-            const newMsg = {
-                sender: 'customer',
-                name: cName,
-                text: text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-
-            allChats[sId].push(newMsg);
-            localStorage.setItem('liveChats', JSON.stringify(allChats));
-
-            input.value = '';
-            loadChatMessages();
-        }
-
-        function sendChatPhoto(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const b64 = e.target.result;
-                const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
-
-                const sId = getChatId();
-                const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-                if (!allChats[sId]) allChats[sId] = [];
-
-                const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
-                let cName = localStorage.getItem('customerName') || 'Guest';
-                if (guestRes && guestRes.reservationNumber) {
-                    const rClean = guestRes.reservationNumber.toString().replace(/^#/, '');
-                    cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
-                }
-
-                const newMsg = {
-                    sender: 'customer',
-                    name: cName,
-                    text: txt,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-
-                allChats[sId].push(newMsg);
-                localStorage.setItem('liveChats', JSON.stringify(allChats));
-
-                loadChatMessages();
-                input.value = '';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        setInterval(() => {
-            if (document.getElementById('chatPanel').classList.contains('active')) {
-                // 👉 FIX 2: Only auto-reload chat messages if we are actually looking at the Chat tab!
-                if (_currentChatView === 'chat') {
-                    loadChatMessages();
-                }
-            }
-        }, 3000);
 
         // Payment status polling (Verified/Rejected — for manual payments only)
         setInterval(() => {
