@@ -514,6 +514,25 @@ app.post('/api/memory/live-chats', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Safe append-only endpoint: adds a single message to a session without
+// overwriting messages sent concurrently from other devices.
+app.post('/api/memory/live-chats/message', async (req, res) => {
+    try {
+        const { sessionId, message } = req.body;
+        if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message required' });
+
+        // Read current state from DB
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'liveChats'");
+        const allChats = rows.length ? rows[0].mem_val : {};
+
+        if (!allChats[sessionId]) allChats[sessionId] = [];
+        allChats[sessionId].push(message);
+
+        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('liveChats', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(allChats), JSON.stringify(allChats)]);
+        res.json({ success: true, allChats });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /* 👉 NEW: DELETE ALL RECORDS ROUTE */
 app.delete('/api/reservations/all', async (req, res) => {
     try {
