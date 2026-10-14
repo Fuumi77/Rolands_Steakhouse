@@ -11,7 +11,7 @@
     <script src="js/design-system.js?v=2.0"></script>
     <script src="js/inventory-system.js?v=2.0"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
-</head>
+
     <style>
         /* 👉 1. Clean Rounded Card & Smooth Highlight for Beef Preference */
         .beef-pref-panel {
@@ -75,6 +75,7 @@
             transform: scale(0.95);
         }
     </style>
+    </head>
 <body>
 
     <header id="main-header">
@@ -718,6 +719,8 @@
                 }, 1200);
             }
         };
+
+        window.refreshOrder = function() {
             // Visual feedback
             const btns = document.querySelectorAll('.cart-clear-btn');
             btns.forEach(b => { if(b.textContent === 'Refresh') b.textContent = '...'; });
