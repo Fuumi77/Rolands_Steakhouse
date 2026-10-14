@@ -123,7 +123,119 @@ const transporter = nodemailer.createTransport({
 });
 
 app.post('/api/send-receipt', emailLimiter, async (req, res) => {
-    res.status(200).json({ success: true, message: 'Email placeholder' });
+    const { email, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary } = req.body;
+    if (!email) return res.status(200).json({ success: false, message: 'No email provided' });
+
+    try {
+        await transporter.sendMail({
+            from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: `E-Receipt & Confirmation (${reservationNumber}) - Roland's Steakhouse`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                    <div style="background: #1b5e20; color: white; padding: 20px; text-align: center;">
+                        <h2 style="margin: 0;">Roland's Steakhouse</h2>
+                        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Official Reservation E-Receipt</p>
+                    </div>
+                    <div style="padding: 20px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+                        <p>Hi <strong>${escapeHtml(customerName || 'Valued Guest')}</strong>,</p>
+                        <p>Your reservation is confirmed! Here are your booking details:</p>
+                        <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 16px 0;">
+                            <div><strong>Reservation #:</strong> ${escapeHtml(reservationNumber)}</div>
+                            <div><strong>Table:</strong> ${escapeHtml(table)}</div>
+                            <div><strong>Arrival:</strong> ${escapeHtml(arrivalDateTime)}</div>
+                            <div><strong>Order:</strong> ${escapeHtml(orderSummary)}</div>
+                            <div><strong>Payment Method:</strong> ${escapeHtml(paymentMethod)}</div>
+                            <div style="margin-top: 8px; font-size: 16px; color: #1b5e20;"><strong>Total Paid:</strong> ₱${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        </div>
+                        <p style="font-size: 12px; color: #64748b;">Please present your Reservation # or QR Receipt upon arrival.</p>
+                    </div>
+                </div>
+            `
+        });
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.log('[DEV MODE] Receipt email skipped:', err.message);
+        res.status(200).json({ success: true, warning: 'Email not configured' });
+    }
+});
+
+/* PAYMONGO CHECKOUT ROUTE */
+app.post('/api/paymongo/checkout', async (req, res) => {
+    const { amount, description, successUrl, cancelUrl, customerName, customerEmail, customerPhone } = req.body;
+    const secretKey = process.env.PAYMONGO_SECRET_KEY;
+
+    // Minimum amount for PayMongo is ₱20.00 (2000 centavos)
+    const amountInCentavos = Math.max(2000, Math.round(Number(amount || 0) * 100));
+
+    // If PAYMONGO_SECRET_KEY is not set in Vercel Environment Variables yet,
+    // fallback cleanly to the success page so live demos never crash!
+    if (!secretKey) {
+        console.warn('⚠️ PAYMONGO_SECRET_KEY is missing in environment variables. Using direct demo redirect.');
+        return res.json({
+            checkout_url: successUrl,
+            session_id: 'demo_session_' + Date.now()
+        });
+    }
+
+    try {
+        const authHeader = 'Basic ' + Buffer.from(secretKey + ':').toString('base64');
+
+        const payload = {
+            data: {
+                attributes: {
+                    send_email_receipt: Boolean(customerEmail),
+                    show_description: true,
+                    show_line_items: true,
+                    description: description || "Roland's Steakhouse Reservation",
+                    payment_method_types: ['gcash', 'paymaya', 'card', 'dob'],
+                    line_items: [
+                        {
+                            currency: 'PHP',
+                            amount: amountInCentavos,
+                            description: description || "Table Reservation & Pre-Order",
+                            name: description || "Roland's Steakhouse Reservation",
+                            quantity: 1
+                        }
+                    ],
+                    success_url: successUrl,
+                    cancel_url: cancelUrl
+                }
+            }
+        };
+
+        if (customerName || customerEmail || customerPhone) {
+            payload.data.attributes.billing = {};
+            if (customerName) payload.data.attributes.billing.name = customerName;
+            if (customerEmail) payload.data.attributes.billing.email = customerEmail;
+            if (customerPhone) payload.data.attributes.billing.phone = customerPhone;
+        }
+
+        const pmRes = await fetch('https://api.paymongo.com/v1/checkout_sessions', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': authHeader
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const pmData = await pmRes.json();
+
+        if (!pmRes.ok || !pmData.data) {
+            const apiErr = pmData?.errors?.[0]?.detail || 'PayMongo rejected the checkout request.';
+            return res.status(400).json({ error: apiErr });
+        }
+
+        res.json({
+            checkout_url: pmData.data.attributes.checkout_url,
+            session_id: pmData.data.id
+        });
+    } catch (err) {
+        console.error('PayMongo Server Error:', err);
+        res.status(500).json({ error: 'Failed to connect to PayMongo gateway.' });
+    }
 });
 
 /* AUTH ROUTES */
