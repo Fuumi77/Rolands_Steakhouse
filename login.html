@@ -39,8 +39,16 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="login-email">Email Address</label>
-                    <input type="email" id="login-email" placeholder="you@example.com" required>
+                    <label for="signup-email">Email Address</label>
+                    <input type="email" id="signup-email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="signup-phone">Mobile Number <span style="font-size:11px; opacity:0.7; font-weight:normal;">(Optional)</span></label>
+                    <div style="display:flex; align-items:stretch;">
+                        <span style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-right:none; border-radius:8px 0 0 8px; padding:0 12px; display:flex; align-items:center; color:rgba(255,255,255,0.85); font-size:14px; font-weight:600;">+63</span>
+                        <input type="tel" id="signup-phone" placeholder="9XX XXX XXXX" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="border-radius:0 8px 8px 0; flex:1;">
+                    </div>
                 </div>
 
                 <div class="input-group">
@@ -375,6 +383,7 @@
                 if (data.success) {
                     localStorage.setItem('loggedInUserName', data.name);
                     localStorage.setItem('loggedInUserEmail', email);
+                    localStorage.setItem('loggedInUserPhone', data.phone || '');
                     window.location.href = 'index.html';
                 } else {
                     superModal({ title: 'Login Failed ❌', message: 'Invalid email or password. Please try again.' });
@@ -398,6 +407,7 @@
             const name = document.getElementById('signup-name').value;
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
+            const phone = (document.getElementById('signup-phone')?.value || '').trim();
 
             // Enforce password strength
             const reqLength = password.length >= 8;
@@ -425,6 +435,7 @@
                     sessionStorage.setItem('signupEmail', email);
                     sessionStorage.setItem('signupName', name);
                     sessionStorage.setItem('signupPassword', password);
+                    sessionStorage.setItem('signupPhone', phone);
                     switchForm('signup-verify-form');
                 } else {
                     alert(data.error || 'Failed to send verification code.');
@@ -462,12 +473,14 @@
                 const verifyData = await verifyRes.json();
                 
                 if (verifyData.success) {
+                    const phone = sessionStorage.getItem('signupPhone') || '';
                     btn.textContent = 'Creating account...';
                     await fetch(`${API_BASE_URL}/signup`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, email, password })
+                        body: JSON.stringify({ name, email, password, phone })
                     });
+                    localStorage.setItem('loggedInUserPhone', phone);
                     
                     superModal({ title: 'Welcome! 🎉', message: 'Account created successfully! Please sign in with your new credentials.' });
                     switchForm('login-form');
