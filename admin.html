@@ -3337,8 +3337,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                     const lastMsg = msgs[msgs.length - 1];
                     let cName = 'Guest';
-                    const custMsg = msgs.find(m => m.sender === 'customer');
-                    if (custMsg) cName = custMsg.name;
+                    const custMsg = [...msgs].reverse().find(m => m.sender === 'customer' && m.name && m.name !== 'Guest') || msgs.find(m => m.sender === 'customer');
+                    if (custMsg && custMsg.name) cName = custMsg.name;
 
                     const isActive = sId === window.currentActiveChat;
 
@@ -3673,21 +3673,26 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const txt = input.value.trim();
                 if (!txt) return;
 
-                const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
-                if (!allChats[window.currentActiveChat]) return;
-
-                allChats[window.currentActiveChat].push({
+                const sId = window.currentActiveChat;
+                const message = {
                     sender: 'staff',
                     text: txt,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
+                };
 
+                const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
+                if (!Array.isArray(allChats[sId])) allChats[sId] = [];
+                allChats[sId].push(message);
                 localStorage.setItem('liveChats', JSON.stringify(allChats));
-                // 👉 NEW: Send response to the Cloud instantly
-                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: sId, message })
+                }).catch(()=>{});
                 
                 input.value = '';
-                selectAdminChat(window.currentActiveChat, false);
+                selectAdminChat(sId, false);
             };
 
             window.sendAdminPhoto = function (input) {
@@ -3699,21 +3704,26 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     const b64 = e.target.result;
                     const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
 
-                    const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
-                    if (!allChats[window.currentActiveChat]) return;
-
-                    allChats[window.currentActiveChat].push({
+                    const sId = window.currentActiveChat;
+                    const message = {
                         sender: 'staff',
                         text: txt,
                         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
+                    };
 
+                    const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
+                    if (!Array.isArray(allChats[sId])) allChats[sId] = [];
+                    allChats[sId].push(message);
                     localStorage.setItem('liveChats', JSON.stringify(allChats));
-                    // 👉 NEW: Send photo to the Cloud instantly
-                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
+
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId: sId, message })
+                    }).catch(()=>{});
                     
                     input.value = '';
-                    selectAdminChat(window.currentActiveChat, false);
+                    selectAdminChat(sId, false);
                 };
                 reader.readAsDataURL(file);
             };
@@ -3848,10 +3858,10 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     
                     // 👉 NEW: Download Live Chats from Cloud!
                     try {
-                        const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats');
-                        if(res.ok) {
+                        const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now());
+                        if (res.ok) {
                             const cloudChats = await res.json();
-                            if(Object.keys(cloudChats).length > 0) localStorage.setItem('liveChats', JSON.stringify(cloudChats));
+                            localStorage.setItem('liveChats', JSON.stringify(cloudChats && typeof cloudChats === 'object' ? cloudChats : {}));
                         }
                     } catch(e){}
                     renderAdminChats();
