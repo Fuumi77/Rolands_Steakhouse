@@ -38,7 +38,7 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN kds_status VARCHAR(50) DEFAULT 'pending'").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val JSON)").catch(()=>{});
     
-    await db.query("CREATE TABLE IF NOT EXISTS staff_credentials (staff_id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE, password_hash VARCHAR(255), role VARCHAR(50) DEFAULT 'Staff', last_active BIGINT DEFAULT 0)").catch(()=>{});
+    await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
 
     // 👉 NEW: Automatically create the missing Inventory tables so the kitchen can return ingredients!
     await db.query(`
@@ -175,14 +175,14 @@ app.post('/api/auth/verify-code', authLimiter, (req, res) => {
     res.json({ success: true });
 });
 
-// 3. Create the actual Customer Account in the Database
+// 3. Create the actual Customer Account in the Database (with Mobile Number)
 app.post('/signup', authLimiter, async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
     try {
         const [existing] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ?', [email]);
         if (existing.length > 0) return res.status(400).json({ success: false, error: 'Email already exists' });
 
-        await db.query('INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)', [name, email, password]);
+        await db.query('INSERT INTO customer_credentials (name, email, password_hash, phone) VALUES (?, ?, ?, ?)', [name, email, password, phone || '']);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
@@ -235,13 +235,33 @@ app.post('/api/auth/change-password', authLimiter, async (req, res) => {
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
 
+// 6b. Get & Update Customer Profile (Mobile Number)
+app.get('/api/auth/profile', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.json({ success: false });
+    try {
+        const [users] = await db.query('SELECT name, email, phone FROM customer_credentials WHERE email = ?', [email]);
+        if (users.length > 0) res.json({ success: true, name: users[0].name, email: users[0].email, phone: users[0].phone || '' });
+        else res.json({ success: false });
+    } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.post('/api/auth/update-phone', authLimiter, async (req, res) => {
+    const { email, phone } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+    try {
+        await db.query('UPDATE customer_credentials SET phone = ? WHERE email = ?', [phone || '', email]);
+        res.json({ success: true, phone: phone || '' });
+    } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
+});
+
 app.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
         const [users] = await db.query('SELECT * FROM customer_credentials WHERE email = ? AND password_hash = ?', [email, password]);
         if (users.length > 0) {
             await db.query("INSERT INTO login_logs (user_type, user_id, action) VALUES ('Customer', ?, 'Login Success')", [users[0].customer_id]);
-            res.json({ success: true, name: users[0].name });
+            res.json({ success: true, name: users[0].name, phone: users[0].phone || '' });
         } else {
             res.json({ success: false, error: 'Invalid email or password' });
         }
