@@ -490,6 +490,57 @@ app.get('/reservations', async (req, res) => {
 });
 
 app.post('/reserve', async (req, res) => {
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods } = req.body;
+    try {
+        const cleanName = (name || 'Guest').trim();
+        const cleanEmail = (email || '').trim();
+
+        // Match by both name AND email if email exists, otherwise match by exact name
+        let customers = [];
+        if (cleanEmail && !cleanEmail.includes('@temp.com')) {
+            [customers] = await db.query('SELECT customer_id, name FROM customer_credentials WHERE email = ? LIMIT 1', [cleanEmail]);
+            // Keep the customer name updated if they booked under a new name
+            if (customers.length > 0 && cleanName && customers[0].name !== cleanName) {
+                await db.query('UPDATE customer_credentials SET name = ? WHERE customer_id = ?', [cleanName, customers[0].customer_id]);
+            }
+        } else {
+            [customers] = await db.query('SELECT customer_id FROM customer_credentials WHERE name = ? LIMIT 1', [cleanName]);
+        }
+
+        let customerId;
+        if (customers.length > 0) {
+            customerId = customers[0].customer_id;
+        } else {
+            const [result] = await db.query(
+                'INSERT INTO customer_credentials (name, email, password_hash) VALUES (?, ?, ?)',
+                [cleanName, cleanEmail || `guest-${Date.now()}-${Math.floor(Math.random()*1000)}@temp.com`, 'guest']
+            );
+            customerId = result.insertId;
+        }
+
+        const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 1;
+        const safeDate = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().split('T')[0];
+        const safeTime = (time && /^\d{2}:\d{2}/.test(time)) ? time.substring(0, 5) : '12:00';
+        const reservationTime = `${safeDate} ${safeTime}:00`;
+
+        const isWalkin = cleanEmail.includes('walkin-');
+        const isPos = cleanEmail.includes('pos-'); 
+        const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
+        
+        const foodsJson = Array.isArray(foods) ? JSON.stringify(foods) : (foods ? JSON.stringify([foods]) : '[]');
+
+        const [result] = await db.query(
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, reservationType || 'standard', Number(paymentAmount) || 0, foodsJson]
+        );
+
+        cachedReservations = null; // Clear cache immediately so Staff & Manager see it
+        res.json({ success: true, reservationId: result.insertId }); 
+    } catch (err) {
+        console.error('Reserve DB Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});, async (req, res) => {
     // 👉 FIX: Accept the new fields from the frontend
     const { name, email, date, time, table, status, reservationType, paymentAmount, foods } = req.body;
     try {
