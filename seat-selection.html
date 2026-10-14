@@ -452,7 +452,7 @@
                 : 'standard-payment.html';
         });
     </script>
-
+    
     <!-- STORE STATUS (OPEN / CLOSED) CUSTOMER PROTECTION -->
     <div id="store-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
         🔒 NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check back during opening hours.
@@ -496,5 +496,186 @@
             } catch (err) {}
         }
     </script>
+    <style>
+    /* 👉 1. Expand the Floor Plan Container & Grid */
+    .rsh-big-table-wrapper {
+        max-width: 1080px !important;
+        width: 95% !important;
+        padding: 32px 28px !important;
+        margin: 0 auto 30px auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .rsh-big-table-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+        gap: 22px !important;
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* 👉 2. Make Each Table Card Larger & More Prominent */
+    .rsh-big-table-card {
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 250px !important;
+        padding: 14px !important;
+        border-radius: 16px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+        cursor: pointer !important;
+    }
+
+    .rsh-big-table-card:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 12px 24px rgba(27, 94, 32, 0.14) !important;
+    }
+
+    /* 👉 3. Enlarge the Table Photos */
+    .rsh-big-table-card img {
+        width: 100% !important;
+        height: 145px !important;
+        object-fit: cover !important;
+        border-radius: 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* 👉 4. Select Button Styling Inside Each Card */
+    .rsh-table-select-btn {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-family: 'Roboto', sans-serif;
+        font-size: 13.5px;
+        font-weight: 800;
+        text-align: center;
+        border: 1.5px solid #1b5e20;
+        background: #f0fdf4;
+        color: #1b5e20;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .rsh-big-table-card:hover .rsh-table-select-btn {
+        background: #dcfce7;
+    }
+
+    /* Active / Selected State */
+    .rsh-big-table-card.selected .rsh-table-select-btn,
+    .rsh-big-table-card.active .rsh-table-select-btn,
+    .rsh-big-table-card[data-rsh-selected="true"] .rsh-table-select-btn {
+        background: #1b5e20 !important;
+        color: #ffffff !important;
+        border-color: #1b5e20 !important;
+        box-shadow: 0 4px 12px rgba(27, 94, 32, 0.25);
+    }
+
+    /* Disabled / Unavailable State */
+    .rsh-big-table-card.disabled .rsh-table-select-btn,
+    .rsh-big-table-card.unavailable .rsh-table-select-btn,
+    .rsh-big-table-card.reserved .rsh-table-select-btn {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        border-color: #cbd5e1 !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+    }
+
+    @media (max-width: 600px) {
+        .rsh-big-table-wrapper {
+            padding: 18px 14px !important;
+        }
+        .rsh-big-table-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+        }
+        .rsh-big-table-card {
+            min-height: 210px !important;
+            padding: 10px !important;
+        }
+        .rsh-big-table-card img {
+            height: 110px !important;
+        }
+        .rsh-table-select-btn {
+            font-size: 12px;
+            padding: 8px 10px;
+        }
+    }
+</style>
+
+<script>
+    (function upgradeSeatSelectionTables() {
+        function syncTableCards() {
+            // Find all images inside table cards
+            const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
+                const parentText = (img.parentElement?.innerText || '').trim();
+                return /^Table\s*\d+|VIP/i.test(parentText);
+            });
+
+            imgs.forEach(img => {
+                const card = img.parentElement;
+                if (!card) return;
+
+                card.classList.add('rsh-big-table-card');
+
+                const grid = card.parentElement;
+                if (grid) {
+                    grid.classList.add('rsh-big-table-grid');
+                    if (grid.parentElement && grid.parentElement.tagName !== 'BODY') {
+                        grid.parentElement.classList.add('rsh-big-table-wrapper');
+                    }
+                }
+
+                // Make the table title slightly larger
+                Array.from(card.children).forEach(child => {
+                    if (child !== img && !child.classList.contains('rsh-table-select-btn')) {
+                        if (/^Table\s*\d+|VIP/i.test(child.innerText || '')) {
+                            child.style.fontSize = '16px';
+                            child.style.fontWeight = '800';
+                        }
+                    }
+                });
+
+                // Inject the Select button if not present yet
+                let btn = card.querySelector('.rsh-table-select-btn');
+                if (!btn) {
+                    btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'rsh-table-select-btn';
+                    card.appendChild(btn);
+                }
+
+                // Check if this card is currently selected or unavailable
+                const classStr = (card.className || '').toLowerCase();
+                const borderStyle = window.getComputedStyle(card).borderColor;
+                const isUnavailable = classStr.includes('disabled') || classStr.includes('unavailable') || classStr.includes('reserved') || classStr.includes('occupied') || card.style.pointerEvents === 'none';
+                const isSelected = classStr.includes('selected') || classStr.includes('active') || borderStyle === 'rgb(27, 94, 32)' || borderStyle === 'rgb(46, 125, 50)' || borderStyle === 'rgb(34, 197, 94)';
+
+                if (isUnavailable) {
+                    card.setAttribute('data-rsh-selected', 'false');
+                    if (btn.textContent !== 'Unavailable') btn.textContent = 'Unavailable';
+                } else if (isSelected) {
+                    card.setAttribute('data-rsh-selected', 'true');
+                    if (btn.textContent !== '✓ Selected') btn.textContent = '✓ Selected';
+                } else {
+                    card.setAttribute('data-rsh-selected', 'false');
+                    if (btn.textContent !== 'Select Table') btn.textContent = 'Select Table';
+                }
+            });
+        }
+
+        // Run on load and whenever a user clicks a table or switches tabs
+        document.addEventListener('DOMContentLoaded', syncTableCards);
+        window.addEventListener('load', syncTableCards);
+        document.addEventListener('click', () => setTimeout(syncTableCards, 50));
+        setInterval(syncTableCards, 800);
+    })();
+</script>
 </body>
 </html>
