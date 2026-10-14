@@ -965,8 +965,6 @@
             if (!text) return;
 
             const sId = getChatId();
-            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            if (!allChats[sId]) allChats[sId] = [];
 
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
             let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
@@ -975,20 +973,38 @@
                 cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
             }
 
-            allChats[sId].push({
+            const message = {
                 sender: 'customer',
                 name: cName,
                 text: text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
+            };
 
-            localStorage.setItem('liveChats', JSON.stringify(allChats));
-            
-            // Cloud Sync!
-            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
-
+            // Optimistically show the message immediately.
+            const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            if (!allChatsLocal[sId]) allChatsLocal[sId] = [];
+            allChatsLocal[sId].push(message);
+            localStorage.setItem('liveChats', JSON.stringify(allChatsLocal));
             input.value = '';
             loadChatMessages();
+
+            // Send only this single message to the server (append-only, safe for multi-device).
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sId, message })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.allChats) {
+                    // Sync localStorage with the authoritative server state.
+                    localStorage.setItem('liveChats', JSON.stringify(data.allChats));
+                    loadChatMessages();
+                }
+            })
+            .catch(() => {
+                // Offline: message is already in localStorage, will sync next time.
+            });
         }
 
         function sendChatPhoto(input) {
@@ -1000,8 +1016,6 @@
                 const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
 
                 const sId = getChatId();
-                const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-                if (!allChats[sId]) allChats[sId] = [];
 
                 const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
                 let cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName') || 'Guest';
@@ -1010,20 +1024,35 @@
                     cName = `${guestRes.customerName || 'Guest'} (#${rClean})`;
                 }
 
-                allChats[sId].push({
+                const message = {
                     sender: 'customer',
                     name: cName,
                     text: txt,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
+                };
 
-                localStorage.setItem('liveChats', JSON.stringify(allChats));
-                
-                // Cloud Sync!
-                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allChats) }).catch(()=>{});
-
+                // Optimistically show photo immediately.
+                const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                if (!allChatsLocal[sId]) allChatsLocal[sId] = [];
+                allChatsLocal[sId].push(message);
+                localStorage.setItem('liveChats', JSON.stringify(allChatsLocal));
                 loadChatMessages();
                 input.value = '';
+
+                // Append-only cloud sync.
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: sId, message })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.allChats) {
+                        localStorage.setItem('liveChats', JSON.stringify(data.allChats));
+                        loadChatMessages();
+                    }
+                })
+                .catch(() => {});
             };
             reader.readAsDataURL(file);
         }
