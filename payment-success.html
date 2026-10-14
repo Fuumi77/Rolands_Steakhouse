@@ -46,20 +46,19 @@
         <p class="pm-note">Payment processed securely via PayMongo</p>
     </div>
 
-    <script>
+<script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+        
+        // Immediately clear paymongoSessionId so returning to checkout doesn't trigger a false failure
+        localStorage.removeItem('paymongoSessionId');
+
         // Grab reservation number from URL or localStorage
         const params = new URLSearchParams(window.location.search);
         const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
         document.getElementById('res-number').textContent = resNo;
 
-        // Mark the reservation as paid in history and deduct stock only now
-        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-        const entry = hist.find(r => r.reservationNumber === resNo);
-        if (entry) {
-            entry.paymentStatus = 'paid';
-
-            // 👉 FIX: Update the existing DB reservation to Approved!
+        // Always update the cloud database status to Approved
+        if (resNo && resNo !== 'N/A') {
             fetch(`${API_BASE_URL}/api/reservations/update-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -68,16 +67,45 @@
                     status: 'Approved' 
                 })
             }).catch(err => console.error("Database update failed:", err));
+        }
+
+        // Mark the reservation as paid in local history and deduct stock
+        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        let entry = hist.find(r => r.reservationNumber === resNo);
+
+        // Fallback if local entry wasn't found
+        if (!entry && resNo !== 'N/A') {
+            entry = {
+                reservationNumber: resNo,
+                customerName: localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest',
+                bookedTable: localStorage.getItem('bookedTable') || 'TBD',
+                arrivalDateTimeDisplay: localStorage.getItem('arrivalDateTimeDisplay') || 'Upcoming',
+                orderSummary: localStorage.getItem('orderSummary') || 'Standard Reservation',
+                paymentAmount: Number(localStorage.getItem('totalBill') || 0),
+                paymentStatus: 'paid',
+                approvalStatus: 'approved'
+            };
+            hist.push(entry);
+        }
+
+        if (entry) {
+            entry.paymentStatus = 'paid';
+            entry.approvalStatus = 'approved';
 
             // Deduct raw ingredients now that payment is confirmed
             if (!entry.stockDeducted && entry.cartItems && entry.cartItems.length > 0) {
+                if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
+                    window.InventorySystem.deductIngredientsForOrder(entry.cartItems, 'Online Pre-Order', resNo);
+                }
+                entry.stockDeducted = true;
+            }
 
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
             // SEND AUTOMATIC EMAIL RECEIPT
             const customerEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail');
             if (customerEmail) {
-                fetch('${API_BASE_URL}/api/send-receipt', {
+                fetch(`${API_BASE_URL}/api/send-receipt`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -90,8 +118,7 @@
                         table: entry.bookedTable || 'Unassigned',
                         orderSummary: entry.orderSummary || 'Standard Reservation'
                     })
-                }).then(r => console.log('Email sent status:', r.status))
-                  .catch(err => console.error('Failed to trigger email', err));
+                }).catch(err => console.error('Failed to trigger email', err));
             }
 
             // Populate visual receipt
@@ -105,28 +132,32 @@
             if (entry.orderSummary) {
                 itemsHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #f1f5f9; color:#64748b; font-size:13px;">${entry.orderSummary}</div>`;
             }
-            // Add Link to QR Receipt
             itemsHtml += `<div style="margin-top:15px; text-align:center;">
                 <a href="receipt.html?res=${resNo}" style="color:#1b5e20; font-size:12px; font-weight:700; text-decoration:none; border-bottom:1px dashed #1b5e20;">🖨️ View QR Receipt for Scanning</a>
             </div>`;
             
             document.getElementById('receipt-items').innerHTML = itemsHtml;
 
-            // Automatically inject stylized Receipt Card into the Live Support Chat
-            const sId = localStorage.getItem('chatSessionId') || ('session_' + Math.random().toString(36).substr(2, 9));
-            if (!localStorage.getItem('chatSessionId')) localStorage.setItem('chatSessionId', sId);
+            // Inject stylized Receipt Card into Live Support Chat (Local + Cloud)
+            const email = localStorage.getItem('loggedInUserEmail');
+            const name = localStorage.getItem('loggedInUserName');
+            let sId = localStorage.getItem('chatSessionId');
+            if (email && email.trim() !== '') {
+                sId = 'acct_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+            } else if (name && name.trim() !== '') {
+                sId = 'acct_' + name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+            } else if (!sId) {
+                sId = 'session_' + Math.random().toString(36).substr(2, 9);
+            }
+            localStorage.setItem('chatSessionId', sId);
 
             const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-            if (!allChats[sId]) allChats[sId] = [];
+            if (!Array.isArray(allChats[sId])) allChats[sId] = [];
 
             const resNoStr = entry.reservationNumber;
             const hasReceipt = allChats[sId].some(m => m.res_no === resNoStr && m.text.includes('Receipt'));
 
             if (!hasReceipt) {
-                const amount = entry.paymentAmount || 0;
-                const fmtAmt = Number(amount).toLocaleString(undefined, {minimumFractionDigits: 2});
-                
-                // STYLIZED RECEIPT CARD HTML (Points to receipt.html?res=...)
                 const receiptCardHtml = `
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 15px; margin-top: 5px; box-shadow: 0 4px 12px rgba(22,163,74,0.1);">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
@@ -143,24 +174,31 @@
                     </div>
                 `;
                 
-                allChats[sId].push({
+                const receiptMsg = {
                     sender: 'staff',
                     text: receiptCardHtml,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     res_no: resNoStr
-                });
+                };
+
+                allChats[sId].push(receiptMsg);
                 localStorage.setItem('liveChats', JSON.stringify(allChats));
-                window.dispatchEvent(new Event('storage'));
+
+                fetch(`${API_BASE_URL}/api/memory/live-chats/message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: sId, message: receiptMsg })
+                }).catch(() => {});
             }
         }
 
-        // Clear checkout data
+        // Clear temporary checkout data
         localStorage.removeItem('totalBill');
+        localStorage.removeItem('preOrderCart');
+        localStorage.removeItem('currentCartObj');
         localStorage.removeItem('cartItems');
         localStorage.removeItem('reservationData');
         localStorage.removeItem('pendingReservation');
-        localStorage.removeItem('paymongoSessionId');
-        localStorage.removeItem('reservationNumber');
         localStorage.removeItem('pendingReservationNumber');
     </script>
 </body>
