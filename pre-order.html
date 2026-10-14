@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 
     <style>
-        /* 👉 1. Clean Rounded Card & Smooth Highlight for Beef Preference */
+        /* 👉 1. Clean Static Card for Beef Preference (No Flash) */
         .beef-pref-panel {
             background: #f8fafc !important;
             border: 1.5px solid #e2e8f0 !important;
@@ -21,16 +21,34 @@
             padding: 14px 16px !important;
             margin: 14px 0 !important;
             box-sizing: border-box !important;
+        }
+
+        /* 👉 2. Highlight Effect for the Added Item (Cart Row & Menu Card) */
+        .cart-item {
+            padding: 8px 10px !important;
+            border-radius: 10px !important;
+            border: 1.5px solid transparent !important;
             transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
         }
 
-        .beef-pref-panel.beef-highlight-active {
+        .cart-item.item-highlight-active {
             background: #f0fdf4 !important;
             border-color: #22c55e !important;
-            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2) !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18) !important;
         }
 
-        /* 👉 2. Clear Active Highlight for Doneness Chips */
+        .menu-card.in-cart {
+            border: 2px solid #1b5e20 !important;
+            background: #f0fdf4 !important;
+        }
+
+        .menu-card.item-highlight-active {
+            border-color: #22c55e !important;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* 👉 3. Clear Active Highlight for Doneness Chips */
         .doneness-chip {
             transition: all 0.2s ease !important;
             cursor: pointer !important;
@@ -44,7 +62,7 @@
             box-shadow: 0 4px 10px rgba(27, 94, 32, 0.25) !important;
         }
 
-        /* 👉 3. Reduce (−) Button Beside Each Meal in the Cart */
+        /* 👉 4. Reduce (−) Button Beside Each Meal in the Cart */
         .cart-reduce-btn {
             width: 26px;
             height: 26px;
@@ -588,7 +606,7 @@
                 const item = menuData.find(i => i.id === id);
                 if (!item) return '';
                 return `
-                    <div class="cart-item" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div class="cart-item" data-cart-id="${id}" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                         <div class="cart-item-info" style="flex:1; min-width:0;">
                             <div style="display:flex; align-items:center; gap:6px;">
                                 <span class="cart-qty">${cart[id].qty}x</span>
@@ -679,7 +697,17 @@
         // ─────────────────────────────────────────────────────────
         // CART ACTIONS
         // ─────────────────────────────────────────────────────────
-        let beefHighlightTimeout = null;
+        let itemHighlightTimeout = null;
+
+        function syncMenuCardsInCart() {
+            document.querySelectorAll('.menu-card').forEach(card => {
+                const addBtn = card.querySelector('.qty-btn.add');
+                const onClickAttr = addBtn ? addBtn.getAttribute('onclick') || '' : '';
+                const match = onClickAttr.match(/updateQty\('([^']+)'/);
+                const itemId = match ? match[1] : null;
+                card.classList.toggle('in-cart', Boolean(itemId && cart[itemId] && cart[itemId].qty > 0));
+            });
+        }
 
         window.updateQty = function(id, delta) {
             const item = menuData.find(i => i.id === id);
@@ -698,25 +726,34 @@
             cart[id].qty = newQty;
             if (cart[id].qty <= 0) delete cart[id];
 
-            // Render first so the Beef Preference panel is visible right away
             renderMenu();
             renderCart();
+            syncMenuCardsInCart();
             
-            // Smoothly highlight Beef Preference if a beef item is added and no doneness is chosen yet
-            if (delta > 0 && ['Beef', 'T-Bone', 'Sirloin Steak'].includes(item.category) && !selectedDoneness) {
-                const prefPanels = document.querySelectorAll('.beef-pref-panel');
-                if (beefHighlightTimeout) clearTimeout(beefHighlightTimeout);
+            // 👉 Highlight ONLY the added item (both in the menu and in the cart)
+            if (delta > 0 && cart[id]) {
+                if (itemHighlightTimeout) clearTimeout(itemHighlightTimeout);
 
-                prefPanels.forEach(prefPanel => {
-                    if (prefPanel.offsetParent !== null) {
-                        prefPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                document.querySelectorAll('.item-highlight-active').forEach(el => el.classList.remove('item-highlight-active'));
+
+                // 1. Highlight the item row inside "Your Order"
+                const cartRows = document.querySelectorAll(`.cart-item[data-cart-id="${id}"]`);
+                cartRows.forEach(row => {
+                    row.classList.add('item-highlight-active');
+                    if (row.offsetParent !== null) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }
-                    prefPanel.classList.add('beef-highlight-active');
                 });
 
-                beefHighlightTimeout = setTimeout(() => {
-                    prefPanels.forEach(prefPanel => prefPanel.classList.remove('beef-highlight-active'));
-                }, 1200);
+                // 2. Highlight the clicked Menu Card
+                document.querySelectorAll(`.menu-card button[onclick*="'${id}'"]`).forEach(btn => {
+                    const card = btn.closest('.menu-card');
+                    if (card) card.classList.add('item-highlight-active');
+                });
+
+                itemHighlightTimeout = setTimeout(() => {
+                    document.querySelectorAll('.item-highlight-active').forEach(el => el.classList.remove('item-highlight-active'));
+                }, 1000);
             }
         };
 
