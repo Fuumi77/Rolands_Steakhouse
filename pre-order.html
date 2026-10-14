@@ -12,6 +12,69 @@
     <script src="js/inventory-system.js?v=2.0"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 </head>
+    <style>
+        /* 👉 1. Clean Rounded Card & Smooth Highlight for Beef Preference */
+        .beef-pref-panel {
+            background: #f8fafc !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 14px !important;
+            padding: 14px 16px !important;
+            margin: 14px 0 !important;
+            box-sizing: border-box !important;
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+        }
+
+        .beef-pref-panel.beef-highlight-active {
+            background: #f0fdf4 !important;
+            border-color: #22c55e !important;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2) !important;
+        }
+
+        /* 👉 2. Clear Active Highlight for Doneness Chips */
+        .doneness-chip {
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+        }
+
+        .doneness-chip.active {
+            background: #1b5e20 !important;
+            color: #ffffff !important;
+            border-color: #1b5e20 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 10px rgba(27, 94, 32, 0.25) !important;
+        }
+
+        /* 👉 3. Reduce (−) Button Beside Each Meal in the Cart */
+        .cart-reduce-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            border: 1.5px solid #fecaca;
+            background: #fef2f2;
+            color: #dc2626;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .cart-reduce-btn:hover {
+            background: #fee2e2;
+            border-color: #f87171;
+            color: #991b1b;
+            transform: scale(1.06);
+        }
+
+        .cart-reduce-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
 <body>
 
     <header id="main-header">
@@ -524,11 +587,17 @@
                 const item = menuData.find(i => i.id === id);
                 if (!item) return '';
                 return `
-                    <div class="cart-item">
-                        <div class="cart-item-info">
-                            <div><span class="cart-qty">${cart[id].qty}x</span><span class="cart-item-title">${item.title}</span></div>
+                    <div class="cart-item" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                        <div class="cart-item-info" style="flex:1; min-width:0;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="cart-qty">${cart[id].qty}x</span>
+                                <span class="cart-item-title">${item.title}</span>
+                            </div>
                         </div>
-                        <div class="cart-item-price">${fmt(item.price * cart[id].qty)}</div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                            <div class="cart-item-price">${fmt(item.price * cart[id].qty)}</div>
+                            <button type="button" class="cart-reduce-btn" onclick="updateQty('${id}', -1)" title="Reduce quantity" aria-label="Reduce ${item.title}">−</button>
+                        </div>
                     </div>`;
             }).join('');
         }
@@ -609,9 +678,11 @@
         // ─────────────────────────────────────────────────────────
         // CART ACTIONS
         // ─────────────────────────────────────────────────────────
+        let beefHighlightTimeout = null;
+
         window.updateQty = function(id, delta) {
             const item = menuData.find(i => i.id === id);
-            if(!item) return;
+            if (!item) return;
 
             if (!cart[id]) cart[id] = { qty: 0 };
             
@@ -625,27 +696,28 @@
 
             cart[id].qty = newQty;
             if (cart[id].qty <= 0) delete cart[id];
-            
-            // Auto-scroll to preference if beef is added and no doneness is selected
-            if (delta > 0 && ['Beef', 'T-Bone', 'Sirloin Steak'].includes(item.category) && !selectedDoneness) {
-                const prefPanel = document.querySelector('.beef-pref-panel');
-                if (prefPanel) {
-                    prefPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    prefPanel.style.transition = 'all 0.3s ease';
-                    prefPanel.style.boxShadow = '0 0 20px rgba(27, 94, 32, 0.4)';
-                    prefPanel.style.transform = 'scale(1.02)';
-                    setTimeout(() => {
-                        prefPanel.style.boxShadow = '';
-                        prefPanel.style.transform = '';
-                    }, 1000);
-                }
-            }
 
+            // Render first so the Beef Preference panel is visible right away
             renderMenu();
             renderCart();
-        };
+            
+            // Smoothly highlight Beef Preference if a beef item is added and no doneness is chosen yet
+            if (delta > 0 && ['Beef', 'T-Bone', 'Sirloin Steak'].includes(item.category) && !selectedDoneness) {
+                const prefPanels = document.querySelectorAll('.beef-pref-panel');
+                if (beefHighlightTimeout) clearTimeout(beefHighlightTimeout);
 
-        window.refreshOrder = function() {
+                prefPanels.forEach(prefPanel => {
+                    if (prefPanel.offsetParent !== null) {
+                        prefPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                    prefPanel.classList.add('beef-highlight-active');
+                });
+
+                beefHighlightTimeout = setTimeout(() => {
+                    prefPanels.forEach(prefPanel => prefPanel.classList.remove('beef-highlight-active'));
+                }, 1200);
+            }
+        };
             // Visual feedback
             const btns = document.querySelectorAll('.cart-clear-btn');
             btns.forEach(b => { if(b.textContent === 'Refresh') b.textContent = '...'; });
