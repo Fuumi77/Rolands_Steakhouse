@@ -350,14 +350,14 @@
 
                 <form id="booking-form" onsubmit="goToNextPage(event)">
                     <div class="form-group">
-                        <label for="customer-name-input">Full Name</label>
+                        <label for="customer-name-input">Full Name <span style="color:#ef4444;">*</span></label>
                         <input type="text" id="customer-name-input" placeholder="Enter your full name" required
                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Phone Number</label>
+                            <label>Phone Number <span style="color:#ef4444;">*</span></label>
                             <div class="phone-input-group">
                                 <span class="phone-prefix">+63</span>
                                 <input type="tel" placeholder="9XX XXX XXXX" required maxlength="10" 
@@ -372,18 +372,18 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="arrival-date-input">Arrival Date</label>
+                            <label for="arrival-date-input">Arrival Date <span style="color:#ef4444;">*</span></label>
                             <input type="date" id="arrival-date-input" required>
                         </div>
                         <div class="form-group">
-                            <label for="arrival-time-input">Arrival Time</label>
+                            <label for="arrival-time-input">Arrival Time <span style="color:#ef4444;">*</span></label>
                             <input type="time" id="arrival-time-input" min="10:30" max="21:00" required>
                             <span class="time-limit-hint">Available: 10:30 AM - 9:00 PM</span>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="party-size-select">Number of Guests</label>
+                        <label for="party-size-select">Number of Guests <span style="color:#ef4444;">*</span></label>
                         <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required>
                             <option value="" disabled selected>Select party size</option>
                             <option>1-2 Persons</option>
