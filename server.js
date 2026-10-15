@@ -5,7 +5,8 @@ const mysql = require('mysql2');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -712,6 +713,61 @@ app.post('/api/reservations/update-order', async (req, res) => {
         cachedReservations = null;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 👉 CLOUD MENU & PRODUCT PHOTO SYNC ROUTES */
+app.get('/api/memory/inventory-items', async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'inventoryItems'");
+        if (!rows.length || !rows[0].mem_val) return res.json([]);
+        const val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
+        res.json(Array.isArray(val) ? val : []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/memory/inventory-items', async (req, res) => {
+    try {
+        const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
+        const jsonStr = JSON.stringify(items);
+        await db.query(
+            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('inventoryItems', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
+            [jsonStr, jsonStr]
+        );
+        res.json({ success: true, count: items.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/memory/inventory-items/item', async (req, res) => {
+    try {
+        const { item, deleteId } = req.body;
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'inventoryItems'");
+        let items = [];
+        if (rows.length && rows[0].mem_val) {
+            items = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
+            if (!Array.isArray(items)) items = [];
+        }
+
+        if (deleteId) {
+            items = items.filter(i => i && i.id !== deleteId);
+        } else if (item && item.id) {
+            const idx = items.findIndex(i => i && i.id === item.id);
+            if (idx > -1) items[idx] = { ...items[idx], ...item };
+            else items.push(item);
+        }
+
+        const jsonStr = JSON.stringify(items);
+        await db.query(
+            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('inventoryItems', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
+            [jsonStr, jsonStr]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = app;
