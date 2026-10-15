@@ -110,7 +110,13 @@
             padding: 0 !important;
         }
 
-        /* 👉 FIX 2: Visually zoom in on the logo to bypass its transparent padding */
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (index.html) */
+        :root {
+            --logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
+            --logo-hover-scale: 1.95; /* 👈 Size when hovered */
+            --logo-click-scale: 2.10; /* 👈 Size when clicked */
+        }
+
         header#main-header .logo {
             display: flex;
             align-items: center;
@@ -120,18 +126,32 @@
         header#main-header .logo img {
             max-height: 90px !important;
             width: auto !important;
-            transform: scale(2); /* 🔍 Zooms the logo up by 60% */
-            transform-origin: left center; /* Keeps it anchored to the left on laptops */
-            transition: all 0.3s ease;
+            cursor: pointer !important;
+            transform: scale(var(--logo-scale)) !important;
+            transform-origin: left center !important;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+        }
+
+        header#main-header .logo img:hover {
+            transform: scale(var(--logo-hover-scale)) !important;
+            filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.25)) !important;
+        }
+
+        header#main-header .logo img:active {
+            transform: scale(var(--logo-click-scale)) !important;
         }
         
         @media (max-width: 768px) {
             header#main-header .logo img {
                 max-height: 70px !important; 
-                transform: scale(2.5); /* 🔍 Zooms the logo up by 50% on phones */
-                transform-origin: center center; /* Anchors it to the center for stacked mobile view */
+                transform: scale(1.8) !important;
+                transform-origin: center center !important;
                 margin-top: 15px !important;
                 margin-bottom: 5px !important;
+            }
+            header#main-header .logo img:hover,
+            header#main-header .logo img:active {
+                transform: scale(1.98) !important;
             }
         }
         @keyframes luxuryModalIn {
