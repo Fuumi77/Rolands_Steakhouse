@@ -259,3 +259,99 @@
     position: absolute;
     z-index: 100000;
 }
+
+/* =========================================================
+   🔍 UNIVERSAL LOGO SCALER & HOVER / CLICK ANIMATION
+   Adjust the numbers below to make logos bigger or smaller!
+   ========================================================= */
+:root {
+    --header-logo-scale: 2.0;         /* Main navbar logo size (index, seat-selection, pre-order) */
+    --header-logo-hover-scale: 2.20;   /* Main navbar logo size when HOVERED */
+    --header-logo-click-scale: 2.30;   /* Main navbar logo size when CLICKED */
+
+    --checkout-logo-scale: 2.0;       /* Checkout header logo size (payment & standard-payment) */
+    --checkout-logo-hover-scale: 2.20; /* Checkout logo size when HOVERED */
+    --checkout-logo-click-scale: 2.30; /* Checkout logo size when CLICKED */
+
+    --success-logo-scale: 2.0;        /* E-Receipt / Payment Successful card logo size */
+    --success-logo-hover-scale: 2.20;  /* E-Receipt logo size when HOVERED */
+    --success-logo-click-scale: 2.30;  /* E-Receipt logo size when CLICKED */
+}
+
+/* 1. Main Navbar Logos (index.html, seat-selection.html, pre-order.html) */
+header .logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+}
+
+header .logo img,
+header#main-header .logo img {
+    max-height: 90px !important;
+    width: auto !important;
+    cursor: pointer !important;
+    transform: scale(var(--header-logo-scale)) !important;
+    transform-origin: left center !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+}
+
+header .logo img:hover,
+header#main-header .logo img:hover {
+    transform: scale(var(--header-logo-hover-scale)) !important;
+    filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.22)) !important;
+}
+
+header .logo img:active,
+header#main-header .logo img:active {
+    transform: scale(var(--header-logo-click-scale)) !important;
+}
+
+/* 2. Checkout Header Logos (payment.html & standard-payment.html) */
+header > img[src*="Rolands logo"] {
+    height: 68px !important;
+    width: auto !important;
+    margin-right: 26px !important; /* Prevents enlarged logo from overlapping "Roland's Steakhouse" text */
+    cursor: pointer !important;
+    transform: scale(var(--checkout-logo-scale)) !important;
+    transform-origin: left center !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+}
+
+header > img[src*="Rolands logo"]:hover {
+    transform: scale(var(--checkout-logo-hover-scale)) !important;
+    filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.22)) !important;
+}
+
+header > img[src*="Rolands logo"]:active {
+    transform: scale(var(--checkout-logo-click-scale)) !important;
+}
+
+/* 3. Payment Successful Card Logo (payment-success.html) */
+.success-card img[src*="Rolands logo"] {
+    height: 80px !important;
+    width: auto !important;
+    margin: 10px auto 14px auto !important;
+    cursor: pointer !important;
+    transform: scale(var(--success-logo-scale)) !important;
+    transform-origin: center center !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+}
+
+.success-card img[src*="Rolands logo"]:hover {
+    transform: scale(var(--success-logo-hover-scale)) !important;
+    filter: drop-shadow(0 8px 16px rgba(27, 94, 32, 0.25)) !important;
+}
+
+.success-card img[src*="Rolands logo"]:active {
+    transform: scale(var(--success-logo-click-scale)) !important;
+}
+
+/* 4. Mobile Screen Adjustments */
+@media (max-width: 768px) {
+    header .logo img,
+    header#main-header .logo img {
+        max-height: 70px !important;
+        transform-origin: center center !important;
+    }
+}
