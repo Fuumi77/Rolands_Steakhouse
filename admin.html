@@ -6422,6 +6422,51 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             </div>
         </div>
     </div>
+
+    <!-- CLOUD PRODUCT PHOTO & MENU SYNC (STAFF PORTAL) -->
+    <script>
+        (function initStaffCloudInventorySync() {
+            const CLOUD_URL = `${API_BASE_URL}/api/memory/inventory-items`;
+            let lastStaffCloudJson = '';
+
+            async function syncStaffInventoryFromCloud() {
+                try {
+                    const res = await fetch(`${CLOUD_URL}?nocache=${Date.now()}`);
+                    if (!res.ok) return;
+                    const cloudItems = await res.json();
+                    if (!Array.isArray(cloudItems) || cloudItems.length === 0) return;
+
+                    const jsonStr = JSON.stringify(cloudItems);
+                    if (jsonStr !== lastStaffCloudJson) {
+                        lastStaffCloudJson = jsonStr;
+                        localStorage.setItem('inventoryItems', jsonStr);
+                        window.dispatchEvent(new Event('inventoryUpdated'));
+                    }
+                } catch (e) {}
+            }
+
+            // If staff deletes a photo, push that update to the cloud too
+            window.addEventListener('load', () => {
+                syncStaffInventoryFromCloud();
+                setInterval(syncStaffInventoryFromCloud, 8000);
+
+                if (typeof window.deleteInventoryPhoto === 'function' && !window.deleteInventoryPhoto.__cloudWrapped) {
+                    const origDel = window.deleteInventoryPhoto;
+                    window.deleteInventoryPhoto = async function (...args) {
+                        const r = await origDel.apply(this, args);
+                        const updated = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                        await fetch(CLOUD_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updated)
+                        }).catch(() => {});
+                        return r;
+                    };
+                    window.deleteInventoryPhoto.__cloudWrapped = true;
+                }
+            });
+        })();
+    </script>
 </body>
 
 </html>
