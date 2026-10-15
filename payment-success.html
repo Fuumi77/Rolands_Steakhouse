@@ -12,9 +12,36 @@
     <link rel="stylesheet" href="css/payment-success.css">
 </head>
 <body>
+    <style>
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (payment-success.html) */
+        :root {
+            --success-logo-scale: 1.85;       /* 👈 Change this number to adjust normal size */
+            --success-logo-hover-scale: 2.05; /* 👈 Size when hovered */
+            --success-logo-click-scale: 2.20; /* 👈 Size when clicked */
+        }
+
+        .success-brand-logo {
+            height: 85px !important;
+            width: auto !important;
+            cursor: pointer !important;
+            transform: scale(var(--success-logo-scale)) !important;
+            transform-origin: center center !important;
+            filter: drop-shadow(0 4px 10px rgba(27, 94, 32, 0.15)) !important;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+        }
+
+        .success-brand-logo:hover {
+            transform: scale(var(--success-logo-hover-scale)) !important;
+            filter: drop-shadow(0 8px 18px rgba(27, 94, 32, 0.28)) !important;
+        }
+
+        .success-brand-logo:active {
+            transform: scale(var(--success-logo-click-scale)) !important;
+        }
+    </style>
     <div class="success-card">
-        <div style="margin-bottom: 30px;">
-            <img src="images/Rolands logo 2.png" alt="Roland's Logo" style="height: 70px; width: auto; filter: drop-shadow(0 4px 10px rgba(27, 94, 32, 0.15));">
+        <div style="margin-top: 10px; margin-bottom: 38px; display: flex; justify-content: center;">
+            <img src="images/Rolands logo 2.png" alt="Roland's Logo" class="success-brand-logo" onclick="window.location.href='index.html'">
         </div>
         <div class="check-circle">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
