@@ -1292,7 +1292,7 @@
 
                     } else {
                         // 👉 Assign the rebuilt foods list to completely new devices (like your phone)!
-                        if (dbGenStatus === 'completed' || dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') return;
+                        if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
 
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
