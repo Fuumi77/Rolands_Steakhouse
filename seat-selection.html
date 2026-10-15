@@ -10,6 +10,56 @@
     <script src="js/design-system.js"></script>
     <script src="js/inventory-system.js"></script>
     <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (seat-selection.html) */
+        :root {
+            --logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
+            --logo-hover-scale: 1.95; /* 👈 Size when hovered */
+            --logo-click-scale: 2.10; /* 👈 Size when clicked */
+        }
+
+        header .logo,
+        header#main-header .logo {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        header .logo img,
+        header#main-header .logo img,
+        header img[src*="Rolands logo"] {
+            max-height: 90px !important;
+            height: 90px !important;
+            width: auto !important;
+            cursor: pointer !important;
+            transform: scale(var(--logo-scale)) !important;
+            transform-origin: left center !important;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+        }
+
+        header .logo img:hover,
+        header#main-header .logo img:hover,
+        header img[src*="Rolands logo"]:hover {
+            transform: scale(var(--logo-hover-scale)) !important;
+            filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.25)) !important;
+        }
+
+        header .logo img:active,
+        header#main-header .logo img:active,
+        header img[src*="Rolands logo"]:active {
+            transform: scale(var(--logo-click-scale)) !important;
+        }
+
+        @media (max-width: 768px) {
+            header .logo img,
+            header#main-header .logo img,
+            header img[src*="Rolands logo"] {
+                max-height: 70px !important;
+                height: 70px !important;
+                transform-origin: center center !important;
+            }
+        }
+    </style>
 </head>
 <body class="seat-selection-page">
 
