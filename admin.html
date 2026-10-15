@@ -3361,7 +3361,46 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
 
             // Live chat admin logic
-            window.currentActiveChat = null;
+            window.currentActiveChat = window.currentActiveChat || null;
+            window.lastSeenChatCounts = window.lastSeenChatCounts || null;
+            window.unreadChatCounts = window.unreadChatCounts || {};
+
+            function playChatNotificationSound() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                } catch (e) {}
+            }
+
+            window.updateSidebarChatBadge = function () {
+                const chatTabBtn = document.querySelector('.sidebar .tab-link[onclick*="\'chat\'"]');
+                if (!chatTabBtn) return;
+
+                const totalUnread = Object.values(window.unreadChatCounts || {}).reduce((sum, n) => sum + n, 0);
+                let badge = document.getElementById('sidebar-chat-unread-badge');
+
+                if (totalUnread > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.id = 'sidebar-chat-unread-badge';
+                        badge.style.cssText = 'margin-left:auto; background:#ef4444; color:white; font-size:11px; font-weight:800; padding:2px 7px; border-radius:12px; box-shadow:0 2px 6px rgba(239,68,68,0.35);';
+                        chatTabBtn.appendChild(badge);
+                    }
+                    badge.textContent = totalUnread;
+                } else if (badge) {
+                    badge.remove();
+                }
+            };
 
             window.renderAdminChats = function (forceScroll = false) {
                 const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
@@ -3369,6 +3408,41 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (!listEl) return;
 
                 const sessions = Object.keys(allChats);
+                const isFirstLoad = window.lastSeenChatCounts === null;
+                if (isFirstLoad) window.lastSeenChatCounts = {};
+
+                const isChatTabOpen = !document.getElementById('tab-chat')?.classList.contains('hidden');
+
+                // Check for new customer/guest messages to trigger notifications
+                sessions.forEach(sId => {
+                    const msgs = Array.isArray(allChats[sId]) ? allChats[sId] : [];
+                    const custMsgs = msgs.filter(m => m.sender === 'customer');
+                    const prevCount = window.lastSeenChatCounts[sId] ?? custMsgs.length;
+
+                    if (!isFirstLoad && custMsgs.length > prevCount) {
+                        const newCount = custMsgs.length - prevCount;
+                        const latestMsg = custMsgs[custMsgs.length - 1];
+                        const senderName = (latestMsg && latestMsg.name) ? latestMsg.name : 'Guest';
+                        const isPhoto = latestMsg && String(latestMsg.text).includes('<img');
+                        const previewText = isPhoto ? '📷 Sent a photo' : String(latestMsg?.text || '').replace(/<[^>]*>?/gm, '').slice(0, 60);
+
+                        // Fire sound and popup notification
+                        playChatNotificationSound();
+                        if (typeof window.showNotification === 'function') {
+                            window.showNotification(`💬 ${senderName}: "${previewText}"`, 'success', 'New Live Chat Message');
+                        }
+
+                        // Mark unread if staff isn't actively looking at this specific conversation
+                        if (!isChatTabOpen || window.currentActiveChat !== sId) {
+                            window.unreadChatCounts[sId] = (window.unreadChatCounts[sId] || 0) + newCount;
+                        }
+                    }
+
+                    window.lastSeenChatCounts[sId] = custMsgs.length;
+                });
+
+                window.updateSidebarChatBadge();
+
                 if (sessions.length === 0) {
                     listEl.innerHTML = '<div style="padding: 15px; color:#666; font-size:14px; text-align:center;">No active chats.</div>';
                     return;
@@ -3376,7 +3450,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                 let listHtml = '';
                 sessions.forEach(sId => {
-                    const msgs = allChats[sId];
+                    const msgs = Array.isArray(allChats[sId]) ? allChats[sId] : [];
                     if (msgs.length === 0) return;
 
                     const lastMsg = msgs[msgs.length - 1];
@@ -3385,11 +3459,15 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     if (custMsg && custMsg.name) cName = custMsg.name;
 
                     const isActive = sId === window.currentActiveChat;
+                    const unread = window.unreadChatCounts[sId] || 0;
 
                     listHtml += `
-                        <div class="chat-session-card ${isActive ? 'active' : ''}" onclick="selectAdminChat('${sId}')">
-                            <div class="chat-session-title">${cName}</div>
-                            <div class="chat-session-meta">${lastMsg.time} • ${msgs.length} messages</div>
+                        <div class="chat-session-card ${isActive ? 'active' : ''}" data-session-id="${sId}" onclick="selectAdminChat('${sId}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:background 0.15s ease;">
+                            <div>
+                                <div class="chat-session-title" style="${unread > 0 ? 'font-weight:800; color:#1b5e20;' : ''}">${cName}</div>
+                                <div class="chat-session-meta">${lastMsg.time} • ${msgs.length} messages</div>
+                            </div>
+                            ${unread > 0 ? `<span style="background:#ef4444; color:white; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">${unread} NEW</span>` : ''}
                         </div>
                     `;
                 });
@@ -3398,15 +3476,12 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     listEl.innerHTML = listHtml;
                 }
 
-                // If currently viewing a chat, refresh only its content via selectAdminChat silently
                 if (window.currentActiveChat) {
                     const mainHasContent = document.getElementById('adminChatBody') !== null;
                     if (!mainHasContent || forceScroll) {
                         selectAdminChat(window.currentActiveChat, true);
                     } else {
-                        // Silent update without re-focusing or ruining input
-                        const allChats2 = safeJsonParse(localStorage.getItem('liveChats'), {});
-                        const msgs2 = allChats2[window.currentActiveChat] || [];
+                        const msgs2 = allChats[window.currentActiveChat] || [];
                         let bodyHtml = '';
                         msgs2.forEach(m => {
                             const isStaff = m.sender === 'staff';
@@ -3418,7 +3493,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                             `;
                         });
                         const b = document.getElementById('adminChatBody');
-                        if (b) {
+                        if (b && b.innerHTML !== bodyHtml) {
                             const isAtBottom = b.scrollHeight - b.scrollTop <= b.clientHeight + 50;
                             b.innerHTML = bodyHtml;
                             if (isAtBottom) b.scrollTop = b.scrollHeight;
@@ -3853,12 +3928,29 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
             window.selectAdminChat = function (sId, isSilent = false) {
                 window.currentActiveChat = sId;
+
+                // Clear unread count for this chat immediately
+                if (window.unreadChatCounts && window.unreadChatCounts[sId]) {
+                    delete window.unreadChatCounts[sId];
+                    if (typeof window.updateSidebarChatBadge === 'function') window.updateSidebarChatBadge();
+                }
+
+                // 👉 FIX: Highlight the clicked user tab immediately without waiting for the next poll!
+                document.querySelectorAll('#adminChatList .chat-session-card').forEach(card => {
+                    const isThisCard = card.getAttribute('data-session-id') === sId;
+                    card.classList.toggle('active', isThisCard);
+                    if (isThisCard) {
+                        const newBadge = card.querySelector('span');
+                        if (newBadge) newBadge.remove();
+                    }
+                });
+
                 const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
                 const msgs = allChats[sId] || [];
 
                 let cName = 'Guest';
-                const custMsg = msgs.find(m => m.sender === 'customer');
-                if (custMsg) cName = custMsg.name;
+                const custMsg = [...msgs].reverse().find(m => m.sender === 'customer' && m.name && m.name !== 'Guest') || msgs.find(m => m.sender === 'customer');
+                if (custMsg && custMsg.name) cName = custMsg.name;
 
                 const mainEl = document.getElementById('adminChatMain');
 
@@ -3890,11 +3982,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     `;
                     const body = document.getElementById('adminChatBody');
                     if (body) body.scrollTop = body.scrollHeight;
-                }
-
-                const listEl = document.getElementById('adminChatList');
-                if (listEl) {
-                    // Chat list will be re-rendered on next poll
                 }
             };
             
