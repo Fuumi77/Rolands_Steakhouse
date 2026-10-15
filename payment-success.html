@@ -49,50 +49,216 @@
 <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
         
-        // Immediately clear paymongoSessionId so returning to checkout doesn't trigger a false failure
+        // Clear paymongoSessionId so returning to checkout doesn't trigger a false failure
         localStorage.removeItem('paymongoSessionId');
+
+        // Helper: Automatically generates a visual "Payment Successful / E-Receipt" image as Proof of Payment
+        function generateEReceiptProofImage(entry) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 760;
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#f0fdf4';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // White Card Container
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#bbf7d0';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(30, 30, 540, 700, 20);
+            ctx.fill();
+            ctx.stroke();
+
+            // Top Green Header Bar
+            ctx.fillStyle = '#1b5e20';
+            ctx.beginPath();
+            ctx.roundRect(30, 30, 540, 14, [20, 20, 0, 0]);
+            ctx.fill();
+
+            // Green Check Circle
+            ctx.fillStyle = '#16a34a';
+            ctx.beginPath();
+            ctx.arc(300, 105, 34, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(285, 105);
+            ctx.lineTo(296, 116);
+            ctx.lineTo(317, 94);
+            ctx.stroke();
+
+            // Title & Subtitle
+            ctx.fillStyle = '#1b5e20';
+            ctx.font = 'bold 28px Georgia, serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Payment Successful!', 300, 175);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillText("Roland's Steakhouse Official E-Receipt", 300, 200);
+
+            // Reservation Number Badge
+            ctx.fillStyle = '#f0fdf4';
+            ctx.strokeStyle = '#86efac';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(110, 222, 380, 78, 14);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 11px Arial, sans-serif';
+            ctx.fillText('RESERVATION NUMBER', 300, 248);
+
+            ctx.fillStyle = '#15803d';
+            ctx.font = 'bold 28px Arial, sans-serif';
+            ctx.fillText(entry.reservationNumber || 'N/A', 300, 283);
+
+            // E-Receipt Box
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.roundRect(65, 325, 470, 330, 14);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // E-Receipt Header
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#1b5e20';
+            ctx.font = 'bold 13px Arial, sans-serif';
+            ctx.fillText('E-RECEIPT', 90, 358);
+
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '13px Arial, sans-serif';
+            ctx.fillText(new Date().toLocaleDateString(), 510, 358);
+
+            // Details
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 15px Arial, sans-serif';
+            ctx.fillText('Customer: ', 90, 395);
+            ctx.font = '15px Arial, sans-serif';
+            ctx.fillText(entry.customerName || 'Guest', 175, 395);
+
+            ctx.font = 'bold 15px Arial, sans-serif';
+            ctx.fillText('Table: ', 90, 425);
+            ctx.font = '15px Arial, sans-serif';
+            ctx.fillText(entry.bookedTable || 'TBD', 145, 425);
+
+            ctx.font = 'bold 15px Arial, sans-serif';
+            ctx.fillText('Arrival: ', 90, 455);
+            ctx.font = '15px Arial, sans-serif';
+            ctx.fillText(entry.arrivalDateTimeDisplay || 'Upcoming', 155, 455);
+
+            // Divider
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(90, 475);
+            ctx.lineTo(510, 475);
+            ctx.stroke();
+
+            // Order Summary (Wrapped)
+            ctx.fillStyle = '#475569';
+            ctx.font = '13.5px Arial, sans-serif';
+            const summaryText = entry.orderSummary || (Array.isArray(entry.foods) && entry.foods.length ? entry.foods.join(', ') : 'Standard Reservation Deposit');
+            const words = summaryText.split(' ');
+            let line = '';
+            let y = 502;
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                if (ctx.measureText(testLine).width > 415 && n > 0) {
+                    ctx.fillText(line, 90, y);
+                    line = words[n] + ' ';
+                    y += 20;
+                    if (y > 565) break;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, 90, y);
+
+            // Bottom Total Divider
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(90, 595);
+            ctx.lineTo(510, 595);
+            ctx.stroke();
+
+            ctx.fillStyle = '#1b5e20';
+            ctx.font = 'bold 20px Arial, sans-serif';
+            ctx.fillText('Total Paid', 90, 628);
+
+            ctx.textAlign = 'right';
+            const fmtTotal = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+            ctx.fillText(fmtTotal, 510, 628);
+
+            // Footer
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillText('Processed via PayMongo • Verified Digital E-Receipt', 300, 695);
+
+            return canvas.toDataURL('image/png');
+        }
 
         // Grab reservation number from URL or localStorage
         const params = new URLSearchParams(window.location.search);
         const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
         document.getElementById('res-number').textContent = resNo;
 
-        // Always update the cloud database status to Approved
-        if (resNo && resNo !== 'N/A') {
-            fetch(`${API_BASE_URL}/api/reservations/update-status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: resNo, 
-                    status: 'Approved' 
-                })
-            }).catch(err => console.error("Database update failed:", err));
-        }
-
-        // Mark the reservation as paid in local history and deduct stock
+        // Keep reservation in Pending Verification so Staff can inspect proof & edit before approving
         const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
         let entry = hist.find(r => r.reservationNumber === resNo);
 
-        // Fallback if local entry wasn't found
         if (!entry && resNo !== 'N/A') {
+            const summaryStr = localStorage.getItem('orderSummary') || 'Standard Reservation';
             entry = {
                 reservationNumber: resNo,
+                reservationType: localStorage.getItem('reservationType') || 'priority',
+                bookedBy: 'online',
                 customerName: localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest',
                 bookedTable: localStorage.getItem('bookedTable') || 'TBD',
+                arrivalDate: localStorage.getItem('arrivalDate') || '',
+                arrivalTime: localStorage.getItem('arrivalTime') || '',
                 arrivalDateTimeDisplay: localStorage.getItem('arrivalDateTimeDisplay') || 'Upcoming',
-                orderSummary: localStorage.getItem('orderSummary') || 'Standard Reservation',
+                orderSummary: summaryStr,
+                foods: summaryStr ? summaryStr.split(', ').filter(Boolean) : [],
                 paymentAmount: Number(localStorage.getItem('totalBill') || 0),
-                paymentStatus: 'paid',
-                approvalStatus: 'approved'
+                paymentStatus: 'pending',
+                approvalStatus: 'pending',
+                paymentMethod: 'paymongo',
+                createdAt: new Date().toISOString()
             };
             hist.push(entry);
         }
 
         if (entry) {
-            entry.paymentStatus = 'paid';
-            entry.approvalStatus = 'approved';
+            // 👉 Keep in 'pending' so it appears in Staff "Pending Verification" first!
+            entry.paymentStatus = 'pending';
+            entry.approvalStatus = 'pending';
+            entry.paymentMethod = entry.paymentMethod || 'paymongo';
+            entry.paymentRef = entry.paymentRef || ('E-RECEIPT-' + resNo);
 
-            // Deduct raw ingredients now that payment is confirmed
+            // 👉 Automatically attach the Payment Successful / E-Receipt image as Proof of Payment!
+            try {
+                entry.paymentProof = generateEReceiptProofImage(entry);
+            } catch (e) {
+                console.warn('Could not generate E-Receipt image:', e);
+            }
+
+            // Deduct raw ingredients now that checkout completed
             if (!entry.stockDeducted && entry.cartItems && entry.cartItems.length > 0) {
                 if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
                     window.InventorySystem.deductIngredientsForOrder(entry.cartItems, 'Online Pre-Order', resNo);
@@ -113,7 +279,7 @@
                         customerName: entry.customerName || 'Guest',
                         amount: entry.paymentAmount || 0,
                         reservationNumber: entry.reservationNumber,
-                        paymentMethod: 'PayMongo',
+                        paymentMethod: 'PayMongo (E-Receipt)',
                         arrivalDateTime: entry.arrivalDateTimeDisplay || 'TBD',
                         table: entry.bookedTable || 'Unassigned',
                         orderSummary: entry.orderSummary || 'Standard Reservation'
@@ -121,7 +287,7 @@
                 }).catch(err => console.error('Failed to trigger email', err));
             }
 
-            // Populate visual receipt
+            // Populate visual receipt on screen
             document.getElementById('receipt-area').style.display = 'block';
             document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
             document.getElementById('receipt-total').textContent = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, {minimumFractionDigits:2});
@@ -162,10 +328,10 @@
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 15px; margin-top: 5px; box-shadow: 0 4px 12px rgba(22,163,74,0.1);">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                             <div style="background: #16a34a; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✅</div>
-                            <strong style="color: #1b5e20; font-size: 15px;">Payment Verified</strong>
+                            <strong style="color: #1b5e20; font-size: 15px;">Payment Submitted</strong>
                         </div>
                         <p style="font-size: 13px; color: #374151; margin-bottom: 12px; line-height: 1.4;">
-                            Your reservation <strong>${resNoStr}</strong> is confirmed. Here is your official QR receipt:
+                            Your E-Receipt for <strong>${resNoStr}</strong> has been sent to our staff for verification. Here is your QR receipt:
                         </p>
                         <button onclick="window.location.href='receipt.html?res=${resNoStr}'" 
                                 style="width: 100%; background: #1b5e20; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -200,6 +366,6 @@
         localStorage.removeItem('reservationData');
         localStorage.removeItem('pendingReservation');
         localStorage.removeItem('pendingReservationNumber');
-    </script>
+</script>
 </body>
 </html>
