@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        // Detect if returning from an active/failed PayMongo session
+        // Detect if returning from an incomplete PayMongo session
         if (localStorage.getItem('paymongoSessionId')) {
             localStorage.removeItem('paymongoSessionId');
-            location.replace('pre-order.html?payment=failed');
+            window.__paymongoCancelled = true;
         }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,193 +117,170 @@
 
     <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
-        // ── Detect VIP or Standard ──
+
+        // ── Detect VIP (₱1,000) or Standard (₱200) ──
         const resType      = localStorage.getItem('reservationType') || 'standard';
         const isVip        = resType === 'vip';
-        
-        // 👉 FIX: Set Standard deposit to 0
-        const depositAmt   = isVip ? 1000 : 0; 
-        
-        const customerName = localStorage.getItem('customerName') || 'Guest';
-        const arrivalDate  = localStorage.getItem('arrivalDate') || '';
-        const arrivalTime  = localStorage.getItem('arrivalTime') || '';
-        const bookedTable  = localStorage.getItem('bookedTable') || 'TBD';
+        const depositAmt   = isVip ? 1000 : 200;
+
+        // Save to totalBill so payment-success.html and receipt.html display the exact deposit
+        localStorage.setItem('totalBill', depositAmt);
+
+        const customerName  = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest';
+        const customerEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail') || '';
+        const customerPhone = localStorage.getItem('customerPhone') || localStorage.getItem('loggedInUserPhone') || '';
+        const arrivalDate   = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
+        const arrivalTime   = localStorage.getItem('arrivalTime') || '12:00';
+        const bookedTable   = localStorage.getItem('bookedTable') || 'Table 1';
 
         const d = new Date(arrivalDate + 'T' + arrivalTime);
-        const displayDt = isNaN(d) ? arrivalDate + ' ' + arrivalTime : d.toLocaleString(undefined, {
+        const displayDt = isNaN(d) ? (arrivalDate + ' ' + arrivalTime) : d.toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: false
         });
         localStorage.setItem('arrivalDateTimeDisplay', displayDt);
 
-        // 👉 FIX: Automatically process Standard Reservations for FREE and bypass this page entirely!
-        if (!isVip) {
-            // Hide the payment UI while it processes
-            document.body.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; flex-direction:column;"><div class="spinner" style="margin-bottom:20px; width:40px; height:40px; border-color:#1b5e20; border-right-color:transparent;"></div><h2 style="color:#1b5e20;">Confirming your reservation...</h2></div>';
-            
-            async function autoProcessStandard() {
-                try {
-                    const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: customerName,
-                            email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
-                            date: arrivalDate,
-                            time: arrivalTime,
-                            table: bookedTable,
-                            cartItems: [], 
-                            status: 'Pending',
-                            reservationType: 'standard',
-                            paymentAmount: 0,
-                            foods: []
-                        })
-                    });
-                    const dbData = await dbRes.json();
-                    const resNo = 'RES-' + dbData.reservationId;
-                    
-                    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-                    hist.push({
-                        reservationNumber:      resNo,
-                        reservationType:        'standard',
-                        arrivalDate:            arrivalDate, 
-                        arrivalTime:            arrivalTime,
-                        arrivalDateTimeDisplay: displayDt,
-                        customerName:           customerName, 
-                        bookedTable:            bookedTable,
-                        orderSummary:           'Standard Reservation',
-                        foods:                  [],
-                        paymentAmount:          0,
-                        paymentRef:             '',
-                        paymentProof:           '',
-                        paymentStatus:          'verified', // Auto-verified since it's free!
-                        paymentMethod:          'none',
-                        createdAt:              new Date().toISOString()
-                    });
-                    
-                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                    localStorage.setItem('reservationNumber', resNo);
-                    
-                    // Route directly to the success page!
-                    window.location.href = 'payment-success.html?resno=' + resNo;
-                } catch (e) {
-                    alert("Database connection failed. Please try again.");
-                    window.location.href = 'seat-selection.html';
-                }
-            }
-            autoProcessStandard();
-        }
-
-        // Apply VIP theme
+        // Apply VIP or Standard theme
         if (isVip) {
-            document.getElementById('pay-title').textContent    = '👑 VIP Room Down Payment';
+            document.getElementById('pay-title').textContent      = '👑 VIP Room Down Payment';
             document.getElementById('pay-title').classList.add('vip');
-            document.getElementById('pay-subtitle').textContent = 'Pay a deposit to reserve your private VIP dining room.';
-            document.getElementById('summary-type').textContent = 'VIP Room';
+            document.getElementById('pay-subtitle').textContent   = 'Pay a deposit to reserve your private VIP dining room.';
+            document.getElementById('summary-type').textContent   = 'VIP Room';
             document.getElementById('summary-type').classList.add('vip');
             document.getElementById('amount-display').textContent = '₱1,000';
             document.getElementById('amount-display').classList.add('vip');
             document.getElementById('payment-card').classList.add('vip');
             document.getElementById('paymongo-btn').classList.add('vip');
+        } else {
+            document.getElementById('amount-display').textContent = '₱200';
         }
 
         document.getElementById('summary-name').textContent  = customerName;
         document.getElementById('summary-date').textContent  = displayDt || '—';
         document.getElementById('summary-table').textContent = bookedTable;
 
-        // Back protection
+        function showStatus(msg, type = 'error') {
+            const el = document.getElementById('status-msg');
+            if (!el) return;
+            el.textContent = msg;
+            el.className = 'status-msg ' + type;
+        }
+
+        function clearStatus() {
+            const el = document.getElementById('status-msg');
+            if (el) el.className = 'status-msg';
+        }
+
+        if (window.__paymongoCancelled) {
+            showStatus('⚠️ Payment was not completed. You can try again below or upload a manual screenshot.', 'error');
+        }
+
+        // Back button protection
         history.pushState(null, null, window.location.href);
         window.addEventListener('popstate', () => {
             history.pushState(null, null, window.location.href);
             cancelBooking();
         });
 
-        function showStatus(msg, type = 'error') {
-            const el = document.getElementById('status-msg');
-            el.textContent = msg;
-            el.className = 'status-msg ' + type;
-        }
-        function clearStatus() {
-            document.getElementById('status-msg').className = 'status-msg';
+        // ── Confirmation Modal Before Completing Reservation ──
+        async function confirmDepositBeforePayment(methodLabel) {
+            const depositTitle = isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit';
+            const summaryHtml = `
+                <div style="text-align:left; font-size:14px; background:#f8fafc; padding:14px 16px; border-radius:10px; border:1px dashed #cbd5e1; margin-top:8px; line-height:1.6;">
+                    <div><strong>Customer:</strong> ${customerName}</div>
+                    <div><strong>Table:</strong> ${bookedTable}</div>
+                    <div><strong>Arrival:</strong> ${displayDt}</div>
+                    <div><strong>Booking Type:</strong> ${depositTitle}</div>
+                    <div><strong>Payment Method:</strong> ${methodLabel}</div>
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid #e2e8f0; font-size:16px; font-weight:800; color:#1b5e20;">
+                        Total Deposit Due: ₱${depositAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                </div>
+                <p style="margin:12px 0 0; font-size:12.5px; color:#64748b;">Proceed with your ₱${depositAmt} reservation deposit?</p>
+            `;
+
+            if (typeof superModal === 'function') {
+                return await superModal({
+                    title: 'Confirm Reservation Payment 💳',
+                    message: summaryHtml,
+                    type: 'confirm',
+                    confirmText: `Confirm & Pay ₱${depositAmt}`,
+                    cancelText: 'Go Back'
+                });
+            }
+            return confirm(`Confirm ₱${depositAmt} deposit payment for ${bookedTable}?`);
         }
 
         // ── PayMongo Checkout ──
         async function initiatePayMongoCheckout() {
-            const btn = document.getElementById('paymongo-btn');
             clearStatus();
 
+            // 1. Ask customer to confirm the ₱200 (or ₱1,000 VIP) payment details first
+            const confirmed = await confirmDepositBeforePayment('PayMongo (GCash / Maya / Card)');
+            if (!confirmed) return;
+
+            const btn = document.getElementById('paymongo-btn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> Securing Table...';
 
-            const depositLabel = isVip ? "VIP Room Down Payment" : "Standard Reservation Deposit";
+            const depositLabel = isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit';
 
             try {
-               // 👉 1. Insert into Database FIRST to get the official ID
-                let cartItems = [];
-                let foodArray = [];
-                try {
-                    const cartObj = JSON.parse(localStorage.getItem('currentCartObj') || '{}');
-                    cartItems = Object.keys(cartObj).map(id => ({ id, quantity: cartObj[id].qty }));
-                    
-                    // 👉 NEW: Grab the foods they ordered from local memory!
-                    const summary = localStorage.getItem('orderSummary');
-                    if (summary) foodArray = summary.split(', ');
-                } catch(e) {}
-
+                // 2. Insert into MySQL FIRST to get the official sequential ID (e.g., RES-10)
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: customerName,
-                        email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                        email: customerEmail || `customer-${Date.now()}@temp.com`,
                         date: arrivalDate,
                         time: arrivalTime,
                         table: bookedTable,
-                        cartItems: cartItems,
-                        status: 'pending_paymongo', // Keeps table locked during checkout
-                        // 👉 FIX: Send the new columns to the database!
+                        cartItems: [],
+                        status: 'Pending',
                         reservationType: isVip ? 'vip' : 'standard',
                         paymentAmount: depositAmt,
-                        foods: foodArray
+                        foods: []
                     })
                 });
-                
+
                 if (!dbRes.ok) throw new Error('Database could not be reached.');
                 const dbData = await dbRes.json();
-                
-                const resNo = 'RES-' + dbData.reservationId; // 👉 Grab Sequential ID!
-                localStorage.setItem('reservationNumber', resNo);
+                if (!dbData.reservationId) throw new Error(dbData.error || 'Failed to generate reservation ID.');
 
-                // 👉 2. Proceed to PayMongo
+                const resNo = 'RES-' + dbData.reservationId;
+                localStorage.setItem('reservationNumber', resNo);
+                localStorage.setItem('orderSummary', depositLabel);
+
+                // 3. Connect to PayMongo
                 btn.innerHTML = '<span class="spinner"></span> Connecting to PayMongo...';
-                
+
                 const nodeRes = await fetch(`${API_BASE_URL}/api/paymongo/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         amount:        depositAmt,
-                        description:   `${depositLabel} #${resNo}`,
+                        description:   `${depositLabel} #${resNo} (${bookedTable})`,
                         successUrl:    window.location.origin + '/payment-success.html?resno=' + resNo,
-                        cancelUrl:     window.location.origin + '/pre-order.html?payment=failed',
-                        customerName,
-                        customerEmail: '',
-                        customerPhone: ''
+                        cancelUrl:     window.location.origin + '/standard-payment.html?payment=failed',
+                        customerName:  customerName,
+                        customerEmail: customerEmail,
+                        customerPhone: customerPhone
                     })
                 });
-                
+
                 if (!nodeRes.ok) {
                     const errInfo = await nodeRes.json().catch(() => ({}));
-                    throw new Error(errInfo.error || 'Server rejected payment request. Make sure the Node server is running.');
+                    throw new Error(errInfo.error || 'Server rejected payment request.');
                 }
 
                 const nodeData = await nodeRes.json();
                 const checkoutUrl = nodeData.checkout_url;
                 if (!checkoutUrl) throw new Error('Server did not return a valid PayMongo checkout URL.');
 
-                // Save reservation draft
+                // 4. Save reservation draft locally
                 saveReservationDraft(resNo, 'pending_paymongo');
-                const sessionId = nodeData.session_id || 'temp_id';
-                localStorage.setItem('paymongoSessionId', sessionId);
+                localStorage.setItem('paymongoSessionId', nodeData.session_id || 'temp_id');
 
                 window.onbeforeunload = null;
                 window.location.href = checkoutUrl;
@@ -317,13 +294,8 @@
                         <line x1="1" y1="10" x2="23" y2="10"/>
                     </svg>
                     Pay Deposit via PayMongo`;
-                
-                let errorMsg = err.message;
-                if (errorMsg === 'Failed to fetch') {
-                    errorMsg = 'Cannot connect to local server. Make sure you ran START SERVER.bat and the black window is still open!';
-                }
 
-                showStatus('⚠️ ' + errorMsg, 'error');
+                showStatus('⚠️ ' + err.message, 'error');
                 document.getElementById('offline-section').classList.add('visible');
                 document.getElementById('offline-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -335,19 +307,23 @@
             hist.push({
                 reservationNumber:      resNo,
                 reservationType:        isVip ? 'vip' : 'standard',
-                arrivalDate,
-                arrivalTime,
+                bookedBy:               'online',
+                arrivalDate:            arrivalDate,
+                arrivalTime:            arrivalTime,
                 arrivalDateTimeDisplay: displayDt,
-                customerName,
-                bookedTable,
-                orderSummary:    isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit',
-                foods:           [],
-                paymentAmount:   depositAmt,
-                paymentRef:      '',
-                paymentProof:    '',
-                paymentStatus:   status,
-                paymentMethod:   'paymongo',
-                paidAt:          new Date().toISOString()
+                customerName:           customerName,
+                email:                  customerEmail,
+                contactNumber:          customerPhone,
+                bookedTable:            bookedTable,
+                orderSummary:           isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit',
+                foods:                  [],
+                paymentAmount:          depositAmt,
+                paymentRef:             '',
+                paymentProof:           '',
+                paymentStatus:          status,
+                approvalStatus:         'pending',
+                paymentMethod:          'paymongo',
+                createdAt:              new Date().toISOString()
             });
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
         }
@@ -379,14 +355,9 @@
             }
             clearStatus();
 
-            // 👉 NEW: Send to Database FIRST to get Sequential ID
-            let dbData = { reservationId: Math.floor(100000 + Math.random() * 900000) }; // Fallback
-            
-            let foodArray = [];
-            try {
-                const summary = localStorage.getItem('orderSummary');
-                if (summary) foodArray = summary.split(', ');
-            } catch(e) {}
+            // Ask customer to confirm before submitting manual payment
+            const confirmed = await confirmDepositBeforePayment('Manual Screenshot / Reference #');
+            if (!confirmed) return;
 
             try {
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
@@ -394,56 +365,64 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: customerName,
-                        email: localStorage.getItem('customerEmail') || `customer-${Date.now()}@temp.com`,
+                        email: customerEmail || `customer-${Date.now()}@temp.com`,
                         date: arrivalDate,
                         time: arrivalTime,
                         table: bookedTable,
-                        cartItems: [], 
+                        cartItems: [],
                         status: 'Pending',
-                        // 👉 FIX: Send the new columns to the database!
                         reservationType: isVip ? 'vip' : 'standard',
                         paymentAmount: depositAmt,
-                        foods: foodArray
+                        foods: []
                     })
                 });
-                
-                dbData = await dbRes.json();
-            } catch (err) { console.error("Database save failed:", err); }
 
-            const resNo = 'RES-' + dbData.reservationId;
+                const dbData = await dbRes.json();
+                if (!dbRes.ok || !dbData.reservationId) throw new Error('Database save failed');
 
-            const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            hist.push({
-                reservationNumber:      resNo,
-                reservationType:        isVip ? 'vip' : 'standard',
-                arrivalDate, arrivalTime,
-                arrivalDateTimeDisplay: displayDt,
-                customerName, bookedTable,
-                orderSummary:  isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit',
-                foods:         [],
-                paymentAmount: depositAmt,
-                paymentRef:    ref,
-                paymentProof:  localStorage.getItem('tempPaymentUpload') || '',
-                paymentStatus: 'pending',
-                paymentMethod: 'manual',
-                createdAt:     new Date().toISOString()
-            });
-            localStorage.removeItem('tempPaymentUpload');
-            localStorage.setItem('reservationHistory', JSON.stringify(hist));
-            localStorage.setItem('reservationNumber', resNo);
-            window.onbeforeunload = null;
-            await superModal({
-                title: 'Payment Submitted! 🎉',
-                message: 'Your payment proof has been submitted. Please wait for the admin to verify it.'
-            });
-            window.location.href = 'index.html';
+                const resNo = 'RES-' + dbData.reservationId;
+
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                hist.push({
+                    reservationNumber:      resNo,
+                    reservationType:        isVip ? 'vip' : 'standard',
+                    bookedBy:               'online',
+                    arrivalDate:            arrivalDate,
+                    arrivalTime:            arrivalTime,
+                    arrivalDateTimeDisplay: displayDt,
+                    customerName:           customerName,
+                    bookedTable:            bookedTable,
+                    orderSummary:           isVip ? 'VIP Room Down Payment' : 'Standard Reservation Deposit',
+                    foods:                  [],
+                    paymentAmount:          depositAmt,
+                    paymentRef:             ref,
+                    paymentProof:           localStorage.getItem('tempPaymentUpload') || '',
+                    paymentStatus:          'pending',
+                    approvalStatus:         'pending',
+                    paymentMethod:          'manual',
+                    createdAt:              new Date().toISOString()
+                });
+                localStorage.removeItem('tempPaymentUpload');
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                localStorage.setItem('reservationNumber', resNo);
+                window.onbeforeunload = null;
+
+                await superModal({
+                    title: 'Payment Submitted! 🎉',
+                    message: `Your ₱${depositAmt} deposit proof for <b>${resNo}</b> has been submitted. Please wait for the staff to verify it.`
+                });
+                window.location.href = 'index.html';
+            } catch (err) {
+                console.error('Database save failed:', err);
+                showStatus('⚠️ Failed to save reservation to database. Please try again.', 'error');
+            }
         }
 
         // ── Cancel ──
         async function cancelBooking() {
             const confirmed = await superModal({
                 title: 'Cancel Booking? ⚠️',
-                message: 'Your reservation will be removed and you will be returned to the homepage.',
+                message: 'Your reservation will be cancelled and you will be returned to table selection.',
                 type: 'confirm',
                 confirmText: 'Yes, Cancel',
                 cancelText: 'Stay Here'
