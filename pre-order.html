@@ -13,6 +13,45 @@
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 
     <style>
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (pre-order.html) */
+        :root {
+            --logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
+            --logo-hover-scale: 1.95; /* 👈 Size when hovered */
+            --logo-click-scale: 2.10; /* 👈 Size when clicked */
+        }
+
+        header#main-header .logo {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        header#main-header .logo img {
+            max-height: 90px !important;
+            height: 90px !important;
+            width: auto !important;
+            cursor: pointer !important;
+            transform: scale(var(--logo-scale)) !important;
+            transform-origin: left center !important;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+        }
+
+        header#main-header .logo img:hover {
+            transform: scale(var(--logo-hover-scale)) !important;
+            filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.25)) !important;
+        }
+
+        header#main-header .logo img:active {
+            transform: scale(var(--logo-click-scale)) !important;
+        }
+
+        @media (max-width: 768px) {
+            header#main-header .logo img {
+                max-height: 70px !important;
+                height: 70px !important;
+                transform-origin: center center !important;
+            }
+        }
         /* 👉 1. Clean Static Card for Beef Preference (No Flash) */
         .beef-pref-panel {
             background: #f8fafc !important;
