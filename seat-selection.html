@@ -637,6 +637,20 @@
         box-shadow: none !important;
     }
 
+    /* 👉 5. Smooth Floating & Docking Styles for the Selected Table Card */
+    .rsh-floating-summary-card {
+        position: relative !important;
+        z-index: 950 !important;
+        will-change: transform, box-shadow !important;
+        transition: box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease !important;
+    }
+
+    .rsh-floating-summary-card.is-gliding {
+        box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.22), 0 0 0 1.5px rgba(27, 94, 32, 0.18) !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+
     @media (max-width: 600px) {
         .rsh-big-table-wrapper {
             padding: 18px 14px !important;
@@ -660,9 +674,9 @@
 </style>
 
 <script>
+    // ── PART 1: Bigger Table Cards & Select Buttons ──
     (function upgradeSeatSelectionTables() {
         function syncTableCards() {
-            // Find all images inside table cards
             const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
                 const parentText = (img.parentElement?.innerText || '').trim();
                 return /^Table\s*\d+|VIP/i.test(parentText);
@@ -682,7 +696,6 @@
                     }
                 }
 
-                // Make the table title slightly larger
                 Array.from(card.children).forEach(child => {
                     if (child !== img && !child.classList.contains('rsh-table-select-btn')) {
                         if (/^Table\s*\d+|VIP/i.test(child.innerText || '')) {
@@ -692,7 +705,6 @@
                     }
                 });
 
-                // Inject the Select button if not present yet
                 let btn = card.querySelector('.rsh-table-select-btn');
                 if (!btn) {
                     btn = document.createElement('button');
@@ -701,7 +713,6 @@
                     card.appendChild(btn);
                 }
 
-                // Check if this card is currently selected or unavailable
                 const classStr = (card.className || '').toLowerCase();
                 const borderStyle = window.getComputedStyle(card).borderColor;
                 const isUnavailable = classStr.includes('disabled') || classStr.includes('unavailable') || classStr.includes('reserved') || classStr.includes('occupied') || card.style.pointerEvents === 'none';
@@ -720,11 +731,99 @@
             });
         }
 
-        // Run on load and whenever a user clicks a table or switches tabs
         document.addEventListener('DOMContentLoaded', syncTableCards);
         window.addEventListener('load', syncTableCards);
         document.addEventListener('click', () => setTimeout(syncTableCards, 50));
         setInterval(syncTableCards, 800);
+    })();
+
+    // ── PART 2: Smooth Scroll-Following & Docking Selected Table Card ──
+    (function initSmoothScrollSelectedTableCard() {
+        const BOTTOM_MARGIN = 24;   // Distance (px) from bottom of screen while scrolling
+        const SMOOTH_SPEED  = 0.18; // Glide smoothness (0.10 = softer, 0.25 = snappier)
+
+        let summaryCard = null;
+        let currentOffset = 0;
+        let targetOffset = 0;
+        let animFrameId = null;
+
+        function findSelectedTableCard() {
+            const direct = document.querySelector('#selected-table-card, .selected-table-card, .booking-confirm-card, .selection-summary-card');
+            if (direct) return direct;
+
+            const buttons = Array.from(document.querySelectorAll('button, a'));
+            const confirmBtn = buttons.find(b => /Confirm\s*Booking/i.test(b.innerText || b.textContent || ''));
+            if (confirmBtn) {
+                let el = confirmBtn.parentElement;
+                while (el && el !== document.body) {
+                    const txt = (el.innerText || '').toUpperCase();
+                    if (txt.includes('SELECTED TABLE') && !txt.includes('CHOOSE YOUR TABLE')) {
+                        return el;
+                    }
+                    el = el.parentElement;
+                }
+                return confirmBtn.parentElement;
+            }
+            return null;
+        }
+
+        function computeTargetOffset() {
+            if (!summaryCard) return;
+
+            const rect = summaryCard.getBoundingClientRect();
+            const naturalBottom = rect.bottom - currentOffset;
+            const desiredViewportBottom = window.innerHeight - BOTTOM_MARGIN;
+
+            if (naturalBottom > desiredViewportBottom) {
+                targetOffset = desiredViewportBottom - naturalBottom;
+
+                const gridWrapper = document.querySelector('.rsh-big-table-wrapper');
+                if (gridWrapper) {
+                    const gridRect = gridWrapper.getBoundingClientRect();
+                    const naturalTop = rect.top - currentOffset;
+                    const minAllowedOffset = (gridRect.top + 40) - naturalTop;
+                    if (targetOffset < minAllowedOffset) {
+                        targetOffset = Math.min(0, minAllowedOffset);
+                    }
+                }
+            } else {
+                targetOffset = 0;
+            }
+        }
+
+        function animateGlide() {
+            if (!summaryCard) return;
+
+            computeTargetOffset();
+
+            const diff = targetOffset - currentOffset;
+            if (Math.abs(diff) > 0.4) {
+                currentOffset += diff * SMOOTH_SPEED;
+                summaryCard.style.transform = `translate3d(0, ${currentOffset.toFixed(2)}px, 0)`;
+                summaryCard.classList.toggle('is-gliding', currentOffset < -4);
+                animFrameId = requestAnimationFrame(animateGlide);
+            } else {
+                currentOffset = targetOffset;
+                summaryCard.style.transform = currentOffset === 0 ? 'translate3d(0, 0px, 0)' : `translate3d(0, ${currentOffset.toFixed(2)}px, 0)`;
+                summaryCard.classList.toggle('is-gliding', currentOffset < -4);
+                animFrameId = null;
+            }
+        }
+
+        function triggerUpdate() {
+            if (!summaryCard) {
+                summaryCard = findSelectedTableCard();
+                if (summaryCard) summaryCard.classList.add('rsh-floating-summary-card');
+            }
+            if (!animFrameId) {
+                animFrameId = requestAnimationFrame(animateGlide);
+            }
+        }
+
+        window.addEventListener('scroll', triggerUpdate, { passive: true });
+        window.addEventListener('resize', triggerUpdate, { passive: true });
+        window.addEventListener('load', triggerUpdate);
+        document.addEventListener('DOMContentLoaded', () => setTimeout(triggerUpdate, 100));
     })();
 </script>
 </body>
