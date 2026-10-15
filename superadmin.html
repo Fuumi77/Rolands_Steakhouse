@@ -5281,6 +5281,115 @@
             });
         })();
     </script>
+
+    <!-- CLOUD PRODUCT PHOTO & INVENTORY SYNC ENGINE (MANAGER) -->
+    <script>
+        (function initManagerInventoryCloudSync() {
+            const CLOUD_URL = `${API_BASE_URL}/api/memory/inventory-items`;
+
+            async function pushInventoryToCloud(items) {
+                try {
+                    const list = items || JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                    if (!Array.isArray(list) || list.length === 0) return;
+                    await fetch(CLOUD_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(list)
+                    });
+                } catch (err) {
+                    console.error('Failed to push inventory to cloud:', err);
+                }
+            }
+
+            async function pullAndMergeInventoryFromCloud() {
+                try {
+                    const res = await fetch(`${CLOUD_URL}?nocache=${Date.now()}`);
+                    if (!res.ok) return;
+                    const cloudItems = await res.json();
+                    const localItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+
+                    // If cloud is empty or missing photos that exist locally, push merged state to cloud
+                    const cloudMap = {};
+                    if (Array.isArray(cloudItems)) {
+                        cloudItems.forEach(c => { if (c && c.id) cloudMap[c.id] = c; });
+                    }
+
+                    let needsCloudPush = !Array.isArray(cloudItems) || cloudItems.length === 0;
+                    let localChanged = false;
+
+                    const merged = localItems.map(loc => {
+                        const cld = cloudMap[loc.id];
+                        if (!cld) {
+                            if (loc.image || loc.last_updated) needsCloudPush = true;
+                            return loc;
+                        }
+
+                        const locTime = loc.last_updated ? new Date(loc.last_updated).getTime() : 0;
+                        const cldTime = cld.last_updated ? new Date(cld.last_updated).getTime() : 0;
+
+                        // If local item was edited more recently, or has a local photo not yet in cloud
+                        if (locTime > cldTime || (loc.image && !cld.image && cldTime === 0)) {
+                            needsCloudPush = true;
+                            return { ...cld, ...loc };
+                        }
+
+                        // Otherwise use the cloud version
+                        if (JSON.stringify(loc) !== JSON.stringify(cld)) {
+                            localChanged = true;
+                        }
+                        return { ...loc, ...cld };
+                    });
+
+                    // Append any custom items created on another device
+                    if (Array.isArray(cloudItems)) {
+                        cloudItems.forEach(cld => {
+                            if (cld && cld.id && !merged.find(m => m.id === cld.id)) {
+                                merged.push(cld);
+                                localChanged = true;
+                            }
+                        });
+                    }
+
+                    if (localChanged) {
+                        localStorage.setItem('inventoryItems', JSON.stringify(merged));
+                        if (typeof renderDashboard === 'function') renderDashboard();
+                    }
+
+                    if (needsCloudPush && merged.length > 0) {
+                        await pushInventoryToCloud(merged);
+                    }
+                } catch (err) {
+                    console.error('Inventory cloud sync error:', err);
+                }
+            }
+
+            // Hook into Manager edit/save/delete actions so every edit pushes to MySQL immediately
+            function wrapManagerInventoryFunctions() {
+                ['saveInventoryItem', 'deleteInventoryItem', 'adjustStock', 'saveBulkInventory', 'commitOCRData'].forEach(fnName => {
+                    if (typeof window[fnName] === 'function' && !window[fnName].__cloudWrapped) {
+                        const originalFn = window[fnName];
+                        window[fnName] = async function (...args) {
+                            const result = await originalFn.apply(this, args);
+                            await pushInventoryToCloud();
+                            return result;
+                        };
+                        window[fnName].__cloudWrapped = true;
+                    }
+                });
+            }
+
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    wrapManagerInventoryFunctions();
+                    pullAndMergeInventoryFromCloud();
+                }, 400);
+                setInterval(() => {
+                    wrapManagerInventoryFunctions();
+                    pullAndMergeInventoryFromCloud();
+                }, 8000);
+            });
+        })();
+    </script>
 </body>
 
 </html>
