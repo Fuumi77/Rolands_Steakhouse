@@ -19,8 +19,37 @@
     <link rel="stylesheet" href="css/standard-payment.css">
 </head>
 <body>
+    <style>
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (Checkout Header) */
+        :root {
+            --checkout-logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
+            --checkout-logo-hover-scale: 1.95; /* 👈 Size when hovered */
+            --checkout-logo-click-scale: 2.10; /* 👈 Size when clicked */
+        }
+
+        header .checkout-brand-logo {
+            height: 75px !important;
+            width: auto !important;
+            margin-right: 38px !important; /* Keeps space between scaled logo and title text */
+            border-radius: 0 !important;
+            cursor: pointer !important;
+            transform: scale(var(--checkout-logo-scale)) !important;
+            transform-origin: left center !important;
+            filter: drop-shadow(0 2px 4px rgba(27, 94, 32, 0.1)) !important;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+        }
+
+        header .checkout-brand-logo:hover {
+            transform: scale(var(--checkout-logo-hover-scale)) !important;
+            filter: drop-shadow(0 6px 14px rgba(27, 94, 32, 0.25)) !important;
+        }
+
+        header .checkout-brand-logo:active {
+            transform: scale(var(--checkout-logo-click-scale)) !important;
+        }
+    </style>
     <header>
-        <img src="images/Rolands logo 2.png" alt="Roland's Logo" style="height: 60px; border-radius: 0; filter: drop-shadow(0 2px 4px rgba(27, 94, 32, 0.1));">
+        <img src="images/Rolands logo 2.png" alt="Roland's Steakhouse Logo" class="checkout-brand-logo" onclick="window.location.href='index.html'">
         <div>
             <div class="brand-name">Roland's Steakhouse</div>
             <div class="brand-tag">Secure Checkout</div>
