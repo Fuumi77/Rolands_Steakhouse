@@ -20,17 +20,18 @@
 </head>
 <body>
     <style>
-        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (Checkout Header) */
+        /* 👉 LOGO SCALER & TEXT SPACING (Checkout Header) */
         :root {
-            --checkout-logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
-            --checkout-logo-hover-scale: 1.95; /* 👈 Size when hovered */
-            --checkout-logo-click-scale: 2.10; /* 👈 Size when clicked */
+            --checkout-logo-scale: 1.75;       /* 👈 Logo normal size */
+            --checkout-logo-hover-scale: 1.95; /* 👈 Logo size when hovered */
+            --checkout-logo-click-scale: 2.10; /* 👈 Logo size when clicked */
+            --checkout-text-offset: 80px;      /* 👈 Increase this (e.g. 80px, 100px) to move the text further right! */
         }
 
         header .checkout-brand-logo {
             height: 75px !important;
             width: auto !important;
-            margin-right: 38px !important; /* Keeps space between scaled logo and title text */
+            margin-right: var(--checkout-text-offset) !important;
             border-radius: 0 !important;
             cursor: pointer !important;
             transform: scale(var(--checkout-logo-scale)) !important;
