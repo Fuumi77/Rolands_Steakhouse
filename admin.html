@@ -910,52 +910,75 @@
 
                 <!-- Edit Modal -->
                 <div id="edit-modal" class="hidden"
-                    style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100;">
-                    <div class="card" style="width: 100%; max-width: 450px; background: white; padding: 25px;">
-                        <h2 style="margin-top:0; color:#1b5e20;">Edit Reservation</h2>
+                    style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 10000;">
+                    <div class="card" style="width: 100%; max-width: 460px; background: white; padding: 25px; max-height: 90vh; overflow-y: auto;">
+                        <h2 style="margin-top:0; color:#1b5e20;">Edit Reservation & Payment</h2>
                         <input type="hidden" id="edit-index">
                         <input type="hidden" id="edit-res-num">
 
                         <label
-                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:14px; text-transform:uppercase;">Customer
+                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Customer
                             Name</label>
                         <input type="text" id="edit-customer" title="Customer Name" placeholder="Customer Name" aria-label="Customer Name"
                             style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
 
-                        <label
-                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:14px; text-transform:uppercase;">Arrival
-                            Date</label>
-                        <input type="date" id="edit-date" title="Arrival Date" aria-label="Arrival Date"
-                            style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div>
+                                <label
+                                    style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Arrival
+                                    Date</label>
+                                <input type="date" id="edit-date" title="Arrival Date" aria-label="Arrival Date"
+                                    style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label
+                                    style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Arrival
+                                    Time</label>
+                                <input type="time" id="edit-time" title="Arrival Time" aria-label="Arrival Time"
+                                    style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div>
+                                <label
+                                    style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Table
+                                    Selection</label>
+                                <select id="edit-table" title="Table Selection" aria-label="Table Selection"
+                                    style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+                                    <option value="Table 1">Table 1</option>
+                                    <option value="Table 2">Table 2</option>
+                                    <option value="Table 3">Table 3</option>
+                                    <option value="Table 4">Table 4</option>
+                                    <option value="Table 5">Table 5</option>
+                                    <option value="Table 6">Table 6</option>
+                                    <option value="Table 7">Table 7</option>
+                                    <option value="Table 8">Table 8</option>
+                                    <option value="Table 9">Table 9</option>
+                                    <option value="Table 10">Table 10</option>
+                                    <option value="VIP Room">VIP Room</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase; color:#1b5e20;">Payment
+                                    Amount (₱)</label>
+                                <input type="number" id="edit-payment-amount" min="0" step="0.01" placeholder="0.00"
+                                    style="width: 100%; padding:10px; border:1.5px solid #16a34a; border-radius:5px; box-sizing:border-box; font-weight:700; color:#1b5e20; background:#f0fdf4;">
+                            </div>
+                        </div>
 
                         <label
-                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:14px; text-transform:uppercase;">Arrival
-                            Time</label>
-                        <input type="time" id="edit-time" title="Arrival Time" aria-label="Arrival Time"
+                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Payment
+                            Reference / Receipt #</label>
+                        <input type="text" id="edit-payment-ref" placeholder="e.g. E-RECEIPT-RES-13 or GCash Ref #"
                             style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
-
-                        <label
-                            style="display:block; margin: 10px 0 5px; font-weight:600; font-size:14px; text-transform:uppercase;">Table
-                            Selection</label>
-                        <select id="edit-table" title="Table Selection" aria-label="Table Selection"
-                            style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
-                            <option value="Table 1">Table 1</option>
-                            <option value="Table 2">Table 2</option>
-                            <option value="Table 3">Table 3</option>
-                            <option value="Table 4">Table 4</option>
-                            <option value="Table 5">Table 5</option>
-                            <option value="Table 6">Table 6</option>
-                            <option value="Table 7">Table 7</option>
-                            <option value="Table 8">Table 8</option>
-                            <option value="Table 9">Table 9</option>
-                            <option value="Table 10">Table 10</option>
-                        </select>
 
                         <div id="edit-foods-container" style="display:none;">
                             <label
-                                style="display:block; margin: 10px 0 5px; font-weight:600; font-size:14px; text-transform:uppercase;">Food
+                                style="display:block; margin: 10px 0 5px; font-weight:600; font-size:13px; text-transform:uppercase;">Food
                                 Order <span style="font-size:11px;color:#888;">(Comma separated)</span></label>
-                            <input type="text" id="edit-foods" placeholder="e.g. Bangus Steak, French Fries"
+                            <input type="text" id="edit-foods" placeholder="e.g. 1x Tenderloin Steak (200g), 1x Hamburger Steak (204g)"
                                 style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box; margin-bottom:5px;">
                             <input type="text" id="edit-beef" placeholder="Beef note (e.g. Medium Rare) (Optional)"
                                 style="width: 100%; padding:10px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box; background:#f0fdf4;">
@@ -2200,15 +2223,22 @@
                 document.getElementById('edit-date').value = r.arrivalDate || '';
                 document.getElementById('edit-time').value = r.arrivalTime || '';
 
+                if (document.getElementById('edit-payment-amount')) {
+                    document.getElementById('edit-payment-amount').value = Number(r.paymentAmount || 0);
+                }
+                if (document.getElementById('edit-payment-ref')) {
+                    document.getElementById('edit-payment-ref').value = r.paymentRef || (`E-RECEIPT-${r.reservationNumber}`);
+                }
+
                 const tSelect = document.getElementById('edit-table');
-                if (r.bookedTable) {
+                if (r.bookedTable && tSelect) {
                     for (let i = 0; i < tSelect.options.length; i++) {
                         if (tSelect.options[i].value === r.bookedTable) tSelect.selectedIndex = i;
                     }
                 }
 
                 const foodContainer = document.getElementById('edit-foods-container');
-                if (r.reservationType === 'priority') {
+                if (r.reservationType === 'priority' || (r.foods && r.foods.length > 0)) {
                     foodContainer.style.display = 'block';
                     const arr = r.foods || [];
                     document.getElementById('edit-foods').value = arr.join(', ');
@@ -2457,21 +2487,33 @@ window.rejectReservation = async function (resNum) {
                     hist[idx].arrivalTime = document.getElementById('edit-time').value;
                     hist[idx].bookedTable = document.getElementById('edit-table').value;
 
-                    if (hist[idx].reservationType === 'priority') {
+                    const payAmtEl = document.getElementById('edit-payment-amount');
+                    if (payAmtEl && payAmtEl.value !== '') {
+                        hist[idx].paymentAmount = parseFloat(payAmtEl.value) || 0;
+                    }
+                    const payRefEl = document.getElementById('edit-payment-ref');
+                    if (payRefEl) {
+                        hist[idx].paymentRef = payRefEl.value.trim();
+                    }
+
+                    if (hist[idx].reservationType === 'priority' || document.getElementById('edit-foods-container').style.display !== 'none') {
                         const rawFoods = document.getElementById('edit-foods').value.trim();
                         hist[idx].foods = rawFoods ? rawFoods.split(',').map(f => f.trim()).filter(f => f) : [];
                         hist[idx].orderSummary = hist[idx].foods.join(', ');
                         hist[idx].beefNote = document.getElementById('edit-beef').value.trim();
                     }
 
-                    // Re-calculate the display string
                     const dateObj = new Date(`${hist[idx].arrivalDate}T${hist[idx].arrivalTime}`);
                     hist[idx].arrivalDateTimeDisplay = isNaN(dateObj) ? `${hist[idx].arrivalDate} at ${hist[idx].arrivalTime}` : dateObj.toLocaleString(undefined, {
                         weekday: 'short', month: 'short', day: 'numeric',
                         hour: '2-digit', minute: '2-digit', hour12: false
                     });
 
-                    // 👉 FIX: Push edited foods to the Cloud so it syncs to other devices!
+                    // Regenerate the automatic E-Receipt Proof so it reflects the newly edited details!
+                    if (!hist[idx].hasCustomProof && typeof window.generateAdminEReceiptProof === 'function') {
+                        hist[idx].paymentProof = window.generateAdminEReceiptProof(hist[idx]);
+                    }
+
                     try {
                         fetch(`${API_BASE_URL}/api/reservations/update-order`, {
                             method: 'POST',
@@ -2488,9 +2530,10 @@ window.rejectReservation = async function (resNum) {
 
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
                     if (window.showToast) {
-                        window.showToast('✅ Reservation details updated successfully!', 'success', 3000);
+                        window.showToast('✅ Reservation & payment details updated!', 'success', 3000);
                     }
-                    renderDashboard(); // Re-render the whole dashboard state!
+                    renderDashboard();
+                    if (typeof window.renderPayments === 'function') window.renderPayments();
                 }
                 window.closeEditModal();
             };
@@ -3385,9 +3428,161 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             };
 
             // Live payments logic
-            window.paymentFilter = 'pending'; // 'pending' or 'history'
+            // 👉 FIX: Keep current tab selection instead of resetting to 'pending' on every refresh!
+            window.paymentFilter = window.paymentFilter || 'pending';
 
-            // 👉 FIX 1: Make renderPayments globally accessible so the HTML dropdown can trigger it!
+            // 👉 NEW: Automatic E-Receipt Proof Generator (Ensures every online payment has a visual E-Receipt proof even across devices!)
+            window.generateAdminEReceiptProof = function (r) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 600;
+                    canvas.height = 760;
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.fillStyle = '#f0fdf4';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#bbf7d0';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.roundRect(30, 30, 540, 700, 20);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#1b5e20';
+                    ctx.beginPath();
+                    ctx.roundRect(30, 30, 540, 14, [20, 20, 0, 0]);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#16a34a';
+                    ctx.beginPath();
+                    ctx.arc(300, 105, 34, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(285, 105);
+                    ctx.lineTo(296, 116);
+                    ctx.lineTo(317, 94);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#1b5e20';
+                    ctx.font = 'bold 28px Georgia, serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Payment Successful!', 300, 175);
+
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '14px Arial, sans-serif';
+                    ctx.fillText("Roland's Steakhouse Official E-Receipt", 300, 200);
+
+                    ctx.fillStyle = '#f0fdf4';
+                    ctx.strokeStyle = '#86efac';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(110, 222, 380, 78, 14);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = 'bold 11px Arial, sans-serif';
+                    ctx.fillText('RESERVATION NUMBER', 300, 248);
+
+                    ctx.fillStyle = '#15803d';
+                    ctx.font = 'bold 28px Arial, sans-serif';
+                    ctx.fillText(r.reservationNumber || 'N/A', 300, 283);
+
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    ctx.roundRect(65, 325, 470, 330, 14);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#1b5e20';
+                    ctx.font = 'bold 13px Arial, sans-serif';
+                    ctx.fillText('E-RECEIPT', 90, 358);
+
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '13px Arial, sans-serif';
+                    ctx.fillText(r.arrivalDate || new Date().toLocaleDateString(), 510, 358);
+
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = 'bold 15px Arial, sans-serif';
+                    ctx.fillText('Customer: ', 90, 395);
+                    ctx.font = '15px Arial, sans-serif';
+                    ctx.fillText(r.customerName || 'Guest', 175, 395);
+
+                    ctx.font = 'bold 15px Arial, sans-serif';
+                    ctx.fillText('Table: ', 90, 425);
+                    ctx.font = '15px Arial, sans-serif';
+                    ctx.fillText(r.bookedTable || 'TBD', 145, 425);
+
+                    ctx.font = 'bold 15px Arial, sans-serif';
+                    ctx.fillText('Arrival: ', 90, 455);
+                    ctx.font = '15px Arial, sans-serif';
+                    ctx.fillText(formatArrival(r), 155, 455);
+
+                    ctx.strokeStyle = '#e2e8f0';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(90, 475);
+                    ctx.lineTo(510, 475);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#475569';
+                    ctx.font = '13.5px Arial, sans-serif';
+                    const summaryText = (Array.isArray(r.foods) && r.foods.length) ? r.foods.join(', ') : (r.orderSummary || 'Standard Reservation Deposit');
+                    const words = summaryText.split(' ');
+                    let line = '';
+                    let y = 502;
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        if (ctx.measureText(testLine).width > 415 && n > 0) {
+                            ctx.fillText(line, 90, y);
+                            line = words[n] + ' ';
+                            y += 20;
+                            if (y > 565) break;
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    ctx.fillText(line, 90, y);
+
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.beginPath();
+                    ctx.moveTo(90, 595);
+                    ctx.lineTo(510, 595);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#1b5e20';
+                    ctx.font = 'bold 20px Arial, sans-serif';
+                    ctx.fillText('Total Paid', 90, 628);
+
+                    ctx.textAlign = 'right';
+                    const fmtTotal = '₱' + Number(r.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                    ctx.fillText(fmtTotal, 510, 628);
+
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '12px Arial, sans-serif';
+                    ctx.fillText('Processed via PayMongo • Official E-Receipt Proof', 300, 695);
+
+                    return canvas.toDataURL('image/png');
+                } catch (e) {
+                    return '';
+                }
+            };
+
             window.renderPayments = renderPayments;
             
             function renderPayments() {
@@ -3396,9 +3591,21 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const emptyEl = document.getElementById('payment-history-empty');
                 if (!listEl) return;
 
+                let proofMutated = false;
+                hist.forEach(r => {
+                    const isOnlineRes = String(r.reservationNumber || '').startsWith('RES-');
+                    if (isOnlineRes && !r.paymentProof) {
+                        r.paymentProof = window.generateAdminEReceiptProof(r);
+                        r.paymentRef = r.paymentRef || (`E-RECEIPT-${r.reservationNumber}`);
+                        proofMutated = true;
+                    }
+                });
+                if (proofMutated) {
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                }
+
                 // Separate pending vs completed
-                const pending = hist.filter(r => r.paymentStatus === 'pending');
-                // 👉 FIX 1: Removed .reverse() so the list stays sorted from Newest to Oldest!
+                const pending = hist.filter(r => (r.paymentStatus === 'pending' || r.paymentStatus === 'pending_paymongo') && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled');
                 const completed = hist.filter(r => (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in'));
 
                 let activeList = window.paymentFilter === 'pending' ? pending : completed;
@@ -3407,7 +3614,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (timeFilter && timeFilter.value !== 'all') {
                     const now = new Date();
                     activeList = activeList.filter(r => {
-                        // 👉 FIX 2: Use the robust date parser so Philippine timezones don't accidentally push "Today" into "Tomorrow"!
                         const rDate = parseRecordDate(r); 
                         if (isNaN(rDate.getTime())) return true;
                         
@@ -3435,28 +3641,25 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 emptyEl.style.display = 'none';
                 let html = '';
 
-                const histMap = new Map();
-                hist.forEach((hr, i) => histMap.set(hr.reservationNumber, i));
-
                 activeList.forEach(r => {
-                    const rIdx = histMap.get(r.reservationNumber);
+                    const resKey = r.reservationNumber;
                     const amount = `₱${Number(r.paymentAmount || 0).toLocaleString()}`;
                     const isManual = r.paymentMethod === 'manual';
-                    const isPaymongo = r.paymentMethod === 'paymongo';
-                    const isWalkin = r.paymentStatus === 'walk-in';
+                    const isWalkin = r.paymentStatus === 'walk-in' || String(resKey).startsWith('WI-') || String(resKey).startsWith('POS-');
+                    const isPaymongo = !isManual && !isWalkin;
 
                     const statusColor = (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in') ? '#16a34a' : '#f59e0b';
+                    const foodsSummary = (Array.isArray(r.foods) && r.foods.length) ? r.foods.join(', ') : (r.orderSummary || 'Standard Reservation Deposit');
 
                     html += `
                         <div class="card payment-card-anim" style="border-left: 4px solid ${statusColor}; padding: 20px;">
                             <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:flex-start;">
                                 <div>
-                                    <strong style="font-size:18px; color:#1e293b; display:block;">${r.reservationNumber}</strong>
-                                    <!-- 👉 FIX 2: Used the robust formatArrival function to instantly fix the POS Undefined bug! -->
+                                    <strong style="font-size:18px; color:#1e293b; display:block;">${resKey}</strong>
                                     <span style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase;">${formatArrival(r)}</span>
                                 </div>
                                 <span class="pill" style="background:${r.reservationType === 'priority' ? '#fef3c7' : '#e0f2fe'}; color:${r.reservationType === 'priority' ? '#92400e' : '#0369a1'}; font-weight:800; font-size:10px; padding:3px 8px;">
-                                    ${r.reservationType.toUpperCase()}
+                                    ${(r.reservationType || 'standard').toUpperCase()}
                                 </span>
                             </div>
                             
@@ -3464,44 +3667,47 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                                 <div style="font-size:14px; color:#475569; margin-bottom:6px; display:flex; justify-content:space-between;">
                                     <span>Customer:</span> <strong style="color:#1e293b;">${r.customerName}</strong>
                                 </div>
+                                <div style="font-size:13px; color:#475569; margin-bottom:6px; display:flex; justify-content:space-between;">
+                                    <span>Table:</span> <strong style="color:#166534;">${r.bookedTable || 'TBD'}</strong>
+                                </div>
                                 <div style="font-size:14px; color:#475569; margin-bottom:6px; display:flex; justify-content:space-between;">
                                     <span>Method:</span> 
-                                    <strong style="color:#1e293b;">${isPaymongo ? '💳 PAYMONGO' : (isManual ? '🏦 MANUAL' : '💵 WALK-IN')}</strong>
+                                    <strong style="color:#1e293b;">${isPaymongo ? '💳 PAYMONGO (E-RECEIPT)' : (isManual ? '🏦 MANUAL' : '💵 WALK-IN')}</strong>
                                 </div>
-                                ${r.discountType && r.discountType !== 'none' ? `
-                                <div style="font-size:14px; color:#c2410c; margin-bottom:6px; display:flex; justify-content:space-between; font-weight:700;">
-                                    <span>Discount (${r.discountType === 'pwd' ? 'PWD' : 'Senior'}):</span> 
-                                    <span>-₱${Number(r.discountAmount || 0).toLocaleString()}</span>
-                                </div>` : ''}
+                                <div style="font-size:12px; color:#64748b; margin-top:6px; padding-top:6px; border-top:1px dashed #cbd5e1;">
+                                    <strong>Order:</strong> ${foodsSummary}
+                                </div>
                                 <div style="font-size:16px; color:#1e293b; margin-top:8px; padding-top:8px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-weight:800;">
                                     <span>Amount:</span> <span style="color:#16a34a;">${amount}</span>
                                 </div>
                             </div>
 
                             ${window.paymentFilter === 'pending' ? `
-                                <div style="font-size:13px; color:#64748b; margin-bottom:12px; font-style:italic;">Ref: ${r.paymentRef || '—'}</div>
+                                <div style="font-size:12.5px; color:#64748b; margin-bottom:10px; font-style:italic;">Ref: ${r.paymentRef || ('E-RECEIPT-' + resKey)}</div>
                                 
-                                <!-- 👉 NEW: Dynamic Upload & View Proof Buttons -->
-                                <div style="display:flex; gap:8px; margin-bottom:12px;">
-                                    ${r.paymentProof ? `
-                                        <button type="button" class="secondary" style="flex:1; padding:9px 0; font-size:12px; font-weight:700;" onclick='window.openProofModal(${JSON.stringify(r)})'>🧾 View Proof</button>
-                                    ` : ''}
-                                    <label style="flex:1; padding:9px 0; font-size:12px; font-weight:700; background:#f8fafc; border:1.5px dashed #cbd5e1; color:#475569; text-align:center; border-radius:8px; cursor:pointer; display:block; transition: 0.2s;" onmouseover="this.style.borderColor='#94a3b8'; this.style.color='#0f172a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#475569'">
-                                        ${r.paymentProof ? '🔄 Replace' : '📤 Upload Proof'}
-                                        <input type="file" style="display:none;" accept="image/*" onchange="window.uploadPaymentProof('${r.reservationNumber}', this)">
+                                <!-- 👉 View E-Receipt Proof, Edit Before Approval, or Replace Proof -->
+                                <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+                                    <button type="button" class="secondary" style="flex:1.2; padding:9px 8px; font-size:12px; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;" onclick="window.openProofByResNum('${resKey}')">🧾 View E-Receipt</button>
+                                    <button type="button" class="secondary" style="flex:1; padding:9px 8px; font-size:12px; font-weight:700;" onclick="window.openEdit('${resKey}')">✏️ Edit Details</button>
+                                    <label style="flex:1; padding:9px 8px; font-size:12px; font-weight:700; background:#f8fafc; border:1.5px dashed #cbd5e1; color:#475569; text-align:center; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                                        🔄 Replace
+                                        <input type="file" style="display:none;" accept="image/*" onchange="window.uploadPaymentProof('${resKey}', this)">
                                     </label>
                                 </div>
 
                                 <div style="display:flex; gap:10px;">
-                                    <button type="button" style="flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:700;" onclick="rejectPayment(${rIdx})">Reject</button>
-                                    <button type="button" style="flex:1; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:700;" onclick="verifyPayment(${rIdx})">Verify ✅</button>
+                                    <button type="button" style="flex:1; background:#fee2e2; color:#ef4444; border:1px solid #fecaca; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:700;" onclick="rejectPayment('${resKey}')">Reject</button>
+                                    <button type="button" style="flex:1.4; background:#16a34a; color:white; border:none; padding:10px 0; border-radius:8px; cursor:pointer; font-weight:800; box-shadow:0 4px 10px rgba(22,163,74,0.25);" onclick="verifyPayment('${resKey}')">Verify & Approve ✅</button>
                                 </div>
                             ` : `
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
                                     <div style="font-size:12px; font-weight:800; color:${statusColor}; text-transform:uppercase;">
                                         ● ${r.paymentStatus.toUpperCase()}
                                     </div>
-                                    <a href="receipt.html?res=${r.reservationNumber}" target="_blank" style="font-size:12px; color:#2e7d32; font-weight:700; text-decoration:none; border-bottom:1px dashed #2e7d32;">🖨️ View Digital Receipt</a>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <button type="button" onclick="window.openProofByResNum('${resKey}')" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:5px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer;">🧾 View E-Receipt</button>
+                                        <a href="receipt.html?res=${resKey}" target="_blank" style="font-size:12px; color:#2e7d32; font-weight:700; text-decoration:none; border-bottom:1px dashed #2e7d32;">🖨️ QR Receipt</a>
+                                    </div>
                                 </div>
                             `}
                         </div>
@@ -3511,52 +3717,97 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 listEl.innerHTML = html;
             }
 
+            window.openProofByResNum = function (resNum) {
+                const hist = getReservationHistory();
+                const r = hist.find(h => h.reservationNumber === resNum);
+                if (!r) return;
+                if (!r.paymentProof && typeof window.generateAdminEReceiptProof === 'function') {
+                    r.paymentProof = window.generateAdminEReceiptProof(r);
+                    r.paymentRef = r.paymentRef || (`E-RECEIPT-${r.reservationNumber}`);
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                }
+                window.openProofModal(r);
+            };
+
             window.switchPaymentFilter = function (filter, btn) {
                 window.paymentFilter = filter;
                 document.querySelectorAll('.payment-sub-tab').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                if (btn) btn.classList.add('active');
                 renderPayments();
             };
 
-            window.verifyPayment = async function (idx) {
+            window.verifyPayment = async function (resNumOrIdx) {
                 const confirmed = await superModal({
-                    title: 'Approve Payment? ✅',
-                    message: 'Are you sure you want to verify and approve this payment?',
+                    title: 'Verify & Approve Payment? ✅',
+                    message: 'Are you sure you want to verify this E-Receipt/payment and approve the reservation?',
                     type: 'confirm'
                 });
                 if (!confirmed) return;
+
                 const hist = getReservationHistory();
-                if (hist[idx]) {
-                    hist[idx].paymentStatus = 'verified';
+                const idx = typeof resNumOrIdx === 'number'
+                    ? resNumOrIdx
+                    : hist.findIndex(h => h.reservationNumber === resNumOrIdx);
+
+                if (idx > -1 && hist[idx]) {
+                    const r = hist[idx];
+                    r.paymentStatus = 'verified';
+                    r.approvalStatus = 'approved';
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
 
+                    try {
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: r.reservationNumber, status: 'Approved' })
+                        });
+                    } catch (e) {}
+
+                    if (r.bookedTable && typeof window.smartTableStatusUpdate === 'function') {
+                        window.smartTableStatusUpdate(r.bookedTable);
+                    }
+
+                    if (window.showToast) {
+                        window.showToast(`Payment for ${r.reservationNumber} verified & approved!`, 'success', 3000);
+                    }
+
                     renderPayments();
-                    renderDashboard(); // Refresh full history
+                    renderDashboard();
                 }
             };
 
-            window.rejectPayment = async function (idx) {
+            window.rejectPayment = async function (resNumOrIdx) {
                 const confirmed = await superModal({
                     title: 'Reject Payment? ❌',
-                    message: 'Are you sure you want to reject this payment? The reservation will be kept but moved back to pending status.',
+                    message: 'Are you sure you want to reject this payment?',
                     type: 'confirm'
                 });
                 if (!confirmed) return;
-                const hist = getReservationHistory();
-                if (hist[idx]) {
-                    // Reset payment fields so it effectively goes back to "Unpaid/Pre-order" status
-                    hist[idx].paymentStatus = 'rejected';
-                    hist[idx].paymentProof = null;
-                    hist[idx].paymentRef = '';
-                    hist[idx].rejectionAcknowledged = false;
 
+                const hist = getReservationHistory();
+                const idx = typeof resNumOrIdx === 'number'
+                    ? resNumOrIdx
+                    : hist.findIndex(h => h.reservationNumber === resNumOrIdx);
+
+                if (idx > -1 && hist[idx]) {
+                    hist[idx].paymentStatus = 'rejected';
+                    hist[idx].approvalStatus = 'rejected';
+                    hist[idx].rejectionAcknowledged = false;
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+                    try {
+                        await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: hist[idx].reservationNumber, status: 'Cancelled' })
+                        });
+                    } catch (e) {}
+
                     renderPayments();
-                    renderDashboard(); // Refresh full history table
+                    renderDashboard();
                 }
             };
             
-            // 👉 NEW: Payment Proof Uploader & Compressor
             window.uploadPaymentProof = function(resNum, input) {
                 if (!input.files || !input.files[0]) return;
                 const file = input.files[0];
@@ -3565,7 +3816,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 reader.onload = function (e) {
                     const img = new Image();
                     img.onload = function () {
-                        // Compress the image before saving
                         const canvas = document.createElement('canvas');
                         const MAX_WIDTH = 600;
                         let width = img.width;
@@ -3583,20 +3833,17 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                         
-                        // Save to database/storage
                         const hist = getReservationHistory();
                         const idx = hist.findIndex(h => h.reservationNumber === resNum);
                         if (idx > -1) {
                             hist[idx].paymentProof = dataUrl;
+                            hist[idx].hasCustomProof = true;
                             localStorage.setItem('reservationHistory', JSON.stringify(hist));
                             
                             if (window.showToast) {
                                 window.showToast('Payment proof uploaded successfully!', 'success', 3000);
-                            } else {
-                                alert('Payment proof attached!');
                             }
-                            
-                            renderPayments(); // Instantly refresh the UI!
+                            renderPayments();
                         }
                     };
                     img.src = e.target.result;
