@@ -1158,5 +1158,54 @@
             } catch (err) {}
         }
     </script>
+
+    <!-- CLOUD PRODUCT PHOTO & MENU SYNC (CUSTOMER PRE-ORDER) -->
+    <script>
+        (function initPreOrderCloudMenuSync() {
+            const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
+            let lastCloudJson = '';
+
+            window.syncMenuFromCloud = async function () {
+                try {
+                    const res = await fetch(`${API_BASE}/api/memory/inventory-items?nocache=${Date.now()}`);
+                    if (!res.ok) return;
+                    const cloudItems = await res.json();
+                    if (!Array.isArray(cloudItems) || cloudItems.length === 0) return;
+
+                    const currentJson = JSON.stringify(cloudItems);
+                    if (currentJson !== lastCloudJson) {
+                        lastCloudJson = currentJson;
+                        localStorage.setItem('inventoryItems', currentJson);
+
+                        if (typeof getMenuData === 'function') {
+                            menuData = getMenuData();
+                        }
+                        const searchInput = document.getElementById('food-search-input');
+                        if (searchInput && searchInput.value.trim() !== '' && typeof window.filterFood === 'function') {
+                            window.filterFood();
+                        } else if (typeof renderMenu === 'function') {
+                            renderMenu();
+                        }
+                        if (typeof renderCart === 'function') {
+                            renderCart();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Pre-order cloud menu sync error:', e);
+                }
+            };
+
+            // Also upgrade the "Refresh" button in the cart to pull fresh data from MySQL
+            const origRefresh = window.refreshOrder;
+            window.refreshOrder = async function () {
+                await window.syncMenuFromCloud();
+                if (typeof origRefresh === 'function') origRefresh();
+            };
+
+            document.addEventListener('DOMContentLoaded', window.syncMenuFromCloud);
+            window.addEventListener('load', window.syncMenuFromCloud);
+            setInterval(window.syncMenuFromCloud, 8000);
+        })();
+    </script>
 </body>
 </html>
