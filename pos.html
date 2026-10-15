@@ -1631,7 +1631,7 @@
                 }
                 localStorage.removeItem('tableOverrides');
                 await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({})});
-                alert("Table 5 and Ghost Orders cleared! Reloading...");
+                alert("TGhost Orders cleared! Reloading...");
                 location.reload();
             } catch (e) { alert("Error fixing ghosts."); }
         }
