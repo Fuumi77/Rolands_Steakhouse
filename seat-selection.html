@@ -674,9 +674,40 @@
 </style>
 
 <script>
-    // ── PART 1: Bigger Table Cards & Select Buttons ──
+    // ── PART 1: Bigger Table Cards, Cloud Descriptions & Select Buttons ──
     (function upgradeSeatSelectionTables() {
+        const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
+        let floorConfigMap = {};
+
+        function loadLocalFloorMap() {
+            try {
+                const cfg = JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
+                if (Array.isArray(cfg)) {
+                    cfg.forEach(t => {
+                        if (t && (t.id || t.name)) {
+                            floorConfigMap[(t.id || t.name).trim().toLowerCase()] = t;
+                        }
+                    });
+                }
+            } catch (e) {}
+        }
+
+        async function fetchCloudFloorConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/api/memory/floor-plan-config?nocache=${Date.now()}`);
+                if (!res.ok) return;
+                const cloudCfg = await res.json();
+                if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
+                    localStorage.setItem('floorPlanConfig', JSON.stringify(cloudCfg));
+                    loadLocalFloorMap();
+                    syncTableCards();
+                }
+            } catch (e) {}
+        }
+
         function syncTableCards() {
+            loadLocalFloorMap();
+
             const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
                 const parentText = (img.parentElement?.innerText || '').trim();
                 return /^Table\s*\d+|VIP/i.test(parentText);
@@ -696,15 +727,51 @@
                     }
                 }
 
+                // Identify which table this card represents (e.g., "Table 1" or "VIP Room")
+                let tableTitleText = '';
                 Array.from(card.children).forEach(child => {
-                    if (child !== img && !child.classList.contains('rsh-table-select-btn')) {
-                        if (/^Table\s*\d+|VIP/i.test(child.innerText || '')) {
+                    if (child !== img && !child.classList.contains('rsh-table-select-btn') && !child.classList.contains('rsh-table-desc-line')) {
+                        const txt = (child.innerText || '').trim();
+                        if (/^Table\s*\d+|VIP/i.test(txt)) {
+                            tableTitleText = txt.split('\n')[0].trim();
                             child.style.fontSize = '16px';
                             child.style.fontWeight = '800';
                         }
                     }
                 });
 
+                if (!tableTitleText) {
+                    const match = (card.innerText || '').match(/Table\s*\d+|VIP\s*Room/i);
+                    if (match) tableTitleText = match[0].trim();
+                }
+
+                const cfgItem = floorConfigMap[tableTitleText.toLowerCase()];
+
+                // Sync custom uploaded table image if one exists in config
+                if (cfgItem && cfgItem.image && img.getAttribute('src') !== cfgItem.image) {
+                    img.src = cfgItem.image;
+                }
+
+                // Inject or update the Table Description line (e.g., "🪑 9 Seats, near counter")
+                let descEl = card.querySelector('.rsh-table-desc-line');
+                const descText = (cfgItem && cfgItem.description) ? cfgItem.description.trim() : '';
+
+                if (descText) {
+                    if (!descEl) {
+                        descEl = document.createElement('div');
+                        descEl.className = 'rsh-table-desc-line';
+                        descEl.style.cssText = 'font-size: 12px; color: #475569; font-weight: 600; text-align: center; margin-top: 4px; line-height: 1.35;';
+                        const existingBtn = card.querySelector('.rsh-table-select-btn');
+                        if (existingBtn) card.insertBefore(descEl, existingBtn);
+                        else card.appendChild(descEl);
+                    }
+                    const formattedDesc = `🪑 ${descText}`;
+                    if (descEl.textContent !== formattedDesc) descEl.textContent = formattedDesc;
+                } else if (descEl) {
+                    descEl.remove();
+                }
+
+                // Inject the Select button if not present yet
                 let btn = card.querySelector('.rsh-table-select-btn');
                 if (!btn) {
                     btn = document.createElement('button');
@@ -731,10 +798,17 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', syncTableCards);
-        window.addEventListener('load', syncTableCards);
+        document.addEventListener('DOMContentLoaded', () => {
+            syncTableCards();
+            fetchCloudFloorConfig();
+        });
+        window.addEventListener('load', () => {
+            syncTableCards();
+            fetchCloudFloorConfig();
+        });
         document.addEventListener('click', () => setTimeout(syncTableCards, 50));
         setInterval(syncTableCards, 800);
+        setInterval(fetchCloudFloorConfig, 8000);
     })();
 
     // ── PART 2: Smooth Scroll-Following & Docking Selected Table Card ──
