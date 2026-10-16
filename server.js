@@ -652,6 +652,32 @@ app.post('/api/memory/table-overrides', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 👉 CLOUD FLOOR PLAN DESCRIPTIONS & PHOTOS SYNC */
+app.get('/api/memory/floor-plan-config', async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'floorPlanConfig'");
+        if (!rows.length || !rows[0].mem_val) return res.json([]);
+        const val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
+        res.json(Array.isArray(val) ? val : []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/memory/floor-plan-config', async (req, res) => {
+    try {
+        const config = Array.isArray(req.body) ? req.body : [];
+        const jsonStr = JSON.stringify(config);
+        await db.query(
+            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('floorPlanConfig', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
+            [jsonStr, jsonStr]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 7. Cloud Live Chat Sync Engine
 app.get('/api/memory/live-chats', async (req, res) => {
     try {
