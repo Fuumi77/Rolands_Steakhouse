@@ -6467,6 +6467,75 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             });
         })();
     </script>
+    <!-- CLOUD FLOOR PLAN CONFIG & DESCRIPTIONS SYNC (STAFF PORTAL) -->
+    <script>
+        (function initFloorPlanCloudSync() {
+            const FLOOR_CLOUD_URL = `${API_BASE_URL}/api/memory/floor-plan-config`;
+            let lastFloorConfigJson = '';
+
+            async function pushFloorConfigToCloud(cfg) {
+                try {
+                    const data = cfg || JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
+                    if (!Array.isArray(data) || data.length === 0) return;
+                    lastFloorConfigJson = JSON.stringify(data);
+                    await fetch(FLOOR_CLOUD_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: lastFloorConfigJson
+                    });
+                } catch (err) {
+                    console.error('Failed to push floorPlanConfig to cloud:', err);
+                }
+            }
+
+            async function syncFloorConfigFromCloud() {
+                try {
+                    const res = await fetch(`${FLOOR_CLOUD_URL}?nocache=${Date.now()}`);
+                    if (!res.ok) return;
+                    const cloudConfig = await res.json();
+                    const localConfig = JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
+
+                    const localHasDesc = Array.isArray(localConfig) && localConfig.some(t => t && t.description && t.description.trim() !== '');
+                    const cloudHasDesc = Array.isArray(cloudConfig) && cloudConfig.some(t => t && t.description && t.description.trim() !== '');
+
+                    // 1. If this computer already has your table descriptions and the cloud is empty, upload them automatically!
+                    if ((!Array.isArray(cloudConfig) || cloudConfig.length === 0 || (!cloudHasDesc && localHasDesc)) && localConfig.length > 0) {
+                        await pushFloorConfigToCloud(localConfig);
+                        return;
+                    }
+
+                    // 2. Otherwise, download the cloud descriptions to this device
+                    if (Array.isArray(cloudConfig) && cloudConfig.length > 0) {
+                        const cloudJson = JSON.stringify(cloudConfig);
+                        if (cloudJson !== lastFloorConfigJson && cloudJson !== localStorage.getItem('floorPlanConfig')) {
+                            lastFloorConfigJson = cloudJson;
+                            localStorage.setItem('floorPlanConfig', cloudJson);
+                            window.dispatchEvent(new Event('storage'));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Floor plan config sync error:', err);
+                }
+            }
+
+            // Intercept localStorage.setItem('floorPlanConfig', ...) so "Save Changes" or drag-and-drop pushes to MySQL immediately
+            const origSetItem = localStorage.setItem.bind(localStorage);
+            localStorage.setItem = function (key, value) {
+                origSetItem(key, value);
+                if (key === 'floorPlanConfig' && value !== lastFloorConfigJson) {
+                    try {
+                        const parsed = JSON.parse(value);
+                        pushFloorConfigToCloud(parsed);
+                    } catch (e) {}
+                }
+            };
+
+            window.addEventListener('load', () => {
+                setTimeout(syncFloorConfigFromCloud, 300);
+                setInterval(syncFloorConfigFromCloud, 8000);
+            });
+        })();
+    </script>
 </body>
 
 </html>
