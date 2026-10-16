@@ -674,10 +674,11 @@
 </style>
 
 <script>
-    // ── PART 1: Bigger Table Cards, Cloud Descriptions & Select Buttons ──
+    // ── PART 1: Bigger Table Cards, Cloud Descriptions & Live Cross-Device Taken Times ──
     (function upgradeSeatSelectionTables() {
         const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
         let floorConfigMap = {};
+        let lastCloudSig = '';
 
         function loadLocalFloorMap() {
             try {
@@ -692,21 +693,110 @@
             } catch (e) {}
         }
 
-        async function fetchCloudFloorConfig() {
+        // 👉 Sync Descriptions + Taken Reservation Times + Floor Overrides across all devices!
+        async function syncAllTableDataFromCloud() {
             try {
-                const res = await fetch(`${API_BASE}/api/memory/floor-plan-config?nocache=${Date.now()}`);
-                if (!res.ok) return;
-                const cloudCfg = await res.json();
-                if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
-                    localStorage.setItem('floorPlanConfig', JSON.stringify(cloudCfg));
-                    loadLocalFloorMap();
-                    syncTableCards();
+                const [cfgRes, ovrRes, resRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/memory/floor-plan-config?nocache=${Date.now()}`).catch(() => null),
+                    fetch(`${API_BASE}/api/memory/table-overrides?nocache=${Date.now()}`).catch(() => null),
+                    fetch(`${API_BASE}/reservations?nocache=${Date.now()}`).catch(() => null)
+                ]);
+
+                let changed = false;
+
+                // 1. Sync Floor Plan Config (Descriptions & Custom Photos)
+                if (cfgRes && cfgRes.ok) {
+                    const cloudCfg = await cfgRes.json();
+                    if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
+                        const cfgStr = JSON.stringify(cloudCfg);
+                        if (localStorage.getItem('floorPlanConfig') !== cfgStr) {
+                            localStorage.setItem('floorPlanConfig', cfgStr);
+                            changed = true;
+                        }
+                    }
                 }
-            } catch (e) {}
+
+                // 2. Sync Live Table Overrides (Seated / Reserved / Unavailable)
+                if (ovrRes && ovrRes.ok) {
+                    const cloudOvr = await ovrRes.json();
+                    if (cloudOvr && typeof cloudOvr === 'object') {
+                        const ovrStr = JSON.stringify(cloudOvr);
+                        if (localStorage.getItem('tableOverrides') !== ovrStr) {
+                            localStorage.setItem('tableOverrides', ovrStr);
+                            changed = true;
+                        }
+                    }
+                }
+
+                // 3. Sync Active Reservations & Taken Times from MySQL
+                if (resRes && resRes.ok) {
+                    const dbList = await resRes.json();
+                    if (Array.isArray(dbList)) {
+                        const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                        const localMap = {};
+                        localHist.forEach(item => {
+                            if (item && item.reservationNumber) localMap[item.reservationNumber] = item;
+                        });
+
+                        const mergedHist = dbList.map(dbR => {
+                            const existing = localMap[dbR.reservationNumber] || {};
+                            const rawStatus = String(dbR.status || 'Pending').toLowerCase().trim();
+                            const isDone = rawStatus === 'completed';
+                            const isCancelled = rawStatus === 'cancelled' || rawStatus === 'rejected';
+
+                            return {
+                                ...existing,
+                                reservationNumber: dbR.reservationNumber,
+                                reservationType: dbR.reservationType || existing.reservationType || 'standard',
+                                customerName: dbR.customerName || existing.customerName || 'Guest',
+                                bookedTable: dbR.bookedTable || existing.bookedTable,
+                                arrivalDate: dbR.arrivalDate || existing.arrivalDate,
+                                arrivalTime: dbR.arrivalTime || existing.arrivalTime,
+                                arrivalDateTimeDisplay: existing.arrivalDateTimeDisplay || `${dbR.arrivalDate} ${dbR.arrivalTime}`,
+                                status: dbR.status || 'Pending',
+                                approvalStatus: isCancelled ? 'cancelled' : (rawStatus === 'walk-in' ? 'approved' : rawStatus),
+                                paymentStatus: (rawStatus === 'approved' || rawStatus === 'seated' || isDone) ? 'verified' : (existing.paymentStatus || 'pending'),
+                                completedAt: isDone ? (existing.completedAt || new Date().toISOString()) : null,
+                                kdsStatus: dbR.kdsStatus || existing.kdsStatus || 'pending',
+                                foods: (Array.isArray(dbR.foods) && dbR.foods.length) ? dbR.foods : (existing.foods || []),
+                                paymentAmount: dbR.paymentAmount !== undefined ? dbR.paymentAmount : (existing.paymentAmount || 0),
+                                bookedBy: dbR.bookedBy || existing.bookedBy || 'online'
+                            };
+                        });
+
+                        const histStr = JSON.stringify(mergedHist);
+                        if (localStorage.getItem('reservationHistory') !== histStr) {
+                            localStorage.setItem('reservationHistory', histStr);
+                            changed = true;
+                        }
+                    }
+                }
+
+                // Trigger seat-selection.html's native table renderer if data updated
+                const currentSig = (localStorage.getItem('floorPlanConfig') || '') + '|' + (localStorage.getItem('tableOverrides') || '') + '|' + (localStorage.getItem('reservationHistory') || '');
+                if (changed || currentSig !== lastCloudSig) {
+                    lastCloudSig = currentSig;
+                    loadLocalFloorMap();
+
+                    // Call whichever native render function seat-selection.html uses
+                    ['renderTables', 'updateTables', 'loadTables', 'checkTableAvailability', 'initTables', 'renderFloorPlan'].forEach(fn => {
+                        if (typeof window[fn] === 'function') {
+                            try { window[fn](); } catch (e) {}
+                        }
+                    });
+                    window.dispatchEvent(new Event('storage'));
+                    setTimeout(syncTableCards, 60);
+                }
+            } catch (e) {
+                console.warn('Cloud table sync error:', e);
+            }
         }
 
         function syncTableCards() {
             loadLocalFloorMap();
+
+            // Remove any leftover duplicate description elements from earlier
+            document.querySelectorAll('.rsh-table-desc-line').forEach(el => el.remove());
 
             const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
                 const parentText = (img.parentElement?.innerText || '').trim();
@@ -727,16 +817,27 @@
                     }
                 }
 
-                // Identify which table this card represents (e.g., "Table 1" or "VIP Room")
+                // Identify table name & deduplicate any repeated description lines inside the card
                 let tableTitleText = '';
+                const seenTexts = new Set();
+
                 Array.from(card.children).forEach(child => {
-                    if (child !== img && !child.classList.contains('rsh-table-select-btn') && !child.classList.contains('rsh-table-desc-line')) {
-                        const txt = (child.innerText || '').trim();
-                        if (/^Table\s*\d+|VIP/i.test(txt)) {
-                            tableTitleText = txt.split('\n')[0].trim();
-                            child.style.fontSize = '16px';
-                            child.style.fontWeight = '800';
+                    if (child === img || child.classList.contains('rsh-table-select-btn')) return;
+                    const txt = (child.innerText || '').trim();
+                    if (!txt) return;
+
+                    if (/^Table\s*\d+|VIP/i.test(txt) && !tableTitleText) {
+                        tableTitleText = txt.split('\n')[0].trim();
+                        child.style.fontSize = '16px';
+                        child.style.fontWeight = '800';
+                    } else {
+                        // Normalize text so duplicate "🪑 9 Seats..." lines are removed
+                        const norm = txt.replace(/^🪑\s*/, '').trim().toLowerCase();
+                        if (norm && seenTexts.has(norm)) {
+                            child.remove();
+                            return;
                         }
+                        if (norm) seenTexts.add(norm);
                     }
                 });
 
@@ -747,28 +848,21 @@
 
                 const cfgItem = floorConfigMap[tableTitleText.toLowerCase()];
 
-                // Sync custom uploaded table image if one exists in config
+                // Sync custom table photo if present
                 if (cfgItem && cfgItem.image && img.getAttribute('src') !== cfgItem.image) {
                     img.src = cfgItem.image;
                 }
 
-                // Inject or update the Table Description line (e.g., "🪑 9 Seats, near counter")
-                let descEl = card.querySelector('.rsh-table-desc-line');
+                // Only add description if the page's native renderer didn't already render it!
                 const descText = (cfgItem && cfgItem.description) ? cfgItem.description.trim() : '';
-
-                if (descText) {
-                    if (!descEl) {
-                        descEl = document.createElement('div');
-                        descEl.className = 'rsh-table-desc-line';
-                        descEl.style.cssText = 'font-size: 12px; color: #475569; font-weight: 600; text-align: center; margin-top: 4px; line-height: 1.35;';
-                        const existingBtn = card.querySelector('.rsh-table-select-btn');
-                        if (existingBtn) card.insertBefore(descEl, existingBtn);
-                        else card.appendChild(descEl);
-                    }
-                    const formattedDesc = `🪑 ${descText}`;
-                    if (descEl.textContent !== formattedDesc) descEl.textContent = formattedDesc;
-                } else if (descEl) {
-                    descEl.remove();
+                if (descText && !seenTexts.has(descText.replace(/^🪑\s*/, '').toLowerCase()) && !(card.innerText || '').toLowerCase().includes(descText.toLowerCase())) {
+                    const descEl = document.createElement('div');
+                    descEl.className = 'rsh-single-table-desc';
+                    descEl.style.cssText = 'font-size: 12px; color: #475569; font-weight: 600; text-align: center; margin-top: 4px; line-height: 1.35;';
+                    descEl.textContent = `🪑 ${descText.replace(/^🪑\s*/, '')}`;
+                    const existingBtn = card.querySelector('.rsh-table-select-btn');
+                    if (existingBtn) card.insertBefore(descEl, existingBtn);
+                    else card.appendChild(descEl);
                 }
 
                 // Inject the Select button if not present yet
@@ -781,8 +875,9 @@
                 }
 
                 const classStr = (card.className || '').toLowerCase();
+                const cardText = (card.innerText || '').toLowerCase();
                 const borderStyle = window.getComputedStyle(card).borderColor;
-                const isUnavailable = classStr.includes('disabled') || classStr.includes('unavailable') || classStr.includes('reserved') || classStr.includes('occupied') || card.style.pointerEvents === 'none';
+                const isUnavailable = classStr.includes('disabled') || classStr.includes('unavailable') || classStr.includes('reserved') || classStr.includes('occupied') || cardText.includes('reserved') || cardText.includes('unavailable') || cardText.includes('taken') || card.style.pointerEvents === 'none';
                 const isSelected = classStr.includes('selected') || classStr.includes('active') || borderStyle === 'rgb(27, 94, 32)' || borderStyle === 'rgb(46, 125, 50)' || borderStyle === 'rgb(34, 197, 94)';
 
                 if (isUnavailable) {
@@ -800,15 +895,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             syncTableCards();
-            fetchCloudFloorConfig();
+            syncAllTableDataFromCloud();
         });
         window.addEventListener('load', () => {
             syncTableCards();
-            fetchCloudFloorConfig();
+            syncAllTableDataFromCloud();
         });
         document.addEventListener('click', () => setTimeout(syncTableCards, 50));
         setInterval(syncTableCards, 800);
-        setInterval(fetchCloudFloorConfig, 8000);
+        setInterval(syncAllTableDataFromCloud, 6000);
     })();
 
     // ── PART 2: Smooth Scroll-Following & Docking Selected Table Card ──
