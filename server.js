@@ -621,19 +621,37 @@ app.post('/api/reservations/update-status', async (req, res) => {
     const { id, status } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
-        if (numericId) await db.query('UPDATE reservation_log SET status = ? WHERE reservation_id = ?', [status, numericId]);
+        if (numericId) {
+            const lower = String(status || '').toLowerCase().trim();
+            // 👉 FIX: If an order is Completed, Cancelled, or Rejected, automatically close its Kitchen ticket too!
+            if (lower === 'completed') {
+                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'served' WHERE reservation_id = ?", [status, numericId]);
+            } else if (lower === 'cancelled' || lower === 'rejected') {
+                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'cancelled' WHERE reservation_id = ?", [status, numericId]);
+            } else {
+                await db.query('UPDATE reservation_log SET status = ? WHERE reservation_id = ?', [status, numericId]);
+            }
+        }
         cachedReservations = null;
+        resCacheTime = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 NEW: KITCHEN AND FLOOR PLAN SYNC ROUTES */
+/* 👉 KITCHEN AND FLOOR PLAN SYNC ROUTES */
 app.post('/api/reservations/update-kds', async (req, res) => {
     const { id, kdsStatus } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
-        if (numericId) await db.query('UPDATE reservation_log SET kds_status = ? WHERE reservation_id = ?', [kdsStatus, numericId]);
+        if (numericId) {
+            if (kdsStatus === 'cancelled') {
+                await db.query("UPDATE reservation_log SET kds_status = 'cancelled', status = 'Cancelled' WHERE reservation_id = ?", [numericId]);
+            } else {
+                await db.query('UPDATE reservation_log SET kds_status = ? WHERE reservation_id = ?', [kdsStatus, numericId]);
+            }
+        }
         cachedReservations = null;
+        resCacheTime = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -724,7 +742,7 @@ app.delete('/api/reservations/all', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 NEW: UPDATE ENTIRE ORDER DETAILS (Foods, Payment, Status) */
+/* 👉 UPDATE ENTIRE ORDER DETAILS (Never overwrites kds_status with NULL) */
 app.post('/api/reservations/update-order', async (req, res) => {
     const { id, paymentAmount, foods, status, kdsStatus } = req.body;
     try {
@@ -732,11 +750,12 @@ app.post('/api/reservations/update-order', async (req, res) => {
         const foodsJson = foods ? JSON.stringify(foods) : '[]';
         if (numericId) {
             await db.query(
-                'UPDATE reservation_log SET payment_amount = ?, foods = ?, status = ?, kds_status = ? WHERE reservation_id = ?', 
-                [paymentAmount, foodsJson, status, kdsStatus, numericId]
+                'UPDATE reservation_log SET payment_amount = ?, foods = ?, status = COALESCE(?, status), kds_status = COALESCE(?, kds_status) WHERE reservation_id = ?', 
+                [paymentAmount, foodsJson, status || null, kdsStatus || null, numericId]
             );
         }
         cachedReservations = null;
+        resCacheTime = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
