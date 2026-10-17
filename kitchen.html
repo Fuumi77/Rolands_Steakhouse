@@ -13,6 +13,9 @@
 </head>
 <body>
 
+    <!-- MODAL ROOT FOR CONFIRMATION DIALOGS -->
+    <div id="super-modal-root"></div>
+
     <!-- AUTHENTICATION OVERLAY GATE -->
     <div id="auth-gate">
         <div class="auth-card">
@@ -86,11 +89,20 @@
     </main>
 
     <script>
+        const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+
         // ── STATE VARIABLES ──
         let currentPin = "";
         let activeFilter = 'all';
         let isSoundEnabled = true;
-        let lastHistoryCount = -1;
+        let knownActiveTicketIds = null; // Tracks active ticket IDs for accurate new-order chime
+        const localKdsShield = {};       // { [resNo]: { status, approvalStatus, timestamp } } prevents cloud revert!
+
+        // Safe HTML escaper fallback
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return String(str || '');
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
 
         // ── PHYSICAL KEYBOARD LISTENERS FOR PIN GATE ──
         window.addEventListener('keydown', (e) => {
@@ -161,7 +173,6 @@
             document.getElementById('auth-gate').style.display = 'flex';
         }
 
-        // On page load check authentication
         if (sessionStorage.getItem('kitchenAuthenticated') === 'true') {
             document.getElementById('auth-gate').style.display = 'none';
             initKitchen();
@@ -205,29 +216,23 @@
             }
         }
 
+        // ── CLOUD SYNC WITH ANTI-REVERT SHIELD ──
         async function syncKitchenQueueFromCloud() {
             try {
-                const res = await fetch(`https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=${Date.now()}`);
+                const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
                 if (!res.ok) return;
                 const dbReservations = await res.json();
                 
-                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let localHistory = getReservationHistory();
                 let updated = false;
 
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
                 const oldLength = localHistory.length;
                 
-                // 👉 FIX: Protect POS and Walk-in orders from being wiped before they connect to the cloud!
-                localHistory = localHistory.filter(local => {
-                    if (cloudIds.includes(local.reservationNumber)) return true;
-                    if (String(local.reservationNumber).startsWith('POS-') || String(local.reservationNumber).startsWith('WI-')) return true;
-                    return false;
-                });
-                
+                localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
                 if (localHistory.length !== oldLength) updated = true;
 
                 dbReservations.forEach(dbRes => {
-                    // 👉 THE FIX: If the cloud stored 'cartItems' instead of 'foods', automatically rebuild the list!
                     let cloudFoods = dbRes.foods || [];
                     if (cloudFoods.length === 0 && dbRes.cartItems) {
                         try {
@@ -238,23 +243,17 @@
 
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
-                    // 👉 THE FIX: Stop merging wrong orders! Force it to match BOTH Table AND Customer Name!
-                    if (!match) {
-                        match = localHistory.find(local => {
-                            const localName = String(local.customerName).toLowerCase().trim();
-                            const dbName = String(dbRes.customerName).toLowerCase().trim();
-                            const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
-                            return isTempId && local.bookedTable === dbRes.bookedTable && localName === dbName;
-                        });
-                        if (match) {
-                            match.reservationNumber = dbRes.reservationNumber; 
-                            updated = true;
-                        }
-                    }
-
                     let rawStatus = dbRes.status || 'Pending';
                     let dbStatus = String(rawStatus).toLowerCase().trim();
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
+
+                    let cloudKds = String(dbRes.kdsStatus || 'pending').toLowerCase().trim();
+                    if (dbStatus === 'completed') cloudKds = 'served';
+                    if (dbStatus === 'cancelled' || dbStatus === 'rejected') cloudKds = 'cancelled';
+
+                    // 👉 CHECK LOCAL SHIELD: Never let a lagging cloud response revert a recent button click!
+                    const shield = localKdsShield[dbRes.reservationNumber];
+                    const isShieldActive = shield && (Date.now() - shield.timestamp < 15000);
 
                     if (match) {
                         if (match.customerName !== dbRes.customerName) {
@@ -262,16 +261,35 @@
                             updated = true;
                         }
 
-                        const isPending = dbStatus === 'pending';
-                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
-                            match.approvalStatus = dbStatus;
-                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
-                            if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
-                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
-                            updated = true;
+                        if (!isShieldActive) {
+                            // If local was already marked served/cancelled recently, also check localUpdatedAt
+                            const recentlyTouchedLocally = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
+
+                            if (!recentlyTouchedLocally) {
+                                if (dbStatus !== 'pending' && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                                    match.approvalStatus = dbStatus;
+                                    if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') {
+                                        match.paymentStatus = 'verified';
+                                    }
+                                    if (dbStatus === 'completed' && !match.completedAt) {
+                                        match.completedAt = new Date().toISOString();
+                                    }
+                                    updated = true;
+                                }
+
+                                if (cloudKds && match.kdsStatus !== cloudKds) {
+                                    match.kdsStatus = cloudKds;
+                                    updated = true;
+                                }
+                            }
+                        } else {
+                            // Enforce the shielded status
+                            if (match.kdsStatus !== shield.status) {
+                                match.kdsStatus = shield.status;
+                                updated = true;
+                            }
                         }
-                        
-                        // 👉 Apply the rebuilt foods list so the Kitchen never loses items!
+
                         if (cloudFoods.length > 0 && JSON.stringify(match.foods) !== JSON.stringify(cloudFoods)) { 
                             match.foods = cloudFoods; 
                             updated = true; 
@@ -284,20 +302,15 @@
                             match.reservationType = dbRes.reservationType || 'standard'; 
                             updated = true; 
                         }
-
-                        if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
-                            match.kdsStatus = dbRes.kdsStatus;
-                            updated = true;
-                        }
-
                         if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
                             match.paymentStatus = 'verified';
                             updated = true;
                         }
 
                     } else {
-                        // 👉 Assign the rebuilt foods list to completely new devices (like your phone)!
-                        if (dbGenStatus === 'completed' || dbGenStatus === 'cancelled' || dbGenStatus === 'rejected') return;
+                        // 👉 FIXED TYPO: dbStatus (not dbGenStatus) & skip already finished orders!
+                        if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
+                        if (cloudKds === 'served' || cloudKds === 'cancelled') return;
 
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
@@ -308,8 +321,8 @@
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: dbStatus === 'completed' ? 'paid' : 'pending',
-                            kdsStatus: dbRes.kdsStatus || 'pending',
+                            paymentStatus: (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos') ? 'verified' : 'pending',
+                            kdsStatus: isShieldActive ? shield.status : cloudKds,
                             completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
                             createdAt: new Date().toISOString(),
                             foods: cloudFoods, 
@@ -322,18 +335,19 @@
 
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
-                    renderKitchenQueue(true);
+                    renderKitchenQueue(false);
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Kitchen cloud sync error:", e);
+            }
         }
 
         function initKitchen() {
-            syncKitchenQueueFromCloud();
             renderKitchenQueue(true);
+            syncKitchenQueueFromCloud();
             setInterval(() => {
                 syncKitchenQueueFromCloud();
-                renderKitchenQueue(true);
-            }, 12000);
+            }, 5000);
         }
 
         // Elapsed Minutes Timer Calculation
@@ -342,7 +356,7 @@
             const createdMs = new Date(createdAtIso).getTime();
             if (isNaN(createdMs)) return `<span class="timer-badge normal">⏱️ Recent</span>`;
             
-            const diffMins = Math.floor((Date.now() - createdMs) / 60000);
+            const diffMins = Math.max(0, Math.floor((Date.now() - createdMs) / 60000));
             if (diffMins < 10) {
                 return `<span class="timer-badge normal">⏱️ ${diffMins}m ago</span>`;
             } else if (diffMins < 20) {
@@ -352,25 +366,23 @@
             }
         }
 
-        // ── TICKET CARD BUILDER HELPER ──
+        // ── TICKET CARD BUILDER HELPER (Uses Unique Reservation Number Instead of Array Index) ──
         function buildTicketCard(r) {
-            const realIdx = r._originalIndex;
+            const resNo = String(r.reservationNumber || '');
+            const safeResNoJs = resNo.replace(/'/g, "\\'");
             const status = r.kdsStatus || 'pending';
-            const isPriority = r.reservationType === 'priority';
             
             const t = document.createElement('div');
             t.className = `ticket status-${status}`;
             
-            // Format foods list items
             const foodsHtml = (r.foods || []).map(f => {
-                const match = f.match(/^(\d+x)\s+(.*)/);
+                const match = String(f).match(/^(\d+x)\s+(.*)/);
                 if (match) {
-                    return `<li><span class="qty-tag">${match[1]}</span> <span>${escapeHtml(match[2])}</span></li>`;
+                    return `<li><span class="qty-tag">${escapeHtml(match[1])}</span> <span>${escapeHtml(match[2])}</span></li>`;
                 }
-                return `<li><span class="qty-tag">1x</span> <span>${escapeHtml(f)}</span></li>`;
+                return `<li><span class="qty-tag">1x</span> <span>${escapeHtml(String(f))}</span></li>`;
             }).join('');
             
-            // Doneness & Notes
             let donenessHtml = '';
             if (r.beefNote) {
                 const cleanDoneness = r.beefNote.replace(/^doneness:\s*/i, '').trim();
@@ -382,42 +394,41 @@
                 detailHtml += `<div class="ticket-notes">📝 <strong>Note:</strong> ${escapeHtml(r.notes)}</div>`;
             }
             
-            // Action Buttons
             let btns = '';
             if (status === 'pending') {
                 btns = `
                     <div class="action-row">
-                        <button class="btn-cook" type="button" onclick="updateStatus(${realIdx}, 'cooking')">🔥 START COOKING</button>
+                        <button class="btn-cook" type="button" onclick="updateStatus('${safeResNoJs}', 'cooking')">🔥 START COOKING</button>
                     </div>
                     <div class="action-row">
-                        <button class="btn-cancel" type="button" onclick="cancelOrder(${realIdx})">Cancel Order</button>
+                        <button class="btn-cancel" type="button" onclick="cancelOrder('${safeResNoJs}')">Cancel Order</button>
                     </div>
                 `;
             } else if (status === 'cooking') {
                 btns = `
                     <div class="action-row">
-                        <button class="btn-ready" type="button" onclick="updateStatus(${realIdx}, 'ready')">✔ MARK AS DONE</button>
+                        <button class="btn-ready" type="button" onclick="updateStatus('${safeResNoJs}', 'ready')">✔ MARK AS DONE</button>
                     </div>
                     <div class="action-row">
-                        <button class="btn-cancel" type="button" onclick="cancelOrder(${realIdx})">Cancel Order</button>
+                        <button class="btn-cancel" type="button" onclick="cancelOrder('${safeResNoJs}')">Cancel Order</button>
                     </div>
                 `;
             } else if (status === 'ready') {
                 btns = `
                     <div class="action-row">
-                        <button class="btn-dismiss" type="button" onclick="updateStatus(${realIdx}, 'served')">🍽️ SERVED / DISMISS</button>
+                        <button class="btn-dismiss" type="button" onclick="updateStatus('${safeResNoJs}', 'served')">🍽️ SERVED / DISMISS</button>
                     </div>
                 `;
             }
 
-            const tableText = r.bookedTable ? (r.bookedTable.toLowerCase().includes('table') ? r.bookedTable.toUpperCase() : `TABLE ${r.bookedTable}`) : 'WALK-IN';
+            const tableText = r.bookedTable ? (r.bookedTable.toLowerCase().includes('table') || r.bookedTable.toLowerCase().includes('vip') ? r.bookedTable.toUpperCase() : `TABLE ${r.bookedTable}`) : 'WALK-IN';
 
             t.innerHTML = `
                 <div class="ticket-header">
                     <div>
                         <div class="table-badge">${escapeHtml(tableText)}</div>
                         <div class="customer-name">${escapeHtml(r.customerName || 'Guest')}</div>
-                        <div style="font-size: 11px; color: var(--kds-text-muted); margin-top: 2px;">#${escapeHtml(r.reservationNumber || 'N/A')}</div>
+                        <div style="font-size: 11px; color: var(--kds-text-muted); margin-top: 2px;">#${escapeHtml(resNo || 'N/A')}</div>
                     </div>
                     <div class="ticket-meta">
                         ${getElapsedTimerHtml(r.createdAt || r.kdsUpdateAt)}
@@ -438,55 +449,63 @@
             const grid = document.getElementById('kds-grid');
             if (!grid) return;
 
-            // Trigger notification sound if new food order arrives
-            if (!silent && lastHistoryCount !== -1 && hist.length > lastHistoryCount) {
-                const newRes = hist[hist.length - 1];
-                if (newRes && newRes.foods && newRes.foods.length > 0 && isSoundEnabled) {
+            // 👉 STRICT ACTIVE FILTER: Excludes completed, served, cancelled, rejected, and unapproved orders!
+            const foodOrders = hist.filter(r => {
+                if (!r || !Array.isArray(r.foods) || r.foods.length === 0) return false;
+
+                const kds = String(r.kdsStatus || 'pending').toLowerCase().trim();
+                const aStat = String(r.approvalStatus || '').toLowerCase().trim();
+                const dbStat = String(r.status || '').toLowerCase().trim();
+                const pStat = String(r.paymentStatus || '').toLowerCase().trim();
+                const resNum = String(r.reservationNumber || '');
+
+                // 1. Never show orders that are already served, completed, cancelled, or rejected
+                if (kds === 'served' || kds === 'cancelled') return false;
+                if (Boolean(r.completedAt) || Boolean(r.cancelledAt) || r.isCancelled === true) return false;
+                if (aStat === 'completed' || aStat === 'cancelled' || aStat === 'rejected') return false;
+                if (dbStat === 'completed' || dbStat === 'cancelled' || dbStat === 'rejected') return false;
+                if (pStat === 'rejected' || pStat === 'refunded') return false;
+
+                // 2. POS orders are paid immediately at the counter -> show in Kitchen
+                if (r.bookedBy === 'pos' || resNum.startsWith('POS-')) return true;
+
+                // 3. Online & Walk-in reservations must be Approved, Seated, or Payment Verified by Staff first
+                const isApprovedOrVerified = (
+                    aStat === 'approved' ||
+                    aStat === 'seated' ||
+                    dbStat === 'approved' ||
+                    dbStat === 'seated' ||
+                    pStat === 'verified' ||
+                    pStat === 'paid' ||
+                    pStat === 'walk-in'
+                );
+
+                return isApprovedOrVerified;
+            });
+
+            // Accurate New-Order Sound Trigger
+            const currentIds = new Set(foodOrders.map(o => o.reservationNumber));
+            if (knownActiveTicketIds !== null && !silent) {
+                const hasBrandNewOrder = foodOrders.some(o => !knownActiveTicketIds.has(o.reservationNumber));
+                if (hasBrandNewOrder && isSoundEnabled) {
                     playNewOrderChime();
                     showNewOrderPopup();
                 }
             }
-            lastHistoryCount = hist.length;
-
-            // Map and filter kitchen food orders
-            let foodOrders = hist.map((r, index) => {
-                return { ...r, _originalIndex: index };
-            }).filter(r => 
-                r.foods && r.foods.length > 0 && 
-                r.kdsStatus !== 'served' && 
-                r.kdsStatus !== 'cancelled' &&
-                (
-                    r.paymentStatus === 'verified' || 
-                    r.paymentStatus === 'paid' || 
-                    r.paymentStatus === 'walk-in' || 
-                    r.approvalStatus === 'approved' || 
-                    r.approvalStatus === 'seated' || // 👉 FIX: Tell the kitchen to accept 'seated' orders!
-                    r.paymentStatus === 'pending_check' || 
-                    r.bookedBy === 'staff' || 
-                    r.bookedBy === 'admin' ||
-                    r.status === 'seated' ||
-                    r.status === 'confirmed' ||
-                    r.status === 'approved'
-                )
-            );
+            knownActiveTicketIds = currentIds;
 
             // Metrics Update
             const pendingOrders = foodOrders.filter(o => !o.kdsStatus || o.kdsStatus === 'pending');
             const cookingOrders = foodOrders.filter(o => o.kdsStatus === 'cooking');
-            const readyOrders = foodOrders.filter(o => o.kdsStatus === 'ready');
+            const readyOrders   = foodOrders.filter(o => o.kdsStatus === 'ready');
 
             document.getElementById('metric-total').textContent = `${foodOrders.length} Active`;
             document.getElementById('metric-pending').textContent = `${pendingOrders.length} Pending`;
             document.getElementById('metric-cooking').textContent = `${cookingOrders.length} Cooking`;
             document.getElementById('metric-ready').textContent = `${readyOrders.length} Ready`;
 
-            // If ALL ORDERS tab is active: Render the 3-column workflow board
+            // 3-Column Board View
             if (activeFilter === 'all') {
-                if (foodOrders.length === 0) {
-                    grid.innerHTML = `<div class="kds-empty">No active food orders in kitchen queue.</div>`;
-                    return;
-                }
-
                 grid.className = 'kds-board';
                 grid.innerHTML = `
                     <!-- PENDING ORDERS AREA -->
@@ -519,7 +538,7 @@
 
                 const bodyPending = document.getElementById('col-body-pending');
                 const bodyCooking = document.getElementById('col-body-cooking');
-                const bodyReady = document.getElementById('col-body-ready');
+                const bodyReady   = document.getElementById('col-body-ready');
 
                 if (pendingOrders.length === 0) {
                     bodyPending.innerHTML = `<div class="kds-col-empty"><div class="kds-col-empty-icon">⏳</div>No pending orders waiting</div>`;
@@ -541,9 +560,9 @@
                 return;
             }
 
-            // Single Tab Filter View (e.g. Pending, Cooking, Ready)
+            // Single Tab Filter View
             grid.className = 'ticket-grid';
-            let filteredOrders = foodOrders.filter(o => (o.kdsStatus || 'pending') === activeFilter);
+            const filteredOrders = foodOrders.filter(o => (o.kdsStatus || 'pending') === activeFilter);
 
             if (filteredOrders.length === 0) {
                 grid.innerHTML = `<div class="kds-empty">No ${activeFilter.toUpperCase()} food orders in kitchen queue.</div>`;
@@ -565,8 +584,8 @@
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-                osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.3); // E5
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.3);
                 gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
                 osc.start();
@@ -586,116 +605,150 @@
             }, 3500);
         }
 
-        function updateStatus(idx, newStatus) {
+        // ── UPDATE TICKET STATUS (Locked by Reservation Number & Shielded) ──
+        async function updateStatus(resNo, newStatus) {
             const hist = getReservationHistory();
-            if (hist[idx]) {
-                hist[idx].kdsStatus = newStatus;
-                hist[idx].kdsUpdateAt = new Date().toISOString();
-                hist[idx].localUpdatedAt = Date.now(); // 👉 SHIELD ACTIVATED
+            const idx = hist.findIndex(r => String(r.reservationNumber) === String(resNo));
+            if (idx === -1) return;
 
-                // 👉 FIX: Tell the live Cloud Database that the Kitchen is cooking/serving!
-                try {
-                    fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds`, {
+            const now = Date.now();
+            // Activate 15-second shield so background syncs cannot revert this click
+            localKdsShield[resNo] = { status: newStatus, timestamp: now };
+
+            hist[idx].kdsStatus = newStatus;
+            hist[idx].kdsUpdateAt = new Date().toISOString();
+            hist[idx].localUpdatedAt = now;
+
+            // Auto-seat the table on the Staff/Manager Floor Plan when served
+            if (newStatus === 'served') {
+                hist[idx].approvalStatus = 'seated';
+                
+                const bookedTable = hist[idx].bookedTable;
+                if (bookedTable && bookedTable !== 'Takeout') {
+                    const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+                    overrides[bookedTable] = 'seated';
+                    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                    
+                    fetch(`${API_BASE_URL}/api/memory/table-overrides`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: hist[idx].reservationNumber, kdsStatus: newStatus })
-                    });
-                } catch(e) {}
-                
-                // 👉 NEW: Auto-seat the table on the Staff/Manager Floor Plan when served
-                if (newStatus === 'served') {
-                    hist[idx].approvalStatus = 'seated';
-                    
-                    const bookedTable = hist[idx].bookedTable;
-                    if (bookedTable && bookedTable !== 'Takeout') {
-                        const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                        overrides[bookedTable] = 'seated';
-                        localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                        
-                        try {
-                            if (typeof BroadcastChannel !== 'undefined') {
-                                new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
-                            }
-                        } catch (e) {}
-                    }
-                }
+                        body: JSON.stringify(overrides)
+                    }).catch(() => {});
 
-                localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                
-                try {
-                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
-                    if (typeof BroadcastChannel !== 'undefined') {
-                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
-                    }
-                } catch (e) {}
-                
-                if (typeof showToast === 'function') {
-                    const label = newStatus === 'cooking' ? 'Started Cooking' : (newStatus === 'ready' ? 'Marked as Ready' : 'Order Dismissed');
-                    showToast(`Order status updated: ${label}`, 'success');
+                    try {
+                        if (typeof BroadcastChannel !== 'undefined') {
+                            new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
+                        }
+                    } catch (e) {}
                 }
-                renderKitchenQueue(true);
+            }
+
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            renderKitchenQueue(true);
+
+            if (typeof showToast === 'function') {
+                const label = newStatus === 'cooking' ? 'Started Cooking 🔥' : (newStatus === 'ready' ? 'Marked Ready to Serve 🔔' : 'Order Served & Dismissed ✅');
+                showToast(`#${resNo}: ${label}`, 'success');
+            }
+
+            // Broadcast locally
+            try {
+                window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                if (typeof BroadcastChannel !== 'undefined') {
+                    new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                }
+            } catch (e) {}
+
+            // Push to MySQL Cloud Database
+            try {
+                await fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: resNo, kdsStatus: newStatus })
+                });
+
+                if (newStatus === 'served') {
+                    await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNo, status: 'Seated' })
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to push KDS update to cloud:', e);
             }
         }
 
-        // 👉 NEW: Kitchen Cancel Order Function
-        window.cancelOrder = async function(idx) {
+        // ── CANCEL ORDER FROM KITCHEN ──
+        window.cancelOrder = async function(resNo) {
             let confirmed = false;
             if (typeof superModal === 'function') {
                 confirmed = await superModal({
-                    title: 'Cancel Order? ❌',
+                    title: `Cancel Order #${resNo}? ❌`,
                     message: 'Are you sure you want to cancel this order? It will be removed from the kitchen queue and ingredients will be returned to stock.',
                     type: 'confirm'
                 });
             } else {
-                confirmed = confirm('Are you sure you want to cancel this order?');
+                confirmed = confirm(`Are you sure you want to cancel order #${resNo}?`);
             }
             
             if (!confirmed) return;
 
             const hist = getReservationHistory();
-            if (hist[idx]) {
-                const targetRes = hist[idx];
-                
-                // 1. Revert inventory using the Smart Engine (if available)
-                if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-                    window.InventorySystem.cancelReservationWithFood({
-                        reservationNumber: targetRes.reservationNumber,
-                        reason: 'Cancelled by Kitchen Staff',
-                        cancelledBy: 'kitchen',
-                        operator: 'Kitchen Terminal'
-                    });
-                }
+            const idx = hist.findIndex(r => String(r.reservationNumber) === String(resNo));
+            if (idx === -1) return;
 
-                // 2. Update local statuses so it drops off the KDS board
-                targetRes.kdsStatus = 'cancelled';
-                targetRes.approvalStatus = 'cancelled';
-                targetRes.paymentStatus = 'rejected';
-                targetRes.completedAt = new Date().toISOString();
-                
-                // 3. Sync the cancellation to the live Hostinger Database!
-                try {
-                    fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status`, {
+            const targetRes = hist[idx];
+            const now = Date.now();
+            localKdsShield[resNo] = { status: 'cancelled', timestamp: now };
+
+            // 1. Revert inventory using the Smart Engine
+            if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
+                window.InventorySystem.cancelReservationWithFood({
+                    reservationNumber: targetRes.reservationNumber,
+                    reason: 'Cancelled by Kitchen Staff',
+                    cancelledBy: 'kitchen',
+                    operator: 'Kitchen Terminal'
+                });
+            }
+
+            // 2. Update local statuses so it drops off the KDS board immediately
+            targetRes.kdsStatus = 'cancelled';
+            targetRes.approvalStatus = 'cancelled';
+            targetRes.paymentStatus = 'rejected';
+            targetRes.completedAt = new Date().toISOString();
+            targetRes.localUpdatedAt = now;
+
+            localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            renderKitchenQueue(true);
+
+            if (typeof showToast === 'function') {
+                showToast(`Order #${resNo} cancelled.`, 'success');
+            }
+
+            // 3. Broadcast to Staff & Manager tabs
+            try {
+                window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
+                if (typeof BroadcastChannel !== 'undefined') {
+                    new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
+                }
+            } catch (e) {}
+
+            // 4. Sync both kds_status and status to the live Hostinger MySQL Database!
+            try {
+                await Promise.all([
+                    fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: targetRes.reservationNumber, status: 'Cancelled' })
-                    });
-                } catch (e) {}
-
-                localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                
-                // 4. Force Manager & Staff Dashboards to update instantly
-                try {
-                    window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
-                    if (typeof BroadcastChannel !== 'undefined') {
-                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: hist });
-                    }
-                } catch (e) {}
-                
-                if (typeof showToast === 'function') {
-                    showToast('Order successfully cancelled.', 'success');
-                }
-                renderKitchenQueue(true);
-            }
+                        body: JSON.stringify({ id: resNo, kdsStatus: 'cancelled' })
+                    }),
+                    fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNo, status: 'Cancelled' })
+                    })
+                ]);
+            } catch (e) {}
         };
         
         // ── REAL-TIME EVENT LISTENERS ──
@@ -719,7 +772,6 @@
                 };
             }
         } catch (e) {}
-
     </script>
 </body>
 </html>
