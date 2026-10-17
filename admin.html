@@ -3145,8 +3145,9 @@ window.markTableAvailableAndDone = function(tId) {
 
     // Automatically complete any active 'Seated' reservations on this table
     hist.forEach(r => {
-        if (r.bookedTable === tId && r.approvalStatus === 'seated') {
+        if (r.bookedTable === tId && (r.approvalStatus === 'seated' || r.approvalStatus === 'approved')) {
             r.approvalStatus = 'completed';
+            r.kdsStatus = 'served';
             r.completedAt = new Date().toISOString();
             updated = true;
             try {
