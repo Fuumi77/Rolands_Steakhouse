@@ -547,14 +547,30 @@ app.post('/reserve', async (req, res) => {
 let cachedInventory = null;
 let invCacheTime = 0;
 
+// Ensure menu_stock_change_log exists
+db.query(`
+    CREATE TABLE IF NOT EXISTS menu_stock_change_log (
+        log_id INT AUTO_INCREMENT PRIMARY KEY,
+        item_name VARCHAR(100),
+        previous_stock INT DEFAULT 0,
+        new_stock INT DEFAULT 0,
+        updated_by INT DEFAULT 1,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`).catch(() => {});
+
 app.get('/api/inventory/raw', async (req, res) => {
     try {
-        if (cachedInventory && (Date.now() - invCacheTime < 5000)) return res.json(cachedInventory);
+        if (cachedInventory && (Date.now() - invCacheTime < 4000)) return res.json(cachedInventory);
         
         const [rows] = await db.query('SELECT * FROM master_inventory');
         cachedInventory = rows.map(r => ({
-            id: r.item_id, name: r.item_name, category: r.category,
-            stock: r.current_stock, minThreshold: r.min_threshold, unit: r.unit_of_measurement
+            id: r.item_id,
+            name: r.item_name,
+            category: r.category && r.category !== 'General' ? r.category : undefined,
+            stock: parseFloat(r.current_stock) || 0,
+            minThreshold: parseFloat(r.min_threshold) > 10 ? parseFloat(r.min_threshold) : undefined,
+            unit: r.unit_of_measurement || undefined
         }));
         invCacheTime = Date.now();
         res.json(cachedInventory);
@@ -562,16 +578,28 @@ app.get('/api/inventory/raw', async (req, res) => {
 });
 
 app.post('/api/inventory/restock', async (req, res) => {
-    const { id, name, addAmount, unit } = req.body;
+    const { id, name, category, addAmount, minThreshold, unit } = req.body;
     try {
-        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [id, name]);
+        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [id, name]);
         const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
-        const newStock = prevStock + Number(addAmount);
+        const newStock = prevStock + Number(addAmount || 0);
 
-        if (current.length > 0) await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, id, name]);
-        else await db.query('INSERT INTO master_inventory (item_id, item_name, current_stock, unit_of_measurement) VALUES (?, ?, ?, ?)', [id, name, newStock, unit]);
+        if (current.length > 0) {
+            await db.query(
+                'UPDATE master_inventory SET current_stock = ?, category = COALESCE(?, category), min_threshold = COALESCE(?, min_threshold), unit_of_measurement = COALESCE(?, unit_of_measurement), last_updated = NOW() WHERE item_id = ? OR item_name = ?',
+                [newStock, category || null, minThreshold || null, unit || null, id, name]
+            );
+        } else {
+            await db.query(
+                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [id, name, category || 'Meat', newStock, minThreshold || 100, unit || 'g', 'General Santos City']
+            );
+        }
 
-        await db.query('INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())', [name, prevStock, newStock, unit || 'g', 1]);
+        await db.query(
+            'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [name, prevStock, newStock, unit || 'g', 1]
+        );
         cachedInventory = null; 
         res.json({ success: true, newStock: newStock });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -581,14 +609,19 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
     const { items, operator } = req.body;
     try {
         const staffId = parseInt(operator) || 1; 
-        for (let i of items) {
-            const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ?', [i.id, i.name]);
+        for (let i of (items || [])) {
+            const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [i.id, i.name]);
             const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
-            const newStock = Math.max(0, prevStock - Number(i.deductQty));
+            const newStock = Math.max(0, prevStock - Number(i.deductQty || 0));
 
-            if (current.length > 0) await db.query('UPDATE master_inventory SET current_stock = ? WHERE item_id = ? OR item_name = ?', [newStock, i.id, i.name]);
+            if (current.length > 0) {
+                await db.query('UPDATE master_inventory SET current_stock = ?, last_updated = NOW() WHERE item_id = ? OR item_name = ?', [newStock, i.id, i.name]);
+            }
             
-            await db.query('INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())', [i.name, prevStock, newStock, i.unit || 'g', staffId]);
+            await db.query(
+                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+                [i.name, prevStock, newStock, i.unit || 'g', staffId]
+            );
         }
         cachedInventory = null; 
         res.json({ success: true });
@@ -596,23 +629,62 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
 });
 
 app.post('/api/inventory/sync-movement', async (req, res) => {
-    const { ingredientId, ingredientName, changeQty, newStock, unit, operator } = req.body;
+    const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator } = req.body;
     try {
-        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ?', [ingredientId]);
+        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? LIMIT 1', [ingredientId]);
         let prevStock = 0;
+        const safeNewStock = Math.max(0, parseFloat(newStock) || 0);
 
         if (current.length > 0) {
-            prevStock = parseFloat(current[0].current_stock);
-            await db.query('UPDATE master_inventory SET current_stock = ?, item_name = ? WHERE item_id = ?', [newStock, ingredientName, ingredientId]);
+            prevStock = parseFloat(current[0].current_stock) || 0;
+            await db.query(
+                `UPDATE master_inventory 
+                 SET current_stock = ?, 
+                     item_name = COALESCE(?, item_name),
+                     category = CASE WHEN ? IS NOT NULL AND ? != 'General' THEN ? ELSE category END,
+                     min_threshold = CASE WHEN ? IS NOT NULL AND ? > 10 THEN ? ELSE min_threshold END,
+                     unit_of_measurement = COALESCE(?, unit_of_measurement),
+                     last_updated = NOW()
+                 WHERE item_id = ?`,
+                [safeNewStock, ingredientName || null, category, category, category, minThreshold, minThreshold, minThreshold, unit || null, ingredientId]
+            );
         } else {
-            await db.query('INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, branch_location) VALUES (?, ?, ?, ?, ?, ?)', [ingredientId, ingredientName, 'General', newStock, 10, 'General Santos City']);
-            prevStock = newStock - changeQty; 
+            prevStock = Math.max(0, safeNewStock - (parseFloat(changeQty) || 0));
+            await db.query(
+                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [ingredientId, ingredientName, category || 'General', safeNewStock, minThreshold || 100, unit || 'g', 'General Santos City']
+            );
         }
 
-        const staffId = parseInt(operator) || 1; 
-        await db.query('INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())', [ingredientName, prevStock, newStock, unit || 'g', staffId]);
+        const staffId = parseInt(operator) || 1;
+        // Only insert into change log if quantity actually changed or was explicitly adjusted
+        if (Math.abs(safeNewStock - prevStock) > 0.001 || Number(changeQty) !== 0) {
+            await db.query(
+                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+                [ingredientName, prevStock, safeNewStock, unit || 'g', staffId]
+            );
+        }
 
         cachedInventory = null; 
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 👉 NEW: LOG MENU PORTION REDUCTIONS TO menu_stock_change_log */
+app.post('/api/inventory/log-menu-stock', async (req, res) => {
+    const { changes, updatedBy } = req.body;
+    try {
+        const staffId = parseInt(updatedBy) || 1;
+        if (Array.isArray(changes)) {
+            for (const c of changes) {
+                if (c && c.itemName && c.previousStock !== c.newStock) {
+                    await db.query(
+                        'INSERT INTO menu_stock_change_log (item_name, previous_stock, new_stock, updated_by, updated_at) VALUES (?, ?, ?, ?, NOW())',
+                        [c.itemName, parseInt(c.previousStock) || 0, parseInt(c.newStock) || 0, staffId]
+                    );
+                }
+            }
+        }
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
