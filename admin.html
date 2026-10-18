@@ -1642,7 +1642,8 @@
                     let dbStatus = String(rawStatus).toLowerCase().trim();
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
 
-                    if (match.customerName !== dbRes.customerName) {
+                    if (match) {
+                        if (match.customerName !== dbRes.customerName) {
                             match.customerName = dbRes.customerName;
                             updated = true;
                         }
@@ -6543,13 +6544,11 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     const localHasDesc = Array.isArray(localConfig) && localConfig.some(t => t && t.description && t.description.trim() !== '');
                     const cloudHasDesc = Array.isArray(cloudConfig) && cloudConfig.some(t => t && t.description && t.description.trim() !== '');
 
-                    // 1. If this computer already has your table descriptions and the cloud is empty, upload them automatically!
                     if ((!Array.isArray(cloudConfig) || cloudConfig.length === 0 || (!cloudHasDesc && localHasDesc)) && localConfig.length > 0) {
                         await pushFloorConfigToCloud(localConfig);
                         return;
                     }
 
-                    // 2. Otherwise, download the cloud descriptions to this device
                     if (Array.isArray(cloudConfig) && cloudConfig.length > 0) {
                         const cloudJson = JSON.stringify(cloudConfig);
                         if (cloudJson !== lastFloorConfigJson && cloudJson !== localStorage.getItem('floorPlanConfig')) {
@@ -6563,7 +6562,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             }
 
-            // Intercept localStorage.setItem('floorPlanConfig', ...) so "Save Changes" or drag-and-drop pushes to MySQL immediately
             const origSetItem = localStorage.setItem.bind(localStorage);
             localStorage.setItem = function (key, value) {
                 origSetItem(key, value);
