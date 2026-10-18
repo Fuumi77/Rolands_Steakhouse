@@ -10,6 +10,62 @@
     <script src="js/design-system.js?v=2.0"></script>
     <script src="js/inventory-system.js?v=2.0"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
+    <style>
+        /* 👉 Smart Priority & Reservation Details Styling */
+        .kds-res-info-box {
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 9px 12px;
+            margin: 10px 0 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .kds-res-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .kds-type-pill {
+            font-size: 10.5px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .kds-type-pill.now {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.35);
+        }
+        .kds-type-pill.prep {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.35);
+        }
+        .kds-type-pill.scheduled {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+        }
+        .timer-badge.scheduled {
+            background: rgba(51, 65, 85, 0.7) !important;
+            color: #cbd5e1 !important;
+            border: 1px solid rgba(148, 163, 184, 0.3) !important;
+        }
+        .ticket.is-future-scheduled {
+            opacity: 0.85;
+            border-top-color: #64748b !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -77,7 +133,7 @@
             <button class="tab-btn" id="tab-ready" type="button" onclick="setFilter('ready')">READY</button>
         </div>
         <div style="font-size: 13px; color: var(--kds-text-muted); font-weight: 600;" id="sync-status">
-            ● Live Sync Active
+            ● Smart Priority Queue Active (Immediate & Near-Arrival First)
         </div>
     </div>
 
@@ -95,10 +151,9 @@
         let currentPin = "";
         let activeFilter = 'all';
         let isSoundEnabled = true;
-        let knownActiveTicketIds = null; // Tracks active ticket IDs for accurate new-order chime
-        const localKdsShield = {};       // { [resNo]: { status, approvalStatus, timestamp } } prevents cloud revert!
+        let knownActiveTicketIds = null;
+        const localKdsShield = {};
 
-        // Safe HTML escaper fallback
         function escapeHtml(str) {
             if (typeof str !== 'string') return String(str || '');
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -216,6 +271,142 @@
             }
         }
 
+        // ── SMART TIMING, ARRIVAL WINDOW & PRIORITY ENGINE ──
+        function evaluateOrderTimingAndPriority(r) {
+            const now = Date.now();
+            const resNum = String(r.reservationNumber || '');
+            const isPos = r.bookedBy === 'pos' || resNum.startsWith('POS-');
+            const isWalkin = r.bookedBy === 'staff' || resNum.startsWith('WI-');
+            const isSeated = String(r.approvalStatus || '').toLowerCase() === 'seated' || String(r.status || '').toLowerCase() === 'seated';
+
+            // Parse scheduled arrival date & time
+            let arrivalMs = NaN;
+            if (r.arrivalDate) {
+                const timeStr = (r.arrivalTime && /^\d{1,2}:\d{2}/.test(r.arrivalTime)) ? r.arrivalTime.substring(0, 5) : '12:00';
+                const parsed = new Date(`${r.arrivalDate}T${timeStr}:00`);
+                if (!isNaN(parsed.getTime())) arrivalMs = parsed.getTime();
+            }
+
+            // Format human-readable arrival schedule
+            let scheduleLabel = 'Immediate (In-Store)';
+            if (!isNaN(arrivalMs)) {
+                const arrDateObj = new Date(arrivalMs);
+                const nowDateObj = new Date(now);
+                const isToday = arrDateObj.toDateString() === nowDateObj.toDateString();
+                const tmrwObj = new Date(now);
+                tmrwObj.setDate(nowDateObj.getDate() + 1);
+                const isTomorrow = arrDateObj.toDateString() === tmrwObj.toDateString();
+
+                const timeFormatted = arrDateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                if (isToday) {
+                    scheduleLabel = `Today • ${timeFormatted}`;
+                } else if (isTomorrow) {
+                    scheduleLabel = `Tomorrow • ${timeFormatted}`;
+                } else {
+                    const dateFormatted = arrDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    scheduleLabel = `${dateFormatted} • ${timeFormatted}`;
+                }
+            }
+
+            // Determine Order Origin Label
+            let sourceLabel = '⭐ Online Pre-Order';
+            if (isPos) sourceLabel = '💵 POS Counter Order';
+            else if (isWalkin) sourceLabel = '🚶 Walk-In / Manual';
+
+            // Calculate minutes until arrival (negative means arrival time has passed)
+            const minsUntilArrival = !isNaN(arrivalMs) ? Math.round((arrivalMs - now) / 60000) : 0;
+
+            // CASE 1: Immediate Orders (POS, Seated Guests, or Walk-ins arriving within <= 30 mins)
+            if (isPos || isSeated || (isWalkin && minsUntilArrival <= 30)) {
+                const refIso = r.kdsUpdateAt || r.seatedAt || r.createdAt;
+                const refMs = refIso ? new Date(refIso).getTime() : now;
+                const elapsedMins = Math.max(0, Math.floor((now - (isNaN(refMs) ? now : refMs)) / 60000));
+
+                let timerHtml = '';
+                if (elapsedMins < 10) {
+                    timerHtml = `<span class="timer-badge normal">⏱️ ${elapsedMins}m ago</span>`;
+                } else if (elapsedMins < 20) {
+                    timerHtml = `<span class="timer-badge warning">⏱️ ${elapsedMins}m ago</span>`;
+                } else {
+                    timerHtml = `<span class="timer-badge urgent">🔥 URGENT ${elapsedMins}m</span>`;
+                }
+
+                return {
+                    tier: 1, // Highest Priority (Top of Queue)
+                    sortScore: -10000 - elapsedMins, // Longest waiting immediate orders first
+                    timerHtml,
+                    priorityBadgeHtml: `<span class="kds-type-pill now">🔥 ${isSeated ? 'SEATED • COOK NOW' : (isPos ? 'POS • COOK NOW' : 'WALK-IN • COOK NOW')}</span>`,
+                    scheduleLabel: isPos ? 'Counter / Dine-In Now' : scheduleLabel,
+                    sourceLabel,
+                    isFutureScheduled: false
+                };
+            }
+
+            // CASE 2: Pre-Order or Scheduled Walk-In MORE than 2 hours (120 mins) away
+            // Timer does NOT start counting elapsed time yet so cooks don't cook it hours early!
+            if (minsUntilArrival > 120) {
+                const hours = Math.floor(minsUntilArrival / 60);
+                const remMins = minsUntilArrival % 60;
+                const countdownText = hours >= 24
+                    ? `in ${Math.floor(hours / 24)}d ${hours % 24}h`
+                    : `in ${hours}h ${remMins}m`;
+
+                return {
+                    tier: 3, // Lowest Priority (Bottom of Queue)
+                    sortScore: minsUntilArrival,
+                    timerHtml: `<span class="timer-badge scheduled">📅 Starts ${countdownText}</span>`,
+                    priorityBadgeHtml: `<span class="kds-type-pill scheduled">🕒 LATER PRE-ORDER (HOLD)</span>`,
+                    scheduleLabel,
+                    sourceLabel,
+                    isFutureScheduled: true
+                };
+            }
+
+            // CASE 3: Within the 2-Hour Prep Window (0 to 120 mins before arrival)
+            if (minsUntilArrival > 0) {
+                const hours = Math.floor(minsUntilArrival / 60);
+                const remMins = minsUntilArrival % 60;
+                const inText = hours > 0 ? `${hours}h ${remMins}m` : `${remMins}m`;
+
+                const isImminent = minsUntilArrival <= 45; // Arriving within 45 mins!
+                const timerClass = isImminent ? 'warning' : 'normal';
+                const timerIcon = isImminent ? '🔥 Arrives in' : '⏳ Arrives in';
+
+                return {
+                    tier: isImminent ? 1 : 2,
+                    sortScore: minsUntilArrival,
+                    timerHtml: `<span class="timer-badge ${timerClass}">${timerIcon} ${inText}</span>`,
+                    priorityBadgeHtml: isImminent
+                        ? `<span class="kds-type-pill prep">⚡ ARRIVING SOON • PREP NOW</span>`
+                        : `<span class="kds-type-pill prep">⏳ 2H PREP WINDOW</span>`,
+                    scheduleLabel,
+                    sourceLabel,
+                    isFutureScheduled: false
+                };
+            }
+
+            // CASE 4: Arrival time has arrived or passed (minsUntilArrival <= 0)
+            const overdueMins = Math.abs(minsUntilArrival);
+            let timerHtml = '';
+            if (overdueMins < 10) {
+                timerHtml = `<span class="timer-badge normal">⏱️ Due Now (${overdueMins}m)</span>`;
+            } else if (overdueMins < 20) {
+                timerHtml = `<span class="timer-badge warning">⏱️ Due ${overdueMins}m ago</span>`;
+            } else {
+                timerHtml = `<span class="timer-badge urgent">🔥 OVERDUE ${overdueMins}m</span>`;
+            }
+
+            return {
+                tier: 1, // High Priority
+                sortScore: -overdueMins,
+                timerHtml,
+                priorityBadgeHtml: `<span class="kds-type-pill now">🔥 ARRIVAL TIME • COOK NOW</span>`,
+                scheduleLabel,
+                sourceLabel,
+                isFutureScheduled: false
+            };
+        }
+
         // ── CLOUD SYNC WITH ANTI-REVERT SHIELD ──
         async function syncKitchenQueueFromCloud() {
             try {
@@ -251,7 +442,6 @@
                     if (dbStatus === 'completed') cloudKds = 'served';
                     if (dbStatus === 'cancelled' || dbStatus === 'rejected') cloudKds = 'cancelled';
 
-                    // 👉 CHECK LOCAL SHIELD: Never let a lagging cloud response revert a recent button click!
                     const shield = localKdsShield[dbRes.reservationNumber];
                     const isShieldActive = shield && (Date.now() - shield.timestamp < 15000);
 
@@ -260,9 +450,20 @@
                             match.customerName = dbRes.customerName;
                             updated = true;
                         }
+                        if (dbRes.bookedTable && match.bookedTable !== dbRes.bookedTable) {
+                            match.bookedTable = dbRes.bookedTable;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalDate && match.arrivalDate !== dbRes.arrivalDate) {
+                            match.arrivalDate = dbRes.arrivalDate;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalTime && match.arrivalTime !== dbRes.arrivalTime) {
+                            match.arrivalTime = dbRes.arrivalTime;
+                            updated = true;
+                        }
 
                         if (!isShieldActive) {
-                            // If local was already marked served/cancelled recently, also check localUpdatedAt
                             const recentlyTouchedLocally = match.localUpdatedAt && (Date.now() - match.localUpdatedAt < 15000);
 
                             if (!recentlyTouchedLocally) {
@@ -283,7 +484,6 @@
                                 }
                             }
                         } else {
-                            // Enforce the shielded status
                             if (match.kdsStatus !== shield.status) {
                                 match.kdsStatus = shield.status;
                                 updated = true;
@@ -308,7 +508,6 @@
                         }
 
                     } else {
-                        // 👉 FIXED TYPO: dbStatus (not dbGenStatus) & skip already finished orders!
                         if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
                         if (cloudKds === 'served' || cloudKds === 'cancelled') return;
 
@@ -335,8 +534,9 @@
 
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
-                    renderKitchenQueue(false);
                 }
+                // Always re-render so live countdown/elapsed timers tick every 5 seconds
+                renderKitchenQueue(!updated);
             } catch (e) {
                 console.error("Kitchen cloud sync error:", e);
             }
@@ -350,30 +550,17 @@
             }, 5000);
         }
 
-        // Elapsed Minutes Timer Calculation
-        function getElapsedTimerHtml(createdAtIso) {
-            if (!createdAtIso) return `<span class="timer-badge normal">⏱️ Recent</span>`;
-            const createdMs = new Date(createdAtIso).getTime();
-            if (isNaN(createdMs)) return `<span class="timer-badge normal">⏱️ Recent</span>`;
-            
-            const diffMins = Math.max(0, Math.floor((Date.now() - createdMs) / 60000));
-            if (diffMins < 10) {
-                return `<span class="timer-badge normal">⏱️ ${diffMins}m ago</span>`;
-            } else if (diffMins < 20) {
-                return `<span class="timer-badge warning">⏱️ ${diffMins}m ago</span>`;
-            } else {
-                return `<span class="timer-badge urgent">🔥 URGENT ${diffMins}m</span>`;
-            }
-        }
-
-        // ── TICKET CARD BUILDER HELPER (Uses Unique Reservation Number Instead of Array Index) ──
+        // ── TICKET CARD BUILDER HELPER ──
         function buildTicketCard(r) {
-            const resNo = String(r.reservationNumber || '');
-            const safeResNoJs = resNo.replace(/'/g, "\\'");
+            const resNo = String(r.reservationNumber || '').replace(/^WI-WI-/i, 'WI-');
+            const rawResKey = String(r.reservationNumber || '');
+            const safeResNoJs = rawResKey.replace(/'/g, "\\'");
             const status = r.kdsStatus || 'pending';
-            
+
+            const timing = r._timing || evaluateOrderTimingAndPriority(r);
+
             const t = document.createElement('div');
-            t.className = `ticket status-${status}`;
+            t.className = `ticket status-${status}${timing.isFutureScheduled && status === 'pending' ? ' is-future-scheduled' : ''}`;
             
             const foodsHtml = (r.foods || []).map(f => {
                 const match = String(f).match(/^(\d+x)\s+(.*)/);
@@ -386,7 +573,7 @@
             let donenessHtml = '';
             if (r.beefNote) {
                 const cleanDoneness = r.beefNote.replace(/^doneness:\s*/i, '').trim();
-                donenessHtml = `<div class="doneness-badge">🔥 DONENESS: ${escapeHtml(cleanDoneness.toUpperCase())}</div>`;
+                donenessHtml = `<div class="doneness-badge">🔥 DONENESS / NOTE: ${escapeHtml(cleanDoneness.toUpperCase())}</div>`;
             }
             
             let detailHtml = '';
@@ -422,6 +609,7 @@
             }
 
             const tableText = r.bookedTable ? (r.bookedTable.toLowerCase().includes('table') || r.bookedTable.toLowerCase().includes('vip') ? r.bookedTable.toUpperCase() : `TABLE ${r.bookedTable}`) : 'WALK-IN';
+            const guestBadge = r.guestCount ? `<span>👥 ${escapeHtml(String(r.guestCount))} Guests</span>` : '';
 
             t.innerHTML = `
                 <div class="ticket-header">
@@ -431,10 +619,23 @@
                         <div style="font-size: 11px; color: var(--kds-text-muted); margin-top: 2px;">#${escapeHtml(resNo || 'N/A')}</div>
                     </div>
                     <div class="ticket-meta">
-                        ${getElapsedTimerHtml(r.createdAt || r.kdsUpdateAt)}
+                        ${timing.timerHtml}
                         <span class="status-badge ${status}">${status}</span>
                     </div>
                 </div>
+
+                <!-- 👉 NEW: Reservation Timing & Priority Details Box -->
+                <div class="kds-res-info-box">
+                    <div class="kds-res-row">
+                        ${timing.priorityBadgeHtml}
+                        <span style="color:#cbd5e1; font-weight:700;">${escapeHtml(timing.sourceLabel)}</span>
+                    </div>
+                    <div class="kds-res-row" style="color:#94a3b8; font-weight:600;">
+                        <span>🗓️ Arrival: <strong style="color:#f8fafc;">${escapeHtml(timing.scheduleLabel)}</strong></span>
+                        ${guestBadge}
+                    </div>
+                </div>
+
                 ${donenessHtml}
                 <ul class="food-list">${foodsHtml}</ul>
                 ${detailHtml}
@@ -443,14 +644,14 @@
             return t;
         }
 
-        // ── MAIN QUEUE RENDERER ──
+        // ── MAIN QUEUE RENDERER (With Smart Priority Sorting) ──
         function renderKitchenQueue(silent = false) {
             const hist = getReservationHistory();
             const grid = document.getElementById('kds-grid');
             if (!grid) return;
 
-            // 👉 STRICT ACTIVE FILTER: Excludes completed, served, cancelled, rejected, and unapproved orders!
-            const foodOrders = hist.filter(r => {
+            // 1. Filter active kitchen food orders
+            let foodOrders = hist.filter(r => {
                 if (!r || !Array.isArray(r.foods) || r.foods.length === 0) return false;
 
                 const kds = String(r.kdsStatus || 'pending').toLowerCase().trim();
@@ -459,18 +660,15 @@
                 const pStat = String(r.paymentStatus || '').toLowerCase().trim();
                 const resNum = String(r.reservationNumber || '');
 
-                // 1. Never show orders that are already served, completed, cancelled, or rejected
                 if (kds === 'served' || kds === 'cancelled') return false;
                 if (Boolean(r.completedAt) || Boolean(r.cancelledAt) || r.isCancelled === true) return false;
                 if (aStat === 'completed' || aStat === 'cancelled' || aStat === 'rejected') return false;
                 if (dbStat === 'completed' || dbStat === 'cancelled' || dbStat === 'rejected') return false;
                 if (pStat === 'rejected' || pStat === 'refunded') return false;
 
-                // 2. POS orders are paid immediately at the counter -> show in Kitchen
                 if (r.bookedBy === 'pos' || resNum.startsWith('POS-')) return true;
 
-                // 3. Online & Walk-in reservations must be Approved, Seated, or Payment Verified by Staff first
-                const isApprovedOrVerified = (
+                return (
                     aStat === 'approved' ||
                     aStat === 'seated' ||
                     dbStat === 'approved' ||
@@ -479,11 +677,21 @@
                     pStat === 'paid' ||
                     pStat === 'walk-in'
                 );
-
-                return isApprovedOrVerified;
             });
 
-            // Accurate New-Order Sound Trigger
+            // 2. Attach Smart Timing & Sort by Priority!
+            // Tier 1 (POS / Walk-in / Seated / Imminent Arrival) -> Tier 2 (Within 2h Prep Window) -> Tier 3 (Later Today / Tomorrow)
+            foodOrders = foodOrders.map(r => ({
+                ...r,
+                _timing: evaluateOrderTimingAndPriority(r)
+            })).sort((a, b) => {
+                if (a._timing.tier !== b._timing.tier) {
+                    return a._timing.tier - b._timing.tier;
+                }
+                return a._timing.sortScore - b._timing.sortScore;
+            });
+
+            // 3. New-Order Sound Trigger
             const currentIds = new Set(foodOrders.map(o => o.reservationNumber));
             if (knownActiveTicketIds !== null && !silent) {
                 const hasBrandNewOrder = foodOrders.some(o => !knownActiveTicketIds.has(o.reservationNumber));
@@ -494,7 +702,7 @@
             }
             knownActiveTicketIds = currentIds;
 
-            // Metrics Update
+            // 4. Metrics Update
             const pendingOrders = foodOrders.filter(o => !o.kdsStatus || o.kdsStatus === 'pending');
             const cookingOrders = foodOrders.filter(o => o.kdsStatus === 'cooking');
             const readyOrders   = foodOrders.filter(o => o.kdsStatus === 'ready');
@@ -504,7 +712,7 @@
             document.getElementById('metric-cooking').textContent = `${cookingOrders.length} Cooking`;
             document.getElementById('metric-ready').textContent = `${readyOrders.length} Ready`;
 
-            // 3-Column Board View
+            // 5. Render 3-Column Board View
             if (activeFilter === 'all') {
                 grid.className = 'kds-board';
                 grid.innerHTML = `
@@ -605,21 +813,19 @@
             }, 3500);
         }
 
-        // ── UPDATE TICKET STATUS (Locked by Reservation Number & Shielded) ──
+        // ── UPDATE TICKET STATUS ──
         async function updateStatus(resNo, newStatus) {
             const hist = getReservationHistory();
             const idx = hist.findIndex(r => String(r.reservationNumber) === String(resNo));
             if (idx === -1) return;
 
             const now = Date.now();
-            // Activate 15-second shield so background syncs cannot revert this click
             localKdsShield[resNo] = { status: newStatus, timestamp: now };
 
             hist[idx].kdsStatus = newStatus;
             hist[idx].kdsUpdateAt = new Date().toISOString();
             hist[idx].localUpdatedAt = now;
 
-            // Auto-seat the table on the Staff/Manager Floor Plan when served
             if (newStatus === 'served') {
                 hist[idx].approvalStatus = 'seated';
                 
@@ -651,7 +857,6 @@
                 showToast(`#${resNo}: ${label}`, 'success');
             }
 
-            // Broadcast locally
             try {
                 window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
                 if (typeof BroadcastChannel !== 'undefined') {
@@ -659,7 +864,6 @@
                 }
             } catch (e) {}
 
-            // Push to MySQL Cloud Database
             try {
                 await fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
                     method: 'POST',
@@ -702,7 +906,6 @@
             const now = Date.now();
             localKdsShield[resNo] = { status: 'cancelled', timestamp: now };
 
-            // 1. Revert inventory using the Smart Engine
             if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
                 window.InventorySystem.cancelReservationWithFood({
                     reservationNumber: targetRes.reservationNumber,
@@ -712,7 +915,6 @@
                 });
             }
 
-            // 2. Update local statuses so it drops off the KDS board immediately
             targetRes.kdsStatus = 'cancelled';
             targetRes.approvalStatus = 'cancelled';
             targetRes.paymentStatus = 'rejected';
@@ -726,7 +928,6 @@
                 showToast(`Order #${resNo} cancelled.`, 'success');
             }
 
-            // 3. Broadcast to Staff & Manager tabs
             try {
                 window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: hist }));
                 if (typeof BroadcastChannel !== 'undefined') {
@@ -734,7 +935,6 @@
                 }
             } catch (e) {}
 
-            // 4. Sync both kds_status and status to the live Hostinger MySQL Database!
             try {
                 await Promise.all([
                     fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
