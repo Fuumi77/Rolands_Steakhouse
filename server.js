@@ -742,16 +742,39 @@ app.delete('/api/reservations/all', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 UPDATE ENTIRE ORDER DETAILS (Never overwrites kds_status with NULL) */
+/* 👉 UPDATE ENTIRE ORDER DETAILS (Customer Name, Table, Schedule, Foods, Payment, Status) */
 app.post('/api/reservations/update-order', async (req, res) => {
-    const { id, paymentAmount, foods, status, kdsStatus } = req.body;
+    const { id, customerName, bookedTable, arrivalDate, arrivalTime, paymentAmount, foods, status, kdsStatus } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         const foodsJson = foods ? JSON.stringify(foods) : '[]';
         if (numericId) {
+            // 1. Update Customer Name if edited
+            if (customerName && String(customerName).trim() !== '') {
+                const [rows] = await db.query('SELECT customer_id FROM reservation_log WHERE reservation_id = ?', [numericId]);
+                if (rows.length > 0 && rows[0].customer_id) {
+                    await db.query('UPDATE customer_credentials SET name = ? WHERE customer_id = ?', [String(customerName).trim(), rows[0].customer_id]);
+                }
+            }
+
+            // 2. Build dynamic update for Table & Schedule if provided
+            const tableInt = bookedTable ? (parseInt(String(bookedTable).replace(/[^0-9]/g, '')) || null) : null;
+            let resTime = null;
+            if (arrivalDate && /^\d{4}-\d{2}-\d{2}$/.test(arrivalDate)) {
+                const safeTime = (arrivalTime && /^\d{2}:\d{2}/.test(arrivalTime)) ? arrivalTime.substring(0, 5) : '12:00';
+                resTime = `${arrivalDate} ${safeTime}:00`;
+            }
+
             await db.query(
-                'UPDATE reservation_log SET payment_amount = ?, foods = ?, status = COALESCE(?, status), kds_status = COALESCE(?, kds_status) WHERE reservation_id = ?', 
-                [paymentAmount, foodsJson, status || null, kdsStatus || null, numericId]
+                `UPDATE reservation_log 
+                 SET payment_amount = ?, 
+                     foods = ?, 
+                     table_number = COALESCE(?, table_number),
+                     reservation_time = COALESCE(?, reservation_time),
+                     status = COALESCE(?, status), 
+                     kds_status = COALESCE(?, kds_status) 
+                 WHERE reservation_id = ?`, 
+                [Number(paymentAmount) || 0, foodsJson, tableInt, resTime, status || null, kdsStatus || null, numericId]
             );
         }
         cachedReservations = null;
