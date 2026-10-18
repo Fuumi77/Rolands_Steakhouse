@@ -336,18 +336,21 @@
             localStorage.setItem('inventory_audit_logs', JSON.stringify(logs));
             broadcastSync('auditLogAdded', newEntry);
 
-            // 👉 THE ULTIMATE FIX: The sync is now inside the core function! It cannot be bypassed!
             if (entry && entry.ingredientId && entry.action !== 'SYS-RESET' && entry.ingredientId !== 'FINANCIAL') {
+                const rawList = getRawIngredients();
+                const matchedIng = rawList.find(i => i.id === entry.ingredientId);
                 fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/sync-movement', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: entry.action,
                         ingredientId: entry.ingredientId,
-                        ingredientName: entry.ingredientName,
-                        changeQty: entry.changeQty,
+                        ingredientName: entry.ingredientName || (matchedIng ? matchedIng.name : ''),
+                        category: matchedIng ? matchedIng.category : 'General',
+                        minThreshold: matchedIng ? matchedIng.minThreshold : 100,
+                        changeQty: Number(entry.changeQty) || 0,
                         newStock: finalNewStock, 
-                        unit: entry.unit,
+                        unit: entry.unit || (matchedIng ? matchedIng.unit : 'g'),
                         operator: 1 
                     })
                 }).catch(e => console.error("MySQL Sync Error:", e));
@@ -813,11 +816,23 @@
             let items = invStr ? JSON.parse(invStr) : [];
 
             let mutated = false;
+            const menuStockChanges = [];
+
             items.forEach(item => {
                 const avail = calculateFoodAvailability(item, rawList);
-                if (item.stock !== avail.availablePortions || item.total_stock !== avail.availablePortions) {
-                    item.stock = avail.availablePortions;
-                    item.total_stock = avail.availablePortions;
+                const prevPortions = item.stock !== undefined ? Number(item.stock) : Number(item.total_stock || 0);
+                const newPortions = Number(avail.availablePortions);
+
+                if (prevPortions !== newPortions || item.total_stock !== newPortions) {
+                    if (!isNaN(prevPortions) && prevPortions !== newPortions) {
+                        menuStockChanges.push({
+                            itemName: item.title || item.name || item.id,
+                            previousStock: prevPortions,
+                            newStock: newPortions
+                        });
+                    }
+                    item.stock = newPortions;
+                    item.total_stock = newPortions;
                     item.computedStatus = avail.status;
                     item.missingIngredients = avail.missingIngredients;
                     mutated = true;
@@ -828,6 +843,15 @@
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
                 window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
                 broadcastSync('inventoryUpdated', items);
+
+                // Push menu portion changes to MySQL menu_stock_change_log!
+                if (menuStockChanges.length > 0) {
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/log-menu-stock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ changes: menuStockChanges, updatedBy: 1 })
+                    }).catch(() => {});
+                }
             }
         } catch (e) {
             console.error('Error syncing food menu stock:', e);
@@ -990,6 +1014,19 @@
             }
         });
 
+        // Increment sold_stock on the ordered menu dishes
+        try {
+            const invItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            let invMutated = false;
+            normalized.forEach(cartItem => {
+                const target = invItems.find(i => i.id === cartItem.id || (i.title && i.title === cartItem.title));
+                if (target) {
+                    target.sold_stock = (Number(target.sold_stock) || 0) + (Number(cartItem.quantity) || 1);
+                    invMutated = true;
+                }
+            });
+            if (invMutated) localStorage.setItem('inventoryItems', JSON.stringify(invItems));
+        } catch (e) {}
         if (updatedAny) {
             saveRawIngredients(Object.values(rawMap));
             syncFoodMenuStockFromIngredients();
@@ -1091,15 +1128,13 @@
                     const recipe = getItemRecipe(item.id, item);
                     if (recipe && recipe.length > 0) {
                         recipe.forEach(r => {
-                            logSpoilage({
-                                ingredientId: r.ingredientId,
-                                ingredientName: r.ingredientId,
-                                quantity: (Number(r.qty) || 0) * (Number(item.quantity) || 1),
-                                unit: r.unit,
-                                reason: `Order Cancelled during '${currentKds}' prep: ${reason}`,
-                                cost: 0,
-                                operator: operator
-                            });
+                            logSpoilage(
+                                r.ingredientId,
+                                (Number(r.qty) || 0) * (Number(item.quantity) || 1),
+                                `Cancelled during '${currentKds}' prep`,
+                                reason,
+                                operator
+                            );
                         });
                     }
                 });
@@ -1983,31 +2018,54 @@
     const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
     if (!window.InventorySystem) return;
 
-    // Background Poller: Keeps UI synced with other terminals every 60s
-    setInterval(async () => {
+    async function syncRawIngredientsFromMySQL() {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/inventory/raw`);
-            if (res.ok) {
-                const liveData = await res.json();
-                if (liveData && liveData.length > 0) {
-                    let rawList = JSON.parse(localStorage.getItem('rawIngredients') || '[]');
-                    let updated = false;
-                    liveData.forEach(dbItem => {
-                        const localItem = rawList.find(i => i.id === dbItem.id || i.name === dbItem.name);
-                        if (localItem && localItem.stock !== dbItem.stock) {
-                            localItem.stock = dbItem.stock;
-                            updated = true;
-                        } else if (!localItem) {
-                            rawList.push(dbItem);
-                            updated = true;
-                        }
-                    });
-                    if (updated) {
-                        localStorage.setItem('rawIngredients', JSON.stringify(rawList));
-                        window.dispatchEvent(new Event('rawIngredientsUpdated'));
+            const res = await fetch(`${API_BASE_URL}/api/inventory/raw?nocache=${Date.now()}`);
+            if (!res.ok) return;
+            const liveData = await res.json();
+            if (!Array.isArray(liveData) || liveData.length === 0) return;
+
+            let rawList = window.InventorySystem.getRawIngredients();
+            let updated = false;
+
+            liveData.forEach(dbItem => {
+                const dbStockNum = parseFloat(dbItem.stock);
+                if (isNaN(dbStockNum)) return;
+
+                const localItem = rawList.find(i => i.id === dbItem.id || i.name === dbItem.name);
+                if (localItem) {
+                    if (Math.abs((Number(localItem.stock) || 0) - dbStockNum) > 0.001) {
+                        localItem.stock = dbStockNum;
+                        updated = true;
                     }
+                    if (dbItem.minThreshold && dbItem.minThreshold > 10 && localItem.minThreshold !== dbItem.minThreshold) {
+                        localItem.minThreshold = Number(dbItem.minThreshold);
+                        updated = true;
+                    }
+                } else {
+                    rawList.push({
+                        id: dbItem.id,
+                        name: dbItem.name,
+                        category: dbItem.category || 'General',
+                        stock: dbStockNum,
+                        minThreshold: Number(dbItem.minThreshold) || 100,
+                        unit: dbItem.unit || 'g',
+                        unitCost: 10.00,
+                        supplier: 'General Supplier',
+                        lastRestocked: new Date().toISOString()
+                    });
+                    updated = true;
                 }
+            });
+
+            if (updated) {
+                window.InventorySystem.saveRawIngredients(rawList);
+                window.InventorySystem.syncFoodMenuStockFromIngredients();
             }
         } catch (e) {}
-    }, 60000);
+    }
+
+    // Run on load and every 15 seconds for live multi-device accuracy
+    setTimeout(syncRawIngredientsFromMySQL, 500);
+    setInterval(syncRawIngredientsFromMySQL, 15000);
 })();
