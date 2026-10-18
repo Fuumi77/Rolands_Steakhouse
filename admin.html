@@ -407,7 +407,7 @@
                     Overview
                 </button>
                 <button class="tab-link" onclick="switchAdminTab('payments', this)">
-                    <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    <span class="tab-icon" style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-weight:900; font-size:16px; font-family:'Roboto', sans-serif; line-height:1;">₱</span>
                     Payments
                 </button>
 
@@ -1642,9 +1642,20 @@
                     let dbStatus = String(rawStatus).toLowerCase().trim();
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
 
-                    if (match) {
-                        if (match.customerName !== dbRes.customerName) {
+                    if (match.customerName !== dbRes.customerName) {
                             match.customerName = dbRes.customerName;
+                            updated = true;
+                        }
+                        if (dbRes.bookedTable && match.bookedTable !== dbRes.bookedTable) {
+                            match.bookedTable = dbRes.bookedTable;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalDate && match.arrivalDate !== dbRes.arrivalDate) {
+                            match.arrivalDate = dbRes.arrivalDate;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalTime && match.arrivalTime !== dbRes.arrivalTime) {
+                            match.arrivalTime = dbRes.arrivalTime;
                             updated = true;
                         }
 
@@ -2217,6 +2228,12 @@
                 if (idx === -1) return;
                 const r = hist[idx];
 
+                // 👉 FIX: Move edit-modal to document.body so it opens on ANY tab (including Payments!)
+                const modal = document.getElementById('edit-modal');
+                if (modal && modal.parentElement !== document.body) {
+                    document.body.appendChild(modal);
+                }
+
                 document.getElementById('edit-index').value = idx;
                 document.getElementById('edit-res-num').value = r.reservationNumber || r.id || '';
                 document.getElementById('edit-customer').value = r.customerName || '';
@@ -2232,8 +2249,20 @@
 
                 const tSelect = document.getElementById('edit-table');
                 if (r.bookedTable && tSelect) {
+                    let foundOption = false;
                     for (let i = 0; i < tSelect.options.length; i++) {
-                        if (tSelect.options[i].value === r.bookedTable) tSelect.selectedIndex = i;
+                        if (tSelect.options[i].value === r.bookedTable) {
+                            tSelect.selectedIndex = i;
+                            foundOption = true;
+                            break;
+                        }
+                    }
+                    if (!foundOption) {
+                        const opt = document.createElement('option');
+                        opt.value = r.bookedTable;
+                        opt.textContent = r.bookedTable;
+                        tSelect.appendChild(opt);
+                        tSelect.value = r.bookedTable;
                     }
                 }
 
@@ -2249,7 +2278,6 @@
                     document.getElementById('edit-beef').value = '';
                 }
 
-                const modal = document.getElementById('edit-modal');
                 if (modal) {
                     modal.classList.remove('hidden');
                     modal.style.display = 'flex';
@@ -2471,10 +2499,10 @@ window.rejectReservation = async function (resNum) {
                 modal.style.display = 'flex';
             };
 
-            window.saveEditModal = function () {
+            window.saveEditModal = async function () {
                 const resNum = document.getElementById('edit-res-num').value;
                 const idxInput = parseInt(document.getElementById('edit-index').value);
-                const hist = getReservationHistory();
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
                 let idx = hist.findIndex(h => h.reservationNumber === resNum);
                 if (idx === -1 && idxInput >= 0 && idxInput < hist.length) {
@@ -2482,23 +2510,25 @@ window.rejectReservation = async function (resNum) {
                 }
 
                 if (idx >= 0 && idx < hist.length) {
-                    hist[idx].customerName = document.getElementById('edit-customer').value;
-                    hist[idx].arrivalDate = document.getElementById('edit-date').value;
-                    hist[idx].arrivalTime = document.getElementById('edit-time').value;
-                    hist[idx].bookedTable = document.getElementById('edit-table').value;
+                    const oldTable = hist[idx].bookedTable;
+
+                    hist[idx].customerName = document.getElementById('edit-customer').value.trim() || hist[idx].customerName;
+                    hist[idx].arrivalDate = document.getElementById('edit-date').value || hist[idx].arrivalDate;
+                    hist[idx].arrivalTime = document.getElementById('edit-time').value || hist[idx].arrivalTime;
+                    hist[idx].bookedTable = document.getElementById('edit-table').value || hist[idx].bookedTable;
 
                     const payAmtEl = document.getElementById('edit-payment-amount');
                     if (payAmtEl && payAmtEl.value !== '') {
                         hist[idx].paymentAmount = parseFloat(payAmtEl.value) || 0;
                     }
                     const payRefEl = document.getElementById('edit-payment-ref');
-                    if (payRefEl) {
+                    if (payRefEl && payRefEl.value.trim() !== '') {
                         hist[idx].paymentRef = payRefEl.value.trim();
                     }
 
                     if (hist[idx].reservationType === 'priority' || document.getElementById('edit-foods-container').style.display !== 'none') {
                         const rawFoods = document.getElementById('edit-foods').value.trim();
-                        hist[idx].foods = rawFoods ? rawFoods.split(',').map(f => f.trim()).filter(f => f) : [];
+                        hist[idx].foods = rawFoods ? rawFoods.split(',').map(f => f.trim()).filter(Boolean) : [];
                         hist[idx].orderSummary = hist[idx].foods.join(', ');
                         hist[idx].beefNote = document.getElementById('edit-beef').value.trim();
                     }
@@ -2509,26 +2539,40 @@ window.rejectReservation = async function (resNum) {
                         hour: '2-digit', minute: '2-digit', hour12: false
                     });
 
-                    // Regenerate the automatic E-Receipt Proof so it reflects the newly edited details!
+                    // Regenerate the automatic E-Receipt Proof so clicking "View E-Receipt" shows the newly edited details!
                     if (!hist[idx].hasCustomProof && typeof window.generateAdminEReceiptProof === 'function') {
                         hist[idx].paymentProof = window.generateAdminEReceiptProof(hist[idx]);
                     }
 
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+                    // Update Floor Plan statuses if table was changed
+                    if (typeof window.smartTableStatusUpdate === 'function') {
+                        if (oldTable && oldTable !== hist[idx].bookedTable) window.smartTableStatusUpdate(oldTable);
+                        if (hist[idx].bookedTable) window.smartTableStatusUpdate(hist[idx].bookedTable);
+                    }
+
+                    // Push all edited fields to MySQL so cloud sync never reverts them
                     try {
-                        fetch(`${API_BASE_URL}/api/reservations/update-order`, {
+                        await fetch(`${API_BASE_URL}/api/reservations/update-order`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
-                                id: hist[idx].reservationNumber, 
+                                id: hist[idx].reservationNumber,
+                                customerName: hist[idx].customerName,
+                                bookedTable: hist[idx].bookedTable,
+                                arrivalDate: hist[idx].arrivalDate,
+                                arrivalTime: hist[idx].arrivalTime,
                                 paymentAmount: hist[idx].paymentAmount,
                                 foods: hist[idx].foods,
                                 status: hist[idx].status || hist[idx].approvalStatus,
                                 kdsStatus: hist[idx].kdsStatus
                             })
                         });
-                    } catch(e) {}
+                    } catch(e) {
+                        console.error('Cloud edit sync failed:', e);
+                    }
 
-                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
                     if (window.showToast) {
                         window.showToast('✅ Reservation & payment details updated!', 'success', 3000);
                     }
