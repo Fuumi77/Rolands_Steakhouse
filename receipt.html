@@ -228,7 +228,7 @@
             }
         }
 
-        function cancelReceiptReservation() {
+        async function cancelReceiptReservation() {
             const resNum = reservationNumber;
             if (!resNum || resNum === 'TBD') {
                 alert('No active reservation found.');
@@ -236,26 +236,68 @@
             }
 
             const reason = prompt(`Please enter the reason for cancelling reservation #${resNum}:`, 'Customer requested cancellation from receipt page');
-            if (!reason) return; // user cancelled prompt
+            if (!reason) return;
 
+            let res = { success: true };
             if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-                const res = window.InventorySystem.cancelReservationWithFood({
+                res = window.InventorySystem.cancelReservationWithFood({
                     reservationNumber: resNum,
                     reason: reason,
                     cancelledBy: 'customer',
                     operator: 'Customer Receipt Portal'
                 });
+            }
 
-                if (res && res.success) {
-                    alert(`✅ Reservation #${resNum} has been cancelled successfully.\n\nYour table has been released and all pre-ordered foods have been cancelled.`);
-                    window.location.reload();
-                } else {
-                    alert('Could not cancel reservation: ' + (res?.error || 'Unknown error'));
-                }
+            // 👉 Sync cancellation to live MySQL database so it doesn't come back!
+            try {
+                await Promise.all([
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNum, status: 'Cancelled' })
+                    }),
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNum, kdsStatus: 'cancelled' })
+                    })
+                ]);
+            } catch (e) {}
+
+            if (res && res.success) {
+                alert(`✅ Reservation #${resNum} has been cancelled successfully.\n\nYour table has been released and all pre-ordered foods have been cancelled.`);
+                window.location.reload();
             } else {
-                alert('Inventory system offline.');
+                alert('Could not cancel reservation: ' + (res?.error || 'Unknown error'));
             }
         }
+
+        // 👉 Auto-fetch from MySQL if this QR receipt is scanned on a different device!
+        (async function ensureCloudReceiptData() {
+            if (!urlRes) return;
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const existsLocally = hist.some(r => r.reservationNumber === urlRes);
+            if (!existsLocally) {
+                try {
+                    const r = await fetch('https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=' + Date.now());
+                    if (!r.ok) return;
+                    const dbList = await r.json();
+                    const found = Array.isArray(dbList) ? dbList.find(x => x.reservationNumber === urlRes) : null;
+                    if (found) {
+                        if (document.getElementById('order-num')) document.getElementById('order-num').textContent = found.reservationNumber;
+                        if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = found.customerName || 'Valued Guest';
+                        if (document.getElementById('table-id')) document.getElementById('table-id').textContent = found.bookedTable || 'TBD';
+                        if (document.getElementById('total-amount')) document.getElementById('total-amount').textContent = Number(found.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        if (document.getElementById('date-now')) document.getElementById('date-now').textContent = `${found.arrivalDate || ''} ${found.arrivalTime || ''}`.trim();
+                        const listEl = document.getElementById('order-items-list');
+                        if (listEl) {
+                            const items = (Array.isArray(found.foods) && found.foods.length) ? found.foods : ['Standard Reservation'];
+                            listEl.innerHTML = items.map(item => `<li class="order-item"><span>${item.trim()}</span> <span>(Paid)</span></li>`).join('');
+                        }
+                    }
+                } catch (e) {}
+            }
+        })();
     </script>
 </body>
 
