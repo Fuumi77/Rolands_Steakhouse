@@ -393,6 +393,11 @@
         localStorage.removeItem('reservationData');
         localStorage.removeItem('pendingReservation');
         localStorage.removeItem('pendingReservationNumber');
+    // Save the newest reservation number as the active booking for "My Booking" & Live Chat!
+        if (resNo && resNo !== 'N/A') {
+            localStorage.setItem('reservationNumber', resNo);
+            localStorage.setItem('activeCustomerReservation', resNo);
+        }
 </script>
 </body>
 </html>
