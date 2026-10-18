@@ -306,15 +306,36 @@
         }
     }
 
+    let _pendingSyncMovements = [];
+    let _syncMovementTimer = null;
+    window.__lastLocalInventoryWrite = 0;
+
+    function flushPendingSyncMovements() {
+        if (_pendingSyncMovements.length === 0) return;
+        const batch = _pendingSyncMovements.slice();
+        _pendingSyncMovements = [];
+        window.__lastLocalInventoryWrite = Date.now();
+
+        fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/sync-movement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ movements: batch })
+        }).catch(e => console.error("MySQL Sync Error:", e));
+    }
+
     function logStockMovement(entry) {
         try {
+            if (!entry || typeof entry !== 'object') return null;
             const logs = getAuditLogs();
             
             let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
-            if (finalNewStock === null && entry.ingredientId && entry.ingredientId !== 'FINANCIAL') {
-                const rawList = getRawIngredients();
-                const matchedIng = rawList.find(i => i.id === entry.ingredientId);
-                if (matchedIng) finalNewStock = Number(matchedIng.stock);
+            const rawList = getRawIngredients();
+            const matchedIng = (entry.ingredientId && entry.ingredientId !== 'FINANCIAL')
+                ? rawList.find(i => i.id === entry.ingredientId)
+                : null;
+
+            if (finalNewStock === null && matchedIng) {
+                finalNewStock = Number(matchedIng.stock);
             }
 
             const newEntry = {
@@ -322,10 +343,10 @@
                 timestamp: new Date().toISOString(),
                 action: entry.action || 'ADJUSTMENT',
                 ingredientId: entry.ingredientId || 'N/A',
-                ingredientName: entry.ingredientName || 'General',
+                ingredientName: entry.ingredientName || (matchedIng ? matchedIng.name : 'General'),
                 changeQty: Number(entry.changeQty) || 0,
                 newStock: finalNewStock,
-                unit: entry.unit || '',
+                unit: entry.unit || (matchedIng ? matchedIng.unit : ''),
                 operator: entry.operator || 'System',
                 notes: entry.notes || '',
                 financialValue: Number(entry.financialValue) || 0
@@ -336,24 +357,22 @@
             localStorage.setItem('inventory_audit_logs', JSON.stringify(logs));
             broadcastSync('auditLogAdded', newEntry);
 
-            if (entry && entry.ingredientId && entry.action !== 'SYS-RESET' && entry.ingredientId !== 'FINANCIAL') {
-                const rawList = getRawIngredients();
-                const matchedIng = rawList.find(i => i.id === entry.ingredientId);
-                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/sync-movement', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: entry.action,
-                        ingredientId: entry.ingredientId,
-                        ingredientName: entry.ingredientName || (matchedIng ? matchedIng.name : ''),
-                        category: matchedIng ? matchedIng.category : 'General',
-                        minThreshold: matchedIng ? matchedIng.minThreshold : 100,
-                        changeQty: Number(entry.changeQty) || 0,
-                        newStock: finalNewStock, 
-                        unit: entry.unit || (matchedIng ? matchedIng.unit : 'g'),
-                        operator: 1 
-                    })
-                }).catch(e => console.error("MySQL Sync Error:", e));
+            // Queue movement so 8 deductions in 1ms send in ONE single MySQL connection!
+            if (entry.ingredientId && entry.action !== 'SYS-RESET' && entry.ingredientId !== 'FINANCIAL') {
+                window.__lastLocalInventoryWrite = Date.now();
+                _pendingSyncMovements.push({
+                    action: entry.action,
+                    ingredientId: entry.ingredientId,
+                    ingredientName: entry.ingredientName || (matchedIng ? matchedIng.name : ''),
+                    category: matchedIng ? matchedIng.category : 'General',
+                    minThreshold: matchedIng ? matchedIng.minThreshold : 100,
+                    changeQty: Number(entry.changeQty) || 0,
+                    newStock: finalNewStock,
+                    unit: entry.unit || (matchedIng ? matchedIng.unit : 'g'),
+                    operator: 1
+                });
+                if (_syncMovementTimer) clearTimeout(_syncMovementTimer);
+                _syncMovementTimer = setTimeout(flushPendingSyncMovements, 250);
             }
 
             return newEntry;
@@ -2019,6 +2038,11 @@
     if (!window.InventorySystem) return;
 
     async function syncRawIngredientsFromMySQL() {
+        // Shield: Don't overwrite local stock while a local deduction/restock is being pushed to MySQL
+        if (window.__lastLocalInventoryWrite && (Date.now() - window.__lastLocalInventoryWrite < 15000)) {
+            return;
+        }
+
         try {
             const res = await fetch(`${API_BASE_URL}/api/inventory/raw?nocache=${Date.now()}`);
             if (!res.ok) return;
@@ -2026,7 +2050,9 @@
             if (!Array.isArray(liveData) || liveData.length === 0) return;
 
             let rawList = window.InventorySystem.getRawIngredients();
-            let updated = false;
+            const auditLogs = window.InventorySystem.getAuditLogs ? window.InventorySystem.getAuditLogs() : [];
+            let updatedLocal = false;
+            const pushToCloudBatch = [];
 
             liveData.forEach(dbItem => {
                 const dbStockNum = parseFloat(dbItem.stock);
@@ -2034,13 +2060,33 @@
 
                 const localItem = rawList.find(i => i.id === dbItem.id || i.name === dbItem.name);
                 if (localItem) {
-                    if (Math.abs((Number(localItem.stock) || 0) - dbStockNum) > 0.001) {
+                    const localStockNum = Number(localItem.stock) || 0;
+
+                    // Check if this browser has a newer audit log for this ingredient that failed to reach MySQL earlier
+                    const latestAudit = auditLogs.find(l => l.ingredientId === localItem.id && l.newStock !== null);
+                    const auditStock = latestAudit ? Number(latestAudit.newStock) : null;
+
+                    if (auditStock !== null && Math.abs(auditStock - dbStockNum) > 0.001 && Math.abs(localStockNum - auditStock) < 0.001) {
+                        // Local has a recorded movement (e.g. 1:29 AM order deduction) that MySQL missed -> Push to MySQL!
+                        pushToCloudBatch.push({
+                            action: latestAudit.action || 'SYNC',
+                            ingredientId: localItem.id,
+                            ingredientName: localItem.name,
+                            category: localItem.category || 'General',
+                            minThreshold: localItem.minThreshold || 100,
+                            changeQty: Number(latestAudit.changeQty) || (localStockNum - dbStockNum),
+                            newStock: localStockNum,
+                            unit: localItem.unit || 'g',
+                            operator: 1
+                        });
+                    } else if (Math.abs(localStockNum - dbStockNum) > 0.001) {
                         localItem.stock = dbStockNum;
-                        updated = true;
+                        updatedLocal = true;
                     }
+
                     if (dbItem.minThreshold && dbItem.minThreshold > 10 && localItem.minThreshold !== dbItem.minThreshold) {
                         localItem.minThreshold = Number(dbItem.minThreshold);
-                        updated = true;
+                        updatedLocal = true;
                     }
                 } else {
                     rawList.push({
@@ -2054,18 +2100,26 @@
                         supplier: 'General Supplier',
                         lastRestocked: new Date().toISOString()
                     });
-                    updated = true;
+                    updatedLocal = true;
                 }
             });
 
-            if (updated) {
+            // Also push any default/local ingredients whose category or threshold in MySQL is still 'General' / 10
+            if (pushToCloudBatch.length > 0) {
+                fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ movements: pushToCloudBatch })
+                }).catch(() => {});
+            }
+
+            if (updatedLocal) {
                 window.InventorySystem.saveRawIngredients(rawList);
                 window.InventorySystem.syncFoodMenuStockFromIngredients();
             }
         } catch (e) {}
     }
 
-    // Run on load and every 15 seconds for live multi-device accuracy
-    setTimeout(syncRawIngredientsFromMySQL, 500);
-    setInterval(syncRawIngredientsFromMySQL, 15000);
+    setTimeout(syncRawIngredientsFromMySQL, 800);
+    setInterval(syncRawIngredientsFromMySQL, 20000);
 })();
