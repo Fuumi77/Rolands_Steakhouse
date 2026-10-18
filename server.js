@@ -21,27 +21,28 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    connectionLimit: 3,        // 👈 Keep low for Serverless + Hostinger so phpMyAdmin never gets locked out!
+    maxIdle: 1,                // 👈 Release idle connections immediately
+    idleTimeout: 10000,        // 👈 Close unused connections after 10s
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000
 });
 
 const db = pool.promise();
 
 db.query('SELECT 1').then(async () => {
     console.log('✅ Connected to Hostinger MySQL Database!');
+    await db.query("SET time_zone = '+08:00'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN booked_by VARCHAR(50) DEFAULT 'online'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN reservation_type VARCHAR(50) DEFAULT 'standard'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN payment_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN foods TEXT").catch(()=>{});
-    
-    // 👉 FIX: Add Cloud Memory Columns for KDS (Kitchen) and Floor Plan (Table Overrides)
     await db.query("ALTER TABLE reservation_log ADD COLUMN kds_status VARCHAR(50) DEFAULT 'pending'").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val JSON)").catch(()=>{});
-    
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
 
-    // 👉 NEW: Automatically create the missing Inventory tables so the kitchen can return ingredients!
     await db.query(`
         CREATE TABLE IF NOT EXISTS master_inventory (
             item_id VARCHAR(50) PRIMARY KEY,
@@ -49,11 +50,14 @@ db.query('SELECT 1').then(async () => {
             category VARCHAR(50),
             current_stock DECIMAL(10,2) DEFAULT 0,
             min_threshold DECIMAL(10,2) DEFAULT 0,
-            unit_of_measurement VARCHAR(20),
+            unit_of_measurement VARCHAR(20) DEFAULT 'g',
             branch_location VARCHAR(100) DEFAULT 'General Santos City',
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     `).catch((e)=> console.error("Inv Table Error:", e));
+
+    // 👉 CRITICAL FIX: Add unit_of_measurement to existing master_inventory table so updates don't fail!
+    await db.query("ALTER TABLE master_inventory ADD COLUMN unit_of_measurement VARCHAR(20) DEFAULT 'g'").catch(()=>{});
 
     await db.query(`
         CREATE TABLE IF NOT EXISTS raw_ingredients_change_log (
@@ -66,7 +70,6 @@ db.query('SELECT 1').then(async () => {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `).catch((e)=> console.error("Log Table Error:", e));
-    
 }).catch(err => console.error('❌ MySQL Connection Failed:', err));
 
 function escapeHtml(str) {
@@ -629,45 +632,54 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
 });
 
 app.post('/api/inventory/sync-movement', async (req, res) => {
-    const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator } = req.body;
+    const movements = Array.isArray(req.body.movements) ? req.body.movements : [req.body];
     try {
-        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? LIMIT 1', [ingredientId]);
-        let prevStock = 0;
-        const safeNewStock = Math.max(0, parseFloat(newStock) || 0);
+        for (const m of movements) {
+            const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator } = m;
+            if (!ingredientId) continue;
 
-        if (current.length > 0) {
-            prevStock = parseFloat(current[0].current_stock) || 0;
-            await db.query(
-                `UPDATE master_inventory 
-                 SET current_stock = ?, 
-                     item_name = COALESCE(?, item_name),
-                     category = CASE WHEN ? IS NOT NULL AND ? != 'General' THEN ? ELSE category END,
-                     min_threshold = CASE WHEN ? IS NOT NULL AND ? > 10 THEN ? ELSE min_threshold END,
-                     unit_of_measurement = COALESCE(?, unit_of_measurement),
-                     last_updated = NOW()
-                 WHERE item_id = ?`,
-                [safeNewStock, ingredientName || null, category, category, category, minThreshold, minThreshold, minThreshold, unit || null, ingredientId]
+            const [current] = await db.query(
+                'SELECT item_id, current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1',
+                [ingredientId, ingredientName || '']
             );
-        } else {
-            prevStock = Math.max(0, safeNewStock - (parseFloat(changeQty) || 0));
-            await db.query(
-                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [ingredientId, ingredientName, category || 'General', safeNewStock, minThreshold || 100, unit || 'g', 'General Santos City']
-            );
-        }
+            let prevStock = 0;
+            const safeNewStock = Math.max(0, parseFloat(newStock) || 0);
 
-        const staffId = parseInt(operator) || 1;
-        // Only insert into change log if quantity actually changed or was explicitly adjusted
-        if (Math.abs(safeNewStock - prevStock) > 0.001 || Number(changeQty) !== 0) {
-            await db.query(
-                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-                [ingredientName, prevStock, safeNewStock, unit || 'g', staffId]
-            );
+            if (current.length > 0) {
+                prevStock = parseFloat(current[0].current_stock) || 0;
+                await db.query(
+                    `UPDATE master_inventory 
+                     SET current_stock = ?, 
+                         item_name = COALESCE(?, item_name),
+                         category = CASE WHEN ? IS NOT NULL AND ? != 'General' THEN ? ELSE category END,
+                         min_threshold = CASE WHEN ? IS NOT NULL AND ? > 10 THEN ? ELSE min_threshold END,
+                         last_updated = NOW()
+                     WHERE item_id = ?`,
+                    [safeNewStock, ingredientName || null, category, category, category, minThreshold, minThreshold, minThreshold, current[0].item_id]
+                );
+            } else {
+                prevStock = Math.max(0, safeNewStock - (parseFloat(changeQty) || 0));
+                await db.query(
+                    'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                    [ingredientId, ingredientName || ingredientId, category || 'General', safeNewStock, minThreshold || 100, 'General Santos City']
+                );
+            }
+
+            const staffId = parseInt(operator) || 1;
+            if (Math.abs(safeNewStock - prevStock) > 0.001 || Number(changeQty) !== 0) {
+                await db.query(
+                    'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
+                    [ingredientName || ingredientId, prevStock, safeNewStock, unit || 'g', staffId]
+                );
+            }
         }
 
         cachedInventory = null; 
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) {
+        console.error('sync-movement error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 /* 👉 NEW: LOG MENU PORTION REDUCTIONS TO menu_stock_change_log */
