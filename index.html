@@ -1126,27 +1126,115 @@
             }
         }, 3000);
 
+        // Helper: Sort reservations newest-first by numeric ID (e.g., RES-19 before RES-8)
+        function getSortedCustomerReservations() {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            return [...hist].sort((a, b) => {
+                const idA = parseInt(String(a.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+                const idB = parseInt(String(b.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+                return idB - idA;
+            });
+        }
+
+        // Sync latest reservation statuses from MySQL so index.html never shows ghost/stale bookings
+        async function syncCustomerReservationsFromCloud() {
+            try {
+                const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=' + Date.now());
+                if (!res.ok) return;
+                const dbList = await res.json();
+                if (!Array.isArray(dbList)) return;
+
+                const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                const localMap = {};
+                localHist.forEach(item => {
+                    if (item && item.reservationNumber) localMap[item.reservationNumber] = item;
+                });
+
+                const merged = dbList.map(dbR => {
+                    const existing = localMap[dbR.reservationNumber] || {};
+                    const rawStatus = String(dbR.status || 'Pending').toLowerCase().trim();
+                    const isDone = rawStatus === 'completed' || dbR.kdsStatus === 'served';
+                    const isCancelled = rawStatus === 'cancelled' || rawStatus === 'rejected' || dbR.kdsStatus === 'cancelled';
+
+                    return {
+                        ...existing,
+                        reservationNumber: dbR.reservationNumber,
+                        reservationType: dbR.reservationType || existing.reservationType || 'standard',
+                        customerName: dbR.customerName || existing.customerName || 'Guest',
+                        bookedTable: dbR.bookedTable || existing.bookedTable,
+                        arrivalDate: dbR.arrivalDate || existing.arrivalDate,
+                        arrivalTime: dbR.arrivalTime || existing.arrivalTime,
+                        arrivalDateTimeDisplay: existing.arrivalDateTimeDisplay || `${dbR.arrivalDate} ${dbR.arrivalTime}`,
+                        approvalStatus: isCancelled ? 'cancelled' : (isDone ? 'completed' : (rawStatus === 'walk-in' ? 'approved' : rawStatus)),
+                        paymentStatus: (rawStatus === 'approved' || rawStatus === 'seated' || isDone) ? 'verified' : (existing.paymentStatus || 'pending'),
+                        kdsStatus: isCancelled ? 'cancelled' : (isDone ? 'served' : (dbR.kdsStatus || existing.kdsStatus || 'pending')),
+                        completedAt: isDone ? (existing.completedAt || new Date().toISOString()) : null,
+                        foods: (Array.isArray(dbR.foods) && dbR.foods.length) ? dbR.foods : (existing.foods || []),
+                        paymentAmount: dbR.paymentAmount !== undefined ? dbR.paymentAmount : (existing.paymentAmount || 0),
+                        bookedBy: dbR.bookedBy || existing.bookedBy || 'online'
+                    };
+                });
+
+                localStorage.setItem('reservationHistory', JSON.stringify(merged));
+            } catch (e) {}
+        }
+        syncCustomerReservationsFromCloud();
+        setInterval(syncCustomerReservationsFromCloud, 8000);
+
         window.exitGuestChat = function() {
+            // 👉 FIX: Unlink stuck/ghost reservations and reset the chat session cleanly!
             sessionStorage.removeItem('guestChatRes');
+            sessionStorage.setItem('chatReservationDetached', 'true');
+            localStorage.removeItem('activeCustomerReservation');
+            localStorage.removeItem('reservationNumber');
             localStorage.removeItem('customerName');
-            localStorage.removeItem('chatSessionId');
+
+            // Generate a fresh chat session ID if not logged in, or clear current banner
+            const isLoggedIn = localStorage.getItem('loggedInUserEmail') || localStorage.getItem('loggedInUserName');
+            if (!isLoggedIn) {
+                const newSessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chatSessionId', newSessionId);
+            }
+
             loadChatMessages();
             checkActiveReservation();
         };
 
         function checkActiveReservation() {
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const cName = localStorage.getItem('loggedInUserName') || localStorage.getItem('customerName');
-            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
             const resInfo = document.getElementById('chatResInfo');
             if (!resInfo) return;
 
+            // If user clicked "Reset Session", keep ghost reservations detached!
+            if (sessionStorage.getItem('chatReservationDetached') === 'true' && !sessionStorage.getItem('guestChatRes')) {
+                resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span><a href="javascript:void(0)" onclick="openManageBookingModal()" style="font-size:11px; color:#1b5e20; font-weight:700; text-decoration:underline;">Link Booking</a></div>`;
+                return;
+            }
+
+            const sortedHist = getSortedCustomerReservations(); // Newest ID first!
+            const activeResNo = localStorage.getItem('activeCustomerReservation') || localStorage.getItem('reservationNumber');
+            const cName = (localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || '').trim();
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+
             let myRes = null;
-            if (guestRes) {
-                const gCode = (guestRes.reservationNumber || '').toString().toUpperCase().replace(/^#/, '');
-                myRes = hist.find(r => (r.reservationNumber || '').toString().toUpperCase().replace(/^#/, '') === gCode) || guestRes;
-            } else if (cName) {
-                myRes = [...hist].reverse().find(r => r.customerName === cName);
+
+            // 1. Check explicitly selected/searched guest reservation first
+            if (guestRes && guestRes.reservationNumber) {
+                const gCode = String(guestRes.reservationNumber).toUpperCase().replace(/^#/, '');
+                myRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === gCode) || guestRes;
+            }
+            // 2. Check most recently created reservation number on this device
+            if (!myRes && activeResNo && activeResNo !== 'N/A') {
+                const cleanActive = String(activeResNo).toUpperCase().replace(/^#/, '');
+                myRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanActive);
+            }
+            // 3. Fallback to the NEWEST active (non-completed, non-cancelled) booking for this customer
+            if (!myRes && cName && cName.toLowerCase() !== 'guest') {
+                myRes = sortedHist.find(r =>
+                    r.bookedBy !== 'staff' &&
+                    r.customerName && r.customerName.trim().toLowerCase() === cName.toLowerCase() &&
+                    r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
+                    r.approvalStatus !== 'completed' && r.kdsStatus !== 'served' && !r.completedAt
+                );
             }
 
             if (myRes) {
@@ -1173,10 +1261,10 @@
                 const isCancelled = myRes.approvalStatus === 'rejected' || myRes.approvalStatus === 'cancelled' || myRes.kdsStatus === 'cancelled';
                 const isServed = myRes.kdsStatus === 'served' || myRes.approvalStatus === 'completed';
 
-                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#64748b; font-size:11px; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || getActiveCustomerName()} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
+                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#dc2626; font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || getActiveCustomerName()} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
                 return;
             }
-            resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span></div>`;
+            resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span><a href="javascript:void(0)" onclick="openManageBookingModal()" style="font-size:11px; color:#1b5e20; font-weight:700; text-decoration:underline;">Find Booking</a></div>`;
         }
 
         // Payment status polling (Verified/Rejected — for manual payments only)
@@ -1815,41 +1903,43 @@
         // ══════════════════════════════════════════════
         let activeManageRes = null;
 
-        window.openManageBookingModal = function(specificResNum) {
+        window.openManageBookingModal = async function(specificResNum) {
             const modal = document.getElementById('manage-booking-modal');
             if (!modal) return;
             modal.style.display = 'flex';
 
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const cName = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName');
-
-            // Auto-heal: Ensure active/upcoming reservations aren't blocked by premature completedAt
-            try {
-                let updated = false;
-                hist.forEach(r => {
-                    if (r.completedAt && r.kdsStatus !== 'served' && r.approvalStatus !== 'completed') {
-                        delete r.completedAt;
-                        updated = true;
-                    }
-                });
-                if (updated) localStorage.setItem('reservationHistory', JSON.stringify(hist));
-            } catch (e) {}
-
-            let targetRes = null;
-            if (specificResNum) {
-                targetRes = hist.find(r => r.reservationNumber === specificResNum);
-            } else if (cName) {
-                // 1. Look for ACTIVE / UPCOMING booking first
-                targetRes = [...hist].reverse().find(r => 
-                    r.customerName && r.customerName.trim().toLowerCase() === cName.trim().toLowerCase() &&
-                    r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' && r.kdsStatus !== 'served' && r.approvalStatus !== 'completed'
-                );
-                // 2. If no active upcoming booking, fall back to their latest past booking
-                if (!targetRes) {
-                    targetRes = [...hist].reverse().find(r => r.customerName && r.customerName.trim().toLowerCase() === cName.trim().toLowerCase());
-                }
+            // Pull latest data from MySQL first so newly created bookings (like RES-19) are always found
+            if (typeof syncCustomerReservationsFromCloud === 'function') {
+                await syncCustomerReservationsFromCloud();
             }
 
+            const sortedHist = getSortedCustomerReservations(); // Newest ID first!
+            const activeResNo = specificResNum || localStorage.getItem('activeCustomerReservation') || localStorage.getItem('reservationNumber');
+            const cName = (localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || '').trim();
+            const isDetached = sessionStorage.getItem('chatReservationDetached') === 'true' && !specificResNum;
+
+            let targetRes = null;
+
+            // 1. If a specific reservation number was requested or just booked, open it directly
+            if (specificResNum) {
+                const cleanSpec = String(specificResNum).toUpperCase().replace(/^#/, '');
+                targetRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanSpec);
+            } else if (!isDetached && activeResNo && activeResNo !== 'N/A') {
+                const cleanAct = String(activeResNo).toUpperCase().replace(/^#/, '');
+                targetRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanAct);
+            }
+
+            // 2. Otherwise, look for the customer's NEWEST active (upcoming) reservation
+            if (!targetRes && !isDetached && cName && cName.toLowerCase() !== 'guest') {
+                targetRes = sortedHist.find(r => 
+                    r.bookedBy !== 'staff' &&
+                    r.customerName && r.customerName.trim().toLowerCase() === cName.toLowerCase() &&
+                    r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
+                    r.kdsStatus !== 'served' && r.approvalStatus !== 'completed' && !r.completedAt
+                );
+            }
+
+            // 3. If no active upcoming reservation exists, open the Search Stage directly instead of showing an old completed RES-8!
             if (targetRes) {
                 renderManageDetails(targetRes);
                 goToDetailsStage();
@@ -2029,30 +2119,66 @@
             }
         }
 
-        window.executeManageSearch = function() {
-            const query = (document.getElementById('manage-search-input')?.value || '').trim();
+        window.executeManageSearch = async function() {
+            const rawQuery = (document.getElementById('manage-search-input')?.value || '').trim();
             const err = document.getElementById('manage-search-error');
-            if (!query) {
-                if (err) { err.textContent = 'Please enter your Reservation # or customer name.'; err.style.display = 'block'; }
+            if (err) err.style.display = 'none';
+
+            if (!rawQuery || rawQuery.length < 2) {
+                if (err) {
+                    err.textContent = 'Please enter a full Reservation # (e.g., RES-19) or your full booking name.';
+                    err.style.display = 'block';
+                }
                 return;
             }
 
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const found = hist.find(r => 
-                (r.reservationNumber && r.reservationNumber.toLowerCase() === query.toLowerCase()) ||
-                (r.customerName && r.customerName.toLowerCase().includes(query.toLowerCase()))
-            );
+            if (typeof syncCustomerReservationsFromCloud === 'function') {
+                await syncCustomerReservationsFromCloud();
+            }
+
+            const sortedHist = getSortedCustomerReservations(); // Newest first!
+            const cleanQuery = rawQuery.toUpperCase().replace(/^#/, '').trim();
+
+            // 1. Exact Reservation Number Match (e.g., "RES-19", "#RES-19", "WI-22", or exact number "19" -> "RES-19")
+            let found = sortedHist.find(r => {
+                const rNum = String(r.reservationNumber || '').toUpperCase().replace(/^#/, '').trim();
+                if (rNum === cleanQuery) return true;
+                if (/^\d+$/.test(cleanQuery) && rNum === `RES-${cleanQuery}`) return true;
+                return false;
+            });
+
+            // 2. If not a reservation code, require an EXACT Full Name match (prioritizing active/newest booking first!)
+            if (!found) {
+                const nameMatches = sortedHist.filter(r =>
+                    r.customerName && r.customerName.trim().toLowerCase() === rawQuery.toLowerCase()
+                );
+                // Pick newest active booking first, or newest overall if all are completed
+                found = nameMatches.find(r =>
+                    r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
+                    r.approvalStatus !== 'completed' && r.kdsStatus !== 'served' && !r.completedAt
+                ) || nameMatches[0];
+            }
 
             if (!found) {
-                if (err) { err.textContent = `No reservation found matching "${query}". Please check your booking reference.`; err.style.display = 'block'; }
+                if (err) {
+                    err.textContent = `No reservation found for "${rawQuery}". Please enter your exact Reservation # (e.g., RES-19) or exact Full Name.`;
+                    err.style.display = 'block';
+                }
                 return;
             }
+
+            // Link this found reservation as the active session booking
+            sessionStorage.removeItem('chatReservationDetached');
+            sessionStorage.setItem('guestChatRes', JSON.stringify(found));
+            localStorage.setItem('activeCustomerReservation', found.reservationNumber);
+            localStorage.setItem('reservationNumber', found.reservationNumber);
 
             renderManageDetails(found);
             goToDetailsStage();
+            checkActiveReservation();
         };
 
-        window.executeFinalCancellation = function() {
+        window.executeFinalCancellation = async function() {
             if (!activeManageRes) return;
             const resNum = activeManageRes.reservationNumber;
             const reason = document.getElementById('cancel-reason-select')?.value || 'Customer Requested Cancellation';
@@ -2085,6 +2211,20 @@
                     }
                 }
 
+                // 👉 FIX: Permanently sync the customer's cancellation to the MySQL Cloud Database!
+                await Promise.all([
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNum, status: 'Cancelled' })
+                    }).catch(() => {}),
+                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNum, kdsStatus: 'cancelled' })
+                    }).catch(() => {})
+                ]);
+
                 if (res && res.success) {
                     activeManageRes.approvalStatus = 'rejected';
                     activeManageRes.kdsStatus = 'cancelled';
@@ -2094,13 +2234,20 @@
                         const sId = getChatId();
                         const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
                         if (!allChats[sId]) allChats[sId] = [];
-                        allChats[sId].push({
+                        const cancelMsg = {
                             sender: 'staff',
                             name: 'System',
                             text: `🚫 Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        });
+                        };
+                        allChats[sId].push(cancelMsg);
                         localStorage.setItem('liveChats', JSON.stringify(allChats));
+
+                        fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sessionId: sId, message: cancelMsg })
+                        }).catch(() => {});
                     } catch (e) {}
 
                     checkActiveReservation();
