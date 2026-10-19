@@ -2364,44 +2364,72 @@
             }
             
             window.resetStaffPassword = async function(username) {
-                // 👉 FIX: Check the live database for duplicates, not the offline memory!
-                let currentUsers = [];
-                try {
-                    const checkRes = await fetch(`${API_BASE_URL}/api/staff?nocache=` + Date.now());
-                    if (checkRes.ok) currentUsers = await checkRes.json();
-                } catch(e) {
-                    currentUsers = getAdminUsers(); // Fallback
-                }
-                
-                if (currentUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-                    return await superModal({ title: '⚠️ Duplicate Username', message: `The username <b>${username}</b> is already taken.`, confirmText: 'Try Another' });
-                }
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
                     message: `Enter Master PIN to authorize password reset for <b>${username}</b>:`,
-                    showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Verify PIN'
+                    showInput: true,
+                    placeholder: 'Enter 6-digit pin',
+                    confirmText: 'Verify PIN'
                 });
 
                 if (pin === "789456") {
                     const newPass = await superModal({
                         title: `🔑 Reset Password for ${username}`,
-                        message: 'Enter the new passphrase for this staff account:',
-                        showInput: true, inputType: 'text', placeholder: 'New passphrase (min 4 chars)', confirmText: 'Update Password'
+                        message: 'Enter the new passphrase for this staff account (minimum 4 characters):',
+                        showInput: true,
+                        inputType: 'text',
+                        placeholder: 'New passphrase (min 4 chars)',
+                        confirmText: 'Update Password'
                     });
 
-                    if (newPass && newPass.length >= 4) {
-                        const passwordHash = await sha256Hex(newPass);
-                        try {
-                            const res = await fetch(`${API_BASE_URL}/api/staff/${username}/password`, {
-                                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ passwordHash })
-                            });
-                            if (!res.ok) throw new Error('Database connection failed.');
-                            await superModal({ title: '✅ Password Updated', message: `The password for <b>${username}</b> has been successfully changed in the database.`, confirmText: 'Done' });
-                        } catch(e) {
-                            await superModal({ title: '❌ Error', message: `Failed to update password: ${e.message}`, confirmText: 'Close' });
-                        }
+                    if (newPass === null) return; // Cancelled
+
+                    if (!newPass || newPass.trim().length < 4) {
+                        return await superModal({
+                            title: '⚠️ Password Too Short',
+                            message: 'Please enter a passphrase with at least 4 characters.',
+                            confirmText: 'Try Again'
+                        });
                     }
+
+                    const passwordHash = await sha256Hex(newPass.trim());
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/staff/${encodeURIComponent(username)}/password`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ passwordHash })
+                        });
+                        if (!res.ok) throw new Error('Database connection failed.');
+
+                        // Also update local cache immediately so Staff Portal syncs right away
+                        const localUsers = getAdminUsers();
+                        const targetUser = localUsers.find(u => (u.username || '').toLowerCase() === username.toLowerCase());
+                        if (targetUser) {
+                            targetUser.passwordHash = passwordHash;
+                            targetUser.password_hash = passwordHash;
+                            delete targetUser.password;
+                            localStorage.setItem('adminUsers', JSON.stringify(localUsers));
+                        }
+
+                        await superModal({
+                            title: '✅ Password Updated',
+                            message: `The password for <b>${username}</b> has been successfully updated!`,
+                            confirmText: 'Done'
+                        });
+                        renderStaffManagement();
+                    } catch(e) {
+                        await superModal({
+                            title: '❌ Error',
+                            message: `Failed to update password: ${e.message}`,
+                            confirmText: 'Close'
+                        });
+                    }
+                } else if (pin !== null) {
+                    await superModal({
+                        title: '❌ Denied',
+                        message: 'Incorrect Master PIN. Password reset cancelled.',
+                        confirmText: 'Close'
+                    });
                 }
             };
 
