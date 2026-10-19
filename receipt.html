@@ -55,6 +55,15 @@
 
             <div class="divider"></div>
 
+            <div class="info-row" style="font-size: 12px; color: #475569; margin-bottom: 4px;">
+                <span>VATABLE SALES</span>
+                <span>PHP <span id="vatable-sales">0.00</span></span>
+            </div>
+            <div class="info-row" style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                <span>VAT (12% INCL.)</span>
+                <span>PHP <span id="vat-amount">0.00</span></span>
+            </div>
+
             <div class="total-row">
                 <span>AMOUNT PAID</span>
                 <span>PHP <span id="total-amount"></span></span>
@@ -139,12 +148,27 @@
             }
         }
 
+        function updateReceiptTotalsUI(amountVal) {
+            const cleanTotal = parseFloat(String(amountVal || '0').replace(/[^0-9.]/g, '')) || 0;
+            const vatableSales = cleanTotal / 1.12;
+            const vatAmt = cleanTotal - vatableSales;
+
+            if (document.getElementById('vatable-sales')) {
+                document.getElementById('vatable-sales').textContent = vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            if (document.getElementById('vat-amount')) {
+                document.getElementById('vat-amount').textContent = vatAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            if (document.getElementById('total-amount')) {
+                document.getElementById('total-amount').textContent = cleanTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+
         // Fill receipt
-        const cleanTotal = parseFloat(String(total || '0').replace(/[^0-9.]/g, '')) || 0;
         if (document.getElementById('order-num')) document.getElementById('order-num').textContent = reservationNumber;
         if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = name;
         if (document.getElementById('table-id')) document.getElementById('table-id').textContent = table;
-        if (document.getElementById('total-amount')) document.getElementById('total-amount').textContent = cleanTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        updateReceiptTotalsUI(total);
         if (document.getElementById('date-now')) document.getElementById('date-now').textContent = arrivalDisplay;
 
         // Fill order items
