@@ -6580,29 +6580,39 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         })();
     </script>
 
-    <!-- 🧾 UNIVERSAL E-RECEIPT PROOF, 12% VAT & STAFF RECEIPT LINK ENGINE -->
+    <!-- 🧾 UNIVERSAL E-RECEIPT PROOF, 12% VAT & MANAGER-STYLE ANIMATED MODAL -->
     <style>
-        /* Compact, Zoom-Safe Proof Modal with Sticky Header & Visible Close Button */
+        @keyframes rshModalBackdropFade {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes rshModalSpringPop {
+            0%   { opacity: 0; transform: scale(0.86) translateY(18px); }
+            70%  { opacity: 1; transform: scale(1.02) translateY(-2px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
         #proof-modal {
             position: fixed !important;
             inset: 0 !important;
-            background: rgba(15, 23, 42, 0.75) !important;
-            backdrop-filter: blur(5px) !important;
+            background: rgba(15, 23, 42, 0.72) !important;
+            backdrop-filter: blur(6px) !important;
             z-index: 999999 !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 16px !important;
             box-sizing: border-box !important;
+            animation: rshModalBackdropFade 0.2s ease forwards !important;
         }
         #proof-modal:not(.hidden)[style*="flex"] {
             display: flex !important;
         }
-        #proof-modal > div {
+        #proof-modal .rsh-manager-proof-box {
             width: 100% !important;
-            max-width: 440px !important;
-            max-height: 86vh !important;
+            max-width: 460px !important;
+            max-height: 88vh !important;
             background: #ffffff !important;
-            border-radius: 18px !important;
+            border-radius: 20px !important;
             padding: 0 !important;
             margin: 0 !important;
             display: flex !important;
@@ -6610,7 +6620,49 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             overflow: hidden !important;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45) !important;
             border: 1px solid #e2e8f0 !important;
-            position: relative !important;
+            animation: rshModalSpringPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+            font-family: 'Roboto', sans-serif !important;
+        }
+        #proof-modal .rsh-proof-header {
+            padding: 16px 22px !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            flex-shrink: 0 !important;
+        }
+        #proof-modal .rsh-proof-header h3 {
+            margin: 0 !important;
+            font-family: 'Playfair Display', serif !important;
+            font-size: 19px !important;
+            font-weight: 700 !important;
+            color: #1b5e20 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        #proof-modal .rsh-proof-close {
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 50% !important;
+            border: 1px solid #e2e8f0 !important;
+            background: #f8fafc !important;
+            color: #475569 !important;
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            flex-shrink: 0 !important;
+        }
+        #proof-modal .rsh-proof-close:hover {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+            border-color: #fca5a5 !important;
+            transform: rotate(90deg) scale(1.06) !important;
         }
     </style>
 
@@ -6669,7 +6721,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.font = '13px Arial, sans-serif';
                     ctx.fillText("Roland's Steakhouse Official Proof of Transaction", 280, 175);
 
-                    // Reference Badge
                     ctx.fillStyle = '#f0fdf4';
                     ctx.strokeStyle = '#86efac';
                     ctx.lineWidth = 1.8;
@@ -6686,7 +6737,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.font = 'bold 25px Arial, sans-serif';
                     ctx.fillText(resKey, 280, 248);
 
-                    // E-Receipt Box
                     ctx.fillStyle = '#f8fafc';
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.lineWidth = 1.5;
@@ -6732,7 +6782,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.lineTo(484, 414);
                     ctx.stroke();
 
-                    // Items Ordered
                     ctx.fillStyle = '#475569';
                     ctx.font = '13px Arial, sans-serif';
                     const summaryText = (Array.isArray(r.foods) && r.foods.length)
@@ -6754,7 +6803,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     }
                     ctx.fillText(line, 76, y);
 
-                    // 12% VAT Breakdown
                     const totalAmt = Number(r.paymentAmount || 0);
                     const vatableSales = totalAmt / 1.12;
                     const vatAmount = totalAmt - vatableSales;
@@ -6792,7 +6840,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.textAlign = 'center';
                     ctx.fillStyle = '#64748b';
                     ctx.font = '11.5px Arial, sans-serif';
-                    ctx.fillText(' Roland\'s Steakhouse • Verified Proof of Receipt (VAT Inclusive)', 280, 702);
+                    ctx.fillText("Roland's Steakhouse • Verified Proof of Receipt (VAT Inclusive)", 280, 702);
 
                     return canvas.toDataURL('image/png');
                 } catch (e) {
@@ -6800,7 +6848,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             };
 
-            // 2. Ensure every order has an up-to-date Proof (auto-updates if order items/amount/table changed!)
             function computeOrderSignature(r) {
                 const foodsStr = Array.isArray(r.foods) ? r.foods.join(',') : (r.orderSummary || '');
                 return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}`;
@@ -6817,7 +6864,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 return r;
             };
 
-            // 3. Compact, Zoom-Safe Proof Modal with Sticky Header, Close Button, VAT & Staff Receipt Link
             window.closeProofModal = function () {
                 const modal = document.getElementById('proof-modal');
                 if (modal) {
@@ -6826,7 +6872,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             };
 
-            window.openProofModal = function (r) {
+            // 👉 Manager-Styled Animated Proof Modal (Locked via Object.defineProperty so renderDashboard() can NEVER overwrite it!)
+            function unifiedOpenProofModal(r) {
                 if (!r) return;
                 window.ensureOrderProofUpToDate(r);
 
@@ -6844,44 +6891,39 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const vat = totalAmt - vatable;
 
                 modal.innerHTML = `
-                    <div onclick="event.stopPropagation()">
-                        <!-- Sticky Header with Always-Visible Close Button -->
-                        <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); color:white; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <span style="font-size:18px;">🧾</span>
-                                <div>
-                                    <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:16.5px; color:white;">Proof of Receipt & Tax Breakdown</h3>
-                                    <span style="font-size:11px; opacity:0.85;">Order Reference: <strong>${resNum}</strong></span>
-                                </div>
-                            </div>
-                            <button type="button" onclick="window.closeProofModal()" title="Close (ESC)" style="background:#ef4444; color:white; border:2px solid rgba(255,255,255,0.8); width:34px; height:34px; border-radius:50%; font-size:16px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.3); flex-shrink:0;">✕</button>
+                    <div class="rsh-manager-proof-box" onclick="event.stopPropagation()">
+                        <div class="rsh-proof-header">
+                            <h3>🧾 Payment Proof Attachment</h3>
+                            <button type="button" class="rsh-proof-close" onclick="window.closeProofModal()" title="Close (ESC)">&times;</button>
                         </div>
 
-                        <!-- Scrollable Body -->
-                        <div style="padding:16px 18px; overflow-y:auto; flex:1; background:#f8fafc;">
-                            <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:12.5px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
-                                <div style="display:flex; justify-content:space-between; padding:3px 0;"><span style="color:#64748b;">👤 Customer:</span><strong style="color:#0f172a;">${name}</strong></div>
-                                <div style="display:flex; justify-content:space-between; padding:3px 0;"><span style="color:#64748b;">🪑 Table:</span><strong style="color:#166534;">${r.bookedTable || 'TBD'}</strong></div>
-                                <div style="display:flex; justify-content:space-between; padding:3px 0;"><span style="color:#64748b;">🏦 Reference:</span><strong style="color:#0f172a;">${ref}</strong></div>
-                                <div style="border-top:1px dashed #cbd5e1; margin-top:6px; padding-top:6px; display:flex; justify-content:space-between;"><span style="color:#64748b;">Vatable Sales:</span><span style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
-                                <div style="display:flex; justify-content:space-between; padding:2px 0;"><span style="color:#64748b;">VAT (12% Incl.):</span><span style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span></div>
-                                <div style="border-top:1px solid #e2e8f0; margin-top:6px; padding-top:6px; display:flex; justify-content:space-between; font-size:14px;"><strong style="color:#1b5e20;">Total Amount Paid:</strong><strong style="color:#16a34a;">₱${totalAmt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></div>
+                        <div style="padding:18px 22px; overflow-y:auto; flex:1; background:#ffffff;">
+                            <div style="margin-bottom:14px; font-size:13px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
+                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:130px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📊 Vatable Sales</td><td style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🏛️ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a; font-size:14.5px;">₱${totalAmt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
+                                    <tr><td style="padding:6px 0; color:#64748b;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
+                                </table>
                             </div>
 
                             ${r.paymentProof ? `
-                                <img src="${r.paymentProof}" alt="Proof of Payment" style="width:100%; max-height:360px; object-fit:contain; border-radius:10px; border:1px solid #cbd5e1; background:white; display:block; margin:0 auto;">
+                                <div style="background:#f0fdf4; padding:10px; border-radius:14px; border:1px solid #bbf7d0;">
+                                    <img src="${r.paymentProof}" alt="Proof of Payment" style="width:100%; max-height:340px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto;">
+                                </div>
                             ` : `
-                                <div style="color:#94a3b8; font-style:italic; text-align:center; padding:20px;">No proof image available.</div>
+                                <div style="color:#94a3b8; font-style:italic; text-align:center; padding:20px;">No screenshot uploaded.</div>
                             `}
                         </div>
 
-                        <!-- Sticky Footer with Staff Printable Receipt Link & Close Button -->
-                        <div style="padding:12px 18px; background:white; border-top:1px solid #e2e8f0; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-shrink:0;">
-                            <a href="receipt.html?res=${encodeURIComponent(resNum)}" target="_blank" style="flex:1.3; background:#1b5e20; color:white; text-decoration:none; padding:10px 12px; border-radius:8px; font-weight:800; font-size:12.5px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 10px rgba(27,94,32,0.2);">
+                        <div style="padding:12px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-shrink:0;">
+                            <a href="receipt.html?res=${encodeURIComponent(resNum)}" target="_blank" style="flex:1.4; background:#1b5e20; color:white; text-decoration:none; padding:10px 14px; border-radius:10px; font-weight:800; font-size:12.5px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 10px rgba(27,94,32,0.2);">
                                 🖨️ Open Official Receipt
                             </a>
-                            <button type="button" onclick="window.closeProofModal()" style="flex:0.7; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:10px 12px; border-radius:8px; font-weight:800; font-size:12.5px; cursor:pointer;">
-                                Close ✕
+                            <button type="button" onclick="window.closeProofModal()" style="flex:0.6; background:white; color:#334155; border:1px solid #cbd5e1; padding:10px 14px; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">
+                                Close
                             </button>
                         </div>
                     </div>
@@ -6890,7 +6932,17 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 modal.onclick = (e) => { if (e.target === modal) window.closeProofModal(); };
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
-            };
+            }
+
+            try {
+                Object.defineProperty(window, 'openProofModal', {
+                    configurable: true,
+                    get: function () { return unifiedOpenProofModal; },
+                    set: function () { /* Ignore old overwrites from renderDashboard */ }
+                });
+            } catch (e) {
+                window.openProofModal = unifiedOpenProofModal;
+            }
 
             window.openProofByResNum = function (resNum) {
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
@@ -6898,14 +6950,13 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (idx === -1) return;
                 window.ensureOrderProofUpToDate(hist[idx]);
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                window.openProofModal(hist[idx]);
+                unifiedOpenProofModal(hist[idx]);
             };
 
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') window.closeProofModal();
             });
 
-            // 4. Automatically attach "🧾 View Proof" + "🖨️ Receipt" buttons to EVERY row in Overview / All Records!
             function injectProofAndReceiptButtonsIntoTables() {
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let mutated = false;
@@ -6926,15 +6977,13 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     const cells = tr.querySelectorAll('td');
                     if (cells.length < 7) return;
 
-                    // Extract reservation number from first cell
                     const firstCellText = (cells[0].innerText || '').replace(/^NEW\s*/i, '').trim();
                     if (!firstCellText) return;
 
-                    const paidCell = cells[6]; // 7th column is Payment in both admin.html & superadmin.html
+                    const paidCell = cells[6];
                     if (!paidCell || paidCell.dataset.rshProofEnhanced === firstCellText) return;
                     paidCell.dataset.rshProofEnhanced = firstCellText;
 
-                    // Remove any old single proof button to replace with our unified Proof + Receipt bar
                     paidCell.querySelectorAll('button').forEach(b => {
                         if ((b.innerText || '').includes('View Proof')) b.remove();
                     });
