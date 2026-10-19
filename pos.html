@@ -1662,35 +1662,53 @@
         (function initPosConfirmationAndVatUpgrade() {
             const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
 
-            // 1. Inject 12% VAT row above Total in the POS Cart Sidebar
+            // 1. Live 12% VAT Calculation Hooked Directly to #subtotal and #total-val
             function updatePosVatDisplay() {
-                const subRow = Array.from(document.querySelectorAll('div, span')).find(el =>
-                    el.children.length === 2 &&
-                    /^Subtotal$/i.test((el.children[0]?.innerText || '').trim())
-                );
+                const subValEl = document.getElementById('subtotal');
+                const totValEl = document.getElementById('total-val');
+                if (!subValEl || !totValEl) return;
+
+                const subRow = subValEl.parentElement;
                 if (!subRow) return;
 
-                const rawAmtText = (subRow.children[1]?.innerText || '0').replace(/[^0-9.]/g, '');
-                const totalVal = parseFloat(rawAmtText) || 0;
+                // Read current Total from #total-val (which updateCartUI updates whenever items change)
+                const rawTotalText = (totValEl.innerText || totValEl.textContent || '0').replace(/[^0-9.]/g, '');
+                const totalVal = parseFloat(rawTotalText) || 0;
                 const vatableVal = totalVal / 1.12;
                 const vatVal = totalVal - vatableVal;
 
-                subRow.children[0].textContent = 'Vatable Sales';
-                subRow.children[1].textContent = '₱' + vatableVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                // Update label to Vatable Sales and show Vatable amount
+                if (subRow.children[0]) {
+                    subRow.children[0].textContent = 'Vatable Sales';
+                }
+                subValEl.textContent = '₱' + vatableVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+                // Create or update the 12% VAT row right below Vatable Sales
                 let vatRow = document.getElementById('pos-vat-breakdown-row');
                 if (!vatRow) {
                     vatRow = document.createElement('div');
                     vatRow.id = 'pos-vat-breakdown-row';
-                    vatRow.style.cssText = 'display:flex; justify-content:space-between; font-size:13px; color:#64748b; margin:4px 0 8px 0; font-weight:500;';
+                    vatRow.className = 'summary-row';
+                    vatRow.style.cssText = 'display:flex; justify-content:space-between; font-size:13.5px; color:#64748b; margin:4px 0 8px 0; font-weight:600;';
                     subRow.parentElement.insertBefore(vatRow, subRow.nextSibling);
                 }
                 vatRow.innerHTML = `<span>VAT (12% Incl.)</span><span>₱${vatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
             }
 
-            setInterval(updatePosVatDisplay, 500);
+            // Wrap updateCartUI so VAT updates the exact millisecond any item is added/removed!
+            if (typeof window.updateCartUI === 'function' && !window.updateCartUI.__vatWrapped) {
+                const origUpdateCartUI = window.updateCartUI;
+                window.updateCartUI = function () {
+                    const res = origUpdateCartUI.apply(this, arguments);
+                    updatePosVatDisplay();
+                    return res;
+                };
+                window.updateCartUI.__vatWrapped = true;
+            }
+            setInterval(updatePosVatDisplay, 400);
+            setTimeout(updatePosVatDisplay, 100);
 
-            // 2. Confirmation Modal Builder (Matches Walk-in Confirmation Style!)
+            // 2. Confirmation Modal Builder (With Reverse Dark-Green Header & Spring Pop-Up)
             function showPosConfirmModal({ customerName, table, itemsList, totalAmt, loadedResNo }) {
                 return new Promise((resolve) => {
                     const existing = document.getElementById('pos-confirm-modal-overlay');
@@ -1704,9 +1722,10 @@
                     overlay.style.cssText = 'position:fixed; inset:0; z-index:999999; background:rgba(15,23,42,0.72); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px; font-family:"Roboto",sans-serif;';
 
                     overlay.innerHTML = `
-                        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:440px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.45); border:1px solid #e2e8f0; animation:fadeIn 0.2s ease;">
-                            <div style="background:#1b5e20; color:white; padding:18px 22px; text-align:center;">
-                                <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:20px; font-weight:700;">Confirm POS Order Details 📋</h3>
+                        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:440px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.45); border:1px solid #e2e8f0;">
+                            <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); color:white; padding:18px 22px; display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:#ffffff;">Confirm POS Order Details 📋</h3>
+                                <button type="button" id="pos-conf-close-x" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.15); color:white; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
                             </div>
                             <div style="padding:20px 22px;">
                                 <div style="text-align:left; font-size:13.5px; background:#f8fafc; padding:15px; border-radius:10px; border:1px dashed #cbd5e1;">
@@ -1743,109 +1762,57 @@
                     `;
 
                     document.body.appendChild(overlay);
+                    document.getElementById('pos-conf-close-x').onclick = () => { overlay.remove(); resolve(false); };
                     document.getElementById('pos-conf-cancel').onclick = () => { overlay.remove(); resolve(false); };
                     document.getElementById('pos-conf-ok').onclick = () => { overlay.remove(); resolve(true); };
                 });
             }
 
-            // 3. Intercept the "COMPLETE TRANSACTION" button on pos.html
+            // 3. Intercept processCheckout() so Confirmation Modal always pops up before saving
             window.addEventListener('load', () => {
-                const completeBtn = Array.from(document.querySelectorAll('button')).find(b =>
-                    /COMPLETE\s*TRANSACTION/i.test(b.innerText || b.textContent || '')
-                );
-                if (!completeBtn) return;
+                const origProcessCheckout = window.processCheckout;
+                if (typeof origProcessCheckout !== 'function') return;
 
-                const inlineOnclick = completeBtn.getAttribute('onclick');
-                if (inlineOnclick) {
-                    completeBtn.removeAttribute('onclick');
-                }
-
-                completeBtn.addEventListener('click', async function (e) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-
-                    // Read current cart items, table, customer name, and total from the POS screen
-                    const tableSelect = document.querySelector('select');
-                    const custInput = document.querySelector('input[placeholder*="Customer Name" i]');
-                    const selectedTable = tableSelect ? tableSelect.value : '';
-                    const customerName = (custInput && custInput.value.trim()) ? custInput.value.trim() : 'Walk-in Guest';
-
-                    // Gather items from global cart or DOM
-                    let itemsList = [];
-                    let totalAmt = 0;
-
-                    if (typeof window.cart !== 'undefined' && Array.isArray(window.cart)) {
-                        window.cart.forEach(c => {
-                            const q = c.qty || c.quantity || 1;
-                            itemsList.push(`${q}x ${c.title || c.name}`);
-                            totalAmt += (Number(c.price) || 0) * q;
-                        });
-                    } else if (typeof window.posCart === 'object' && window.posCart !== null) {
-                        Object.values(window.posCart).forEach(c => {
-                            const q = c.qty || c.quantity || 1;
-                            itemsList.push(`${q}x ${c.title || c.name}`);
-                            totalAmt += (Number(c.price) || 0) * q;
-                        });
+                window.processCheckout = async function () {
+                    if (typeof cart !== 'undefined' && Object.keys(cart).length === 0) {
+                        return superModal({ title: 'Empty Cart 🛒', message: 'Please add items to the order before finalizing.' });
+                    }
+                    const selectedTable = document.getElementById('order-table')?.value || '';
+                    if (!selectedTable) {
+                        return superModal({ title: 'Table Required 📍', message: 'Please select a table to complete the transaction.' });
                     }
 
-                    if (totalAmt === 0) {
-                        const totalRow = Array.from(document.querySelectorAll('div')).find(el =>
-                            el.children.length === 2 && /^Total$/i.test((el.children[0]?.innerText || '').trim())
-                        );
-                        if (totalRow) {
-                            totalAmt = parseFloat((totalRow.children[1]?.innerText || '0').replace(/[^0-9.]/g, '')) || 0;
+                    const customerName = (document.getElementById('order-name')?.value || '').trim() || 'Walk-in Guest';
+                    const liveItems = typeof getInventory === 'function' ? getInventory() : [];
+                    const itemsList = [];
+                    let subtotalAmt = 0;
+
+                    if (typeof cart !== 'undefined') {
+                        for (const id in cart) {
+                            const item = liveItems.find(i => i.id === id);
+                            if (item) {
+                                itemsList.push(`${cart[id]}x ${item.title || item.name}`);
+                                subtotalAmt += (Number(item.price) || 0) * cart[id];
+                            }
                         }
                     }
 
-                    if (totalAmt <= 0 && itemsList.length === 0) {
-                        if (typeof superModal === 'function') {
-                            await superModal({ title: 'Empty Cart 🛒', message: 'Please add at least one menu item before completing the transaction.' });
-                        } else {
-                            alert('Please add at least one menu item before completing the transaction.');
-                        }
-                        return;
-                    }
+                    const disc = typeof getPosDiscount === 'function' ? getPosDiscount(subtotalAmt) : { amount: 0 };
+                    const totalAmt = subtotalAmt - (disc.amount || 0);
+                    const loadedResNo = typeof editingTransactionId !== 'undefined' ? editingTransactionId : null;
 
-                    const loadedResNo = window.loadedReservationNumber || window.currentLoadedRes || null;
-
-                    // 👉 Pop up the Confirmation Details Modal before proceeding!
                     const confirmed = await showPosConfirmModal({
                         customerName,
-                        table: selectedTable || 'Walk-in',
-                        itemsList: itemsList.length ? itemsList : ['POS Counter Order'],
+                        table: selectedTable,
+                        itemsList,
                         totalAmt,
                         loadedResNo
                     });
 
                     if (!confirmed) return;
 
-                    // Execute the original POS transaction handler
-                    if (inlineOnclick) {
-                        const fnName = inlineOnclick.replace(/\(.*\)/, '').trim();
-                        if (typeof window[fnName] === 'function') {
-                            await window[fnName]();
-                        } else {
-                            eval(inlineOnclick);
-                        }
-                    }
-
-                    // If an existing reservation was loaded into POS, sync its updated foods & amount to MySQL!
-                    if (loadedResNo) {
-                        try {
-                            await fetch(`${API_BASE}/api/reservations/update-order`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    id: loadedResNo,
-                                    customerName,
-                                    bookedTable: selectedTable || undefined,
-                                    paymentAmount: totalAmt,
-                                    foods: itemsList.length ? itemsList : undefined
-                                })
-                            });
-                        } catch (err) {}
-                    }
-                }, true);
+                    return await origProcessCheckout.apply(this, arguments);
+                };
             });
         })();
     </script>
