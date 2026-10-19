@@ -64,7 +64,17 @@
             <div id="receipt-items" style="font-size:14px; color:#334155; line-height:1.6;">
                 <!-- Filled by JS -->
             </div>
-            <div style="border-top:1px solid #e2e8f0; margin-top:12px; padding-top:12px; display:flex; justify-content:space-between; font-weight:800; color:#1b5e20; font-size:18px;">
+            <div style="border-top:1px dashed #cbd5e1; margin-top:12px; padding-top:10px; font-size:12.5px; color:#64748b;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Vatable Sales</span>
+                    <span id="receipt-vatable">₱0.00</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>VAT (12% Incl.)</span>
+                    <span id="receipt-vat">₱0.00</span>
+                </div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0; margin-top:10px; padding-top:10px; display:flex; justify-content:space-between; font-weight:800; color:#1b5e20; font-size:18px;">
                 <span>Total Paid</span>
                 <span id="receipt-total">₱0.00</span>
             </div>
@@ -216,20 +226,35 @@
             }
             ctx.fillText(line, 90, y);
 
-            // Bottom Total Divider
+            // Bottom VAT & Total Divider
+            const totalNum = Number(entry.paymentAmount || 0);
+            const vatableNum = totalNum / 1.12;
+            const vatNum = totalNum - vatableNum;
+
             ctx.strokeStyle = '#cbd5e1';
             ctx.beginPath();
-            ctx.moveTo(90, 595);
-            ctx.lineTo(510, 595);
+            ctx.moveTo(90, 560);
+            ctx.lineTo(510, 560);
             ctx.stroke();
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '13px Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Vatable Sales:', 90, 582);
+            ctx.fillText('VAT (12% Incl.):', 90, 602);
+
+            ctx.textAlign = 'right';
+            ctx.fillText('₱' + vatableNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 582);
+            ctx.fillText('₱' + vatNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 602);
 
             ctx.fillStyle = '#1b5e20';
             ctx.font = 'bold 20px Arial, sans-serif';
-            ctx.fillText('Total Paid', 90, 628);
+            ctx.textAlign = 'left';
+            ctx.fillText('Total Paid', 90, 634);
 
             ctx.textAlign = 'right';
-            const fmtTotal = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-            ctx.fillText(fmtTotal, 510, 628);
+            const fmtTotal = '₱' + totalNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.fillText(fmtTotal, 510, 634);
 
             // Footer
             ctx.textAlign = 'center';
@@ -317,7 +342,12 @@
             // Populate visual receipt on screen
             document.getElementById('receipt-area').style.display = 'block';
             document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
-            document.getElementById('receipt-total').textContent = '₱' + Number(entry.paymentAmount || 0).toLocaleString(undefined, {minimumFractionDigits:2});
+            const totalPaidVal = Number(entry.paymentAmount || 0);
+            const vatableVal = totalPaidVal / 1.12;
+            const vatVal = totalPaidVal - vatableVal;
+            if (document.getElementById('receipt-vatable')) document.getElementById('receipt-vatable').textContent = '₱' + vatableVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+            if (document.getElementById('receipt-vat')) document.getElementById('receipt-vat').textContent = '₱' + vatVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+            document.getElementById('receipt-total').textContent = '₱' + totalPaidVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
             
             let itemsHtml = `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
             itemsHtml += `<div style="margin-bottom:4px;"><strong>Table:</strong> ${entry.bookedTable}</div>`;
