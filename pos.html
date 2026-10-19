@@ -1638,6 +1638,199 @@
 
         init();
     </script>
+
+    <!-- 🧾 POS CONFIRMATION MODAL, 12% VAT & E-RECEIPT PROOF GENERATOR -->
+    <script>
+        (function initPosConfirmationAndVatUpgrade() {
+            const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
+
+            // 1. Inject 12% VAT row above Total in the POS Cart Sidebar
+            function updatePosVatDisplay() {
+                const subRow = Array.from(document.querySelectorAll('div, span')).find(el =>
+                    el.children.length === 2 &&
+                    /^Subtotal$/i.test((el.children[0]?.innerText || '').trim())
+                );
+                if (!subRow) return;
+
+                const rawAmtText = (subRow.children[1]?.innerText || '0').replace(/[^0-9.]/g, '');
+                const totalVal = parseFloat(rawAmtText) || 0;
+                const vatableVal = totalVal / 1.12;
+                const vatVal = totalVal - vatableVal;
+
+                subRow.children[0].textContent = 'Vatable Sales';
+                subRow.children[1].textContent = '₱' + vatableVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                let vatRow = document.getElementById('pos-vat-breakdown-row');
+                if (!vatRow) {
+                    vatRow = document.createElement('div');
+                    vatRow.id = 'pos-vat-breakdown-row';
+                    vatRow.style.cssText = 'display:flex; justify-content:space-between; font-size:13px; color:#64748b; margin:4px 0 8px 0; font-weight:500;';
+                    subRow.parentElement.insertBefore(vatRow, subRow.nextSibling);
+                }
+                vatRow.innerHTML = `<span>VAT (12% Incl.)</span><span>₱${vatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+            }
+
+            setInterval(updatePosVatDisplay, 500);
+
+            // 2. Confirmation Modal Builder (Matches Walk-in Confirmation Style!)
+            function showPosConfirmModal({ customerName, table, itemsList, totalAmt, loadedResNo }) {
+                return new Promise((resolve) => {
+                    const existing = document.getElementById('pos-confirm-modal-overlay');
+                    if (existing) existing.remove();
+
+                    const vatable = totalAmt / 1.12;
+                    const vat = totalAmt - vatable;
+
+                    const overlay = document.createElement('div');
+                    overlay.id = 'pos-confirm-modal-overlay';
+                    overlay.style.cssText = 'position:fixed; inset:0; z-index:999999; background:rgba(15,23,42,0.72); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px; font-family:"Roboto",sans-serif;';
+
+                    overlay.innerHTML = `
+                        <div style="background:#ffffff; border-radius:20px; width:100%; max-width:440px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.45); border:1px solid #e2e8f0; animation:fadeIn 0.2s ease;">
+                            <div style="background:#1b5e20; color:white; padding:18px 22px; text-align:center;">
+                                <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:20px; font-weight:700;">Confirm POS Order Details 📋</h3>
+                            </div>
+                            <div style="padding:20px 22px;">
+                                <div style="text-align:left; font-size:13.5px; background:#f8fafc; padding:15px; border-radius:10px; border:1px dashed #cbd5e1;">
+                                    ${loadedResNo ? `<div style="margin-bottom:6px; color:#0369a1; font-weight:800;">🔖 Updating Reservation: #${loadedResNo}</div>` : ''}
+                                    <div style="margin-bottom:6px;"><strong>Customer:</strong> ${customerName || 'Walk-in Guest'}</div>
+                                    <div style="margin-bottom:6px;"><strong>Table:</strong> ${table || 'Walk-in / Counter'}</div>
+                                    <div style="margin-bottom:6px;"><strong>Time:</strong> ${new Date().toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</div>
+                                    <div style="margin-top:8px; border-top:1px solid #e2e8f0; padding-top:8px;">
+                                        <strong>Food Order:</strong><br>
+                                        <span style="color:#334155; line-height:1.5;">${itemsList.length ? itemsList.join(', ') : 'Standard Order'}</span>
+                                    </div>
+                                    <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:8px; font-size:12.5px; color:#64748b;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+                                            <span>Vatable Sales:</span>
+                                            <span>₱${vatable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between;">
+                                            <span>VAT (12% Incl.):</span>
+                                            <span>₱${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top:8px; font-size:16px; color:#1b5e20; border-top:1px solid #e2e8f0; padding-top:8px; display:flex; justify-content:space-between; font-weight:800;">
+                                        <span>Total Payment:</span>
+                                        <span>₱${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                </div>
+                                <p style="margin:14px 0 16px; font-size:12.5px; color:#64748b; text-align:center;">Please verify these details before completing the transaction.</p>
+                                <div style="display:flex; gap:10px;">
+                                    <button type="button" id="pos-conf-cancel" style="flex:1; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; font-weight:700; font-size:13px; cursor:pointer;">Edit Details</button>
+                                    <button type="button" id="pos-conf-ok" style="flex:1.2; padding:12px; border-radius:10px; border:none; background:#1b5e20; color:white; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">Confirm & Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(overlay);
+                    document.getElementById('pos-conf-cancel').onclick = () => { overlay.remove(); resolve(false); };
+                    document.getElementById('pos-conf-ok').onclick = () => { overlay.remove(); resolve(true); };
+                });
+            }
+
+            // 3. Intercept the "COMPLETE TRANSACTION" button on pos.html
+            window.addEventListener('load', () => {
+                const completeBtn = Array.from(document.querySelectorAll('button')).find(b =>
+                    /COMPLETE\s*TRANSACTION/i.test(b.innerText || b.textContent || '')
+                );
+                if (!completeBtn) return;
+
+                const inlineOnclick = completeBtn.getAttribute('onclick');
+                if (inlineOnclick) {
+                    completeBtn.removeAttribute('onclick');
+                }
+
+                completeBtn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    // Read current cart items, table, customer name, and total from the POS screen
+                    const tableSelect = document.querySelector('select');
+                    const custInput = document.querySelector('input[placeholder*="Customer Name" i]');
+                    const selectedTable = tableSelect ? tableSelect.value : '';
+                    const customerName = (custInput && custInput.value.trim()) ? custInput.value.trim() : 'Walk-in Guest';
+
+                    // Gather items from global cart or DOM
+                    let itemsList = [];
+                    let totalAmt = 0;
+
+                    if (typeof window.cart !== 'undefined' && Array.isArray(window.cart)) {
+                        window.cart.forEach(c => {
+                            const q = c.qty || c.quantity || 1;
+                            itemsList.push(`${q}x ${c.title || c.name}`);
+                            totalAmt += (Number(c.price) || 0) * q;
+                        });
+                    } else if (typeof window.posCart === 'object' && window.posCart !== null) {
+                        Object.values(window.posCart).forEach(c => {
+                            const q = c.qty || c.quantity || 1;
+                            itemsList.push(`${q}x ${c.title || c.name}`);
+                            totalAmt += (Number(c.price) || 0) * q;
+                        });
+                    }
+
+                    if (totalAmt === 0) {
+                        const totalRow = Array.from(document.querySelectorAll('div')).find(el =>
+                            el.children.length === 2 && /^Total$/i.test((el.children[0]?.innerText || '').trim())
+                        );
+                        if (totalRow) {
+                            totalAmt = parseFloat((totalRow.children[1]?.innerText || '0').replace(/[^0-9.]/g, '')) || 0;
+                        }
+                    }
+
+                    if (totalAmt <= 0 && itemsList.length === 0) {
+                        if (typeof superModal === 'function') {
+                            await superModal({ title: 'Empty Cart 🛒', message: 'Please add at least one menu item before completing the transaction.' });
+                        } else {
+                            alert('Please add at least one menu item before completing the transaction.');
+                        }
+                        return;
+                    }
+
+                    const loadedResNo = window.loadedReservationNumber || window.currentLoadedRes || null;
+
+                    // 👉 Pop up the Confirmation Details Modal before proceeding!
+                    const confirmed = await showPosConfirmModal({
+                        customerName,
+                        table: selectedTable || 'Walk-in',
+                        itemsList: itemsList.length ? itemsList : ['POS Counter Order'],
+                        totalAmt,
+                        loadedResNo
+                    });
+
+                    if (!confirmed) return;
+
+                    // Execute the original POS transaction handler
+                    if (inlineOnclick) {
+                        const fnName = inlineOnclick.replace(/\(.*\)/, '').trim();
+                        if (typeof window[fnName] === 'function') {
+                            await window[fnName]();
+                        } else {
+                            eval(inlineOnclick);
+                        }
+                    }
+
+                    // If an existing reservation was loaded into POS, sync its updated foods & amount to MySQL!
+                    if (loadedResNo) {
+                        try {
+                            await fetch(`${API_BASE}/api/reservations/update-order`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id: loadedResNo,
+                                    customerName,
+                                    bookedTable: selectedTable || undefined,
+                                    paymentAmount: totalAmt,
+                                    foods: itemsList.length ? itemsList : undefined
+                                })
+                            });
+                        } catch (err) {}
+                    }
+                }, true);
+            });
+        })();
+    </script>
 </body>
 
 </html>
