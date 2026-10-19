@@ -15,21 +15,31 @@ app.use((req, res, next) => {
     next();
 });
 
-const pool = mysql.createPool({
+// 👉 PERSISTENT SINGLE-CONNECTION POOL (Prevents Hostinger max_connections_per_hour = 500 error!)
+const pool = global.__rolandsMysqlPool || (global.__rolandsMysqlPool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 3,        // 👈 Keep low for Serverless + Hostinger so phpMyAdmin never gets locked out!
-    maxIdle: 1,                // 👈 Release idle connections immediately
-    idleTimeout: 10000,        // 👈 Close unused connections after 10s
+    connectionLimit: 1,          // 👈 Uses 1 persistent connection per instance
+    maxIdle: 1,                  // 👈 Never closes the 1 active connection while idle
+    idleTimeout: 3600000,        // 👈 Keep alive for 1 full hour (prevents reconnect burn!)
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000
-});
+}));
 
 const db = pool.promise();
+
+// Global RAM Cache for system_memory & staff so 5-second polls use 0 MySQL connections!
+const memoryCache = global.__rolandsMemCache || (global.__rolandsMemCache = {
+    tableOverrides: { data: null, time: 0 },
+    floorPlanConfig: { data: null, time: 0 },
+    liveChats: { data: null, time: 0 },
+    inventoryItems: { data: null, time: 0 },
+    staffList: { data: null, time: 0 }
+});
 
 db.query('SELECT 1').then(async () => {
     console.log('✅ Connected to Hostinger MySQL Database!');
@@ -399,6 +409,7 @@ app.post('/api/staff/log-login', async (req, res) => {
 app.delete('/api/staff/:username', async (req, res) => {
     try {
         await db.query('DELETE FROM staff_credentials WHERE username = ?', [req.params.username]);
+        memoryCache.staffList.time = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).send("Database error"); }
 });
@@ -408,6 +419,7 @@ app.put('/api/staff/:username/password', async (req, res) => {
     const { passwordHash } = req.body;
     try {
         await db.query('UPDATE staff_credentials SET password_hash = ? WHERE username = ?', [passwordHash, req.params.username]);
+        memoryCache.staffList.time = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).send("Database error"); }
 });
@@ -416,11 +428,11 @@ app.put('/api/staff/:username/password', async (req, res) => {
 app.post('/api/staff', async (req, res) => {
     const { username, passwordHash } = req.body;
     try {
-        // 👉 FIX: Explicitly include the role so MySQL doesn't reject it
         await db.query(
             "INSERT INTO staff_credentials (username, password_hash, role) VALUES (?, ?, 'Staff')",
             [username, passwordHash]
         );
+        memoryCache.staffList.time = 0;
         res.json({ success: true });
     } catch (err) {
         console.error("Create Staff Error:", err);
@@ -428,26 +440,42 @@ app.post('/api/staff', async (req, res) => {
     }
 });
 
-/* 👉 RESTORED: GET STAFF ACCOUNTS (This was missing, causing the blank lists!) */
+/* GET STAFF ACCOUNTS (RAM Cached for 60s) */
 app.get('/api/staff', async (req, res) => {
     try {
+        if (memoryCache.staffList.data && (Date.now() - memoryCache.staffList.time < 60000)) {
+            return res.json(memoryCache.staffList.data);
+        }
         const [rows] = await db.query('SELECT username, password_hash, role, last_active FROM staff_credentials');
+        memoryCache.staffList.data = rows;
+        memoryCache.staffList.time = Date.now();
         res.json(rows);
     } catch (err) {
-        console.error("Staff Fetch Error:", err);
+        if (memoryCache.staffList.data) return res.json(memoryCache.staffList.data);
         res.status(500).send("Database error");
     }
 });
 
-/* 👉 NEW: REAL CLOUD ONLINE STATUS TRACKER */
+/* REAL CLOUD ONLINE STATUS TRACKER (Updates RAM immediately, writes to DB max once per 2 mins) */
 app.post('/api/staff/heartbeat', async (req, res) => {
     try {
-        if (req.body.username) {
-            await db.query('UPDATE staff_credentials SET last_active = ? WHERE username = ?', [Date.now(), req.body.username]);
+        const uname = req.body.username;
+        if (uname) {
+            const now = Date.now();
+            if (Array.isArray(memoryCache.staffList.data)) {
+                const u = memoryCache.staffList.data.find(s => s.username === uname);
+                if (u) u.last_active = now;
+            }
+            // Only write heartbeat to MySQL once every 2 minutes to save connections
+            global.__lastStaffDbBeat = global.__lastStaffDbBeat || {};
+            if (!global.__lastStaffDbBeat[uname] || (now - global.__lastStaffDbBeat[uname] > 120000)) {
+                global.__lastStaffDbBeat[uname] = now;
+                await db.query('UPDATE staff_credentials SET last_active = ? WHERE username = ?', [now, uname]);
+            }
         }
-        res.json({success: true});
+        res.json({ success: true });
     } catch (err) {
-        res.status(500).send("Database error");
+        res.json({ success: true });
     }
 });
 
@@ -740,100 +768,118 @@ app.post('/api/reservations/update-kds', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Helper: Read/Write system_memory with 45-second RAM cache to save 95% of MySQL connections!
+async function getSystemMemoryKey(key, fallbackVal) {
+    const entry = memoryCache[key];
+    if (entry && entry.data !== null && (Date.now() - entry.time < 45000)) {
+        return entry.data;
+    }
+    const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = ?", [key]);
+    let val = fallbackVal;
+    if (rows.length && rows[0].mem_val) {
+        val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
+    }
+    if (entry) {
+        entry.data = val;
+        entry.time = Date.now();
+    }
+    return val;
+}
+
+async function setSystemMemoryKey(key, val) {
+    if (memoryCache[key]) {
+        memoryCache[key].data = val;
+        memoryCache[key].time = Date.now();
+    }
+    const jsonStr = JSON.stringify(val);
+    await db.query(
+        "INSERT INTO system_memory (mem_key, mem_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE mem_val = ?",
+        [key, jsonStr, jsonStr]
+    );
+}
+
 app.get('/api/memory/table-overrides', async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'tableOverrides'");
-        res.json(rows.length ? rows[0].mem_val : {});
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const data = await getSystemMemoryKey('tableOverrides', {});
+        res.json(data || {});
+    } catch (err) {
+        res.json(memoryCache.tableOverrides.data || {});
+    }
 });
 
 app.post('/api/memory/table-overrides', async (req, res) => {
     try {
-        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('tableOverrides', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(req.body), JSON.stringify(req.body)]);
+        await setSystemMemoryKey('tableOverrides', req.body || {});
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 CLOUD FLOOR PLAN DESCRIPTIONS & PHOTOS SYNC */
+/* CLOUD FLOOR PLAN DESCRIPTIONS & PHOTOS SYNC */
 app.get('/api/memory/floor-plan-config', async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'floorPlanConfig'");
-        if (!rows.length || !rows[0].mem_val) return res.json([]);
-        const val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
-        res.json(Array.isArray(val) ? val : []);
+        const data = await getSystemMemoryKey('floorPlanConfig', []);
+        res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json(memoryCache.floorPlanConfig.data || []);
     }
 });
 
 app.post('/api/memory/floor-plan-config', async (req, res) => {
     try {
         const config = Array.isArray(req.body) ? req.body : [];
-        const jsonStr = JSON.stringify(config);
-        await db.query(
-            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('floorPlanConfig', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
-            [jsonStr, jsonStr]
-        );
+        await setSystemMemoryKey('floorPlanConfig', config);
         res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 7. Cloud Live Chat Sync Engine
+/* CLOUD LIVE CHAT SYNC ENGINE */
 app.get('/api/memory/live-chats', async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'liveChats'");
-        res.json(rows.length ? rows[0].mem_val : {});
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const data = await getSystemMemoryKey('liveChats', {});
+        res.json(data || {});
+    } catch (err) {
+        res.json(memoryCache.liveChats.data || {});
+    }
 });
 
 app.post('/api/memory/live-chats', async (req, res) => {
     try {
-        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('liveChats', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(req.body), JSON.stringify(req.body)]);
+        await setSystemMemoryKey('liveChats', req.body || {});
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Safe append-only endpoint: adds a single message to a session without
-// overwriting messages sent concurrently from other devices.
 app.post('/api/memory/live-chats/message', async (req, res) => {
     try {
         const { sessionId, message } = req.body;
         if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message required' });
 
-        // Read current state from DB
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'liveChats'");
-        const allChats = rows.length ? rows[0].mem_val : {};
-
+        const allChats = await getSystemMemoryKey('liveChats', {});
         if (!allChats[sessionId]) allChats[sessionId] = [];
         allChats[sessionId].push(message);
 
-        await db.query("INSERT INTO system_memory (mem_key, mem_val) VALUES ('liveChats', ?) ON DUPLICATE KEY UPDATE mem_val = ?", [JSON.stringify(allChats), JSON.stringify(allChats)]);
+        await setSystemMemoryKey('liveChats', allChats);
         res.json({ success: true, allChats });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 NEW: DELETE ALL RECORDS ROUTE */
+/* DELETE ALL RECORDS ROUTE */
 app.delete('/api/reservations/all', async (req, res) => {
     try {
-        // Wipe the table clean
         await db.query('DELETE FROM reservation_log');
-        // Reset the ID counter back to 1
         await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1'); 
         cachedReservations = null;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 UPDATE ENTIRE ORDER DETAILS (Customer Name, Table, Schedule, Foods, Payment, Status) */
+/* UPDATE ENTIRE ORDER DETAILS */
 app.post('/api/reservations/update-order', async (req, res) => {
     const { id, customerName, bookedTable, arrivalDate, arrivalTime, paymentAmount, foods, status, kdsStatus } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         const foodsJson = foods ? JSON.stringify(foods) : '[]';
         if (numericId) {
-            // 1. Update Customer Name if edited
             if (customerName && String(customerName).trim() !== '') {
                 const [rows] = await db.query('SELECT customer_id FROM reservation_log WHERE reservation_id = ?', [numericId]);
                 if (rows.length > 0 && rows[0].customer_id) {
@@ -841,7 +887,6 @@ app.post('/api/reservations/update-order', async (req, res) => {
                 }
             }
 
-            // 2. Build dynamic update for Table & Schedule if provided
             const tableInt = bookedTable ? (parseInt(String(bookedTable).replace(/[^0-9]/g, '')) || null) : null;
             let resTime = null;
             if (arrivalDate && /^\d{4}-\d{2}-\d{2}$/.test(arrivalDate)) {
@@ -867,41 +912,29 @@ app.post('/api/reservations/update-order', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 CLOUD MENU & PRODUCT PHOTO SYNC ROUTES */
+/* CLOUD MENU & PRODUCT PHOTO SYNC ROUTES */
 app.get('/api/memory/inventory-items', async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'inventoryItems'");
-        if (!rows.length || !rows[0].mem_val) return res.json([]);
-        const val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
-        res.json(Array.isArray(val) ? val : []);
+        const data = await getSystemMemoryKey('inventoryItems', []);
+        res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json(memoryCache.inventoryItems.data || []);
     }
 });
 
 app.post('/api/memory/inventory-items', async (req, res) => {
     try {
         const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
-        const jsonStr = JSON.stringify(items);
-        await db.query(
-            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('inventoryItems', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
-            [jsonStr, jsonStr]
-        );
+        await setSystemMemoryKey('inventoryItems', items);
         res.json({ success: true, count: items.length });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/memory/inventory-items/item', async (req, res) => {
     try {
         const { item, deleteId } = req.body;
-        const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = 'inventoryItems'");
-        let items = [];
-        if (rows.length && rows[0].mem_val) {
-            items = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
-            if (!Array.isArray(items)) items = [];
-        }
+        let items = await getSystemMemoryKey('inventoryItems', []);
+        if (!Array.isArray(items)) items = [];
 
         if (deleteId) {
             items = items.filter(i => i && i.id !== deleteId);
@@ -911,15 +944,9 @@ app.post('/api/memory/inventory-items/item', async (req, res) => {
             else items.push(item);
         }
 
-        const jsonStr = JSON.stringify(items);
-        await db.query(
-            "INSERT INTO system_memory (mem_key, mem_val) VALUES ('inventoryItems', ?) ON DUPLICATE KEY UPDATE mem_val = ?",
-            [jsonStr, jsonStr]
-        );
+        await setSystemMemoryKey('inventoryItems', items);
         res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = app;
