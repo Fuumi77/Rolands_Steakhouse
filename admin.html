@@ -6668,7 +6668,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
     <script>
         (function initUniversalProofAndReceiptEngine() {
-            // 1. Universal E-Receipt Proof Image Generator (With 12% VAT Breakdown)
+            // 1. Universal E-Receipt Proof Image Generator (No VAT on ₱200 Standard Fee, 12% VAT on Food Orders)
             window.generateAdminEReceiptProof = function (r) {
                 if (!r) return '';
                 try {
@@ -6804,8 +6804,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.fillText(line, 76, y);
 
                     const totalAmt = Number(r.paymentAmount || 0);
-                    const vatableSales = totalAmt / 1.12;
-                    const vatAmount = totalAmt - vatableSales;
+                    const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
 
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.beginPath();
@@ -6815,13 +6814,22 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                     ctx.fillStyle = '#64748b';
                     ctx.font = '12.5px Arial, sans-serif';
-                    ctx.textAlign = 'left';
-                    ctx.fillText('Vatable Sales:', 76, 570);
-                    ctx.fillText('VAT (12% Incl.):', 76, 592);
+                    if (isStandardFixedFee) {
+                        ctx.textAlign = 'left';
+                        ctx.fillText('Fee Type:', 76, 582);
+                        ctx.textAlign = 'right';
+                        ctx.fillText('Fixed Reservation Fee (No VAT)', 484, 582);
+                    } else {
+                        const vatableSales = totalAmt / 1.12;
+                        const vatAmount = totalAmt - vatableSales;
+                        ctx.textAlign = 'left';
+                        ctx.fillText('Vatable Sales:', 76, 570);
+                        ctx.fillText('VAT (12% Incl.):', 76, 592);
 
-                    ctx.textAlign = 'right';
-                    ctx.fillText('₱' + vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 570);
-                    ctx.fillText('₱' + vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 592);
+                        ctx.textAlign = 'right';
+                        ctx.fillText('₱' + vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 570);
+                        ctx.fillText('₱' + vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 592);
+                    }
 
                     ctx.strokeStyle = '#e2e8f0';
                     ctx.beginPath();
@@ -6840,7 +6848,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.textAlign = 'center';
                     ctx.fillStyle = '#64748b';
                     ctx.font = '11.5px Arial, sans-serif';
-                    ctx.fillText("Roland's Steakhouse • Verified Proof of Receipt (VAT Inclusive)", 280, 702);
+                    ctx.fillText("Roland's Steakhouse • Official Proof of Receipt", 280, 702);
 
                     return canvas.toDataURL('image/png');
                 } catch (e) {
@@ -6850,7 +6858,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
             function computeOrderSignature(r) {
                 const foodsStr = Array.isArray(r.foods) ? r.foods.join(',') : (r.orderSummary || '');
-                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}`;
+                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}|v3`;
             }
 
             window.ensureOrderProofUpToDate = function (r) {
@@ -6872,7 +6880,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             };
 
-            // 👉 Manager-Styled Animated Proof Modal (Locked via Object.defineProperty so renderDashboard() can NEVER overwrite it!)
             function unifiedOpenProofModal(r) {
                 if (!r) return;
                 window.ensureOrderProofUpToDate(r);
@@ -6887,8 +6894,14 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const resNum = r.reservationNumber || 'N/A';
                 const ref = r.paymentRef || (`E-RECEIPT-${resNum}`);
                 const totalAmt = Number(r.paymentAmount || 0);
+                const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
                 const vatable = totalAmt / 1.12;
                 const vat = totalAmt - vatable;
+
+                const taxRowsHtml = isStandardFixedFee
+                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📌 Fee Type</td><td style="font-weight:700; color:#475569;">Fixed Reservation Fee (No VAT)</td></tr>`
+                    : `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📊 Vatable Sales</td><td style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
+                       <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🏛️ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>`;
 
                 modal.innerHTML = `
                     <div class="rsh-manager-proof-box" onclick="event.stopPropagation()">
@@ -6902,8 +6915,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                                 <table style="width:100%; border-collapse:collapse; font-size:13px;">
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:130px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📊 Vatable Sales</td><td style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🏛️ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
+                                    ${taxRowsHtml}
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a; font-size:14.5px;">₱${totalAmt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
                                     <tr><td style="padding:6px 0; color:#64748b;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
                                 </table>
@@ -6938,7 +6950,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 Object.defineProperty(window, 'openProofModal', {
                     configurable: true,
                     get: function () { return unifiedOpenProofModal; },
-                    set: function () { /* Ignore old overwrites from renderDashboard */ }
+                    set: function () {}
                 });
             } catch (e) {
                 window.openProofModal = unifiedOpenProofModal;
