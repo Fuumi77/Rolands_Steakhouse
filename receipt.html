@@ -148,42 +148,44 @@
             }
         }
 
-        function updateReceiptTotalsUI(amountVal) {
+        function updateReceiptTotalsUI(amountVal, ordersText) {
             const cleanTotal = parseFloat(String(amountVal || '0').replace(/[^0-9.]/g, '')) || 0;
-            const vatableSales = cleanTotal / 1.12;
-            const vatAmt = cleanTotal - vatableSales;
+            const checkOrders = String(ordersText !== undefined ? ordersText : orders || '').toLowerCase();
+            const isStandardFixedFee = (cleanTotal === 200 && (!myRes || !Array.isArray(myRes.foods) || myRes.foods.length === 0)) ||
+                                       checkOrders.includes('standard reservation');
 
-            if (document.getElementById('vatable-sales')) {
-                document.getElementById('vatable-sales').textContent = vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const vatableEl = document.getElementById('vatable-sales');
+            const vatEl = document.getElementById('vat-amount');
+
+            if (isStandardFixedFee) {
+                // 👉 Hide VAT breakdown for the ₱200 Fixed Standard Reservation Fee!
+                if (vatableEl && vatableEl.parentElement && vatableEl.parentElement.parentElement) {
+                    vatableEl.parentElement.parentElement.style.display = 'none';
+                }
+                if (vatEl && vatEl.parentElement && vatEl.parentElement.parentElement) {
+                    vatEl.parentElement.parentElement.style.display = 'none';
+                }
+            } else {
+                const vatableSales = cleanTotal / 1.12;
+                const vatAmt = cleanTotal - vatableSales;
+
+                if (vatableEl) {
+                    if (vatableEl.parentElement && vatableEl.parentElement.parentElement) {
+                        vatableEl.parentElement.parentElement.style.display = 'flex';
+                    }
+                    vatableEl.textContent = vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                if (vatEl) {
+                    if (vatEl.parentElement && vatEl.parentElement.parentElement) {
+                        vatEl.parentElement.parentElement.style.display = 'flex';
+                    }
+                    vatEl.textContent = vatAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
             }
-            if (document.getElementById('vat-amount')) {
-                document.getElementById('vat-amount').textContent = vatAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
+
             if (document.getElementById('total-amount')) {
                 document.getElementById('total-amount').textContent = cleanTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
-        }
-
-        // Fill receipt
-        if (document.getElementById('order-num')) document.getElementById('order-num').textContent = reservationNumber;
-        if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = name;
-        if (document.getElementById('table-id')) document.getElementById('table-id').textContent = table;
-        updateReceiptTotalsUI(total);
-        if (document.getElementById('date-now')) document.getElementById('date-now').textContent = arrivalDisplay;
-
-        // Fill order items
-        const list = document.getElementById('order-items-list');
-        if (list) {
-            list.innerHTML = '';
-            const itemList = Array.isArray(orders) ? orders : String(orders).split(/,\s*/);
-            itemList.forEach(item => {
-                if (item && item.trim()) {
-                    const li = document.createElement('li');
-                    li.className = 'order-item';
-                    li.innerHTML = `<span>${item.trim()}</span> <span>(Paid)</span>`;
-                    list.appendChild(li);
-                }
-            });
         }
 
         // Initialize QR Code
