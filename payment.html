@@ -109,6 +109,7 @@
             <!-- Payment Methods -->
             <div class="methods-label">Accepted Payment Methods</div>
             <div class="methods-row">
+                <div class="method-pill"><span class="dot" style="background:#dc2626;"></span> QR Ph</div>
                 <div class="method-pill"><span class="dot dot-gcash"></span> GCash</div>
                 <div class="method-pill"><span class="dot dot-maya"></span> Maya</div>
                 <div class="method-pill"><span class="dot dot-card"></span> Credit / Debit Card</div>
@@ -226,13 +227,34 @@
             el.className = 'status-msg';
         }
 
+        // Helper: Safely compute exact total due so it never defaults to ₱20.00!
+        function getExactPriorityPaymentAmount() {
+            const rawStored = localStorage.getItem('totalBill') || total || '0';
+            let parsed = parseFloat(String(rawStored).replace(/[^0-9.]/g, '')) || 0;
+            if (parsed <= 0) {
+                try {
+                    const cartObj = JSON.parse(localStorage.getItem('currentCartObj') || localStorage.getItem('preOrderCart') || '{}');
+                    Object.values(cartObj).forEach(item => {
+                        if (item && typeof item === 'object') {
+                            parsed += (parseFloat(item.price) || 0) * (parseInt(item.qty || item.quantity) || 1);
+                        }
+                    });
+                } catch (e) {}
+            }
+            const dispEl = document.getElementById('display-amt');
+            if (parsed <= 0 && dispEl) {
+                parsed = parseFloat((dispEl.innerText || '0').replace(/[^0-9.]/g, '')) || 0;
+            }
+            return parsed > 0 ? parsed : 200;
+        }
+
         // ── Reservation Policy & Read-Confirmation Modal ──
         function confirmPolicyBeforePayment() {
             return new Promise((resolve) => {
                 const existing = document.getElementById('rsh-policy-modal-overlay');
                 if (existing) existing.remove();
 
-                const payAmt = typeof finalAmount !== 'undefined' ? finalAmount : (typeof totalBill !== 'undefined' ? totalBill : Number(localStorage.getItem('totalBill') || 0));
+                const payAmt = getExactPriorityPaymentAmount();
                 const bTable = localStorage.getItem('bookedTable') || 'Table 1';
                 const disp   = localStorage.getItem('arrivalDateTimeDisplay') || '';
 
@@ -242,7 +264,6 @@
 
                 overlay.innerHTML = `
                     <div style="background:#ffffff; border-radius:20px; width:100%; max-width:520px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; border:1px solid #e2e8f0; animation:fadeIn 0.2s ease;">
-                        <!-- Header -->
                         <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:18px 24px; color:white; display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:20px; font-weight:700;">📜 Reservation Policy</h3>
@@ -251,11 +272,10 @@
                             <button type="button" id="rsh-policy-close" style="width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:18px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
                         </div>
 
-                        <!-- Body -->
                         <div style="padding:20px 24px; overflow-y:auto; flex:1; color:#334155; font-size:13.5px; line-height:1.55;">
                             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; margin-bottom:16px;">
                                 <ol style="margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px; color:#1e293b; font-weight:500;">
-                                    <li>Reservations subjected to table availability.</li>
+                                    <li>Reservations are required for large groups and are subject to table availability.</li>
                                     <li>Please arrive on time. Tables will be held for <strong>15 minutes only</strong>.</li>
                                     <li>Late arrivals may have their reservation cancelled or the table may be given to other guests.</li>
                                     <li>Changes or cancellations should be made as early as possible.</li>
@@ -266,13 +286,11 @@
                                 </ol>
                             </div>
 
-                            <!-- Booking & Amount Summary -->
                             <div style="background:#f0fdf4; border:1px dashed #86efac; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
                                 <span><strong>${bTable}</strong> • ${disp}</span>
                                 <strong style="color:#1b5e20; font-size:15px;">₱${Number(payAmt).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
                             </div>
 
-                            <!-- Read Confirmation Checkbox -->
                             <label for="rsh-policy-checkbox" style="display:flex; align-items:flex-start; gap:10px; background:#fffbeb; border:1.5px solid #fde68a; padding:12px 14px; border-radius:10px; cursor:pointer; user-select:none; transition:all 0.2s;" id="rsh-policy-label">
                                 <input type="checkbox" id="rsh-policy-checkbox" style="width:18px; height:18px; margin-top:1px; accent-color:#1b5e20; cursor:pointer; flex-shrink:0;">
                                 <span style="font-size:13px; font-weight:700; color:#92400e; line-height:1.4;">
@@ -281,7 +299,6 @@
                             </label>
                         </div>
 
-                        <!-- Footer -->
                         <div style="padding:14px 24px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; gap:10px;">
                             <button type="button" id="rsh-policy-cancel" style="flex:1; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:white; color:#475569; font-weight:700; font-size:13.5px; cursor:pointer;">Cancel</button>
                             <button type="button" id="rsh-policy-proceed" disabled style="flex:1.4; padding:12px; border-radius:10px; border:none; background:#94a3b8; color:white; font-weight:800; font-size:13.5px; cursor:not-allowed; transition:all 0.2s;">
@@ -328,20 +345,110 @@
             });
         }
 
-        // ── PayMongo Checkout (Saves to MySQL First for Sequential ID) ──
+        // ── QR Ph & Test Payment Gateway Modal (Requires Confirmation Before Issuing Receipt!) ──
+        function openPriorityQrPhTestModal(amountToPay, bTable) {
+            return new Promise((resolve) => {
+                const existing = document.getElementById('rsh-qrph-test-modal');
+                if (existing) existing.remove();
+
+                const fmtAmt = Number(amountToPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const qrData = encodeURIComponent(`00020101021226580014com.p2p.qrph0111ROLANDS20265204581253036085406${Number(amountToPay || 0).toFixed(2)}5802PH5920ROLANDS STEAK HOUSE6011GENSAN CITY6304`);
+                const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${qrData}`;
+
+                const overlay = document.createElement('div');
+                overlay.id = 'rsh-qrph-test-modal';
+                overlay.style.cssText = 'position:fixed; inset:0; z-index:999999; background:rgba(15,23,42,0.78); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; font-family:"Roboto",sans-serif;';
+
+                overlay.innerHTML = `
+                    <div style="background:#ffffff; border-radius:22px; width:100%; max-width:440px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); border:1px solid #e2e8f0; animation:fadeIn 0.22s ease;">
+                        <div style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color:white; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="background:#dc2626; color:white; font-weight:900; font-size:11px; padding:4px 8px; border-radius:6px; letter-spacing:0.5px;">QR Ph</span>
+                                <div>
+                                    <h3 style="margin:0; font-size:16px; font-weight:800; color:white;">QR Ph Test Payment</h3>
+                                    <span style="font-size:11px; color:#94a3b8;">InstaPay • PESONet • GCash • Maya</span>
+                                </div>
+                            </div>
+                            <button type="button" id="qrph-close-btn" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.1); color:white; font-size:16px; font-weight:bold; cursor:pointer;">✕</button>
+                        </div>
+
+                        <div style="padding:20px 22px; overflow-y:auto; text-align:center; background:#f8fafc;">
+                            <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.6px;">Roland's Steak House</div>
+                            <div style="font-size:28px; font-weight:900; color:#1b5e20; margin:4px 0 2px;">₱${fmtAmt}</div>
+                            <div style="font-size:12.5px; color:#475569; margin-bottom:14px;">Priority Pre-Order • <strong>${bTable}</strong></div>
+
+                            <div style="background:white; border:2px solid #cbd5e1; border-radius:18px; padding:16px; width:fit-content; margin:0 auto 14px; box-shadow:0 8px 20px rgba(0,0,0,0.06);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #f1f5f9;">
+                                    <span style="font-size:11px; font-weight:900; color:#dc2626;">🇵🇭 NATIONAL QR PH</span>
+                                    <span style="font-size:10px; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px;">TEST MODE</span>
+                                </div>
+                                <img src="${qrImgUrl}" alt="QR Ph Code" style="width:200px; height:200px; display:block; margin:0 auto; border-radius:8px;">
+                                <div style="margin-top:8px; font-size:11px; color:#64748b; font-weight:600;">Scan with any banking or e-wallet app</div>
+                            </div>
+
+                            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; color:#92400e; text-align:left; line-height:1.45; margin-bottom:14px;">
+                                <strong>⏳ Waiting for Payment Confirmation:</strong><br>
+                                Your receipt and reservation will <u>only</u> be generated after you confirm the test payment below.
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <button type="button" id="qrph-confirm-paid-btn" style="width:100%; padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg, #16a34a 0%, #1b5e20 100%); color:white; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(22,163,74,0.3);">
+                                    ✅ Confirm Test Payment (₱${fmtAmt})
+                                </button>
+                                <button type="button" id="qrph-open-paymongo-btn" style="width:100%; padding:11px; border-radius:12px; border:1.5px solid #3d5a99; background:#eff6ff; color:#1e3a8a; font-weight:700; font-size:13px; cursor:pointer;">
+                                    🌐 Or Open PayMongo Test Checkout Page →
+                                </button>
+                                <button type="button" id="qrph-cancel-btn" style="width:100%; padding:10px; border-radius:10px; border:1px solid #cbd5e1; background:white; color:#64748b; font-weight:700; font-size:12.5px; cursor:pointer;">
+                                    ✕ Cancel Payment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                const closeWith = (choice) => {
+                    overlay.remove();
+                    resolve(choice);
+                };
+
+                document.getElementById('qrph-close-btn').onclick = () => closeWith('cancel');
+                document.getElementById('qrph-cancel-btn').onclick = () => closeWith('cancel');
+                document.getElementById('qrph-confirm-paid-btn').onclick = () => closeWith('qrph_confirmed');
+                document.getElementById('qrph-open-paymongo-btn').onclick = () => closeWith('paymongo_portal');
+            });
+        }
+
+        // ── PayMongo & QR Ph Checkout (Only Saves to MySQL AFTER Payment is Confirmed!) ──
         async function initiatePayMongoCheckout() {
             if (typeof clearStatus === 'function') clearStatus();
 
-            // 👉 Ask customer to read and confirm the Reservation Policy first!
+            // 1. Ask customer to read and confirm the Reservation Policy first
             const agreed = await confirmPolicyBeforePayment();
             if (!agreed) return;
 
+            const payAmt = getExactPriorityPaymentAmount();
+            const cName  = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest';
+            const cEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail') || '';
+            const cPhone = localStorage.getItem('customerPhone') || localStorage.getItem('loggedInUserPhone') || '';
+            const aDate  = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
+            const aTime  = localStorage.getItem('arrivalTime') || '12:00';
+            const bTable = localStorage.getItem('bookedTable') || 'Table 1';
+
+            // 2. Open QR Ph Test Payment Modal so it NEVER gives a successful receipt prematurely!
+            const testChoice = await openPriorityQrPhTestModal(payAmt, bTable);
+            if (!testChoice || testChoice === 'cancel') {
+                if (typeof showStatus === 'function') showStatus('⚠️ Payment was cancelled before completion. No receipt was issued.', 'error');
+                return;
+            }
+
             const btn = document.getElementById('paymongo-btn');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Securing Table...';
+            btn.innerHTML = '<span class="spinner"></span> Finalizing Payment...';
 
             try {
-                // 1. Gather Cart & Food Items
+                // Gather Cart & Food Items
                 let cartItems = [];
                 let foodArray = [];
                 try {
@@ -351,50 +458,68 @@
                     if (summary) foodArray = summary.split(', ').filter(Boolean);
                 } catch (e) {}
 
-                const payAmt = typeof finalAmount !== 'undefined' ? finalAmount : (typeof totalBill !== 'undefined' ? totalBill : Number(localStorage.getItem('totalBill') || 0));
-                const cName  = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest';
-                const cEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail') || '';
-                const cPhone = localStorage.getItem('customerPhone') || localStorage.getItem('loggedInUserPhone') || '';
-                const aDate  = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
-                const aTime  = localStorage.getItem('arrivalTime') || '12:00';
-                const bTable = localStorage.getItem('bookedTable') || 'Table 1';
+                // OPTION A: User confirmed the QR Ph Test Payment -> Save to MySQL now & go to Receipt!
+                if (testChoice === 'qrph_confirmed') {
+                    const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: cName,
+                            email: cEmail || `customer-${Date.now()}@temp.com`,
+                            date: aDate,
+                            time: aTime,
+                            table: bTable,
+                            cartItems: cartItems,
+                            status: 'Pending',
+                            reservationType: 'priority',
+                            paymentAmount: payAmt,
+                            foods: foodArray
+                        })
+                    });
 
-                // 2. Insert into MySQL FIRST to get the sequential ID (e.g., RES-8)
-                const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: cName,
-                        email: cEmail || `customer-${Date.now()}@temp.com`,
-                        date: aDate,
-                        time: aTime,
-                        table: bTable,
-                        cartItems: cartItems,
-                        status: 'Pending',
-                        reservationType: 'priority',
-                        paymentAmount: payAmt,
-                        foods: foodArray
-                    })
-                });
+                    if (!dbRes.ok) throw new Error('Database could not be reached.');
+                    const dbData = await dbRes.json();
+                    if (!dbData.reservationId) throw new Error(dbData.error || 'Failed to generate sequential reservation ID.');
 
-                if (!dbRes.ok) throw new Error('Database could not be reached.');
-                const dbData = await dbRes.json();
-                if (!dbData.reservationId) throw new Error(dbData.error || 'Failed to generate sequential reservation ID.');
+                    const resNo = 'RES-' + dbData.reservationId;
+                    localStorage.setItem('reservationNumber', resNo);
+                    localStorage.setItem('activeCustomerReservation', resNo);
+                    localStorage.setItem('totalBill', payAmt);
 
-                // Official Sequential ID from MySQL (e.g., RES-8)
-                const resNo = 'RES-' + dbData.reservationId;
-                localStorage.setItem('reservationNumber', resNo);
+                    saveReservationDraft(resNo, 'pending', payAmt, foodArray, cartItems);
+                    sessionStorage.setItem('testPaymentVerified_' + resNo, 'true');
+                    window.onbeforeunload = null;
+                    window.location.href = `payment-success.html?resno=${resNo}&confirmed=1`;
+                    return;
+                }
 
-                // 3. Request PayMongo Checkout Link
+                // OPTION B: User chose external PayMongo Portal -> Save draft to sessionStorage ONLY (not MySQL yet!)
                 btn.innerHTML = '<span class="spinner"></span> Connecting to PayMongo...';
+
+                const pendingPayload = {
+                    name: cName,
+                    email: cEmail || `customer-${Date.now()}@temp.com`,
+                    phone: cPhone,
+                    date: aDate,
+                    time: aTime,
+                    displayDt: localStorage.getItem('arrivalDateTimeDisplay') || `${aDate} ${aTime}`,
+                    table: bTable,
+                    cartItems: cartItems,
+                    reservationType: 'priority',
+                    paymentAmount: payAmt,
+                    orderSummary: localStorage.getItem('orderSummary') || '',
+                    beefNote: localStorage.getItem('beefNote') || '',
+                    foods: foodArray
+                };
+                sessionStorage.setItem('pendingPaymongoOrder', JSON.stringify(pendingPayload));
 
                 const nodeRes = await fetch(`${API_BASE_URL}/api/paymongo/checkout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         amount:        payAmt,
-                        description:   `Priority Pre-Order #${resNo} (${bTable})`,
-                        successUrl:    window.location.origin + '/payment-success.html?resno=' + resNo,
+                        description:   `Priority Pre-Order (${bTable})`,
+                        successUrl:    window.location.origin + '/payment-success.html?source=paymongo',
                         cancelUrl:     window.location.origin + '/pre-order.html?payment=failed',
                         customerName:  cName,
                         customerEmail: cEmail,
@@ -410,10 +535,7 @@
                 const nodeData = await nodeRes.json();
                 if (!nodeData.checkout_url) throw new Error('Server did not return a valid PayMongo checkout URL.');
 
-                // 4. Save local draft with matching sequential ID
-                saveReservationDraft(resNo, 'pending_paymongo', payAmt, foodArray, cartItems);
                 localStorage.setItem('paymongoSessionId', nodeData.session_id || 'temp_id');
-
                 window.onbeforeunload = null;
                 window.location.href = nodeData.checkout_url;
 
@@ -452,7 +574,7 @@
                 cartItems:              cartItems || [],
                 beefNote:               localStorage.getItem('beefNote') || '',
                 paymentAmount:          payAmt,
-                paymentRef:             '',
+                paymentRef:             'E-RECEIPT-' + resNo,
                 paymentProof:           '',
                 paymentStatus:          status,
                 approvalStatus:         'pending',
@@ -461,7 +583,6 @@
             });
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
         }
-
         async function submitManualPayment() {
             const refInput = document.getElementById('ref-num');
             const proofInput = document.getElementById('proof-upload');
