@@ -404,12 +404,17 @@
 
                     <div class="form-group">
                         <label for="party-size-select">Number of Guests <span style="color:#ef4444;">*</span></label>
-                        <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required>
+                        <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required onchange="toggleCustomPartySizeInput(this.value)">
                             <option value="" disabled selected>Select party size</option>
-                            <option>1-2 Persons</option>
-                            <option>3-5 Persons</option>
-                            <option>6+ Persons</option>
+                            <option value="1-2 Persons">1-2 Persons</option>
+                            <option value="3-5 Persons">3-5 Persons</option>
+                            <option value="6+ Persons">6+ Persons</option>
+                            <option value="custom">Custom (Enter Exact Number of Guests)...</option>
                         </select>
+                        <div id="custom-party-size-wrap" style="display:none; margin-top:10px;">
+                            <input type="number" id="custom-party-size-input" min="1" max="50" placeholder="Enter exact number of guests (e.g. 8)"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
                     </div>
 
                     <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>→</span></button>
@@ -508,6 +513,21 @@
             });
         }, observerOptions);
         document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => observer.observe(el));
+
+        window.toggleCustomPartySizeInput = function(val) {
+            const wrap = document.getElementById('custom-party-size-wrap');
+            const customInput = document.getElementById('custom-party-size-input');
+            if (!wrap || !customInput) return;
+            if (val === 'custom') {
+                wrap.style.display = 'block';
+                customInput.required = true;
+                setTimeout(() => customInput.focus(), 50);
+            } else {
+                wrap.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        };
 
         function goToNextPage(event) {
             event.preventDefault();
