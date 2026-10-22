@@ -674,7 +674,14 @@
                 localStorage.removeItem('customerEmail');
                 localStorage.removeItem('customerPhone');
                 localStorage.removeItem('chatSessionId');
+                localStorage.removeItem('reservationNumber');
+                localStorage.removeItem('activeCustomerReservation');
+                sessionStorage.removeItem('guestChatRes');
+                sessionStorage.removeItem('currentSessionResNo');
+                sessionStorage.removeItem('currentSessionResOwner');
                 window.applyLoginState('', '');
+                if (typeof checkActiveReservation === 'function') checkActiveReservation();
+                if (typeof loadChatMessages === 'function') loadChatMessages();
             });
 
             goLoginPageBtn.addEventListener('click', () => {
@@ -1201,15 +1208,36 @@
         syncCustomerReservationsFromCloud();
         setInterval(syncCustomerReservationsFromCloud, 8000);
 
+        // Helper: Verify that a reservation actually belongs to the current user or current tab session
+        function isReservationOwnedByCurrentSession(r) {
+            if (!r) return false;
+            const loggedName = (localStorage.getItem('loggedInUserName') || '').trim().toLowerCase();
+            const loggedEmail = (localStorage.getItem('loggedInUserEmail') || '').trim().toLowerCase();
+
+            // 1. If a user is logged into an account, ONLY match bookings belonging to that account
+            if (loggedName || loggedEmail) {
+                const rName = String(r.customerName || '').trim().toLowerCase();
+                const rEmail = String(r.email || '').trim().toLowerCase();
+                if (loggedName && rName === loggedName) return true;
+                if (loggedEmail && rEmail === loggedEmail) return true;
+                return false;
+            }
+
+            // 2. If browsing as a Guest (not logged in), ONLY match a booking made or searched in THIS tab session
+            const tabResNo = (sessionStorage.getItem('currentSessionResNo') || '').toUpperCase().replace(/^#/, '');
+            const rNum = String(r.reservationNumber || '').toUpperCase().replace(/^#/, '');
+            return Boolean(tabResNo && rNum === tabResNo);
+        }
+
         window.exitGuestChat = function() {
-            // 👉 FIX: Unlink stuck/ghost reservations and reset the chat session cleanly!
             sessionStorage.removeItem('guestChatRes');
+            sessionStorage.removeItem('currentSessionResNo');
+            sessionStorage.removeItem('currentSessionResOwner');
             sessionStorage.setItem('chatReservationDetached', 'true');
             localStorage.removeItem('activeCustomerReservation');
             localStorage.removeItem('reservationNumber');
             localStorage.removeItem('customerName');
 
-            // Generate a fresh chat session ID if not logged in, or clear current banner
             const isLoggedIn = localStorage.getItem('loggedInUserEmail') || localStorage.getItem('loggedInUserName');
             if (!isLoggedIn) {
                 const newSessionId = 'session_' + Math.random().toString(36).substr(2, 9);
@@ -1224,34 +1252,39 @@
             const resInfo = document.getElementById('chatResInfo');
             if (!resInfo) return;
 
-            // If user clicked "Reset Session", keep ghost reservations detached!
+            // Clean up any legacy global keys so old bookings never stick across accounts
+            localStorage.removeItem('activeCustomerReservation');
+            localStorage.removeItem('reservationNumber');
+
             if (sessionStorage.getItem('chatReservationDetached') === 'true' && !sessionStorage.getItem('guestChatRes')) {
                 resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span><a href="javascript:void(0)" onclick="openManageBookingModal()" style="font-size:11px; color:#1b5e20; font-weight:700; text-decoration:underline;">Link Booking</a></div>`;
                 return;
             }
 
-            const sortedHist = getSortedCustomerReservations(); // Newest ID first!
-            const activeResNo = localStorage.getItem('activeCustomerReservation') || localStorage.getItem('reservationNumber');
-            const cName = (localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || '').trim();
+            const sortedHist = getSortedCustomerReservations();
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            const tabResNo = sessionStorage.getItem('currentSessionResNo');
 
             let myRes = null;
 
-            // 1. Check explicitly selected/searched guest reservation first
+            // 1. Explicitly searched/linked reservation in this tab session
             if (guestRes && guestRes.reservationNumber) {
                 const gCode = String(guestRes.reservationNumber).toUpperCase().replace(/^#/, '');
                 myRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === gCode) || guestRes;
             }
-            // 2. Check most recently created reservation number on this device
-            if (!myRes && activeResNo && activeResNo !== 'N/A') {
-                const cleanActive = String(activeResNo).toUpperCase().replace(/^#/, '');
-                myRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanActive);
+            // 2. Reservation just completed in this tab session (if owned by current user/guest)
+            if (!myRes && tabResNo) {
+                const cleanTab = String(tabResNo).toUpperCase().replace(/^#/, '');
+                const candidate = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanTab);
+                if (candidate && isReservationOwnedByCurrentSession(candidate)) {
+                    myRes = candidate;
+                }
             }
-            // 3. Fallback to the NEWEST active (non-completed, non-cancelled) booking for this customer
-            if (!myRes && cName && cName.toLowerCase() !== 'guest') {
+            // 3. If logged into an account, find that account's newest active reservation
+            if (!myRes) {
                 myRes = sortedHist.find(r =>
                     r.bookedBy !== 'staff' &&
-                    r.customerName && r.customerName.trim().toLowerCase() === cName.toLowerCase() &&
+                    isReservationOwnedByCurrentSession(r) &&
                     r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
                     r.approvalStatus !== 'completed' && r.kdsStatus !== 'served' && !r.completedAt
                 );
@@ -1928,38 +1961,45 @@
             if (!modal) return;
             modal.style.display = 'flex';
 
-            // Pull latest data from MySQL first so newly created bookings (like RES-19) are always found
             if (typeof syncCustomerReservationsFromCloud === 'function') {
                 await syncCustomerReservationsFromCloud();
             }
 
-            const sortedHist = getSortedCustomerReservations(); // Newest ID first!
-            const activeResNo = specificResNum || localStorage.getItem('activeCustomerReservation') || localStorage.getItem('reservationNumber');
-            const cName = (localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || '').trim();
+            const sortedHist = getSortedCustomerReservations();
             const isDetached = sessionStorage.getItem('chatReservationDetached') === 'true' && !specificResNum;
+            const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
+            const tabResNo = sessionStorage.getItem('currentSessionResNo');
 
             let targetRes = null;
 
-            // 1. If a specific reservation number was requested or just booked, open it directly
+            // 1. Explicitly requested reservation number
             if (specificResNum) {
                 const cleanSpec = String(specificResNum).toUpperCase().replace(/^#/, '');
                 targetRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanSpec);
-            } else if (!isDetached && activeResNo && activeResNo !== 'N/A') {
-                const cleanAct = String(activeResNo).toUpperCase().replace(/^#/, '');
-                targetRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanAct);
             }
-
-            // 2. Otherwise, look for the customer's NEWEST active (upcoming) reservation
-            if (!targetRes && !isDetached && cName && cName.toLowerCase() !== 'guest') {
+            // 2. Explicitly searched booking in this tab session
+            if (!targetRes && !isDetached && guestRes && guestRes.reservationNumber) {
+                const cleanGuest = String(guestRes.reservationNumber).toUpperCase().replace(/^#/, '');
+                targetRes = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanGuest);
+            }
+            // 3. Booking created in this tab session (if owned by current user/guest)
+            if (!targetRes && !isDetached && tabResNo) {
+                const cleanTab = String(tabResNo).toUpperCase().replace(/^#/, '');
+                const candidate = sortedHist.find(r => String(r.reservationNumber || '').toUpperCase().replace(/^#/, '') === cleanTab);
+                if (candidate && isReservationOwnedByCurrentSession(candidate)) {
+                    targetRes = candidate;
+                }
+            }
+            // 4. Logged-in account's newest active reservation
+            if (!targetRes && !isDetached) {
                 targetRes = sortedHist.find(r => 
                     r.bookedBy !== 'staff' &&
-                    r.customerName && r.customerName.trim().toLowerCase() === cName.toLowerCase() &&
+                    isReservationOwnedByCurrentSession(r) &&
                     r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
                     r.kdsStatus !== 'served' && r.approvalStatus !== 'completed' && !r.completedAt
                 );
             }
 
-            // 3. If no active upcoming reservation exists, open the Search Stage directly instead of showing an old completed RES-8!
             if (targetRes) {
                 renderManageDetails(targetRes);
                 goToDetailsStage();
@@ -2190,8 +2230,7 @@
             // Link this found reservation as the active session booking
             sessionStorage.removeItem('chatReservationDetached');
             sessionStorage.setItem('guestChatRes', JSON.stringify(found));
-            localStorage.setItem('activeCustomerReservation', found.reservationNumber);
-            localStorage.setItem('reservationNumber', found.reservationNumber);
+            sessionStorage.setItem('currentSessionResNo', found.reservationNumber);
 
             renderManageDetails(found);
             goToDetailsStage();
