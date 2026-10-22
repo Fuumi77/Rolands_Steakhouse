@@ -4929,14 +4929,13 @@
             logoutBtn.classList.remove('hidden');
         }
 
-        // Authentication
+        // Authentication (Always requires Master Passkey on page load)
         function initAuth() {
             const authMsg = document.getElementById('auth-message');
             document.getElementById('logout-admin-btn').onclick = logoutSuperAdmin;
 
-            if (sessionStorage.getItem('superAdminActive') === 'true') {
-                return renderDashboard();
-            } else {
+            sessionStorage.removeItem('superAdminActive');
+            {
                 // Strict Failsafe: Hide dashboard completely when logged out
                 const dashboard = document.getElementById('dashboard-section');
                 const auth = document.getElementById('auth-section');
