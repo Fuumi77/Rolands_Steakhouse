@@ -502,8 +502,11 @@
             localStorage.removeItem('pendingReservationNumber');
 
             if (resNo && resNo !== 'N/A') {
-                localStorage.setItem('reservationNumber', resNo);
-                localStorage.setItem('activeCustomerReservation', resNo);
+                sessionStorage.setItem('currentSessionResNo', resNo);
+                sessionStorage.setItem('currentSessionResOwner', (entry && entry.customerName) ? entry.customerName : '');
+                sessionStorage.removeItem('chatReservationDetached');
+                localStorage.removeItem('reservationNumber');
+                localStorage.removeItem('activeCustomerReservation');
             }
         })();
 </script>
