@@ -226,10 +226,9 @@
             }
             ctx.fillText(line, 90, y);
 
-            // Bottom VAT & Total Divider
+            // Bottom VAT & Total Divider (No VAT on ₱200 Standard Reservation Fee)
             const totalNum = Number(entry.paymentAmount || 0);
-            const vatableNum = totalNum / 1.12;
-            const vatNum = totalNum - vatableNum;
+            const isStandardFixedFee = (String(entry.reservationType || '').toLowerCase() === 'standard' && (!entry.foods || entry.foods.length === 0)) || totalNum === 200;
 
             ctx.strokeStyle = '#cbd5e1';
             ctx.beginPath();
@@ -237,15 +236,27 @@
             ctx.lineTo(510, 560);
             ctx.stroke();
 
-            ctx.fillStyle = '#64748b';
-            ctx.font = '13px Arial, sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText('Vatable Sales:', 90, 582);
-            ctx.fillText('VAT (12% Incl.):', 90, 602);
+            if (isStandardFixedFee) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = '13px Arial, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Fee Type:', 90, 592);
+                ctx.textAlign = 'right';
+                ctx.fillText('Fixed Reservation Fee (No VAT)', 510, 592);
+            } else {
+                const vatableNum = totalNum / 1.12;
+                const vatNum = totalNum - vatableNum;
 
-            ctx.textAlign = 'right';
-            ctx.fillText('₱' + vatableNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 582);
-            ctx.fillText('₱' + vatNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 602);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '13px Arial, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Vatable Sales:', 90, 582);
+                ctx.fillText('VAT (12% Incl.):', 90, 602);
+
+                ctx.textAlign = 'right';
+                ctx.fillText('₱' + vatableNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 582);
+                ctx.fillText('₱' + vatNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 510, 602);
+            }
 
             ctx.fillStyle = '#1b5e20';
             ctx.font = 'bold 20px Arial, sans-serif';
@@ -255,46 +266,17 @@
             ctx.textAlign = 'right';
             const fmtTotal = '₱' + totalNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.fillText(fmtTotal, 510, 634);
-
-            // Footer
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#64748b';
-            ctx.font = '12px Arial, sans-serif';
-            ctx.fillText('Processed via PayMongo • Verified Digital E-Receipt', 300, 695);
-
-            return canvas.toDataURL('image/png');
         }
 
-        // 👉 If returning from external PayMongo portal, require confirmation before saving to MySQL & issuing receipt!
+        // 👉 Finalize reservation in MySQL ONLY after PayMongo completes and redirects here!
         (async function handleDeferredPaymongoReturn() {
             const urlP = new URLSearchParams(window.location.search);
             const pendingJson = sessionStorage.getItem('pendingPaymongoOrder');
             if (urlP.get('source') === 'paymongo' && pendingJson && !urlP.get('resno')) {
-                const cardEl = document.querySelector('.success-card');
-                if (cardEl) cardEl.style.visibility = 'hidden';
-
-                const pending = JSON.parse(pendingJson);
-                const fmtAmt = Number(pending.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-                let confirmed = true;
-                if (typeof superModal === 'function') {
-                    confirmed = await superModal({
-                        title: 'Confirm Test Payment Completion 💳',
-                        message: `Did you finish authorizing the test payment of <b>₱${fmtAmt}</b> for <b>${pending.table}</b> on PayMongo?<br><br>Click <b>Confirm Payment</b> to generate your official E-Receipt and reservation number.`,
-                        type: 'confirm',
-                        confirmText: '✅ Confirm Payment',
-                        cancelText: '✕ Not Yet (Go Back)'
-                    });
-                } else {
-                    confirmed = confirm(`Confirm test payment of ₱${fmtAmt} for ${pending.table}?`);
-                }
-
-                if (!confirmed) {
-                    window.location.href = pending.reservationType === 'priority' ? 'payment.html' : 'standard-payment.html';
-                    return;
-                }
-
                 try {
+                    const pending = JSON.parse(pendingJson);
+                    sessionStorage.removeItem('pendingPaymongoOrder');
+
                     const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -340,12 +322,10 @@
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
                     localStorage.setItem('reservationNumber', newResNo);
                     localStorage.setItem('activeCustomerReservation', newResNo);
-                    sessionStorage.removeItem('pendingPaymongoOrder');
 
-                    window.location.replace(`payment-success.html?resno=${newResNo}&confirmed=1`);
+                    window.location.replace(`payment-success.html?resno=${newResNo}`);
                 } catch (e) {
-                    alert('Failed to finalize reservation. Please try again.');
-                    window.location.href = 'index.html';
+                    console.error('Failed to finalize reservation:', e);
                 }
             }
         })();
@@ -428,10 +408,20 @@
             document.getElementById('receipt-area').style.display = 'block';
             document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
             const totalPaidVal = Number(entry.paymentAmount || 0);
-            const vatableVal = totalPaidVal / 1.12;
-            const vatVal = totalPaidVal - vatableVal;
-            if (document.getElementById('receipt-vatable')) document.getElementById('receipt-vatable').textContent = '₱' + vatableVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-            if (document.getElementById('receipt-vat')) document.getElementById('receipt-vat').textContent = '₱' + vatVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+            const isStdFee = (String(entry.reservationType || '').toLowerCase() === 'standard' && (!entry.foods || entry.foods.length === 0)) || totalPaidVal === 200;
+            const vatableEl = document.getElementById('receipt-vatable');
+            const vatEl = document.getElementById('receipt-vat');
+
+            if (isStdFee) {
+                if (vatableEl && vatableEl.parentElement && vatableEl.parentElement.parentElement) {
+                    vatableEl.parentElement.parentElement.style.display = 'none';
+                }
+            } else {
+                const vatableVal = totalPaidVal / 1.12;
+                const vatVal = totalPaidVal - vatableVal;
+                if (vatableEl) vatableEl.textContent = '₱' + vatableVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+                if (vatEl) vatEl.textContent = '₱' + vatVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+            }
             document.getElementById('receipt-total').textContent = '₱' + totalPaidVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
             
             let itemsHtml = `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
