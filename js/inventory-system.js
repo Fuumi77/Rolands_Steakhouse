@@ -370,6 +370,7 @@
                     newStock: finalNewStock,
                     unit: entry.unit || (matchedIng ? matchedIng.unit : 'g'),
                     operator: 1
+                    timestamp: newEntry.timestamp
                 });
                 if (_syncMovementTimer) clearTimeout(_syncMovementTimer);
                 _syncMovementTimer = setTimeout(flushPendingSyncMovements, 250);
@@ -868,7 +869,7 @@
                     fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/log-menu-stock', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ changes: menuStockChanges, updatedBy: 1 })
+                        body: JSON.stringify({ changes: menuStockChanges, updatedBy: 1, timestamp: new Date().toISOString() })
                     }).catch(() => {});
                 }
             }
