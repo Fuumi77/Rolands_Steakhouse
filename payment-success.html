@@ -265,6 +265,91 @@
             return canvas.toDataURL('image/png');
         }
 
+        // 👉 If returning from external PayMongo portal, require confirmation before saving to MySQL & issuing receipt!
+        (async function handleDeferredPaymongoReturn() {
+            const urlP = new URLSearchParams(window.location.search);
+            const pendingJson = sessionStorage.getItem('pendingPaymongoOrder');
+            if (urlP.get('source') === 'paymongo' && pendingJson && !urlP.get('resno')) {
+                const cardEl = document.querySelector('.success-card');
+                if (cardEl) cardEl.style.visibility = 'hidden';
+
+                const pending = JSON.parse(pendingJson);
+                const fmtAmt = Number(pending.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+                let confirmed = true;
+                if (typeof superModal === 'function') {
+                    confirmed = await superModal({
+                        title: 'Confirm Test Payment Completion 💳',
+                        message: `Did you finish authorizing the test payment of <b>₱${fmtAmt}</b> for <b>${pending.table}</b> on PayMongo?<br><br>Click <b>Confirm Payment</b> to generate your official E-Receipt and reservation number.`,
+                        type: 'confirm',
+                        confirmText: '✅ Confirm Payment',
+                        cancelText: '✕ Not Yet (Go Back)'
+                    });
+                } else {
+                    confirmed = confirm(`Confirm test payment of ₱${fmtAmt} for ${pending.table}?`);
+                }
+
+                if (!confirmed) {
+                    window.location.href = pending.reservationType === 'priority' ? 'payment.html' : 'standard-payment.html';
+                    return;
+                }
+
+                try {
+                    const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: pending.name,
+                            email: pending.email,
+                            date: pending.date,
+                            time: pending.time,
+                            table: pending.table,
+                            cartItems: pending.cartItems || [],
+                            status: 'Pending',
+                            reservationType: pending.reservationType,
+                            paymentAmount: pending.paymentAmount,
+                            foods: pending.foods || []
+                        })
+                    });
+                    const dbData = await dbRes.json();
+                    const newResNo = 'RES-' + dbData.reservationId;
+
+                    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                    hist.push({
+                        reservationNumber: newResNo,
+                        reservationType: pending.reservationType,
+                        bookedBy: 'online',
+                        arrivalDate: pending.date,
+                        arrivalTime: pending.time,
+                        arrivalDateTimeDisplay: pending.displayDt,
+                        customerName: pending.name,
+                        email: pending.email,
+                        contactNumber: pending.phone || '',
+                        bookedTable: pending.table,
+                        orderSummary: pending.orderSummary,
+                        foods: pending.foods || [],
+                        cartItems: pending.cartItems || [],
+                        beefNote: pending.beefNote || '',
+                        paymentAmount: pending.paymentAmount,
+                        paymentRef: 'E-RECEIPT-' + newResNo,
+                        paymentStatus: 'pending',
+                        approvalStatus: 'pending',
+                        paymentMethod: 'paymongo',
+                        createdAt: new Date().toISOString()
+                    });
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                    localStorage.setItem('reservationNumber', newResNo);
+                    localStorage.setItem('activeCustomerReservation', newResNo);
+                    sessionStorage.removeItem('pendingPaymongoOrder');
+
+                    window.location.replace(`payment-success.html?resno=${newResNo}&confirmed=1`);
+                } catch (e) {
+                    alert('Failed to finalize reservation. Please try again.');
+                    window.location.href = 'index.html';
+                }
+            }
+        })();
+
         // Grab reservation number from URL or localStorage
         const params = new URLSearchParams(window.location.search);
         const resNo  = params.get('resno') || localStorage.getItem('reservationNumber') || 'N/A';
