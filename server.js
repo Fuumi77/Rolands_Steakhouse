@@ -202,7 +202,7 @@ app.post('/api/paymongo/checkout', async (req, res) => {
                     show_description: true,
                     show_line_items: true,
                     description: description || "Roland's Steakhouse Reservation",
-                    payment_method_types: ['gcash', 'paymaya', 'card', 'dob'],
+                    payment_method_types: ['qrph', 'gcash', 'paymaya', 'card', 'dob'],
                     line_items: [
                         {
                             currency: 'PHP',
