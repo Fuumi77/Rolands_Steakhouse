@@ -98,19 +98,19 @@
 
             if (!paper) return;
 
-            const reservationNumber = localStorage.getItem('reservationNumber') || 'TBD';
+            const resNumForFile = document.getElementById('order-num')?.textContent || localStorage.getItem('reservationNumber') || 'TBD';
             
-            wrapper.style.filter = 'none'; // Remove wrapper filter to prevent buggy html2canvas rendering
-            btnArea.style.display = 'none'; // Hide buttons
+            wrapper.style.filter = 'none';
+            btnArea.style.display = 'none';
 
             html2canvas(paper, {
                 backgroundColor: '#ffffff',
-                scale: 4, // Increased scale for super sharp image quality
-                useCORS: true, // Prevents custom font rendering issues
+                scale: 4,
+                useCORS: true,
                 logging: false
              }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `receipt-${reservationNumber}.png`;
+                link.download = `receipt-${resNumForFile}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 
@@ -123,7 +123,7 @@
              });
         }
 
-        // Load from URL param if available, otherwise fallback to temporary localStorage keys
+        // Load from URL param if available, otherwise fallback to localStorage
         const urlParams = new URLSearchParams(window.location.search);
         const urlRes = urlParams.get('res');
         
@@ -133,52 +133,51 @@
         let orders = localStorage.getItem('orderSummary') || 'No items selected';
         let reservationNumber = localStorage.getItem('reservationNumber') || 'TBD';
         let arrivalDisplay = localStorage.getItem('arrivalDateTimeDisplay') || new Date().toLocaleString('en-GB', { hour12: false });
+        let matchedResRecord = null;
 
         if (urlRes) {
             reservationNumber = urlRes;
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const myRes = hist.find(r => r.reservationNumber === urlRes);
-            if (myRes) {
-                name = myRes.customerName || 'Valued Guest';
-                table = myRes.bookedTable || 'TBD';
-                total = myRes.paymentAmount || myRes.totalBill || myRes.amount || myRes.subtotalAmount || '0';
-                orders = (myRes.foods && myRes.foods.length) ? myRes.foods.join(', ') : (myRes.orderSummary || 'Standard Reservation');
-                reservationNumber = myRes.reservationNumber;
-                arrivalDisplay = myRes.arrivalDateTimeDisplay || new Date().toLocaleString('en-GB', { hour12: false });
+            matchedResRecord = hist.find(r => r.reservationNumber === urlRes);
+            if (matchedResRecord) {
+                name = matchedResRecord.customerName || 'Valued Guest';
+                table = matchedResRecord.bookedTable || 'TBD';
+                total = matchedResRecord.paymentAmount || matchedResRecord.totalBill || matchedResRecord.amount || matchedResRecord.subtotalAmount || '0';
+                orders = (matchedResRecord.foods && matchedResRecord.foods.length) ? matchedResRecord.foods.join(', ') : (matchedResRecord.orderSummary || 'Standard Reservation Deposit');
+                reservationNumber = matchedResRecord.reservationNumber;
+                arrivalDisplay = matchedResRecord.arrivalDateTimeDisplay || `${matchedResRecord.arrivalDate || ''} ${matchedResRecord.arrivalTime || ''}`.trim() || arrivalDisplay;
             }
         }
 
-        function updateReceiptTotalsUI(amountVal, ordersText) {
+        function updateReceiptTotalsUI(amountVal, ordersText, resRecord) {
             const cleanTotal = parseFloat(String(amountVal || '0').replace(/[^0-9.]/g, '')) || 0;
             const checkOrders = String(ordersText !== undefined ? ordersText : orders || '').toLowerCase();
-            const isStandardFixedFee = (cleanTotal === 200 && (!myRes || !Array.isArray(myRes.foods) || myRes.foods.length === 0)) ||
-                                       checkOrders.includes('standard reservation');
+            const rec = resRecord || matchedResRecord;
+            const hasNoFoods = !rec || !Array.isArray(rec.foods) || rec.foods.length === 0;
+            const isStandardFixedFee = (cleanTotal === 200 && hasNoFoods) ||
+                                       checkOrders.includes('standard reservation') ||
+                                       (rec && String(rec.reservationType || '').toLowerCase() === 'standard' && hasNoFoods);
 
             const vatableEl = document.getElementById('vatable-sales');
             const vatEl = document.getElementById('vat-amount');
+            const vatableRow = vatableEl ? vatableEl.closest('.info-row') : null;
+            const vatRow = vatEl ? vatEl.closest('.info-row') : null;
 
             if (isStandardFixedFee) {
-                // 👉 Hide VAT breakdown for the ₱200 Fixed Standard Reservation Fee!
-                if (vatableEl && vatableEl.parentElement && vatableEl.parentElement.parentElement) {
-                    vatableEl.parentElement.parentElement.style.display = 'none';
-                }
-                if (vatEl && vatEl.parentElement && vatEl.parentElement.parentElement) {
-                    vatEl.parentElement.parentElement.style.display = 'none';
-                }
+                // Hide VAT breakdown for the ₱200 Fixed Standard Reservation Fee!
+                if (vatableRow) vatableRow.style.display = 'none';
+                if (vatRow) vatRow.style.display = 'none';
             } else {
                 const vatableSales = cleanTotal / 1.12;
                 const vatAmt = cleanTotal - vatableSales;
 
+                if (vatableRow) vatableRow.style.display = 'flex';
+                if (vatRow) vatRow.style.display = 'flex';
+
                 if (vatableEl) {
-                    if (vatableEl.parentElement && vatableEl.parentElement.parentElement) {
-                        vatableEl.parentElement.parentElement.style.display = 'flex';
-                    }
                     vatableEl.textContent = vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
                 if (vatEl) {
-                    if (vatEl.parentElement && vatEl.parentElement.parentElement) {
-                        vatEl.parentElement.parentElement.style.display = 'flex';
-                    }
                     vatEl.textContent = vatAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
@@ -187,6 +186,29 @@
                 document.getElementById('total-amount').textContent = cleanTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         }
+
+        function renderOrderItemsList(ordersInput) {
+            const list = document.getElementById('order-items-list');
+            if (!list) return;
+            list.innerHTML = '';
+            const itemList = Array.isArray(ordersInput) ? ordersInput : String(ordersInput || '').split(/,\s*/);
+            itemList.forEach(item => {
+                if (item && item.trim()) {
+                    const li = document.createElement('li');
+                    li.className = 'order-item';
+                    li.innerHTML = `<span>${item.trim()}</span> <span>(Paid)</span>`;
+                    list.appendChild(li);
+                }
+            });
+        }
+
+        // Fill receipt header, items, and totals
+        if (document.getElementById('order-num')) document.getElementById('order-num').textContent = reservationNumber;
+        if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = name;
+        if (document.getElementById('table-id')) document.getElementById('table-id').textContent = table;
+        if (document.getElementById('date-now')) document.getElementById('date-now').textContent = arrivalDisplay;
+        renderOrderItemsList(orders);
+        updateReceiptTotalsUI(total, orders, matchedResRecord);
 
         // Initialize QR Code
         const qrContainer = document.getElementById("qrcode");
@@ -202,7 +224,6 @@
                     correctLevel: QRCode.CorrectLevel.H
                 });
             } else {
-                // Fallback QR generator if CDN script failed or offline
                 const qrImg = document.createElement('img');
                 qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(reservationNumber || 'TBD')}`;
                 qrImg.alt = 'QR Code';
@@ -211,7 +232,8 @@
                 qrContainer.appendChild(qrImg);
             }
         }
-        // Check if reservation is cancelled
+
+        // Check if reservation is cancelled or completed
         const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
         const currentRes = hist.find(r => r.reservationNumber === reservationNumber);
         const cancelBtn = document.getElementById('btn-cancel-reservation-receipt');
@@ -274,7 +296,6 @@
                 });
             }
 
-            // 👉 Sync cancellation to live MySQL database so it doesn't come back!
             try {
                 await Promise.all([
                     fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
@@ -298,11 +319,11 @@
             }
         }
 
-        // 👉 Auto-fetch from MySQL if this QR receipt is scanned on a different device!
+        // Auto-fetch from MySQL if this QR receipt is scanned on a different device
         (async function ensureCloudReceiptData() {
             if (!urlRes) return;
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const existsLocally = hist.some(r => r.reservationNumber === urlRes);
+            const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const existsLocally = localHist.some(r => r.reservationNumber === urlRes);
             if (!existsLocally) {
                 try {
                     const r = await fetch('https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=' + Date.now());
@@ -313,13 +334,10 @@
                         if (document.getElementById('order-num')) document.getElementById('order-num').textContent = found.reservationNumber;
                         if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = found.customerName || 'Valued Guest';
                         if (document.getElementById('table-id')) document.getElementById('table-id').textContent = found.bookedTable || 'TBD';
-                        if (document.getElementById('total-amount')) document.getElementById('total-amount').textContent = Number(found.paymentAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         if (document.getElementById('date-now')) document.getElementById('date-now').textContent = `${found.arrivalDate || ''} ${found.arrivalTime || ''}`.trim();
-                        const listEl = document.getElementById('order-items-list');
-                        if (listEl) {
-                            const items = (Array.isArray(found.foods) && found.foods.length) ? found.foods : ['Standard Reservation'];
-                            listEl.innerHTML = items.map(item => `<li class="order-item"><span>${item.trim()}</span> <span>(Paid)</span></li>`).join('');
-                        }
+                        const items = (Array.isArray(found.foods) && found.foods.length) ? found.foods : ['Standard Reservation Deposit'];
+                        renderOrderItemsList(items);
+                        updateReceiptTotalsUI(found.paymentAmount, items.join(', '), found);
                     }
                 } catch (e) {}
             }
