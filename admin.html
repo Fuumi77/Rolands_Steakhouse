@@ -522,8 +522,8 @@
                         <div>
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Number
-                                of Guests</label>
-                            <input type="number" id="walkin-guests" placeholder="e.g. 4" min="1" max="20" autocomplete="new-password"
+                                of Guests <span style="color:#ef4444;">*</span></label>
+                            <input type="number" id="walkin-guests" placeholder="e.g. 4" min="1" max="50" required autocomplete="new-password"
                                 style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
                         </div>
                     </div>
@@ -5962,6 +5962,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
         return;
     }
     if (!table) { errorEl.textContent = 'Please select a table.'; errorEl.style.display = 'block'; return; }
+    if (!guests || parseInt(guests, 10) < 1) { errorEl.textContent = 'Number of guests is required (at least 1).'; errorEl.style.display = 'block'; return; }
 
     // 👉 1. Prepare data for the confirmation receipt
     const d = new Date(date + 'T' + time);
