@@ -578,58 +578,122 @@ app.post('/reserve', async (req, res) => {
 let cachedInventory = null;
 let invCacheTime = 0;
 
-// Ensure menu_stock_change_log exists
-db.query(`
-    CREATE TABLE IF NOT EXISTS menu_stock_change_log (
-        log_id INT AUTO_INCREMENT PRIMARY KEY,
-        item_name VARCHAR(100),
-        previous_stock INT DEFAULT 0,
-        new_stock INT DEFAULT 0,
-        updated_by INT DEFAULT 1,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`).catch(() => {});
+// 👉 HELPER: Converts Website ISO Timestamp (or current time) into exact Philippine Time (UTC+8) for MySQL!
+function toPhilippineTimeSQL(isoOrDate) {
+    const baseDate = isoOrDate ? new Date(isoOrDate) : new Date();
+    const validDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+    // Shift UTC milliseconds by +8 hours (28,800,000 ms) so MySQL stores exact PH local clock time
+    const phTime = new Date(validDate.getTime() + (8 * 60 * 60 * 1000));
+    return phTime.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// Official Unit & Metadata Lookup Table (Guarantees 100% accurate units in MySQL)
+const MASTER_INGREDIENT_META = {
+    'ING-BEEF-TENDERLOIN': { category: 'Meat', minThreshold: 2500, unit: 'g' },
+    'ING-BEEF-RIBEYE':     { category: 'Meat', minThreshold: 3000, unit: 'g' },
+    'ING-BEEF-TBONE':      { category: 'Meat', minThreshold: 3000, unit: 'g' },
+    'ING-BEEF-SIRLOIN':    { category: 'Meat', minThreshold: 2500, unit: 'g' },
+    'ING-BEEF-PATTY':      { category: 'Meat', minThreshold: 20,   unit: 'pcs' },
+    'ING-CHICKEN-WHOLE':   { category: 'Poultry', minThreshold: 10, unit: 'pcs' },
+    'ING-FISH-TANIGUE':    { category: 'Seafood', minThreshold: 2000, unit: 'g' },
+    'ING-FISH-BANGUS':     { category: 'Seafood', minThreshold: 10, unit: 'pcs' },
+    'ING-SALT-PEPPER':     { category: 'Produce', minThreshold: 500, unit: 'g' },
+    'ING-MARGARINE':       { category: 'Dairy', minThreshold: 1000, unit: 'g' },
+    'ING-OYSTER-SAUCE':    { category: 'Sauces & Liquids', minThreshold: 1500, unit: 'ml' },
+    'ING-KETCHUP':         { category: 'Sauces & Liquids', minThreshold: 1000, unit: 'g' },
+    'ING-BUTTER':          { category: 'Dairy', minThreshold: 800, unit: 'g' },
+    'ING-TOYO':            { category: 'Sauces & Liquids', minThreshold: 1500, unit: 'ml' },
+    'ING-KALAMANSI':       { category: 'Produce', minThreshold: 800, unit: 'ml' },
+    'ING-BURGER-BUN':      { category: 'Bakery', minThreshold: 25, unit: 'pcs' },
+    'ING-BREAD-GARLIC':    { category: 'Bakery', minThreshold: 20, unit: 'pcs' },
+    'ING-POTATO':          { category: 'Produce', minThreshold: 5000, unit: 'g' },
+    'ING-RICE':            { category: 'Grains', minThreshold: 8000, unit: 'g' },
+    'ING-MUSHROOM-SAUCE':  { category: 'Sauces & Liquids', minThreshold: 1500, unit: 'ml' },
+    'ING-CHICKEN-SOUP-BASE':{ category: 'Sauces & Liquids', minThreshold: 1000, unit: 'ml' },
+    'ING-GARLIC':          { category: 'Produce', minThreshold: 500, unit: 'g' },
+    'ING-WINE-CARLO-RED':  { category: 'Beverages', minThreshold: 6, unit: 'pcs' },
+    'ING-WINE-CARLO-WHITE':{ category: 'Beverages', minThreshold: 6, unit: 'pcs' },
+    'ING-WINE-PEGOES':     { category: 'Beverages', minThreshold: 5, unit: 'pcs' },
+    'ING-MANGO-JUICE':     { category: 'Beverages', minThreshold: 2000, unit: 'ml' },
+    'ING-PINEAPPLE-JUICE': { category: 'Beverages', minThreshold: 2000, unit: 'ml' },
+    'ING-ICED-TEA':        { category: 'Beverages', minThreshold: 3000, unit: 'ml' },
+    'ING-JUICE-FOUR-SEASONS': { category: 'Beverages', minThreshold: 2000, unit: 'ml' },
+    'ING-JUICE-PINEORANGE':{ category: 'Beverages', minThreshold: 2000, unit: 'ml' },
+    'ING-JUICE-CUCUMBER':  { category: 'Beverages', minThreshold: 1500, unit: 'ml' },
+    'ING-JUICE-BLUE-LEMONADE': { category: 'Beverages', minThreshold: 1500, unit: 'ml' },
+    'ING-JUICE-CALAMANSI': { category: 'Beverages', minThreshold: 1200, unit: 'ml' },
+    'ING-COKE-CAN':        { category: 'Beverages', minThreshold: 20, unit: 'pcs' },
+    'ING-SPRITE-CAN':      { category: 'Beverages', minThreshold: 20, unit: 'pcs' },
+    'ING-BEER-PILSEN':     { category: 'Beverages', minThreshold: 24, unit: 'pcs' },
+    'ING-BEER-LIGHT':      { category: 'Beverages', minThreshold: 24, unit: 'pcs' },
+    'ING-WATER-BOTTLE':    { category: 'Beverages', minThreshold: 30, unit: 'pcs' },
+    'ING-TEA-BAGS':        { category: 'Beverages', minThreshold: 20, unit: 'pcs' },
+    'ING-COFFEE-BEANS':    { category: 'Beverages', minThreshold: 1000, unit: 'g' },
+    'ING-MILK-CREAM':      { category: 'Dairy', minThreshold: 1000, unit: 'ml' }
+};
+
+// Auto-repair existing master_inventory units & categories once on server startup
+setTimeout(async () => {
+    try {
+        await db.query("ALTER TABLE master_inventory ADD COLUMN unit_of_measurement VARCHAR(20) DEFAULT 'g'").catch(()=>{});
+        for (const [id, meta] of Object.entries(MASTER_INGREDIENT_META)) {
+            await db.query(
+                "UPDATE master_inventory SET category = ?, min_threshold = ?, unit_of_measurement = ? WHERE item_id = ? AND (unit_of_measurement = 'g' OR category = 'General' OR min_threshold <= 10)",
+                [meta.category, meta.minThreshold, meta.unit, id]
+            ).catch(()=>{});
+        }
+    } catch (e) {}
+}, 2000);
 
 app.get('/api/inventory/raw', async (req, res) => {
     try {
-        if (cachedInventory && (Date.now() - invCacheTime < 4000)) return res.json(cachedInventory);
+        if (cachedInventory && (Date.now() - invCacheTime < 15000)) return res.json(cachedInventory);
         
         const [rows] = await db.query('SELECT * FROM master_inventory');
-        cachedInventory = rows.map(r => ({
-            id: r.item_id,
-            name: r.item_name,
-            category: r.category && r.category !== 'General' ? r.category : undefined,
-            stock: parseFloat(r.current_stock) || 0,
-            minThreshold: parseFloat(r.min_threshold) > 10 ? parseFloat(r.min_threshold) : undefined,
-            unit: r.unit_of_measurement || undefined
-        }));
+        cachedInventory = rows.map(r => {
+            const meta = MASTER_INGREDIENT_META[r.item_id] || {};
+            return {
+                id: r.item_id,
+                name: r.item_name,
+                category: (r.category && r.category !== 'General') ? r.category : (meta.category || 'General'),
+                stock: parseFloat(r.current_stock) || 0,
+                minThreshold: parseFloat(r.min_threshold) > 10 ? parseFloat(r.min_threshold) : (meta.minThreshold || 10),
+                unit: meta.unit || r.unit_of_measurement || 'g'
+            };
+        });
         invCacheTime = Date.now();
         res.json(cachedInventory);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/inventory/restock', async (req, res) => {
-    const { id, name, category, addAmount, minThreshold, unit } = req.body;
+    const { id, name, category, addAmount, minThreshold, unit, timestamp } = req.body;
     try {
+        const meta = MASTER_INGREDIENT_META[id] || {};
+        const finalUnit = unit || meta.unit || 'g';
+        const finalCat = (category && category !== 'General') ? category : (meta.category || 'General');
+        const finalThresh = minThreshold || meta.minThreshold || 100;
+        const phNow = toPhilippineTimeSQL(timestamp);
+
         const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [id, name]);
         const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
         const newStock = prevStock + Number(addAmount || 0);
 
         if (current.length > 0) {
             await db.query(
-                'UPDATE master_inventory SET current_stock = ?, category = COALESCE(?, category), min_threshold = COALESCE(?, min_threshold), unit_of_measurement = COALESCE(?, unit_of_measurement), last_updated = NOW() WHERE item_id = ? OR item_name = ?',
-                [newStock, category || null, minThreshold || null, unit || null, id, name]
+                'UPDATE master_inventory SET current_stock = ?, category = ?, min_threshold = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ? OR item_name = ?',
+                [newStock, finalCat, finalThresh, finalUnit, phNow, id, name]
             );
         } else {
             await db.query(
-                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [id, name, category || 'Meat', newStock, minThreshold || 100, unit || 'g', 'General Santos City']
+                'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [id, name, finalCat, newStock, finalThresh, finalUnit, 'General Santos City', phNow]
             );
         }
 
         await db.query(
-            'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [name, prevStock, newStock, unit || 'g', 1]
+            'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, prevStock, newStock, finalUnit, 1, phNow]
         );
         cachedInventory = null; 
         res.json({ success: true, newStock: newStock });
@@ -637,21 +701,24 @@ app.post('/api/inventory/restock', async (req, res) => {
 });
 
 app.post('/api/inventory/deduct-raw', async (req, res) => {
-    const { items, operator } = req.body;
+    const { items, operator, timestamp } = req.body;
     try {
-        const staffId = parseInt(operator) || 1; 
+        const staffId = parseInt(operator) || 1;
+        const phNow = toPhilippineTimeSQL(timestamp);
         for (let i of (items || [])) {
+            const meta = MASTER_INGREDIENT_META[i.id] || {};
+            const finalUnit = i.unit || meta.unit || 'g';
             const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [i.id, i.name]);
             const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
             const newStock = Math.max(0, prevStock - Number(i.deductQty || 0));
 
             if (current.length > 0) {
-                await db.query('UPDATE master_inventory SET current_stock = ?, last_updated = NOW() WHERE item_id = ? OR item_name = ?', [newStock, i.id, i.name]);
+                await db.query('UPDATE master_inventory SET current_stock = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ? OR item_name = ?', [newStock, finalUnit, phNow, i.id, i.name]);
             }
             
             await db.query(
-                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-                [i.name, prevStock, newStock, i.unit || 'g', staffId]
+                'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [i.name, prevStock, newStock, finalUnit, staffId, phNow]
             );
         }
         cachedInventory = null; 
@@ -663,8 +730,14 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
     const movements = Array.isArray(req.body.movements) ? req.body.movements : [req.body];
     try {
         for (const m of movements) {
-            const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator } = m;
+            const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator, timestamp } = m;
             if (!ingredientId) continue;
+
+            const meta = MASTER_INGREDIENT_META[ingredientId] || {};
+            const finalUnit = meta.unit || unit || 'g';
+            const finalCat = (category && category !== 'General') ? category : (meta.category || 'General');
+            const finalThresh = (minThreshold && minThreshold > 10) ? minThreshold : (meta.minThreshold || 100);
+            const phNow = toPhilippineTimeSQL(timestamp);
 
             const [current] = await db.query(
                 'SELECT item_id, current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1',
@@ -679,25 +752,26 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
                     `UPDATE master_inventory 
                      SET current_stock = ?, 
                          item_name = COALESCE(?, item_name),
-                         category = CASE WHEN ? IS NOT NULL AND ? != 'General' THEN ? ELSE category END,
-                         min_threshold = CASE WHEN ? IS NOT NULL AND ? > 10 THEN ? ELSE min_threshold END,
-                         last_updated = NOW()
+                         category = ?,
+                         min_threshold = ?,
+                         unit_of_measurement = ?,
+                         last_updated = ?
                      WHERE item_id = ?`,
-                    [safeNewStock, ingredientName || null, category, category, category, minThreshold, minThreshold, minThreshold, current[0].item_id]
+                    [safeNewStock, ingredientName || null, finalCat, finalThresh, finalUnit, phNow, current[0].item_id]
                 );
             } else {
                 prevStock = Math.max(0, safeNewStock - (parseFloat(changeQty) || 0));
                 await db.query(
-                    'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-                    [ingredientId, ingredientName || ingredientId, category || 'General', safeNewStock, minThreshold || 100, 'General Santos City']
+                    'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    [ingredientId, ingredientName || ingredientId, finalCat, safeNewStock, finalThresh, finalUnit, 'General Santos City', phNow]
                 );
             }
 
             const staffId = parseInt(operator) || 1;
             if (Math.abs(safeNewStock - prevStock) > 0.001 || Number(changeQty) !== 0) {
                 await db.query(
-                    'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, NOW())',
-                    [ingredientName || ingredientId, prevStock, safeNewStock, unit || 'g', staffId]
+                    'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    [ingredientName || ingredientId, prevStock, safeNewStock, finalUnit, staffId, phNow]
                 );
             }
         }
@@ -710,17 +784,18 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
     }
 });
 
-/* 👉 NEW: LOG MENU PORTION REDUCTIONS TO menu_stock_change_log */
+/* 👉 LOG MENU PORTION REDUCTIONS TO menu_stock_change_log WITH EXACT PH TIMESTAMP */
 app.post('/api/inventory/log-menu-stock', async (req, res) => {
-    const { changes, updatedBy } = req.body;
+    const { changes, updatedBy, timestamp } = req.body;
     try {
         const staffId = parseInt(updatedBy) || 1;
+        const phNow = toPhilippineTimeSQL(timestamp);
         if (Array.isArray(changes)) {
             for (const c of changes) {
                 if (c && c.itemName && c.previousStock !== c.newStock) {
                     await db.query(
-                        'INSERT INTO menu_stock_change_log (item_name, previous_stock, new_stock, updated_by, updated_at) VALUES (?, ?, ?, ?, NOW())',
-                        [c.itemName, parseInt(c.previousStock) || 0, parseInt(c.newStock) || 0, staffId]
+                        'INSERT INTO menu_stock_change_log (item_name, previous_stock, new_stock, updated_by, updated_at) VALUES (?, ?, ?, ?, ?)',
+                        [c.itemName, parseInt(c.previousStock) || 0, parseInt(c.newStock) || 0, staffId, toPhilippineTimeSQL(c.timestamp || timestamp)]
                     );
                 }
             }
