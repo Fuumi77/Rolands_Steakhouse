@@ -5702,7 +5702,7 @@
 
             function computeOrderSignature(r) {
                 const foodsStr = Array.isArray(r.foods) ? r.foods.join(',') : (r.orderSummary || '');
-                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}|v3`;
+                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}|v4`;
             }
 
             window.ensureOrderProofUpToDate = function (r) {
@@ -5738,7 +5738,8 @@
                 const resNum = r.reservationNumber || 'N/A';
                 const ref = r.paymentRef || (`E-RECEIPT-${resNum}`);
                 const totalAmt = Number(r.paymentAmount || 0);
-                const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
+                const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
                 const vatable = totalAmt / 1.12;
                 const vat = totalAmt - vatable;
 
