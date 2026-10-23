@@ -3028,13 +3028,38 @@ window.rejectReservation = async function (resNum) {
                         renderFloorPlan();
                     });
 
+                    let scheduleBadgeHtml = `<div style="margin-top:6px; font-size:10.5px; color:#15803d; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:3px 6px; font-weight:700;">🟢 10:30 AM – 9:00 PM Free</div>`;
+                    if (tableReservations.length > 0) {
+                        const slotPills = tableReservations.slice(0, 2).map(r => {
+                            const rawT = String(r.arrivalTime || '12:00');
+                            const m = rawT.match(/^(\d{1,2}):(\d{2})/);
+                            if (!m) return `🔴 ${rawT} Reserved`;
+                            const startM = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+                            const endM = Math.min(21 * 60, startM + 180);
+                            const fmt = (mins) => {
+                                let h = Math.floor(mins / 60);
+                                const mn = mins % 60;
+                                const ap = h >= 12 ? 'PM' : 'AM';
+                                h = h % 12 || 12;
+                                return `${h}:${String(mn).padStart(2, '0')} ${ap}`;
+                            };
+                            return `<div style="color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:5px; padding:2px 5px; margin-top:3px; font-size:10px; font-weight:800;">🔴 ${fmt(startM)} – ${fmt(endM)} Taken</div>`;
+                        }).join('');
+                        scheduleBadgeHtml = `
+                            <div style="margin-top:5px; text-align:left;">
+                                ${slotPills}
+                                <div style="font-size:10px; color:#15803d; font-weight:700; margin-top:2px;">🟢 Available other hours</div>
+                            </div>
+                        `;
+                    }
+
                     card.innerHTML = `
                         ${t.image ? `<div class="floor-table-photo" style="background-image:url('${String(t.image).replace(/'/g, "\\'")}')"></div>` : ''}
                         <div class="table-name">${tId}</div>
                         <div class="table-status">${status}</div>
                         <div style="font-size:11px; color:#475569; margin-top:2px;">${t.description ? `🪑 ${t.description}` : ''}</div>
-                        <div class="table-meta" style="font-size:11px; color:#666; margin-top:4px;">${status === 'reserved' && metaText ? metaText : ''}</div>
-                        <div style="font-size:11px; color:#2e7d32; margin-top:2px;">${tableReservations.length > 0 ? `📋 ${tableReservations.length} Reservation${tableReservations.length > 1 ? 's' : ''}` : ''}</div>
+                        ${scheduleBadgeHtml}
+                        <div style="font-size:11px; color:#2e7d32; margin-top:4px; font-weight:700;">${tableReservations.length > 0 ? `📋 ${tableReservations.length} Reservation${tableReservations.length > 1 ? 's' : ''}` : ''}</div>
                     `;
 
                     card.addEventListener('click', (e) => {
