@@ -163,7 +163,9 @@
         const customerPhone = localStorage.getItem('customerPhone') || localStorage.getItem('loggedInUserPhone') || '';
         const arrivalDate   = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
         const arrivalTime   = localStorage.getItem('arrivalTime') || '12:00';
-        const bookedTable   = localStorage.getItem('bookedTable') || 'Table 1';
+        const rawBookedTable = localStorage.getItem('bookedTable') || (isVip ? 'VIP Room' : 'Table 1');
+        const bookedTable    = (isVip || /vip/i.test(rawBookedTable)) ? 'VIP Room' : rawBookedTable;
+        localStorage.setItem('bookedTable', bookedTable);
 
         const d = new Date(arrivalDate + 'T' + arrivalTime);
         const displayDt = isNaN(d) ? (arrivalDate + ' ' + arrivalTime) : d.toLocaleString(undefined, {
@@ -468,7 +470,7 @@
                 const dbData = await dbRes.json();
                 if (!dbRes.ok || !dbData.reservationId) throw new Error('Database save failed');
 
-                const resNo = 'RES-' + dbData.reservationId;
+                const resNo = (isVip ? 'VIP-' : 'RES-') + dbData.reservationId;
 
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 hist.push({
