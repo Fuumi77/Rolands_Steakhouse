@@ -854,6 +854,7 @@
                                 <button id="type-filter-all" type="button" onclick="setTypeFilter('all')" class="status-filter active">All</button>
                                 <button id="type-filter-prio" type="button" onclick="setTypeFilter('priority')" class="status-filter">⭐ PRIO</button>
                                 <button id="type-filter-std" type="button" onclick="setTypeFilter('standard')" class="status-filter">🪑 STD</button>
+                                <button id="type-filter-vip" type="button" onclick="setTypeFilter('vip')" class="status-filter">👑 VIP</button>
                                 <button id="type-filter-pos" type="button" onclick="setTypeFilter('pos')" class="status-filter">POS</button>
                                 <button id="type-filter-wi" type="button" onclick="setTypeFilter('wi')" class="status-filter">WI</button>
                             </div>
@@ -1857,9 +1858,11 @@
 
             function foodText(r) {
                 const foods = Array.isArray(r.foods) ? r.foods : [];
+                const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
                 let text = '';
                 if (!foods.length) {
-                    if (r.reservationType === 'standard') text = 'Standard deposit (no foods recorded).';
+                    if (isVip) text = '👑 VIP Room Down Payment (₱1,000 Fixed Fee)';
+                    else if (r.reservationType === 'standard') text = 'Standard deposit (no foods recorded).';
                     else text = 'No foods recorded.';
                 } else {
                     text = foods.join(', ');
@@ -1874,22 +1877,28 @@
                 
                 const resNum = String(r.reservationNumber || '');
                 const resType = String(r.reservationType || '').toLowerCase();
+                const isVip = resNum.startsWith('VIP-') || resType === 'vip' || r.bookedTable === 'VIP Room';
                 
                 if (resNum.startsWith('WI-')) {
                     span.textContent = 'WI';
-                    span.style.background = '#dbeafe'; // Light Blue
+                    span.style.background = '#dbeafe';
                     span.style.color = '#1e3a8a';
                 } else if (resNum.startsWith('POS-')) {
                     span.textContent = 'POS';
-                    span.style.background = '#e0e7ff'; // Light Indigo
+                    span.style.background = '#e0e7ff';
                     span.style.color = '#3730a3';
+                } else if (isVip) {
+                    span.textContent = '👑 VIP';
+                    span.style.background = '#fae8ff';
+                    span.style.color = '#7e22ce';
+                    span.style.border = '1px solid #e9d5ff';
                 } else if (resType === 'priority') {
                     span.textContent = 'PRIO'; 
-                    span.style.background = '#fef3c7'; // Light Gold
+                    span.style.background = '#fef3c7';
                     span.style.color = '#92400e';
                 } else {
                     span.textContent = 'STD';
-                    span.style.background = '#f1f5f9'; // Slate Gray
+                    span.style.background = '#f1f5f9';
                     span.style.color = '#475569';
                 }
                 return span;
@@ -4464,18 +4473,21 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                         matchesStatus = (s === 'pending');
                     }
 
-                    // 3. Filter by Type (WI, POS, PRIO, STD)
+                    // 3. Filter by Type (WI, POS, VIP, PRIO, STD)
                     let matchesType = true;
                     const resNumStr = String(r.reservationNumber || '');
                     const resTypeStr = String(r.reservationType || '').toLowerCase();
+                    const isVipRow = resNumStr.startsWith('VIP-') || resTypeStr === 'vip' || r.bookedTable === 'VIP Room';
                     if (window.currentTypeFilter === 'wi') {
                         matchesType = resNumStr.startsWith('WI-');
                     } else if (window.currentTypeFilter === 'pos') {
                         matchesType = resNumStr.startsWith('POS-');
+                    } else if (window.currentTypeFilter === 'vip') {
+                        matchesType = isVipRow && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
                     } else if (window.currentTypeFilter === 'priority') {
-                        matchesType = resTypeStr === 'priority' && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
+                        matchesType = resTypeStr === 'priority' && !isVipRow && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
                     } else if (window.currentTypeFilter === 'standard') {
-                        matchesType = resTypeStr === 'standard' && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
+                        matchesType = resTypeStr === 'standard' && !isVipRow && !resNumStr.startsWith('WI-') && !resNumStr.startsWith('POS-');
                     }
 
                     // 4. Filter by Date
