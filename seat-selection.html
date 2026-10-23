@@ -59,6 +59,86 @@
                 transform-origin: center center !important;
             }
         }
+        /* 📱 COMPACT FLOATING CONFIRMATION PILL (Desktop & Mobile) */
+        .selection-summary,
+        #selection-summary,
+        div[class*="summary-card"],
+        .floating-confirm-box {
+            position: fixed !important;
+            bottom: 16px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: auto !important;
+            min-width: 290px !important;
+            max-width: 92vw !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            backdrop-filter: blur(10px) !important;
+            border: 1px solid #bbf7d0 !important;
+            border-radius: 50px !important; /* Sleek floating pill shape */
+            padding: 8px 16px 8px 20px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(27, 94, 32, 0.12) !important;
+            display: flex !important;
+            flex-direction: row !important; /* Horizontal inline bar instead of huge vertical box! */
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 14px !important;
+            z-index: 99999 !important;
+            animation: slideUpFloat 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        /* Pill Typography */
+        .selection-summary .summary-title,
+        .floating-confirm-box .label {
+            display: none !important; /* Hide redundant "SELECTED TABLE" header text to save space */
+        }
+
+        .selection-summary h3,
+        .selection-summary .table-name,
+        #selected-table-name {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #1b5e20 !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        /* Compact Buttons */
+        .selection-summary button,
+        .selection-summary .confirm-btn,
+        #btn-confirm-selection {
+            padding: 9px 18px !important;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            border-radius: 30px !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            box-shadow: 0 3px 10px rgba(27, 94, 32, 0.25) !important;
+            cursor: pointer !important;
+        }
+
+        .selection-summary .cancel-btn,
+        #btn-cancel-selection {
+            background: transparent !important;
+            color: #64748b !important;
+            border: none !important;
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            cursor: pointer !important;
+        }
+        .selection-summary .cancel-btn:hover {
+            color: #dc2626 !important;
+        }
+
+        @keyframes slideUpFloat {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to   { opacity: 1; transform: translate(-50%, 0); }
+        }
     </style>
 </head>
 <body class="seat-selection-page">
