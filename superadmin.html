@@ -2757,9 +2757,6 @@
                 }
                 return merged;
             }
-            window.seedInventoryFromMenu = seedInventoryFromMenu;
-
-            // --- ADVANCED INVENTORY LOGIC ---
             window.activeSuperAdminInvSubTab = 'valuation';
 
             window.switchSuperAdminInvSubTab = function (tabName) {
@@ -2785,37 +2782,64 @@
                     }
                 });
 
-                valuationContainer?.classList.add('hidden');
-                foodContainer?.classList.add('hidden');
-                rawContainer?.classList.add('hidden');
-                recipeContainer?.classList.add('hidden');
-                wastageContainer?.classList.add('hidden');
-                auditContainer?.classList.add('hidden');
+                [valuationContainer, foodContainer, rawContainer, recipeContainer, wastageContainer, auditContainer].forEach(c => {
+                    if (c) {
+                        c.classList.add('hidden');
+                        c.style.display = 'none';
+                    }
+                });
 
                 if (tabName === 'valuation') {
                     if (btnValuation) { btnValuation.style.background = '#2e7d32'; btnValuation.style.color = 'white'; }
-                    valuationContainer?.classList.remove('hidden');
-                    if (window.InventorySystem) window.InventorySystem.renderValuationUI(valuationContainer);
+                    if (valuationContainer) {
+                        valuationContainer.classList.remove('hidden');
+                        valuationContainer.style.display = 'block';
+                        if (window.InventorySystem && typeof window.InventorySystem.renderValuationUI === 'function') {
+                            window.InventorySystem.renderValuationUI(valuationContainer);
+                        } else {
+                            valuationContainer.innerHTML = '<div style="padding:40px; text-align:center; color:#64748b;">Loading Valuation & COGS...</div>';
+                            setTimeout(() => { if (window.InventorySystem) window.InventorySystem.renderValuationUI(valuationContainer); }, 300);
+                        }
+                    }
                 } else if (tabName === 'food') {
                     if (btnFood) { btnFood.style.background = '#2e7d32'; btnFood.style.color = 'white'; }
-                    foodContainer?.classList.remove('hidden');
+                    if (foodContainer) {
+                        foodContainer.classList.remove('hidden');
+                        foodContainer.style.display = 'block';
+                    }
                     renderInventory();
                 } else if (tabName === 'raw') {
                     if (btnRaw) { btnRaw.style.background = '#2e7d32'; btnRaw.style.color = 'white'; }
-                    rawContainer?.classList.remove('hidden');
+                    if (rawContainer) {
+                        rawContainer.classList.remove('hidden');
+                        rawContainer.style.display = 'block';
+                    }
                     renderSuperAdminRawIngredients();
                 } else if (tabName === 'recipe') {
                     if (btnRecipe) { btnRecipe.style.background = '#2e7d32'; btnRecipe.style.color = 'white'; }
-                    recipeContainer?.classList.remove('hidden');
+                    if (recipeContainer) {
+                        recipeContainer.classList.remove('hidden');
+                        recipeContainer.style.display = 'block';
+                    }
                     renderSuperAdminRecipeBuilder();
                 } else if (tabName === 'wastage') {
                     if (btnWastage) { btnWastage.style.background = '#2e7d32'; btnWastage.style.color = 'white'; }
-                    wastageContainer?.classList.remove('hidden');
-                    if (window.InventorySystem) window.InventorySystem.renderWastageLogUI(wastageContainer, 'Super Admin');
+                    if (wastageContainer) {
+                        wastageContainer.classList.remove('hidden');
+                        wastageContainer.style.display = 'block';
+                        if (window.InventorySystem && typeof window.InventorySystem.renderWastageLogUI === 'function') {
+                            window.InventorySystem.renderWastageLogUI(wastageContainer, 'Manager');
+                        }
+                    }
                 } else if (tabName === 'audit') {
                     if (btnAudit) { btnAudit.style.background = '#2e7d32'; btnAudit.style.color = 'white'; }
-                    auditContainer?.classList.remove('hidden');
-                    if (window.InventorySystem) window.InventorySystem.renderAuditLogUI(auditContainer, 'Super Admin');
+                    if (auditContainer) {
+                        auditContainer.classList.remove('hidden');
+                        auditContainer.style.display = 'block';
+                        if (window.InventorySystem && typeof window.InventorySystem.renderAuditLogUI === 'function') {
+                            window.InventorySystem.renderAuditLogUI(auditContainer, 'Manager');
+                        }
+                    }
                 }
             };
 
@@ -5861,295 +5885,6 @@
 
             setInterval(injectProofAndReceiptButtonsIntoTables, 900);
             window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
-        })();
-    </script>
-
-    <!-- 🛡️ SELF-HEALING MANAGER INVENTORY INTELLIGENCE ENGINE -->
-    <script>
-        (function initSelfHealingManagerInventory() {
-            const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
-
-            const DEFAULT_RAW = [
-                { id: 'ING-BEEF-TENDERLOIN', name: 'Tenderloin Beef Cut', category: 'Meat', stock: 5850, minThreshold: 2500, unit: 'g', unitCost: 1.25 },
-                { id: 'ING-BEEF-RIBEYE', name: 'Ribeye Beef Cut', category: 'Meat', stock: 17100, minThreshold: 3000, unit: 'g', unitCost: 1.15 },
-                { id: 'ING-BEEF-TBONE', name: 'T-Bone Steak Cut', category: 'Meat', stock: 19300, minThreshold: 3000, unit: 'g', unitCost: 0.95 },
-                { id: 'ING-BEEF-SIRLOIN', name: 'Sirloin Beef Cut', category: 'Meat', stock: 15880, minThreshold: 2500, unit: 'g', unitCost: 0.85 },
-                { id: 'ING-BEEF-PATTY', name: 'Ground Beef Patty', category: 'Meat', stock: 104, minThreshold: 20, unit: 'pcs', unitCost: 85.00 },
-                { id: 'ING-CHICKEN-WHOLE', name: 'Whole Fresh Chicken', category: 'Poultry', stock: 45, minThreshold: 10, unit: 'pcs', unitCost: 220.00 },
-                { id: 'ING-FISH-TANIGUE', name: 'Tanigue Fish Fillet', category: 'Seafood', stock: 12000, minThreshold: 2000, unit: 'g', unitCost: 0.75 },
-                { id: 'ING-FISH-BANGUS', name: 'Bangus (Milkfish)', category: 'Seafood', stock: 50, minThreshold: 10, unit: 'pcs', unitCost: 140.00 },
-                { id: 'ING-SALT-PEPPER', name: 'Salt & Pepper Seasoning', category: 'Produce', stock: 4730, minThreshold: 500, unit: 'g', unitCost: 0.35 },
-                { id: 'ING-MARGARINE', name: 'Margarine', category: 'Dairy', stock: 6860, minThreshold: 1000, unit: 'g', unitCost: 0.40 },
-                { id: 'ING-OYSTER-SAUCE', name: 'Oyster Sauce', category: 'Sauces & Liquids', stock: 9470, minThreshold: 1500, unit: 'ml', unitCost: 0.30 },
-                { id: 'ING-KETCHUP', name: 'Ketchup', category: 'Sauces & Liquids', stock: 8000, minThreshold: 1000, unit: 'g', unitCost: 0.25 },
-                { id: 'ING-BUTTER', name: 'Cooking Butter', category: 'Dairy', stock: 4985, minThreshold: 800, unit: 'g', unitCost: 0.65 },
-                { id: 'ING-TOYO', name: 'Toyo (Soy Sauce)', category: 'Sauces & Liquids', stock: 10000, minThreshold: 1500, unit: 'ml', unitCost: 0.18 },
-                { id: 'ING-KALAMANSI', name: 'Kalamansi', category: 'Produce', stock: 5000, minThreshold: 800, unit: 'ml', unitCost: 0.28 },
-                { id: 'ING-BURGER-BUN', name: 'Sesame Burger Buns', category: 'Bakery', stock: 147, minThreshold: 25, unit: 'pcs', unitCost: 12.00 },
-                { id: 'ING-BREAD-GARLIC', name: 'Garlic Bread Loaf Slices', category: 'Bakery', stock: 120, minThreshold: 20, unit: 'pcs', unitCost: 8.00 },
-                { id: 'ING-POTATO', name: 'Fresh Potatoes', category: 'Produce', stock: 34800, minThreshold: 5000, unit: 'g', unitCost: 0.15 },
-                { id: 'ING-RICE', name: 'Premium Rice Grains', category: 'Grains', stock: 50000, minThreshold: 8000, unit: 'g', unitCost: 0.08 }
-            ];
-
-            // Ensure window.InventorySystem always exists and has all required methods
-            window.InventorySystem = window.InventorySystem || {};
-            const IS = window.InventorySystem;
-
-            if (typeof IS.getRawIngredients !== 'function') {
-                IS.getRawIngredients = function () {
-                    try {
-                        const saved = JSON.parse(localStorage.getItem('rawIngredients') || '[]');
-                        if (Array.isArray(saved) && saved.length > 0) return saved;
-                    } catch (e) {}
-                    localStorage.setItem('rawIngredients', JSON.stringify(DEFAULT_RAW));
-                    return DEFAULT_RAW;
-                };
-            }
-
-            if (typeof IS.saveRawIngredients !== 'function') {
-                IS.saveRawIngredients = function (list) {
-                    localStorage.setItem('rawIngredients', JSON.stringify(list || []));
-                };
-            }
-
-            if (typeof IS.getStoreStatus !== 'function') {
-                IS.getStoreStatus = () => localStorage.getItem('store_status') || 'open';
-            }
-
-            if (typeof IS.getInventoryHealthSummary !== 'function') {
-                IS.getInventoryHealthSummary = function () {
-                    const raw = IS.getRawIngredients();
-                    const outCount = raw.filter(i => Number(i.stock) <= 0).length;
-                    const lowCount = raw.filter(i => Number(i.stock) > 0 && Number(i.stock) <= Number(i.minThreshold || 10)).length;
-                    return {
-                        healthStatus: outCount > 0 ? 'Critical' : (lowCount > 0 ? 'Attention Needed' : 'Optimal'),
-                        lowCount,
-                        outCount,
-                        affectedFoodCount: outCount + lowCount
-                    };
-                };
-            }
-
-            if (typeof IS.getItemRecipe !== 'function') {
-                IS.getItemRecipe = function (menuId) {
-                    try {
-                        const custom = JSON.parse(localStorage.getItem('custom_food_recipes') || '{}');
-                        if (custom[menuId]) return custom[menuId];
-                    } catch (e) {}
-                    return [
-                        { ingredientId: 'ING-BEEF-TENDERLOIN', qty: 200, unit: 'g' },
-                        { ingredientId: 'ING-SALT-PEPPER', qty: 5, unit: 'g' },
-                        { ingredientId: 'ING-MARGARINE', qty: 20, unit: 'g' },
-                        { ingredientId: 'ING-OYSTER-SAUCE', qty: 30, unit: 'ml' }
-                    ];
-                };
-            }
-
-            if (typeof IS.calculateFoodAvailability !== 'function') {
-                IS.calculateFoodAvailability = function (item, rawList) {
-                    const catalog = rawList || IS.getRawIngredients();
-                    const recipe = IS.getItemRecipe(item.id, item);
-                    if (!recipe || recipe.length === 0) {
-                        const s = Number(item.total_stock ?? item.stock ?? 50);
-                        return { availablePortions: s, isAvailable: s > 0, status: s > 0 ? 'OK' : 'Out of Stock', recipe: [], missingIngredients: [] };
-                    }
-                    let minPortions = Infinity;
-                    const missing = [];
-                    const mapped = recipe.map(r => {
-                        const ing = catalog.find(x => x.id === r.ingredientId);
-                        const stock = ing ? Number(ing.stock || 0) : 0;
-                        const needed = Number(r.qty || 1);
-                        const portions = Math.floor(stock / needed);
-                        if (portions < minPortions) minPortions = portions;
-                        if (portions <= 0 && ing) missing.push(ing.name);
-                        return { name: ing ? ing.name : r.ingredientId, needed, unit: r.unit || (ing ? ing.unit : 'g') };
-                    });
-                    if (!isFinite(minPortions)) minPortions = 50;
-                    return { availablePortions: Math.max(0, minPortions), isAvailable: minPortions > 0, status: minPortions > 0 ? 'OK' : 'Out of Stock', recipe: mapped, missingIngredients: missing };
-                };
-            }
-
-            if (typeof IS.syncFoodMenuStockFromIngredients !== 'function') {
-                IS.syncFoodMenuStockFromIngredients = function () {};
-            }
-
-            // 1. Financial Valuation & COGS UI Renderer
-            if (typeof IS.renderValuationUI !== 'function') {
-                IS.renderValuationUI = function (container) {
-                    if (!container) return;
-                    const rawList = IS.getRawIngredients();
-                    const menuItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-
-                    const totalAssetVal = rawList.reduce((sum, i) => sum + (Number(i.stock || 0) * Number(i.unitCost || 0.25)), 0);
-                    const lowStockCount = rawList.filter(i => Number(i.stock) <= Number(i.minThreshold || 10)).length;
-
-                    container.innerHTML = `
-                        <div class="grid" style="margin-bottom:20px;">
-                            <div class="card" style="border-left:4px solid #16a34a;">
-                                <h3>Total Raw Asset Value</h3>
-                                <div class="value" style="color:#16a34a;">₱${Math.round(totalAssetVal).toLocaleString()}</div>
-                                <div class="muted">${rawList.length} Active Raw Materials</div>
-                            </div>
-                            <div class="card" style="border-left:4px solid #2563eb;">
-                                <h3>Menu Items Tracked</h3>
-                                <div class="value" style="color:#2563eb;">${menuItems.length || 50}</div>
-                                <div class="muted">Synced with Kitchen BOM</div>
-                            </div>
-                            <div class="card" style="border-left:4px solid #f59e0b;">
-                                <h3>Reorder Alerts</h3>
-                                <div class="value" style="color:#f59e0b;">${lowStockCount}</div>
-                                <div class="muted">Ingredients below threshold</div>
-                            </div>
-                        </div>
-                        <div class="card" style="padding:0; overflow:hidden; border:1px solid #e2e8f0; border-radius:12px;">
-                            <div style="padding:16px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
-                                <h3 style="margin:0; color:#1b5e20; font-size:16px;">📊 Dish Recipe Cost of Goods Sold (COGS) & Profit Margin</h3>
-                            </div>
-                            <div style="overflow-x:auto;">
-                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <thead style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-                                        <tr>
-                                            <th style="padding:12px 16px; text-align:left;">Menu Dish</th>
-                                            <th style="padding:12px 16px; text-align:left;">Category</th>
-                                            <th style="padding:12px 16px; text-align:left;">Selling Price</th>
-                                            <th style="padding:12px 16px; text-align:left;">Est. Recipe COGS</th>
-                                            <th style="padding:12px 16px; text-align:left;">Gross Profit</th>
-                                            <th style="padding:12px 16px; text-align:left;">Profit Margin</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${(menuItems.slice(0, 25)).map(item => {
-                                            const price = Number(item.price || 500);
-                                            const cogs = Math.round(price * 0.34);
-                                            const profit = price - cogs;
-                                            const margin = price > 0 ? Math.round((profit / price) * 100) : 66;
-                                            return `
-                                                <tr style="border-bottom:1px solid #f1f5f9;">
-                                                    <td style="padding:12px 16px; font-weight:700; color:#0f172a;">${item.title || item.name}</td>
-                                                    <td style="padding:12px 16px; color:#64748b;">${item.category || 'Beef'}</td>
-                                                    <td style="padding:12px 16px; font-weight:700; color:#1b5e20;">₱${price.toLocaleString()}</td>
-                                                    <td style="padding:12px 16px; color:#dc2626; font-weight:600;">₱${cogs.toLocaleString()}</td>
-                                                    <td style="padding:12px 16px; color:#16a34a; font-weight:700;">₱${profit.toLocaleString()}</td>
-                                                    <td style="padding:12px 16px;"><span style="background:#dcfce7; color:#166534; padding:3px 10px; border-radius:12px; font-weight:800; font-size:11.5px;">${margin}%</span></td>
-                                                </tr>
-                                            `;
-                                        }).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                };
-            }
-
-            // 2. Spoilage & Wastage Log UI Renderer
-            if (typeof IS.renderWastageLogUI !== 'function') {
-                IS.renderWastageLogUI = function (container) {
-                    if (!container) return;
-                    const logs = JSON.parse(localStorage.getItem('inventory_wastage_logs') || '[]');
-                    container.innerHTML = `
-                        <div class="card" style="padding:20px; border:1px solid #e2e8f0; border-radius:12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                                <div>
-                                    <h3 style="margin:0; color:#1b5e20; font-family:'Playfair Display',serif;">🗑️ Kitchen Spoilage & Wastage Log</h3>
-                                    <span style="font-size:12px; color:#64748b;">Track expired, damaged, or spilled raw ingredients</span>
-                                </div>
-                            </div>
-                            ${logs.length === 0 ? `
-                                <div style="padding:36px; text-align:center; color:#94a3b8; font-style:italic; background:#f8fafc; border-radius:10px; border:1px dashed #cbd5e1;">
-                                    ✅ No kitchen spoilage or wastage incidents recorded yet.
-                                </div>
-                            ` : `
-                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <thead><tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;"><th style="padding:10px;">Date</th><th style="padding:10px;">Ingredient</th><th style="padding:10px;">Qty Wasted</th><th style="padding:10px;">Reason</th><th style="padding:10px;">Logged By</th></tr></thead>
-                                    <tbody>
-                                        ${logs.map(l => `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px;">${new Date(l.timestamp || Date.now()).toLocaleString()}</td><td style="padding:10px; font-weight:700;">${l.ingredientName || l.id}</td><td style="padding:10px; color:#dc2626; font-weight:700;">-${l.qty} ${l.unit || ''}</td><td style="padding:10px;">${l.reason || 'Spoilage'}</td><td style="padding:10px;">${l.operator || 'Staff'}</td></tr>`).join('')}
-                                    </tbody>
-                                </table>
-                            `}
-                        </div>
-                    `;
-                };
-            }
-
-            // 3. Master Audit Movement Log UI Renderer
-            if (typeof IS.renderAuditLogUI !== 'function') {
-                IS.renderAuditLogUI = function (container) {
-                    if (!container) return;
-                    const logs = JSON.parse(localStorage.getItem('inventory_audit_logs') || '[]');
-                    container.innerHTML = `
-                        <div class="card" style="padding:20px; border:1px solid #e2e8f0; border-radius:12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                                <div>
-                                    <h3 style="margin:0; color:#1b5e20; font-family:'Playfair Display',serif;">📋 Master Stock Movement Audit Trail</h3>
-                                    <span style="font-size:12px; color:#64748b;">Complete append-only audit trail recording restocks, order deductions, and adjustments</span>
-                                </div>
-                            </div>
-                            <div style="overflow-x:auto;">
-                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <thead>
-                                        <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
-                                            <th style="padding:10px; text-align:left;">Timestamp</th>
-                                            <th style="padding:10px; text-align:left;">Action</th>
-                                            <th style="padding:10px; text-align:left;">Ingredient</th>
-                                            <th style="padding:10px; text-align:left;">Qty Change</th>
-                                            <th style="padding:10px; text-align:left;">New Stock</th>
-                                            <th style="padding:10px; text-align:left;">Operator</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${logs.length === 0 ? `<tr><td colspan="6" style="padding:30px; text-align:center; color:#94a3b8;">Syncing stock movement logs from database...</td></tr>` : logs.map(l => `
-                                            <tr style="border-bottom:1px solid #f1f5f9;">
-                                                <td style="padding:10px; color:#64748b;">${new Date(l.timestamp || Date.now()).toLocaleString()}</td>
-                                                <td style="padding:10px;"><span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">${l.action || 'UPDATE'}</span></td>
-                                                <td style="padding:10px; font-weight:700; color:#0f172a;">${l.ingredientName || l.ingredientId}</td>
-                                                <td style="padding:10px; font-weight:800; color:${Number(l.changeQty) < 0 ? '#dc2626' : '#16a34a'};">${Number(l.changeQty) > 0 ? '+' : ''}${l.changeQty} ${l.unit || ''}</td>
-                                                <td style="padding:10px; font-weight:700;">${l.newStock ?? '—'} ${l.unit || ''}</td>
-                                                <td style="padding:10px; color:#475569;">${l.operator || 'System'}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                };
-            }
-
-            // Pull live raw ingredients from MySQL so Master Raw Ingredients is never empty!
-            async function syncRawFromCloudForSuperAdmin() {
-                try {
-                    const res = await fetch(`${API_BASE}/api/inventory/raw?nocache=${Date.now()}`);
-                    if (res.ok) {
-                        const cloudRaw = await res.json();
-                        if (Array.isArray(cloudRaw) && cloudRaw.length > 0) {
-                            localStorage.setItem('rawIngredients', JSON.stringify(cloudRaw));
-                        }
-                    }
-                } catch (e) {}
-
-                if (!document.getElementById('tab-inventory')?.classList.contains('hidden')) {
-                    if (typeof window.switchSuperAdminInvSubTab === 'function') {
-                        window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
-                    }
-                }
-            }
-
-            // Ensure Raw Ingredients array is seeded immediately if empty
-            IS.getRawIngredients();
-            setTimeout(syncRawFromCloudForSuperAdmin, 500);
-
-            // Re-trigger active Inventory subtab whenever Manager clicks "Inventory" in the sidebar
-            document.querySelectorAll('.sidebar .tab-link[onclick*="inventory"]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    setTimeout(() => {
-                        syncRawFromCloudForSuperAdmin();
-                        if (typeof window.switchSuperAdminInvSubTab === 'function') {
-                            window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
-                        }
-                    }, 60);
-                });
-            });
         })();
     </script>
 </body>
