@@ -231,7 +231,6 @@
             const rTypeLower = String(entry.reservationType || '').toLowerCase();
             const isVipEntry = rTypeLower === 'vip' || String(entry.reservationNumber || '').startsWith('VIP-') || /vip/i.test(String(entry.bookedTable || ''));
             const isStandardFixedFee = ((!entry.foods || entry.foods.length === 0) && (rTypeLower === 'standard' || isVipEntry)) || totalNum === 200 || (isVipEntry && totalNum === 1000);
-            const isStandardFixedFee = (String(entry.reservationType || '').toLowerCase() === 'standard' && (!entry.foods || entry.foods.length === 0)) || totalNum === 200;
 
             ctx.strokeStyle = '#cbd5e1';
             ctx.beginPath();
