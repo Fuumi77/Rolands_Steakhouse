@@ -321,6 +321,7 @@
                             <span style="font-size:11px; font-weight:800; color:#64748b;">TYPE:</span>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="priority" onchange="applySearch()" checked> PRIO</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="standard" onchange="applySearch()" checked> STD</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="vip" onchange="applySearch()" checked> VIP</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="pos" onchange="applySearch()" checked> POS</label>
                             <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="wi" onchange="applySearch()" checked> WI</label>
                         </div>
@@ -1935,7 +1936,8 @@
 
             function foodText(r) {
                 const foods = Array.isArray(r.foods) ? r.foods : [];
-                if (!foods.length) return r.reservationType === 'standard' ? 'Standard deposit' : 'None';
+                const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                if (!foods.length) return isVip ? '👑 VIP Room Down Payment' : (r.reservationType === 'standard' ? 'Standard deposit' : 'None');
                 return foods.join(', ');
             }
 
@@ -1975,6 +1977,8 @@
                         typePill = `<span style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
                     } else if (resNum.startsWith('POS-')) {
                         typePill = `<span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
+                    } else if (resNum.startsWith('VIP-') || resType === 'vip' || r.bookedTable === 'VIP Room') {
+                        typePill = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">👑 VIP</span>`;
                     } else if (resType === 'priority') {
                         typePill = `<span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
                     } else {
@@ -2245,6 +2249,7 @@
                     const resNumStr = String(r.reservationNumber || '');
                     if (resNumStr.startsWith('WI-')) rType = 'wi';
                     else if (resNumStr.startsWith('POS-')) rType = 'pos';
+                    else if (resNumStr.startsWith('VIP-') || r.reservationType === 'vip' || r.bookedTable === 'VIP Room') rType = 'vip';
                     else if (r.reservationType === 'priority') rType = 'priority';
                     const matchType = activeTypes.includes(rType);
 
@@ -5642,7 +5647,8 @@
                     ctx.fillText(line, 76, y);
 
                     const totalAmt = Number(r.paymentAmount || 0);
-                    const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
+                    const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                    const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
 
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.beginPath();
