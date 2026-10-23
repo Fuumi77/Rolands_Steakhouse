@@ -239,6 +239,24 @@
             box-shadow: 0 4px 12px rgba(27, 94, 32, 0.25); transition: transform 0.2s; margin-top: 8px;
         }
         #booking-form .submit-booking-btn:hover { transform: translateY(-2px); }
+
+        @media (max-width: 600px) {
+            /* 👉 Full-width mobile chat window with equal 12px side margins */
+            .chat-popup,
+            #chat-popup,
+            .chat-window,
+            #chat-window,
+            #live-chat-card,
+            div[class*="chat-container"] {
+                right: 12px !important;
+                left: 12px !important;
+                width: calc(100vw - 24px) !important;
+                max-width: calc(100vw - 24px) !important;
+                bottom: 80px !important;
+                box-sizing: border-box !important;
+                border-radius: 18px !important;
+            }
+        }
     </style>
 </head>
 
