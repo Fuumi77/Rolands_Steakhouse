@@ -7111,6 +7111,146 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
+    <!-- 🕒 STAFF FLOOR PLAN DAILY TIME-SLOT SCHEDULE BADGES -->
+    <style>
+        .rsh-admin-slot-box {
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 10.5px;
+            line-height: 1.4;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+    </style>
+    <script>
+        (function initAdminFloorPlanTimeSlotBadges() {
+            const OPEN_MINS = 10 * 60 + 30; // 10:30 AM
+            const CLOSE_MINS = 21 * 60;     // 9:00 PM
+            const SLOT_DURATION = 180;      // 3-hour window
+
+            function timeToMins(tStr) {
+                if (!tStr) return null;
+                const parts = String(tStr).trim().split(':');
+                if (parts.length >= 2) {
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    if (!isNaN(h) && !isNaN(m)) return h * 60 + m;
+                }
+                return null;
+            }
+
+            function minsTo12h(totalMins) {
+                const clamped = Math.max(0, Math.min(1439, Math.round(totalMins)));
+                let h = Math.floor(clamped / 60);
+                const m = clamped % 60;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12;
+                if (h === 0) h = 12;
+                return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+            }
+
+            function buildAdminTableSlots(tId, hist) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                let activeBookings = (hist || []).filter(r =>
+                    r && r.bookedTable === tId &&
+                    !r.completedAt &&
+                    r.approvalStatus !== 'rejected' &&
+                    r.approvalStatus !== 'cancelled' &&
+                    r.kdsStatus !== 'served' &&
+                    (!r.arrivalDate || r.arrivalDate === todayStr)
+                );
+
+                // If no bookings today, check if there are upcoming bookings on another date
+                if (activeBookings.length === 0) {
+                    activeBookings = (hist || []).filter(r =>
+                        r && r.bookedTable === tId &&
+                        !r.completedAt &&
+                        r.approvalStatus !== 'rejected' &&
+                        r.approvalStatus !== 'cancelled' &&
+                        r.kdsStatus !== 'served'
+                    );
+                }
+
+                if (activeBookings.length === 0) {
+                    return [{ taken: false, text: '10:30 AM – 9:00 PM: Available' }];
+                }
+
+                const intervals = [];
+                activeBookings.forEach(r => {
+                    const sM = timeToMins(r.arrivalTime);
+                    if (sM !== null) {
+                        const s = Math.max(OPEN_MINS, sM);
+                        const e = Math.min(CLOSE_MINS, s + SLOT_DURATION);
+                        if (e > s) intervals.push({ start: s, end: e });
+                    }
+                });
+
+                if (intervals.length === 0) {
+                    return [{ taken: false, text: '10:30 AM – 9:00 PM: Available' }];
+                }
+
+                intervals.sort((a, b) => a.start - b.start);
+                const merged = [intervals[0]];
+                for (let i = 1; i < intervals.length; i++) {
+                    const prev = merged[merged.length - 1];
+                    const curr = intervals[i];
+                    if (curr.start <= prev.end) prev.end = Math.max(prev.end, curr.end);
+                    else merged.push(curr);
+                }
+
+                const slots = [];
+                let cursor = OPEN_MINS;
+                merged.forEach(iv => {
+                    if (iv.start > cursor) {
+                        slots.push({ taken: false, text: `${minsTo12h(cursor)} – ${minsTo12h(iv.start)}: Available` });
+                    }
+                    slots.push({ taken: true, text: `${minsTo12h(iv.start)} – ${minsTo12h(iv.end)}: Reserved` });
+                    cursor = iv.end;
+                });
+                if (cursor < CLOSE_MINS) {
+                    slots.push({ taken: false, text: `${minsTo12h(cursor)} onwards: Available` });
+                }
+                return slots;
+            }
+
+            function injectFloorPlanScheduleBadges() {
+                const grid = document.getElementById('hostess-grid');
+                if (!grid) return;
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+                grid.querySelectorAll('.table-card').forEach(card => {
+                    const nameEl = card.querySelector('.table-name');
+                    if (!nameEl) return;
+                    const tId = (nameEl.innerText || nameEl.textContent || '').trim();
+                    const slots = buildAdminTableSlots(tId, hist);
+
+                    let box = card.querySelector('.rsh-admin-slot-box');
+                    if (!box) {
+                        box = document.createElement('div');
+                        box.className = 'rsh-admin-slot-box';
+                        card.appendChild(box);
+                    }
+
+                    const newHtml = slots.map(s => `
+                        <div style="color:${s.taken ? '#c2410c' : '#15803d'}; font-weight:700; display:flex; align-items:center; gap:4px;">
+                            <span>${s.taken ? '🟠' : '🟢'}</span>
+                            <span>${s.text}</span>
+                        </div>
+                    `).join('');
+
+                    if (box.innerHTML !== newHtml) box.innerHTML = newHtml;
+                });
+            }
+
+            setInterval(injectFloorPlanScheduleBadges, 1000);
+            window.addEventListener('load', () => setTimeout(injectFloorPlanScheduleBadges, 400));
+        })();
+    </script>
 </body>
 
 </html>
