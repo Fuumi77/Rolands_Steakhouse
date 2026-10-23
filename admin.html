@@ -6819,7 +6819,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     ctx.fillText(line, 76, y);
 
                     const totalAmt = Number(r.paymentAmount || 0);
-                    const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
+                    const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                    const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
 
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.beginPath();
@@ -6909,7 +6910,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 const resNum = r.reservationNumber || 'N/A';
                 const ref = r.paymentRef || (`E-RECEIPT-${resNum}`);
                 const totalAmt = Number(r.paymentAmount || 0);
-                const isStandardFixedFee = (String(r.reservationType || '').toLowerCase() === 'standard' && (!Array.isArray(r.foods) || r.foods.length === 0)) || totalAmt === 200;
+                const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
                 const vatable = totalAmt / 1.12;
                 const vat = totalAmt - vatable;
 
