@@ -226,8 +226,11 @@
             }
             ctx.fillText(line, 90, y);
 
-            // Bottom VAT & Total Divider (No VAT on ₱200 Standard Reservation Fee)
+            // Bottom VAT & Total Divider (No VAT on ₱200 Standard or ₱1,000 VIP Fixed Reservation Fees)
             const totalNum = Number(entry.paymentAmount || 0);
+            const rTypeLower = String(entry.reservationType || '').toLowerCase();
+            const isVipEntry = rTypeLower === 'vip' || String(entry.reservationNumber || '').startsWith('VIP-') || /vip/i.test(String(entry.bookedTable || ''));
+            const isStandardFixedFee = ((!entry.foods || entry.foods.length === 0) && (rTypeLower === 'standard' || isVipEntry)) || totalNum === 200 || (isVipEntry && totalNum === 1000);
             const isStandardFixedFee = (String(entry.reservationType || '').toLowerCase() === 'standard' && (!entry.foods || entry.foods.length === 0)) || totalNum === 200;
 
             ctx.strokeStyle = '#cbd5e1';
@@ -242,7 +245,7 @@
                 ctx.textAlign = 'left';
                 ctx.fillText('Fee Type:', 90, 592);
                 ctx.textAlign = 'right';
-                ctx.fillText('Fixed Reservation Fee (No VAT)', 510, 592);
+                ctx.fillText(isVipEntry ? 'Fixed VIP Down Payment (No VAT)' : 'Fixed Reservation Fee (No VAT)', 510, 592);
             } else {
                 const vatableNum = totalNum / 1.12;
                 const vatNum = totalNum - vatableNum;
@@ -304,7 +307,10 @@
                         })
                     });
                     const dbData = await dbRes.json();
-                    const newResNo = 'RES-' + dbData.reservationId;
+                    const isVipPending = String(pending.reservationType || '').toLowerCase() === 'vip' || /vip/i.test(String(pending.table || ''));
+                    const newResNo = (isVipPending ? 'VIP-' : 'RES-') + dbData.reservationId;
+                    pending.table = isVipPending ? 'VIP Room' : pending.table;
+                    pending.reservationType = isVipPending ? 'vip' : pending.reservationType;
 
                     const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                     hist.push({
@@ -411,7 +417,9 @@
                 document.getElementById('receipt-area').style.display = 'block';
                 document.getElementById('receipt-date').textContent = new Date().toLocaleDateString();
                 const totalPaidVal = Number(entry.paymentAmount || 0);
-                const isStdFee = (String(entry.reservationType || '').toLowerCase() === 'standard' && (!entry.foods || entry.foods.length === 0)) || totalPaidVal === 200;
+                const isVipBooking = String(entry.reservationType || '').toLowerCase() === 'vip' || String(entry.reservationNumber || '').startsWith('VIP-') || /vip/i.test(String(entry.bookedTable || ''));
+                if (isVipBooking) entry.bookedTable = 'VIP Room';
+                const isStdFee = ((!entry.foods || entry.foods.length === 0) && (String(entry.reservationType || '').toLowerCase() === 'standard' || isVipBooking)) || totalPaidVal === 200 || (isVipBooking && totalPaidVal === 1000);
                 const vatableEl = document.getElementById('receipt-vatable');
                 const vatEl = document.getElementById('receipt-vat');
 
