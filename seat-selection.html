@@ -995,5 +995,250 @@
         document.addEventListener('DOMContentLoaded', () => setTimeout(triggerUpdate, 100));
     })();
 </script>
+
+    <!-- 🕒 COMPACT FLOATING BAR & LIVE TABLE TIME-SLOT SCHEDULE BADGES -->
+    <style>
+        /* 1. Make the Floating Confirm Box a Sleek, Non-Intrusive Bottom Bar! */
+        .floating-confirm,
+        #floating-confirm,
+        .confirm-floating-card,
+        div[style*="position: fixed"][style*="bottom"] {
+            max-width: 480px !important;
+            width: calc(100% - 24px) !important;
+            padding: 10px 16px !important;
+            border-radius: 16px !important;
+            bottom: 12px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18) !important;
+            border: 1.5px solid #cbd5e1 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            z-index: 999 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Add bottom padding to page so the bar never covers the bottom row of tables */
+        body {
+            padding-bottom: 110px !important;
+        }
+
+        /* Compact internal elements inside the floating confirm bar */
+        .floating-confirm h2,
+        .floating-confirm h3,
+        #selected-table-display,
+        #selected-table-name {
+            font-size: 15px !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+
+        .floating-confirm button,
+        #confirm-booking-btn {
+            padding: 8px 14px !important;
+            font-size: 12.5px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            width: auto !important;
+        }
+
+        @media (max-width: 600px) {
+            .floating-confirm,
+            #floating-confirm,
+            .confirm-floating-card {
+                padding: 8px 12px !important;
+                bottom: 8px !important;
+                border-radius: 14px !important;
+                gap: 6px !important;
+            }
+            .floating-confirm button,
+            #confirm-booking-btn {
+                padding: 7px 11px !important;
+                font-size: 11.5px !important;
+            }
+        }
+
+        /* 2. Time-Slot Schedule Badge Styling on Table Cards */
+        .rsh-table-schedule-box {
+            margin: 8px 0 10px 0;
+            padding: 7px 9px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 10.5px;
+            line-height: 1.45;
+            color: #334155;
+        }
+        .rsh-slot-free {
+            color: #15803d;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .rsh-slot-taken {
+            color: #b91c1c;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin: 2px 0;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+
+    <script>
+        (function initTableScheduleBadgesAndCompactBar() {
+            const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
+            const OPEN_MIN = 10 * 60 + 30; // 10:30 AM (630)
+            const CLOSE_MIN = 21 * 60;     // 9:00 PM (1260)
+            const SLOT_DURATION = 180;     // 3 hours per reservation window (e.g. 3:00 PM - 6:00 PM)
+
+            function toMin(timeStr) {
+                if (!timeStr) return null;
+                const m = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})/);
+                if (!m) return null;
+                return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+            }
+
+            function fmt12(mins) {
+                const clamped = Math.max(OPEN_MIN, Math.min(CLOSE_MIN, mins));
+                let h = Math.floor(clamped / 60);
+                const m = clamped % 60;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+            }
+
+            function buildTableTimelineHtml(tableName, targetDate, allReservations) {
+                const bookings = (allReservations || []).filter(r => {
+                    if (!r || r.bookedTable !== tableName) return false;
+                    const st = String(r.approvalStatus || r.status || 'pending').toLowerCase();
+                    if (st === 'cancelled' || st === 'rejected' || st === 'completed' || r.completedAt) return false;
+                    if (targetDate && r.arrivalDate && r.arrivalDate !== targetDate) return false;
+                    return true;
+                });
+
+                if (bookings.length === 0) {
+                    return `
+                        <div class="rsh-table-schedule-box">
+                            <div class="rsh-slot-free">🟢 10:30 AM – 9:00 PM: Available All Day</div>
+                        </div>
+                    `;
+                }
+
+                // Convert each reservation into a [startMin, endMin] window (3-hour dining window)
+                const busy = bookings
+                    .map(b => {
+                        const start = toMin(b.arrivalTime);
+                        if (start === null) return null;
+                        return [Math.max(OPEN_MIN, start), Math.min(CLOSE_MIN, start + SLOT_DURATION)];
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => a[0] - b[0]);
+
+                // Merge overlapping busy windows
+                const merged = [];
+                busy.forEach(win => {
+                    if (!merged.length || win[0] > merged[merged.length - 1][1]) {
+                        merged.push([...win]);
+                    } else {
+                        merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], win[1]);
+                    }
+                });
+
+                const rows = [];
+                let cursor = OPEN_MIN;
+
+                merged.forEach(([bStart, bEnd]) => {
+                    if (bStart > cursor + 15) {
+                        rows.push(`<div class="rsh-slot-free">🟢 ${fmt12(cursor)} – ${fmt12(bStart)}: Available</div>`);
+                    }
+                    rows.push(`<div class="rsh-slot-taken">🔴 ${fmt12(bStart)} – ${fmt12(bEnd)}: Reserved</div>`);
+                    cursor = Math.max(cursor, bEnd);
+                });
+
+                if (cursor < CLOSE_MIN - 15) {
+                    rows.push(`<div class="rsh-slot-free">🟢 ${fmt12(cursor)} onwards: Available</div>`);
+                }
+
+                return `<div class="rsh-table-schedule-box">${rows.join('')}</div>`;
+            }
+
+            function compactFloatingConfirmCard() {
+                // Find the "SELECTED TABLE" floating card and make it a sleek horizontal bar
+                const allDivs = Array.from(document.querySelectorAll('div'));
+                const floatingCard = allDivs.find(el => {
+                    const txt = (el.innerText || '').trim();
+                    return txt.startsWith('SELECTED TABLE') && txt.includes('Confirm Booking') && el.children.length <= 5;
+                });
+
+                if (floatingCard && !floatingCard.dataset.rshCompacted) {
+                    floatingCard.dataset.rshCompacted = 'true';
+                    floatingCard.classList.add('floating-confirm');
+                }
+            }
+
+            function renderScheduleBadgesOnCards() {
+                compactFloatingConfirmCard();
+
+                const targetDate = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+                // Find all table cards on seat-selection.html
+                const cards = document.querySelectorAll('.table-card, .seat-card, [data-table], div');
+                cards.forEach(card => {
+                    const btn = card.querySelector('button');
+                    if (!btn || !/Select Table|Selected|Unavailable/i.test(btn.innerText || '')) return;
+                    if (card.querySelectorAll('button').length > 1) return; // Only target individual table cards
+
+                    const titleEl = Array.from(card.querySelectorAll('h3, h4, strong, div')).find(el =>
+                        /^(Table\s*\d+|VIP\s*Room)$/i.test((el.innerText || '').trim())
+                    );
+                    if (!titleEl) return;
+
+                    const tableName = (titleEl.innerText || '').trim();
+                    const html = buildTableTimelineHtml(tableName, targetDate, hist);
+
+                    let badgeBox = card.querySelector('.rsh-table-schedule-box');
+                    if (badgeBox) {
+                        badgeBox.outerHTML = html;
+                    } else {
+                        btn.insertAdjacentHTML('beforebegin', html);
+                    }
+                });
+            }
+
+            // Pull latest reservations from MySQL so schedule slots are 100% live
+            async function syncCloudReservationsForSeats() {
+                try {
+                    const res = await fetch(`${API_BASE}/reservations?nocache=${Date.now()}`);
+                    if (res.ok) {
+                        const cloud = await res.json();
+                        if (Array.isArray(cloud)) {
+                            localStorage.setItem('reservationHistory', JSON.stringify(cloud));
+                        }
+                    }
+                } catch (e) {}
+                renderScheduleBadgesOnCards();
+            }
+
+            window.addEventListener('load', () => {
+                renderScheduleBadgesOnCards();
+                syncCloudReservationsForSeats();
+                setInterval(renderScheduleBadgesOnCards, 1200);
+            });
+        })();
+    </script>
 </body>
 </html>
