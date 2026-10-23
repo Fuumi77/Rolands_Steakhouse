@@ -154,9 +154,13 @@
             const checkOrders = String(ordersText !== undefined ? ordersText : orders || '').toLowerCase();
             const rec = resRecord || matchedResRecord;
             const hasNoFoods = !rec || !Array.isArray(rec.foods) || rec.foods.length === 0;
-            const isStandardFixedFee = (cleanTotal === 200 && hasNoFoods) ||
+            const isVipRec = (rec && (String(rec.reservationType || '').toLowerCase() === 'vip' || String(rec.reservationNumber || '').startsWith('VIP-'))) ||
+                             String(reservationNumber || '').startsWith('VIP-') ||
+                             checkOrders.includes('vip room');
+            const isStandardFixedFee = ((cleanTotal === 200 || cleanTotal === 1000) && hasNoFoods) ||
                                        checkOrders.includes('standard reservation') ||
-                                       (rec && String(rec.reservationType || '').toLowerCase() === 'standard' && hasNoFoods);
+                                       checkOrders.includes('vip room down payment') ||
+                                       (rec && (String(rec.reservationType || '').toLowerCase() === 'standard' || isVipRec) && hasNoFoods);
 
             const vatableEl = document.getElementById('vatable-sales');
             const vatEl = document.getElementById('vat-amount');
