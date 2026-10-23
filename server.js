@@ -498,20 +498,23 @@ app.get('/reservations', async (req, res) => {
             const d = new Date(r.reservation_time);
             const isStaff = r.booked_by === 'staff';
             const isPos = r.booked_by === 'pos';
-            const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : 'RES-');
+            const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
+            const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
             
             let parsedFoods = [];
             try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
 
             return {
-                reservationNumber: `${prefix}${r.reservation_id}`, customerName: r.name,
-                arrivalDate: d.toISOString().split('T')[0], arrivalTime: d.toTimeString().substring(0, 5),
-                bookedTable: `Table ${r.table_number}`, 
-                status: r.status, bookedBy: r.booked_by,
-                reservationType: r.reservation_type || 'standard',
+                reservationNumber: `${prefix}${r.reservation_id}`,
+                customerName: r.name,
+                arrivalDate: d.toISOString().split('T')[0],
+                arrivalTime: d.toTimeString().substring(0, 5),
+                bookedTable: (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`,
+                status: r.status,
+                bookedBy: r.booked_by,
+                reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
                 paymentAmount: parseFloat(r.payment_amount) || 0,
                 foods: parsedFoods,
-                // 👉 FIX: Map the KDS status so it gets sent to the frontend
                 kdsStatus: r.kds_status || 'pending'
             };
         });
@@ -548,7 +551,10 @@ app.post('/reserve', async (req, res) => {
             customerId = result.insertId;
         }
 
-        const tableInt = parseInt(String(table).replace(/[^0-9]/g, '')) || 1;
+        const isVipBooking = /vip/i.test(String(table || '')) || String(reservationType || '').toLowerCase() === 'vip';
+        const tableInt = isVipBooking ? 99 : (parseInt(String(table).replace(/[^0-9]/g, '')) || 1);
+        const finalResType = isVipBooking ? 'vip' : (reservationType || 'standard');
+
         const safeDate = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().split('T')[0];
         const safeTime = (time && /^\d{2}:\d{2}/.test(time)) ? time.substring(0, 5) : '12:00';
         const reservationTime = `${safeDate} ${safeTime}:00`;
@@ -561,7 +567,7 @@ app.post('/reserve', async (req, res) => {
 
         const [result] = await db.query(
             'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, reservationType || 'standard', Number(paymentAmount) || 0, foodsJson]
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson]
         );
 
         cachedReservations = null;
@@ -962,7 +968,7 @@ app.post('/api/reservations/update-order', async (req, res) => {
                 }
             }
 
-            const tableInt = bookedTable ? (parseInt(String(bookedTable).replace(/[^0-9]/g, '')) || null) : null;
+            const tableInt = bookedTable ? (/vip/i.test(String(bookedTable)) ? 99 : (parseInt(String(bookedTable).replace(/[^0-9]/g, '')) || null)) : null;
             let resTime = null;
             if (arrivalDate && /^\d{4}-\d{2}-\d{2}$/.test(arrivalDate)) {
                 const safeTime = (arrivalTime && /^\d{2}:\d{2}/.test(arrivalTime)) ? arrivalTime.substring(0, 5) : '12:00';
