@@ -1844,6 +1844,10 @@
         }, 400);
 
         function renderDashboard() {
+            // 👉 STRICT AUTH GUARD: Never render or reveal dashboard unless authenticated!
+            if (sessionStorage.getItem('superAdminActive') !== 'true') {
+                return;
+            }
             if (window.renderGlobalSuperAdminStoreStatusBanner) window.renderGlobalSuperAdminStoreStatusBanner();
             if (typeof window.switchSuperAdminInvSubTab === 'function') {
                 window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
