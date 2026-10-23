@@ -295,6 +295,83 @@
             }
         }
     </style>
+    <!-- 📱 SIMPLE MOBILE FIX: Card Layout for Table Rows & Neatly Aligned Buttons -->
+    <style>
+        @media (max-width: 768px) {
+            /* 1. Turns each reservation into a clean, separated mobile card */
+            #history-tbody tr {
+                background: #ffffff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 14px !important;
+                padding: 16px !important;
+                margin-bottom: 14px !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+            }
+
+            #history-tbody td {
+                padding: 3px 0 !important;
+                border: none !important;
+                display: block !important;
+                width: 100% !important;
+            }
+
+            /* 2. Puts Amount, Method (WALK-IN / COD), and Status neatly on one row */
+            #history-tbody td:nth-child(7) {
+                border-top: 1px dashed #cbd5e1 !important;
+                padding-top: 10px !important;
+                margin-top: 6px !important;
+            }
+
+            #history-tbody td:nth-child(7) > div:first-child {
+                font-size: 16px !important;
+                font-weight: 900 !important;
+                display: inline-block !important;
+                margin-right: 8px !important;
+            }
+
+            /* 3. Makes "View Proof" and "Receipt" stretch side-by-side as two wide, easy-to-tap buttons */
+            #history-tbody td:nth-child(7) > div[style*="display:flex"],
+            #history-tbody td:nth-child(7) div[data-rsh-proof-enhanced] {
+                display: flex !important;
+                width: 100% !important;
+                gap: 8px !important;
+                margin-top: 8px !important;
+            }
+
+            #history-tbody td:nth-child(7) button,
+            #history-tbody td:nth-child(7) a {
+                flex: 1 !important;
+                padding: 8px 10px !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+                text-align: center !important;
+                justify-content: center !important;
+                display: inline-flex !important;
+                align-items: center !important;
+            }
+
+            /* 4. Action Buttons (Edit, Del, Approve, Reject) arranged in a clean grid */
+            #history-tbody td:last-child {
+                border-top: 1px solid #f1f5f9 !important;
+                padding-top: 10px !important;
+                margin-top: 4px !important;
+            }
+
+            #history-tbody td:last-child > div {
+                width: 100% !important;
+                min-width: 100% !important;
+            }
+
+            #history-tbody td:last-child button {
+                padding: 9px 12px !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -1745,6 +1822,10 @@
         }
 
         function renderDashboard() {
+            // 👉 STRICT AUTH GUARD: Never render or reveal dashboard unless staff is signed in!
+            if (!sessionStorage.getItem('adminLoggedInUser')) {
+                return;
+            }
             const dashboard = document.getElementById('dashboard-section');
             const auth = document.getElementById('auth-section');
             const adminStatus = document.getElementById('admin-status');
@@ -3036,7 +3117,8 @@ window.rejectReservation = async function (resNum) {
                                 <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
                                     <span>🗓️ ARRIVAL SCHEDULE</span>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    <div style="flex: 1 1 140px; min-width: 0;">
                                     <div>
                                         <label style="display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">Date</label>
                                         <input type="date" id="toast-date-${resIdx}" value="${res.arrivalDate || ''}" onchange="saveFloorToastEdit(${resIdx})" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 13px; color: #334155; transition: 0.2s; background: white;" onfocus="this.style.borderColor='#2e7d32';" onblur="this.style.borderColor='#cbd5e1';">
@@ -3050,15 +3132,15 @@ window.rejectReservation = async function (resNum) {
 
                             <!-- Direct Reservation Operating Controls -->
                             ${!isCompleted && !isCancelled ? `
-                            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'seated', '${tId}')" style="flex:1; background:#0284c7; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 4px rgba(2,132,199,0.2);">
+                            <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px;">
+                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'seated', '${tId}')" style="background:#0284c7; color:white; border:none; padding:10px 8px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 4px rgba(2,132,199,0.2);">
                                     🪑 Seat Guest
                                 </button>
-                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'completed', '${tId}')" style="flex:1; background:#16a34a; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 4px rgba(22,163,74,0.2);">
-                                    ✅ Done / Complete
+                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'completed', '${tId}')" style="background:#16a34a; color:white; border:none; padding:10px 8px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 4px rgba(22,163,74,0.2);">
+                                    ✅ Complete
                                 </button>
-                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'rejected', '${tId}')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:8px 12px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;">
-                                    ❌ Cancel
+                                <button type="button" onclick="updateSingleReservationStatus(${resIdx}, 'rejected', '${tId}')" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:10px 8px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                                ❌ Cancel
                                 </button>
                             </div>
                             ` : `
@@ -3077,9 +3159,7 @@ window.rejectReservation = async function (resNum) {
                 const nextStatus = cycleMap[currentStatus] || 'available';
 
                 const btnRow = document.createElement('div');
-                btnRow.style.display = 'flex';
-                btnRow.style.gap = '10px';
-                btnRow.style.marginTop = '20px';
+                btnRow.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; width: 100%; box-sizing: border-box;';
 
                 const doneBtn = document.createElement('button');
                 doneBtn.innerHTML = '✅ Done Eating (Set Available)';
