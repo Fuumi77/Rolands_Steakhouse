@@ -6874,7 +6874,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
             function computeOrderSignature(r) {
                 const foodsStr = Array.isArray(r.foods) ? r.foods.join(',') : (r.orderSummary || '');
-                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}|v3`;
+                return `${r.reservationNumber}|${r.customerName}|${r.bookedTable}|${r.arrivalDate}|${r.arrivalTime}|${r.paymentAmount}|${foodsStr}|v4`;
             }
 
             window.ensureOrderProofUpToDate = function (r) {
