@@ -369,7 +369,7 @@
                     changeQty: Number(entry.changeQty) || 0,
                     newStock: finalNewStock,
                     unit: entry.unit || (matchedIng ? matchedIng.unit : 'g'),
-                    operator: 1
+                    operator: 1,
                     timestamp: newEntry.timestamp
                 });
                 if (_syncMovementTimer) clearTimeout(_syncMovementTimer);
