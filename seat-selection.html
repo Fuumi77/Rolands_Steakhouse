@@ -426,29 +426,53 @@
                 return Math.abs(bMins - chosenMins) < 150; 
             });
 
-            // "Taken HH:MM" tags
-            let tableHasConflict = false;
-            if (bookings.length > 0) {
-                const row = document.createElement('div');
-                row.style.cssText = 'margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;';
-                bookings.forEach(b => {
-                    const bMins = parseTimeMins(b.arrivalTime);
-                    const isConflict = Math.abs(bMins - chosenMins) < 150;
-                    if (isConflict) tableHasConflict = true;
+             // ── AVAILABILITY TIMELINE BADGES ──
+            const OPEN_MIN = 10 * 60 + 30, CLOSE_MIN = 21 * 60, STAY_MIN = 180; // 3h per booking
+            const fmt = m => {
+                let h = Math.floor(m / 60), mm = m % 60;
+                const ap = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${h}:${String(mm).padStart(2, '0')} ${ap}`;
+            };
 
-                    const tag = document.createElement('span');
-                    const displayTime = b.arrivalTime || 'today';
+            // Merge booked blocks
+            let busy = bookings
+                .map(b => { const s = parseTimeMins(b.arrivalTime); return [s, s + STAY_MIN]; })
+                .sort((a, b) => a[0] - b[0]);
+            const merged = [];
+            busy.forEach(iv => {
+                const last = merged[merged.length - 1];
+                if (last && iv[0] <= last[1]) last[1] = Math.max(last[1], iv[1]);
+                else merged.push([...iv]);
+            });
 
-                    tag.textContent = `Taken ${displayTime}`;
-                    tag.style.cssText = `display:inline-block;font-size:10px;font-weight:700;
-                        padding:2px 6px;border-radius:20px;white-space:nowrap;
-                        background:${isConflict ? '#fee2e2':'#f1f5f9'};
-                        color:${isConflict ? '#b91c1c':'#475569'};
-                        border:1px solid ${isConflict ? '#fca5a5':'#cbd5e1'};`;
-                    row.appendChild(tag);
-                });
-                const lbl = table.querySelector('.table-label');
-                if (lbl) lbl.after(row);
+            // Build ordered badges: free / reserved / free ...
+            const badges = [];
+            let cursor = OPEN_MIN;
+            merged.forEach(([s, e]) => {
+                if (s > cursor) badges.push({ free: true, text: `${fmt(cursor)} – ${fmt(s)}` });
+                badges.push({ free: false, text: `${fmt(s)} – ${fmt(e)}` });
+                cursor = Math.max(cursor, e);
+            });
+            if (cursor <= CLOSE_MIN) {
+                 badges.push({ free: true, text: cursor === OPEN_MIN ? 'Open all day' : `${fmt(cursor)} onwards` });
+            }
+
+            const row = document.createElement('div');
+            row.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:3px;width:100%;align-items:center;';
+            badges.forEach(b => {
+                const tag = document.createElement('span');
+                tag.className = 'rsh-time-badge';
+                tag.textContent = (b.free ? '🟢 Available ' : '🔴 Reserved ') + b.text;
+                tag.style.cssText = `display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;
+                    border-radius:20px;white-space:nowrap;
+                    background:${b.free ? '#dcfce7' : '#fee2e2'};
+                    color:${b.free ? '#166534' : '#b91c1c'};
+                    border:1px solid ${b.free ? '#86efac' : '#fca5a5'};`;
+                row.appendChild(tag);
+            });
+            const lbl = table.querySelector('.table-label');
+            if (lbl) lbl.after(row);
             }
 
             // 👉 FIX: Visually grey out the table so the customer knows it is unavailable
@@ -671,6 +695,47 @@
             padding: 8px 10px;
         }
     }
+        .checkout-panel {
+    max-width: 230px !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    gap: 6px !important;
+}
+.checkout-panel .selection-label { font-size: 9px !important; letter-spacing: 1px !important; }
+.checkout-panel .selected-table-name { font-size: 18px !important; margin: 0 !important; }
+#confirm-final-btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    border-radius: 9px !important;
+}
+.checkout-panel .cancel-selection-btn {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    margin-top: 4px !important;
+    border-radius: 9px !important;
+}
+
+@media (max-width: 768px) {
+    .checkout-panel {
+        position: fixed !important;
+        left: 8px; right: 8px; bottom: 8px;
+        max-width: none !important;
+        transform: none !important;
+        z-index: 950;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 10px !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,.18) !important;
+    }
+    .checkout-panel .selection-summary { flex: 1; text-align: left; }
+    .checkout-panel .selected-table-name { font-size: 15px !important; }
+    #confirm-final-btn { width: auto !important; white-space: nowrap; }
+    .checkout-panel .cancel-selection-btn { width: auto !important; margin: 0 !important; }
+    body.seat-selection-page { padding-bottom: 80px; }
+}
+
 </style>
 
 <script>
@@ -877,7 +942,9 @@
                 const classStr = (card.className || '').toLowerCase();
                 const cardText = (card.innerText || '').toLowerCase();
                 const borderStyle = window.getComputedStyle(card).borderColor;
-                const isUnavailable = classStr.includes('disabled') || classStr.includes('unavailable') || classStr.includes('reserved') || classStr.includes('occupied') || cardText.includes('reserved') || cardText.includes('unavailable') || cardText.includes('taken') || card.style.pointerEvents === 'none';
+                const isUnavailable = !card.classList.contains('available') ||
+                    classStr.includes('disabled') || classStr.includes('unavailable') ||
+                    classStr.includes('occupied') || card.style.pointerEvents === 'none';
                 const isSelected = classStr.includes('selected') || classStr.includes('active') || borderStyle === 'rgb(27, 94, 32)' || borderStyle === 'rgb(46, 125, 50)' || borderStyle === 'rgb(34, 197, 94)';
 
                 if (isUnavailable) {
