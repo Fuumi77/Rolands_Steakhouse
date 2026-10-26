@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js"></script>
+    <script src="js/inventory-system.js?v=6.2"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <style>
         /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (seat-selection.html) */
@@ -972,6 +972,48 @@
         setInterval(syncTableCards, 800);
         setInterval(syncAllTableDataFromCloud, 6000);
     })();
+
+    // ── VIP ROOM AVAILABILITY (synced via reservationHistory) ──
+function updateVipAvailability() {
+    const btn = document.getElementById('vip-book-btn');
+    if (!btn) return;
+    const toMins = t => { if (!t) return -9999; const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); };
+    const fmtMin = m => { let h = Math.floor(m / 60), mm = m % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${String(mm).padStart(2, '0')} ${ap}`; };
+
+    const VIP_STAY = 120; // VIP minimum is 2 hours
+    const date = localStorage.getItem('arrivalDate') || '';
+    const want = toMins(localStorage.getItem('arrivalTime'));
+    const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+
+    const booked = hist.filter(r => {
+        const st = String(r.status || '').toLowerCase();
+        const isVip = r.reservationType === 'vip' || /vip/i.test(r.bookedTable || '');
+        return isVip && r.arrivalDate === date && !['cancelled', 'rejected', 'completed'].includes(st);
+    }).map(r => { const s = toMins(r.arrivalTime); return [s, s + VIP_STAY]; })
+      .sort((a, b) => a[0] - b[0]);
+
+    const clash = want >= 0 && booked.some(([s, e]) => want < e && want + VIP_STAY > s);
+
+    let note = document.getElementById('vip-avail-note');
+    if (!note) {
+        note = document.createElement('div');
+        note.id = 'vip-avail-note';
+        note.style.cssText = 'margin:10px 0;font-size:13px;font-weight:700;text-align:center;line-height:1.6;';
+        btn.before(note);
+    }
+    note.innerHTML = booked.length
+        ? booked.map(([s, e]) => `🔴 Reserved ${fmtMin(s)} – ${fmtMin(e)}`).join('<br>') + '<br>🟢 Available outside these times'
+        : '🟢 VIP Room available all day';
+    note.style.color = clash ? '#b91c1c' : '#166534';
+
+    btn.disabled = clash;
+    btn.textContent = clash ? 'VIP Room Unavailable at This Time' : 'Reserve VIP Room Now';
+    btn.style.opacity = clash ? '0.5' : '1';
+    btn.style.cursor = clash ? 'not-allowed' : 'pointer';
+}
+setInterval(updateVipAvailability, 2000);
+setTimeout(updateVipAvailability, 300);
+
 
     // ── PART 2: Smooth Scroll-Following & Docking Selected Table Card ──
     (function initSmoothScrollSelectedTableCard() {
