@@ -131,6 +131,19 @@
         .cart-reduce-btn:active {
             transform: scale(0.95);
         }
+        /* Sheet and its dim overlay must sit ABOVE the fixed header */
+#cart-sheet-overlay { z-index: 1100 !important; }
+#cart-sheet {
+    z-index: 1101 !important;
+    max-height: calc(100vh - 110px) !important;
+    max-height: calc(100dvh - 110px) !important; /* real visible height on phones */
+}
+#cart-sheet .sheet-inner {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+}
+
     </style>
     </head>
 <body>
