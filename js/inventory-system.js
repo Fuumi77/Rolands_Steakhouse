@@ -2124,3 +2124,52 @@
     setTimeout(syncRawIngredientsFromMySQL, 800);
     setInterval(syncRawIngredientsFromMySQL, 20000);
 })();
+
+/* ── MENU ITEMS CLOUD SYNC (pull everywhere, push only from admin pages) ── */
+(function menuCloudSync() {
+    const API = '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)';
+    const isAdminPage = /admin/i.test(location.pathname);
+    const strip = arr => JSON.stringify((arr || []).map(i => {
+        const c = { ...i };
+        delete c.stock; delete c.total_stock; delete c.computedStatus; delete c.missingIngredients;
+        return c;
+    }));
+
+    async function pull() {
+        if (Date.now() - (window.__lastMenuPush || 0) < 10000) return;
+        try {
+            const r = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`);
+            if (!r.ok) return;
+            const cloud = await r.json();
+            if (!Array.isArray(cloud) || cloud.length === 0) return;
+            const local = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            if (strip(local) === strip(cloud)) return;
+            localStorage.setItem('inventoryItems', JSON.stringify(cloud));
+            window.InventorySystem?.syncFoodMenuStockFromIngredients?.();
+            window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloud }));
+        } catch (e) {}
+    }
+
+    if (isAdminPage) {
+        let t;
+        const origSet = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (k, v) {
+            origSet.apply(this, arguments);
+            if (k !== 'inventoryItems') return;
+            clearTimeout(t);
+            t = setTimeout(() => {
+                window.__lastMenuPush = Date.now();
+                fetch(`${API}/api/memory/inventory-items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: v
+                }).catch(() => {});
+            }, 1500);
+        };
+    }
+
+    setTimeout(pull, 500);
+    setInterval(pull, 8000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+})();
+
