@@ -326,7 +326,15 @@
     function logStockMovement(entry) {
         try {
             if (!entry || typeof entry !== 'object') return null;
-            const logs = getAuditLogs();
+            // 👉 Hide money-only refund entries from the stock movement table.
+            // The deduplication/restock entries for the same action are kept.
+            const logs = getAuditLogs().filter(l => {
+                if (l.action !== 'ORDER_REFUND') return true;
+                const qty = Number(l.changeQty) || 0;
+                const unit = String(l.unit || '').toUpperCase();
+                return Math.abs(qty) > 0 && unit !== 'PHP'; // drop cash-only refund rows
+            });
+
             
             let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
             const rawList = getRawIngredients();
