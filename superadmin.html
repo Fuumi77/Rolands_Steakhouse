@@ -2761,6 +2761,9 @@
 
             window.switchSuperAdminInvSubTab = function (tabName) {
                 window.activeSuperAdminInvSubTab = tabName;
+                // 👉 FIX: remember the tab across re-renders
+                try { localStorage.setItem('superActiveInvSubTab', tabName); } catch (e) {}
+
                 const valuationContainer = document.getElementById('superadmin-valuation-container');
                 const foodContainer = document.getElementById('superadmin-food-container');
                 const rawContainer = document.getElementById('superadmin-raw-ingredients-container');
@@ -3388,6 +3391,19 @@
                         } else {
                             renderInventory();
                         }
+                        // 👉 FIX: re-apply button highlight so the tab doesn't visibly reset
+if (window.activeSuperAdminInvSubTab) {
+    const map = { valuation: 'sa-inv-subtab-valuation', food: 'sa-inv-subtab-food',
+                  raw: 'sa-inv-subtab-raw', recipe: 'sa-inv-subtab-recipe',
+                  wastage: 'sa-inv-subtab-wastage', audit: 'sa-inv-subtab-audit' };
+    Object.values(map).forEach(id => {
+        const b = document.getElementById(id);
+        if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+    });
+    const activeBtn = document.getElementById(map[window.activeSuperAdminInvSubTab]);
+    if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+}
+
                     } finally {
                         isRefreshingSuperInvTab = false;
                     }
