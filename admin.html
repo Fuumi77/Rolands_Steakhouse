@@ -4840,21 +4840,20 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                         } else {
                             renderMenuManagement();
                         }
+                        // 👉 FIX: re-apply button highlight + guard the scroll position
+                        if (window.activeAdminInvTab) {
+                            const map = { food: 'inv-subtab-food', raw: 'inv-subtab-raw', recipe: 'inv-subtab-recipe',
+                                            wastage: 'inv-subtab-wastage', audit: 'inv-subtab-audit' };
+                            Object.values(map).forEach(id => {
+                                const b = document.getElementById(id);
+                                if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+                            });
+                            const activeBtn = document.getElementById(map[window.activeAdminInvTab]);
+                        if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+                        }
                     } finally {
                         isRefreshingInvTab = false;
                     }
-                    // 👉 FIX: re-apply button highlight + guard the scroll position
-if (window.activeAdminInvTab) {
-    const map = { food: 'inv-subtab-food', raw: 'inv-subtab-raw', recipe: 'inv-subtab-recipe',
-                  wastage: 'inv-subtab-wastage', audit: 'inv-subtab-audit' };
-    Object.values(map).forEach(id => {
-        const b = document.getElementById(id);
-        if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
-    });
-    const activeBtn = document.getElementById(map[window.activeAdminInvTab]);
-    if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
-}
-
                 }, 1500);
             }
 
