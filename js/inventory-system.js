@@ -2181,3 +2181,69 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 
+/* ── AUDIT LOG CLOUD SYNC (shared across all devices) ── */
+(function auditLogCloudSync() {
+    const API = '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)';
+    const KEY = 'inventory_audit_logs';
+    const isAdminPage = /admin/i.test(location.pathname);
+    let pushing = false;
+
+    const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+    const sig = arr => JSON.stringify((arr || []).map(l => l.id).sort());
+
+    async function pull() {
+        if (pushing) return;
+        if (Date.now() - (window.__lastAuditPush || 0) < 8000) return;
+        try {
+            const r = await fetch(`${API}/api/inventory/audit-log?nocache=${Date.now()}`);
+            if (!r.ok) return;
+            const cloud = await r.json();
+            if (!Array.isArray(cloud) || cloud.length === 0) return;
+
+            const local = read();
+            const byId = {};
+            local.forEach(l => { if (l && l.id) byId[l.id] = l; });
+            cloud.forEach(l => { if (l && l.id) byId[l.id] = l; });
+
+            const merged = Object.values(byId)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 500);
+
+            if (sig(merged) === sig(local)) return;
+            localStorage.setItem(KEY, JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent('auditLogUpdated', { detail: merged }));
+            document.dispatchEvent(new Event('auditLogAdded'));
+        } catch (e) {}
+    }
+
+    async function push() {
+        if (!isAdminPage) return;                  // only admin pages broadcast
+        const logs = read();
+        if (logs.length === 0) return;
+        pushing = true;
+        window.__lastAuditPush = Date.now();
+        try {
+            await fetch(`${API}/api/inventory/audit-log`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ logs })
+            });
+        } catch (e) {} finally { pushing = false; }
+    }
+
+    // Push whenever a new entry is logged on an admin device
+    if (isAdminPage && window.InventorySystem && window.InventorySystem.logStockMovement) {
+        const orig = window.InventorySystem.logStockMovement;
+        window.InventorySystem.logStockMovement = function (entry) {
+            const result = orig.apply(this, arguments);
+            clearTimeout(window.__auditPushTimer);
+            window.__auditPushTimer = setTimeout(push, 1200);
+            return result;
+        };
+    }
+
+    setTimeout(pull, 700);
+    setInterval(pull, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+})();
+
