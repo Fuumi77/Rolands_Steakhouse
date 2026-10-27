@@ -1013,7 +1013,7 @@ function updateVipAvailability() {
     note.innerHTML = booked.length
         ? booked.map(([s, e]) => `🔴 Reserved ${fmtMin(s)} – ${fmtMin(e)}`).join('<br>') + '<br>🟢 Available outside these times'
         : '🟢 VIP Room available all day';
-    note.style.color = clash ? '#b91c1c' : '#166534';
+    note.style.color = clash ? '#b91c1c' : '#22c55e';
 
     btn.disabled = clash;
     btn.textContent = clash ? 'VIP Room Unavailable at This Time' : 'Reserve VIP Room Now';
