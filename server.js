@@ -790,6 +790,41 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
     }
 });
 
+/* 👉 AUDIT LOG CLOUD SYNC — read the shared movement log back to every device */
+app.get('/api/inventory/audit-log', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('inventoryAuditLog', []);
+        res.json(Array.isArray(data) ? data : []);
+    } catch (err) {
+        res.json(memoryCache.inventoryAuditLog ? (memoryCache.inventoryAuditLog.data || []) : []);
+    }
+});
+
+app.post('/api/inventory/audit-log', async (req, res) => {
+    try {
+        const incoming = Array.isArray(req.body) ? req.body : (req.body.logs || []);
+        if (incoming.length === 0) return res.json({ success: true, count: 0 });
+
+        let existing = await getSystemMemoryKey('inventoryAuditLog', []);
+        if (!Array.isArray(existing)) existing = [];
+
+        const byId = {};
+        existing.forEach(l => { if (l && l.id) byId[l.id] = l; });
+        incoming.forEach(l => { if (l && l.id) byId[l.id] = l; });
+
+        // Newest first, capped so the row stays small
+        const merged = Object.values(byId)
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 500);
+
+        await setSystemMemoryKey('inventoryAuditLog', merged);
+        res.json({ success: true, count: merged.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 /* 👉 LOG MENU PORTION REDUCTIONS TO menu_stock_change_log WITH EXACT PH TIMESTAMP */
 app.post('/api/inventory/log-menu-stock', async (req, res) => {
     const { changes, updatedBy, timestamp } = req.body;
