@@ -326,16 +326,7 @@
     function logStockMovement(entry) {
         try {
             if (!entry || typeof entry !== 'object') return null;
-            // 👉 Hide money-only refund entries from the stock movement table.
-            // The deduplication/restock entries for the same action are kept.
-            const logs = getAuditLogs().filter(l => {
-                if (l.action !== 'ORDER_REFUND') return true;
-                const qty = Number(l.changeQty) || 0;
-                const unit = String(l.unit || '').toUpperCase();
-                return Math.abs(qty) > 0 && unit !== 'PHP'; // drop cash-only refund rows
-            });
-
-            
+            const logs = getAuditLogs();           
             let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
             const rawList = getRawIngredients();
             const matchedIng = (entry.ingredientId && entry.ingredientId !== 'FINANCIAL')
@@ -1633,7 +1624,13 @@
 
     function renderAuditLogUI(containerEl, role = 'Super Admin') {
         if (!containerEl) return;
-        const logs = getAuditLogs();
+        const logs = getAuditLogs().filter(l => {
+    if (l.action !== 'ORDER_REFUND') return true;
+    const qty = Number(l.changeQty) || 0;
+    const unit = String(l.unit || '').toUpperCase();
+    return Math.abs(qty) > 0 && unit !== 'PHP'; // drop cash-only refund rows
+});
+
 
         const svgAudit = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
         const svgDownload = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
@@ -2135,7 +2132,7 @@
 
 /* ── MENU ITEMS CLOUD SYNC (pull everywhere, push only from admin pages) ── */
 (function menuCloudSync() {
-    const API = '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)';
+    const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
     const isAdminPage = /admin/i.test(location.pathname);
     const strip = arr => JSON.stringify((arr || []).map(i => {
         const c = { ...i };
@@ -2180,20 +2177,28 @@
     setInterval(pull, 8000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
-
 /* ── AUDIT LOG CLOUD SYNC (shared across all devices) ── */
 (function auditLogCloudSync() {
-    const API = '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)';
+    const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
     const KEY = 'inventory_audit_logs';
-    const isAdminPage = /admin/i.test(location.pathname);
+    const origSet = Storage.prototype.setItem;
+    let pushTimer = null;
     let pushing = false;
 
     const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
     const sig = arr => JSON.stringify((arr || []).map(l => l.id).sort());
 
+    function rerender() {
+        [['superadmin-audit-container', 'Super Admin'], ['admin-audit-container', 'Admin']].forEach(([id, role]) => {
+            const el = document.getElementById(id);
+            if (el && !el.classList.contains('hidden') && window.InventorySystem && window.InventorySystem.renderAuditLogUI) {
+                window.InventorySystem.renderAuditLogUI(el, role);
+            }
+        });
+    }
+
     async function pull() {
         if (pushing) return;
-        if (Date.now() - (window.__lastAuditPush || 0) < 8000) return;
         try {
             const r = await fetch(`${API}/api/inventory/audit-log?nocache=${Date.now()}`);
             if (!r.ok) return;
@@ -2204,24 +2209,20 @@
             const byId = {};
             local.forEach(l => { if (l && l.id) byId[l.id] = l; });
             cloud.forEach(l => { if (l && l.id) byId[l.id] = l; });
-
             const merged = Object.values(byId)
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                 .slice(0, 500);
 
             if (sig(merged) === sig(local)) return;
-            localStorage.setItem(KEY, JSON.stringify(merged));
-            window.dispatchEvent(new CustomEvent('auditLogUpdated', { detail: merged }));
-            document.dispatchEvent(new Event('auditLogAdded'));
+            origSet.call(localStorage, KEY, JSON.stringify(merged)); // no push loop
+            rerender();
         } catch (e) {}
     }
 
     async function push() {
-        if (!isAdminPage) return;                  // only admin pages broadcast
         const logs = read();
         if (logs.length === 0) return;
         pushing = true;
-        window.__lastAuditPush = Date.now();
         try {
             await fetch(`${API}/api/inventory/audit-log`, {
                 method: 'POST',
@@ -2231,19 +2232,20 @@
         } catch (e) {} finally { pushing = false; }
     }
 
-    // Push whenever a new entry is logged on an admin device
-    if (isAdminPage && window.InventorySystem && window.InventorySystem.logStockMovement) {
-        const orig = window.InventorySystem.logStockMovement;
-        window.InventorySystem.logStockMovement = function (entry) {
-            const result = orig.apply(this, arguments);
-            clearTimeout(window.__auditPushTimer);
-            window.__auditPushTimer = setTimeout(push, 1200);
-            return result;
-        };
-    }
+    // Any write to the audit log (from any code path) schedules one push
+    Storage.prototype.setItem = function (k, v) {
+        origSet.apply(this, arguments);
+        if (k === KEY) {
+            clearTimeout(pushTimer);
+            pushTimer = setTimeout(push, 1500);
+        }
+    };
 
-    setTimeout(pull, 700);
+    // Upload what this device already has, then start pulling
+    setTimeout(push, 2500);
+    setTimeout(pull, 4000);
     setInterval(pull, 15000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
+
 
