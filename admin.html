@@ -4630,6 +4630,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
             window.switchAdminInvSubTab = function (tabName) {
                 window.activeAdminInvSubTab = tabName;
+                // 👉 FIX: remember the tab across re-renders
+                try { localStorage.setItem('adminActiveInvSubTab', tabName); } catch (e) {}
+
                 const foodGrid = document.getElementById('admin-menu-grid');
                 const rawContainer = document.getElementById('admin-raw-ingredients-container');
                 const recipeContainer = document.getElementById('admin-recipes-container');
@@ -4840,7 +4843,19 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     } finally {
                         isRefreshingInvTab = false;
                     }
-                }, 300);
+                    // 👉 FIX: re-apply button highlight + guard the scroll position
+if (window.activeAdminInvTab) {
+    const map = { food: 'inv-subtab-food', raw: 'inv-subtab-raw', recipe: 'inv-subtab-recipe',
+                  wastage: 'inv-subtab-wastage', audit: 'inv-subtab-audit' };
+    Object.values(map).forEach(id => {
+        const b = document.getElementById(id);
+        if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+    });
+    const activeBtn = document.getElementById(map[window.activeAdminInvTab]);
+    if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+}
+
+                }, 1500);
             }
 
             // ── LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS FOR STAFF ADMIN ──
