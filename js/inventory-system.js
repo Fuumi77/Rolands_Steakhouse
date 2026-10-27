@@ -2203,9 +2203,10 @@
             const r = await fetch(`${API}/api/inventory/audit-log?nocache=${Date.now()}`);
             if (!r.ok) return;
             const cloud = await r.json();
-            if (!Array.isArray(cloud) || cloud.length === 0) return;
 
             const local = read();
+            const cloudIds = new Set(cloud.map(l => l.id));
+            const localOnly = local.filter(l => !cloudIds.has(l.id));
             const byId = {};
             local.forEach(l => { if (l && l.id) byId[l.id] = l; });
             cloud.forEach(l => { if (l && l.id) byId[l.id] = l; });
@@ -2216,6 +2217,7 @@
             if (sig(merged) === sig(local)) return;
             origSet.call(localStorage, KEY, JSON.stringify(merged)); // no push loop
             rerender();
+            if (localOnly.length > 0) push(); // this device had entries the cloud didn't
         } catch (e) {}
     }
 
@@ -2244,7 +2246,7 @@
     // Upload what this device already has, then start pulling
     setTimeout(push, 2500);
     setTimeout(pull, 4000);
-    setInterval(pull, 30000);
+    setInterval(pull, 15000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 
