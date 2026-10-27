@@ -2154,25 +2154,6 @@
             window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloud }));
         } catch (e) {}
     }
-
-    if (isAdminPage) {
-        let t;
-        const origSet = Storage.prototype.setItem;
-        Storage.prototype.setItem = function (k, v) {
-            origSet.apply(this, arguments);
-            if (k !== 'inventoryItems') return;
-            clearTimeout(t);
-            t = setTimeout(() => {
-                window.__lastMenuPush = Date.now();
-                fetch(`${API}/api/memory/inventory-items`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: v
-                }).catch(() => {});
-            }, 1500);
-        };
-    }
-
     setTimeout(pull, 500);
     if (!/\/admin\.html/i.test(location.pathname)) setInterval(pull, 8000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
@@ -2181,7 +2162,6 @@
 (function auditLogCloudSync() {
     const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
     const KEY = 'inventory_audit_logs';
-    const origSet = Storage.prototype.setItem;
     let pushTimer = null;
     let pushing = false;
 
@@ -2215,7 +2195,7 @@
                 .slice(0, 500);
 
             if (sig(merged) === sig(local)) return;
-            origSet.call(localStorage, KEY, JSON.stringify(merged)); // no push loop
+            localStorage.setItem(KEY, JSON.stringify(merged));
             rerender();
             if (localOnly.length > 0) push(); // this device had entries the cloud didn't
         } catch (e) {}
@@ -2234,19 +2214,15 @@
         } catch (e) {} finally { pushing = false; }
     }
 
-    // Any write to the audit log (from any code path) schedules one push
-    Storage.prototype.setItem = function (k, v) {
-        origSet.apply(this, arguments);
-        if (k === KEY) {
-            clearTimeout(pushTimer);
-            pushTimer = setTimeout(push, 1500);
-        }
-    };
+        let lastPushed = '';
+    setInterval(() => {
+        const s = sig(read());
+        if (s !== lastPushed) { lastPushed = s; push(); }
+    }, 10000);
 
-    // Upload what this device already has, then start pulling
     setTimeout(push, 2500);
     setTimeout(pull, 4000);
-    setInterval(pull, 15000);
+    setInterval(pull, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 
