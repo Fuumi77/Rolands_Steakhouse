@@ -4,7 +4,25 @@ const cors = require('cors');
 const mysql = require('mysql2');
 
 const app = express();
-app.use(cors());
+const ALLOWED_ORIGINS = [
+    '[rolandssteakhouse.com](https://rolandssteakhouse.com)',
+    '[rolandssteakhouse.com](https://www.rolandssteakhouse.com)',
+    '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)',
+    '[localhost](http://localhost:3000)',
+    '[127.0.0.1](http://127.0.0.1:5500)'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        callback(null, true); // permissive: log but don't block
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma']
+}));
+
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
