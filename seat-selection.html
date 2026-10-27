@@ -59,6 +59,15 @@
                 transform-origin: center center !important;
             }
         }
+        /* Hide the floating Selected Table panel while VIP Room is selected */
+body.vip-mode #checkout-panel,
+body.vip-mode .rsh-floating-summary-card {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: none !important;
+}
+
     </style>
 </head>
 <body class="seat-selection-page">
