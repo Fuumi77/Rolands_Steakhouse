@@ -5769,6 +5769,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             // Try to sync from Supabase in the background, non-blocking
             try {
                 const res = await fetch(`${API_BASE_URL}/api/staff?nocache=` + Date.now(), {
+                    signal: AbortSignal.timeout(2500),
                     headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
                 });
                 if (res.ok) {
@@ -5809,6 +5810,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     let usersNow = JSON.parse(localStorage.getItem('adminUsers') || '[]');
                     try {
                         const res = await fetch(`${API_BASE_URL}/api/staff?nocache=` + Date.now(), {
+                            signal: AbortSignal.timeout(2500),
                             headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
                         });
                         if (res.ok) {
@@ -5853,18 +5855,14 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     authMsg2.textContent = '✅ Login successful! Loading dashboard...';
                     setAdminSession(user.username);
 
-                    // 👉 ADDED: Tell Vercel to record the login in the database
-                    try {
-                        await fetch(`${API_BASE_URL}/api/staff/log-login`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: user.username })
-                        });
-                    } catch (e) {
-                        console.warn('Failed to log session', e);
-                    }
+                    fetch(`${API_BASE_URL}/api/staff/log-login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: user.username })
+                    }).catch(() => {});
 
-                    setTimeout(() => renderDashboard(), 400);
+
+                    setTimeout(() => renderDashboard(), 100);
 
                     
 
