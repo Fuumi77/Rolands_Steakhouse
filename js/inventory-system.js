@@ -2174,7 +2174,7 @@
     }
 
     setTimeout(pull, 500);
-    setInterval(pull, 8000);
+    if (!/\/admin\.html/i.test(location.pathname)) setInterval(pull, 8000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 /* ── AUDIT LOG CLOUD SYNC (shared across all devices) ── */
@@ -2244,7 +2244,7 @@
     // Upload what this device already has, then start pulling
     setTimeout(push, 2500);
     setTimeout(pull, 4000);
-    setInterval(pull, 15000);
+    setInterval(pull, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 
