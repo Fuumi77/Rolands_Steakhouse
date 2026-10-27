@@ -1035,6 +1035,7 @@ app.get('/api/memory/inventory-items', async (req, res) => {
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
         res.json(memoryCache.inventoryItems.data || []);
+        inventoryAuditLog: { data: null, time: 0 },
     }
 });
 
