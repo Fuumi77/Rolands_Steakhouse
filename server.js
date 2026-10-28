@@ -5,11 +5,11 @@ const mysql = require('mysql2');
 
 const app = express();
 const ALLOWED_ORIGINS = [
-    '[rolandssteakhouse.com](https://rolandssteakhouse.com)',
-    '[rolandssteakhouse.com](https://www.rolandssteakhouse.com)',
-    '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app)',
-    '[localhost](http://localhost:3000)',
-    '[127.0.0.1](http://127.0.0.1:5500)'
+    'https:' + '//rolandssteakhouse.com',
+    'https:' + '//www.rolandssteakhouse.com',
+    'https:' + '//rolands-steakhouse-vqtr.vercel.app',
+    'http:' + '//localhost:3000',
+    'http:' + '//127.0.0.1:5500'
 ];
 
 app.use(cors({
