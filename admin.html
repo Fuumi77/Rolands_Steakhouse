@@ -2176,14 +2176,6 @@
 
                     tdPaid.innerHTML = `<div style="font-weight:800; color:#1e293b; font-size:14px;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>${methodBadge}${statusBadge}${discountBadge}`;
 
-                    if (r.paymentProof || r.paymentRef) {
-                        const proofBtn = document.createElement('button');
-                        proofBtn.textContent = '🧾 View Proof';
-                        proofBtn.style.cssText = 'font-size:11px; padding:3px 8px; margin-top:6px; background:#e0f2fe; border:1px solid #7ec8e3; color:#0369a1; border-radius:4px; cursor:pointer; display:block; width:100%; font-weight:600;';
-                        proofBtn.onclick = () => window.openProofModal(r);
-                        tdPaid.appendChild(proofBtn);
-                    }
-
                     const resKey = r.reservationNumber || r.id || r.resNumber || '';
                     const tdActions = document.createElement('td');
                     let approvalBtns = '';
@@ -7114,6 +7106,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     paidCell.querySelectorAll('[data-rsh-injected]').forEach(el => el.remove());
 
                     const btnWrap = document.createElement('div');
+                    btnWrap.setAttribute('data-rsh-injected', '1');
                     btnWrap.style.cssText = 'display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;';
                     btnWrap.innerHTML = `
                         <button type="button" data-rsh-injected="1" onclick="event.stopPropagation(); window.openProofByResNum('${firstCellText.replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>
@@ -7125,7 +7118,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 });
             }
 
-            setInterval(injectProofAndReceiptButtonsIntoTables, 3000);
+            setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
             window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
