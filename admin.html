@@ -342,36 +342,29 @@
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
 }
 @media (max-width: 1400px) {
-    /* Conversation pane: fixed height, scrolls internally */
-    #adminChatLayout .chat-main {
+    /* Only the OPEN conversation scrolls */
+    #adminChatLayout.is-viewing-chat .chat-main {
         display: flex !important;
         flex-direction: column !important;
-        height: calc(100dvh - 320px) !important;
-        min-height: 320px !important;
+        height: calc(100dvh - 300px) !important;
+        max-height: calc(100dvh - 300px) !important;
         overflow: hidden !important;
     }
-    #adminChatLayout .chat-main-header {
+    #adminChatLayout.is-viewing-chat .chat-main-header {
         flex: 0 0 auto !important;
     }
-    #adminChatLayout .chat-main-body,
-    #adminChatLayout #adminChatBody {
+    #adminChatLayout.is-viewing-chat .chat-main-body {
         flex: 1 1 auto !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         min-height: 0 !important;
     }
-    #adminChatLayout .chat-reply-area {
+    #adminChatLayout.is-viewing-chat .chat-reply-area {
         flex: 0 0 auto !important;
     }
-
-    /* Session list itself scrolls, so long lists stay usable */
-    #adminChatLayout .chat-sidebar {
-        max-height: calc(100dvh - 260px) !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
 }
+
     </style>
     <!-- 📱 SIMPLE MOBILE FIX: Card Layout for Table Rows & Neatly Aligned Buttons -->
     <style>
@@ -4273,7 +4266,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const message = {
                     sender: 'staff',
                     text: txt,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    iso: new Date().toISOString()
                 };
 
                 const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
@@ -4304,7 +4298,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     const message = {
                         sender: 'staff',
                         text: txt,
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        iso: new Date().toISOString()
                     };
 
                     const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
