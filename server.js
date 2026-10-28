@@ -1018,11 +1018,13 @@ app.post('/api/memory/live-chats/delete', async (req, res) => {
 });
 
 
-app.post('/api/memory/live-chats', async (req, res) => {
+app.get('/api/memory/live-chats', async (req, res) => {
     try {
-        await setSystemMemoryKey('liveChats', req.body || {});
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const data = await getSystemMemoryKey('liveChats', {});
+        res.json(data || {});
+    } catch (err) {
+        res.json(memoryCache.liveChats ? (memoryCache.liveChats.data || {}) : {});
+    }
 });
 
 app.post('/api/memory/live-chats/message', async (req, res) => {
