@@ -2176,6 +2176,31 @@
 
                     tdPaid.innerHTML = `<div style="font-weight:800; color:#1e293b; font-size:14px;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>${methodBadge}${statusBadge}${discountBadge}`;
 
+                    if (r.paymentProof || r.paymentRef) {
+    const resKeyForBtn = r.reservationNumber || r.id || r.resNumber || '';
+
+    const btnWrap = document.createElement('div');
+    btnWrap.style.cssText = 'display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;';
+
+    const proofBtn = document.createElement('button');
+    proofBtn.type = 'button';
+    proofBtn.textContent = '🧾 View Proof';
+    proofBtn.style.cssText = 'flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;';
+    proofBtn.onclick = (ev) => { ev.stopPropagation(); window.openProofModal(r); };
+
+    const receiptLink = document.createElement('a');
+    receiptLink.href = `receipt.html?res=${encodeURIComponent(resKeyForBtn)}`;
+    receiptLink.target = '_blank';
+    receiptLink.textContent = '🖨️ Receipt';
+    receiptLink.style.cssText = 'flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;';
+    receiptLink.onclick = (ev) => ev.stopPropagation();
+
+    btnWrap.appendChild(proofBtn);
+    btnWrap.appendChild(receiptLink);
+    tdPaid.appendChild(btnWrap);
+}
+
+
                     const resKey = r.reservationNumber || r.id || r.resNumber || '';
                     const tdActions = document.createElement('td');
                     let approvalBtns = '';
@@ -4317,9 +4342,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 setInterval(async () => {
                     await syncReservations();
                         if (typeof applySearch === 'function') applySearch();
-                        if (typeof injectProofAndReceiptButtonsIntoTables === 'function') {
-                            requestAnimationFrame(injectProofAndReceiptButtonsIntoTables);
-                        }
                         renderFloorPlan();
                     
                     // 👉 NEW: Download Live Chats from Cloud!
@@ -7117,9 +7139,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
 
                 });
             }
-
-            setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
-            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
 </body>
