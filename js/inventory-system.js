@@ -1308,7 +1308,17 @@
             window.dispatchEvent(new CustomEvent('reservationRefunded', { detail: payload }));
             broadcastSync('reservationRefunded', payload);
             broadcastSync('reservationHistoryUpdated', hist);
-
+            fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/reservations/refund)', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: reservationNumber,
+                    refundAmount: refundAmt,
+                    refundMethod: method,
+                    refundRef: refNumber,
+                    operator: operator
+                })
+            }).catch(() => {});
             return { success: true, reservation: targetRes };
         } catch (err) {
             console.error('Error processing refund:', err);
