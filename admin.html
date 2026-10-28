@@ -341,8 +341,37 @@
     #adminChatLayout.is-viewing-chat .chat-sidebar,
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
 }
+@media (max-width: 1400px) {
+    /* Conversation pane: fixed height, scrolls internally */
+    #adminChatLayout .chat-main {
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100dvh - 320px) !important;
+        min-height: 320px !important;
+        overflow: hidden !important;
+    }
+    #adminChatLayout .chat-main-header {
+        flex: 0 0 auto !important;
+    }
+    #adminChatLayout .chat-main-body,
+    #adminChatLayout #adminChatBody {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        min-height: 0 !important;
+    }
+    #adminChatLayout .chat-reply-area {
+        flex: 0 0 auto !important;
+    }
 
-
+    /* Session list itself scrolls, so long lists stay usable */
+    #adminChatLayout .chat-sidebar {
+        max-height: calc(100dvh - 260px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+}
     </style>
     <!-- 📱 SIMPLE MOBILE FIX: Card Layout for Table Rows & Neatly Aligned Buttons -->
     <style>
@@ -3609,6 +3638,16 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (!listEl) return;
 
                 const sessions = Object.keys(allChats);
+                // 👉 Newest chat first, oldest at the bottom
+const chatLastActivity = {};
+sessions.forEach(sId => {
+    const arr = Array.isArray(allChats[sId]) ? allChats[sId] : [];
+    const last = arr[arr.length - 1];
+    chatLastActivity[sId] = last && (last.iso || last.timestamp || last.date)
+        ? new Date(last.iso || last.timestamp || last.date).getTime()
+        : (arr.length ? arr.length : 0);
+});
+sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const isFirstLoad = window.lastSeenChatCounts === null;
                 if (isFirstLoad) window.lastSeenChatCounts = {};
 
