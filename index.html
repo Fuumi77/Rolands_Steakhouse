@@ -1097,7 +1097,8 @@
                 sender: 'customer',
                 name: cName,
                 text: text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                iso: new Date().toISOString()
             };
 
             const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
@@ -1137,7 +1138,8 @@
                     sender: 'customer',
                     name: cName,
                     text: txt,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    iso: new Date().toISOString()
                 };
 
                 const allChatsLocal = JSON.parse(localStorage.getItem('liveChats') || '{}');
@@ -2315,7 +2317,8 @@
                             sender: 'staff',
                             name: 'System',
                             text: `🚫 Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
-                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            iso: new Date().toISOString()
                         };
                         allChats[sId].push(cancelMsg);
                         localStorage.setItem('liveChats', JSON.stringify(allChats));
