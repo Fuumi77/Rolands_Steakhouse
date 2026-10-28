@@ -342,13 +342,16 @@
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
 }
 @media (max-width: 1400px) {
-    /* List pane: shrink to fit its chats, no empty tail */
+        /* List pane: fits its chats, but scrolls internally once the list is long */
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar {
         height: auto !important;
-        max-height: none !important;
+        max-height: calc(100dvh - 300px) !important;
         align-self: flex-start !important;
-        overflow: visible !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
     }
+
     #adminChatLayout:not(.is-viewing-chat) .chat-layout {
         height: auto !important;
         min-height: 0 !important;
