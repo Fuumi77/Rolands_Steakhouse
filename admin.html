@@ -7110,8 +7110,6 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     const paidCell = cells[6];
                     if (!paidCell) return;
 
-                    // Remove any previously injected pair (buttons AND links)
-                    paidCell.querySelectorAll('[data-rsh-injected]').forEach(el => el.remove());
                     // Clear leftovers from the older injector (unmarked Receipt links)
                     paidCell.querySelectorAll('a[href^="receipt.html"]').forEach(el => el.remove());
                     paidCell.querySelectorAll('[data-rsh-injected]').forEach(el => el.remove());
