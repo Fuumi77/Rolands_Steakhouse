@@ -342,14 +342,20 @@
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
 }
 @media (max-width: 1400px) {
-    /* Only the OPEN conversation scrolls */
-    #adminChatLayout.is-viewing-chat .chat-main {
-        display: flex !important;
-        flex-direction: column !important;
-        height: calc(100dvh - 300px) !important;
-        max-height: calc(100dvh - 300px) !important;
-        overflow: hidden !important;
+    /* List pane: shrink to fit its chats, no empty tail */
+    #adminChatLayout:not(.is-viewing-chat) .chat-sidebar {
+        height: auto !important;
+        max-height: none !important;
+        align-self: flex-start !important;
+        overflow: visible !important;
     }
+    #adminChatLayout:not(.is-viewing-chat) .chat-layout {
+        height: auto !important;
+        min-height: 0 !important;
+        align-items: flex-start !important;
+    }
+}
+
     #adminChatLayout.is-viewing-chat .chat-main-header {
         flex: 0 0 auto !important;
     }
@@ -359,6 +365,13 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         min-height: 0 !important;
+    }
+        #adminChatLayout.is-viewing-chat .chat-main {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        max-height: calc(100dvh - 300px) !important;
+        overflow: hidden !important;
     }
     #adminChatLayout.is-viewing-chat .chat-reply-area {
         flex: 0 0 auto !important;
