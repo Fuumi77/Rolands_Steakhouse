@@ -331,6 +331,17 @@
     white-space: nowrap !important;
     min-width: 78px !important;
 }
+        /* Messenger-style: list first, conversation after tapping */
+@media (max-width: 1400px) {
+    #adminChatLayout.is-viewing-chat .chat-sidebar { display: none !important; }
+    #adminChatLayout:not(.is-viewing-chat) .chat-main { display: none !important; }
+    .chat-main-header { display: flex !important; align-items: center !important; gap: 10px !important; }
+}
+@media (min-width: 1401px) {
+    #adminChatLayout.is-viewing-chat .chat-sidebar,
+    #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
+}
+
 
     </style>
     <!-- 📱 SIMPLE MOBILE FIX: Card Layout for Table Rows & Neatly Aligned Buttons -->
@@ -705,7 +716,7 @@
                         🗑️ Clear All Chats
                     </button>
                 </div>
-                <div class="chat-layout">
+                <div class="chat-layout" id="adminChatLayout">
                     <div class="chat-sidebar" id="adminChatList"></div>
                     <div class="chat-main" id="adminChatMain">
                         <div class="chat-empty-state">Select a chat on the left to start replying.</div>
@@ -4158,8 +4169,10 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 if (!isSilent) {
                     mainEl.innerHTML = `
                         <div class="chat-main-header">
-                            Chatting with: ${cName}
-                        </div>
+    <button type="button" class="chat-back-btn" onclick="event.stopPropagation(); window.backToChatList()" style="background:#f1f5f9; border:1px solid #e2e8f0; color:#334155; font-size:14px; font-weight:800; padding:6px 12px; border-radius:8px; cursor:pointer; flex:0 0 auto;">← Back</button>
+    <span style="flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Chatting with: ${cName}</span>
+</div>
+
                         <div class="chat-main-body" id="adminChatBody">
                             ${bodyHtml}
                         </div>
@@ -4174,6 +4187,25 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     if (body) body.scrollTop = body.scrollHeight;
                 }
             };
+            
+            window.backToChatList = function () {
+                const layout = document.getElementById('adminChatLayout');
+                if (layout) layout.classList.remove('is-viewing-chat');
+                window.currentActiveChat = null;
+                document.querySelectorAll('#adminChatList .chat-session-card').forEach(c => c.classList.remove('active'));
+            };
+
+            // Show the conversation pane when a chat is opened
+            (function watchChatSelection() {
+                let last = null;
+                setInterval(() => {
+                    if (window.currentActiveChat === last) return;
+                    last = window.currentActiveChat;
+                    const layout = document.getElementById('adminChatLayout');
+                    if (!layout) return;
+                    layout.classList.toggle('is-viewing-chat', !!window.currentActiveChat);
+                    }, 300);
+                })();
             
             window.clearAllChats = async function() {
                 if (confirm("🚨 Are you sure you want to permanently delete all active customer chats?")) {
