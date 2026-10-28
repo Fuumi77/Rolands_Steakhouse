@@ -4324,6 +4324,8 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             if (!window.isPollingActive) {
                 setInterval(async () => {
                     syncReservations();
+                    if (typeof renderReservations === 'function') renderReservations();
+                    if (typeof renderTodayQueue === 'function') renderTodayQueue();
                     renderFloorPlan();
                     
                     // 👉 NEW: Download Live Chats from Cloud!
