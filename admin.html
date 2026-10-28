@@ -1647,6 +1647,44 @@
             return `plain:${str}`;
         }
 
+                // 👉 Reservations arriving within 2 hours that haven't been served yet
+        function getArrivingSoonIds() {
+            const now = new Date();
+            const soon = new Set();
+
+            const hist = safeJsonParse(localStorage.getItem('reservationHistory'), []);
+            hist.forEach(r => {
+                if (!r) return;
+
+                // skip anything already finished or cancelled
+                const aStatus = String(r.approvalStatus || '').toLowerCase();
+                const kds = String(r.kdsStatus || '').toLowerCase();
+                if (['completed', 'cancelled', 'rejected'].includes(aStatus)) return;
+                if (kds === 'served' || kds === 'cancelled') return;
+                if (String(r.paymentStatus || '').toLowerCase() === 'refunded') return;
+
+                // must be a confirmed booking
+                const isConfirmed = aStatus === 'approved' || aStatus === 'seated' ||
+                                    String(r.status || '').toLowerCase() === 'approved';
+                if (!isConfirmed) return;
+
+                // must have a real arrival time today
+                if (!r.arrivalTime) return;
+                const [h, m] = String(r.arrivalTime).split(':').map(Number);
+                if (isNaN(h)) return;
+
+                const arrival = new Date();
+                arrival.setHours(h, m || 0, 0, 0);
+
+                const diffMins = (arrival - now) / 60000;
+                if (diffMins > 0 && diffMins <= 120) {
+                    soon.add(r.reservationNumber);
+                }
+            });
+
+            return soon;
+        }
+
         function parseRecordDate(r) {
             if (!r) return new Date();
             const raw = r.completedAt || r.arrivalDate || r.createdAt || r.date;
@@ -2136,8 +2174,19 @@
 
             function renderRows(rows) {
                 historyTbody.innerHTML = '';
+                const arrivingSoon = getArrivingSoonIds();
                 if (!rows.length) {
                     const tr = document.createElement('tr');
+                    // 👉 2-HOUR REMINDER HIGHLIGHT
+                    if (arrivingSoon.has(r.reservationNumber)) {
+                        tr.style.background = '#fffbeb';
+                        tr.style.boxShadow = 'inset 4px 0 0 #f59e0b';
+                        const badge = document.createElement('div');
+                        badge.textContent = '⏰ ARRIVING SOON';
+                        badge.style.cssText = 'display:inline-block; font-size:9.5px; font-weight:900; letter-spacing:0.5px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:2px 7px; border-radius:10px; margin-top:4px;';
+                        const firstCell = tr.querySelector('td');
+                        if (firstCell) firstCell.appendChild(badge);
+                    }
                     const td = document.createElement('td');
                     td.colSpan = 8;
                     td.className = 'muted';
@@ -3682,6 +3731,35 @@ sessions.forEach(sId => {
 sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const isFirstLoad = window.lastSeenChatCounts === null;
                 if (isFirstLoad) window.lastSeenChatCounts = {};
+
+                // 👉 2-HOUR ARRIVAL REMINDER (fires once per reservation)
+                window.notifiedArrivingSoon = window.notifiedArrivingSoon || new Set();
+                try {
+                    const soonIds = getArrivingSoonIds();
+                    soonIds.forEach(resNum => {
+                        if (window.notifiedArrivingSoon.has(resNum)) return;
+                        window.notifiedArrivingSoon.add(resNum);
+
+                        const hist = safeJsonParse(localStorage.getItem('reservationHistory'), []);
+                        const res = hist.find(x => x && x.reservationNumber === resNum);
+                        if (!res) return;
+
+                        const minsLeft = (() => {
+                            const [h, m] = String(res.arrivalTime).split(':').map(Number);
+                            const arr = new Date(); arr.setHours(h, m || 0, 0, 0);
+                            return Math.max(0, Math.round((arr - new Date()) / 60000));
+                        })();
+
+                        playChatNotificationSound();
+                        if (typeof window.showNotification === 'function') {
+                            window.showNotification(
+                                `🪑 ${res.customerName || 'Guest'} · Table ${res.bookedTable || '—'} · arriving in ~${minsLeft} min (${res.arrivalTime})`,
+                                'success',
+                                '⏰ Reservation Arriving Soon'
+                            );
+                        }
+                    });
+                } catch (e) {}
 
                 const isChatTabOpen = !document.getElementById('tab-chat')?.classList.contains('hidden');
 
