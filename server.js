@@ -951,6 +951,8 @@ async function setSystemMemoryKey(key, val) {
     if (memoryCache[key]) {
         memoryCache[key].data = val;
         memoryCache[key].time = Date.now();
+    } else if (key === 'liveChats') {
+        memoryCache.liveChats = { data: val, time: Date.now() };
     }
     const jsonStr = JSON.stringify(val);
     await db.query(
@@ -993,15 +995,28 @@ app.post('/api/memory/floor-plan-config', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* CLOUD LIVE CHAT SYNC ENGINE */
-app.get('/api/memory/live-chats', async (req, res) => {
+app.post('/api/memory/live-chats', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('liveChats', {});
-        res.json(data || {});
-    } catch (err) {
-        res.json(memoryCache.liveChats.data || {});
-    }
+        await setSystemMemoryKey('liveChats', req.body || {});
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/* DELETE ONE CHAT SESSION (server-side, so stale clients can't resurrect it) */
+app.post('/api/memory/live-chats/delete', async (req, res) => {
+    try {
+        const { sessionId } = req.body;
+        if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
+
+        let chats = await getSystemMemoryKey('liveChats', {});
+        if (!chats || typeof chats !== 'object') chats = {};
+        delete chats[sessionId];
+
+        await setSystemMemoryKey('liveChats', chats);
+        res.json({ success: true, remaining: Object.keys(chats).length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 
 app.post('/api/memory/live-chats', async (req, res) => {
     try {
