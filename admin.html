@@ -2152,7 +2152,7 @@
                     let statusBadge = '';
                     const s = (r.paymentStatus || '').toLowerCase();
 
-                    if (r.refundStatus === 'refunded' || s === 'refunded') {
+                    if (r.refundStatus === 'refunded' || s === 'refunded' || Number(r.refundAmount) > 0) {
                         statusBadge = `<div style="font-size:10px; color:#1e40af; font-weight:800; background:#eff6ff; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:2px; border:1px solid #bfdbfe;">💸 REFUNDED (-₱${Number(r.refundAmount || r.paymentAmount || 0).toLocaleString()})</div>`;
                     } else if (r.refundStatus === 'pending_refund') {
                         statusBadge = `<div style="font-size:10px; color:#b45309; font-weight:800; background:#fef3c7; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:2px; border:1px solid #fde68a;">⚠️ REFUND PENDING</div>`;
