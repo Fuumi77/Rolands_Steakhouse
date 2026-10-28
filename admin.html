@@ -4302,12 +4302,15 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     window.backToChatList();
                 }
 
-                // Wipe it from the cloud so other devices lose it too
-                fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats)', {
+                                // Ask the server to remove just this session (not the whole object)
+                window.__justDeletedChat = sId;
+                window.__justDeletedAt = Date.now();
+                fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/delete)', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(allChats)
+                    body: JSON.stringify({ sessionId: sId })
                 }).catch(() => {});
+
 
                 renderAdminChats();
             };
@@ -4524,10 +4527,22 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     
                     // 👉 NEW: Download Live Chats from Cloud!
                     try {
-                        const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now());
+                        const res = await fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=)' + Date.now());
+                        // never resurrect a chat deleted in the last 10 seconds
+                        if (window.__justDeletedChat && Date.now() - (window.__justDeletedAt || 0) < 10000) {
+                            const pending = window.__justDeletedChat;
+                            res.clone = res.clone.bind(res);
+                        }
                         if (res.ok) {
                             const cloudChats = await res.json();
-                            localStorage.setItem('liveChats', JSON.stringify(cloudChats && typeof cloudChats === 'object' ? cloudChats : {}));
+                            let safe = (cloudChats && typeof cloudChats === 'object') ? cloudChats : {};
+
+                            // 👉 Drop any session deleted in the last 10 seconds, so a stale
+                            //    server response can't bring it back
+                            if (window.__justDeletedChat && Date.now() - (window.__justDeletedAt || 0) < 10000) {
+                                delete safe[window.__justDeletedChat];
+                            }
+                            localStorage.setItem('liveChats', JSON.stringify(safe));
                         }
                     } catch(e){}
                     renderAdminChats();
