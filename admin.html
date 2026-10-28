@@ -4323,9 +4323,9 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
             // Bind pollers
             if (!window.isPollingActive) {
                 setInterval(async () => {
-                    syncReservations();
-                    if (typeof renderReservations === 'function') renderReservations();
-                    if (typeof renderTodayQueue === 'function') renderTodayQueue();
+                    await syncReservations();
+                    if (typeof applySearch === 'function') applySearch();
+                    else if (typeof filterReservations === 'function') filterReservations();
                     renderFloorPlan();
                     
                     // 👉 NEW: Download Live Chats from Cloud!
@@ -4865,6 +4865,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     const adminSyncChannel = new BroadcastChannel('inventory_sync_channel');
                     adminSyncChannel.onmessage = function (event) {
                         refreshActiveAdminInvTab();
+                        if (typeof applySearch === 'function') applySearch();
                         if (typeof renderFloorPlan === 'function') renderFloorPlan();
                         if (typeof renderReservations === 'function') renderReservations();
                         if (typeof renderTodayQueue === 'function') renderTodayQueue();
@@ -4877,6 +4878,7 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     refreshActiveAdminInvTab();
                 }
                 if (e.key === 'reservationHistory' || e.key === 'tableOverrides' || e.key === 'floorPlanConfig') {
+                    if (typeof applySearch === 'function') applySearch();
                     if (typeof renderFloorPlan === 'function') renderFloorPlan();
                     if (typeof renderReservations === 'function') renderReservations();
                     if (typeof renderTodayQueue === 'function') renderTodayQueue();
