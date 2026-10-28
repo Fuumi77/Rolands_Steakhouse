@@ -342,23 +342,51 @@
     #adminChatLayout:not(.is-viewing-chat) .chat-sidebar { display: block !important; }
 }
 @media (max-width: 1400px) {
-        /* List pane: fits its chats, but scrolls internally once the list is long */
-    #adminChatLayout:not(.is-viewing-chat) .chat-sidebar {
+    /* The wrapper never grows past the screen in either view */
+    #adminChatLayout {
         height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        align-items: flex-start !important;
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    /* ---------- LIST VIEW ---------- */
+    #adminChatLayout:not(.is-viewing-chat) {
+        display: block !important;
+    }
+    #adminChatLayout:not(.is-viewing-chat) .chat-sidebar {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
         max-height: calc(100dvh - 300px) !important;
-        align-self: flex-start !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
+        border-radius: 14px !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
     }
 
-    #adminChatLayout:not(.is-viewing-chat) .chat-layout {
+    /* ---------- CHAT VIEW ---------- */
+    #adminChatLayout.is-viewing-chat {
+        display: block !important;
+    }
+    #adminChatLayout.is-viewing-chat .chat-main {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
         height: auto !important;
         min-height: 0 !important;
-        align-items: flex-start !important;
+        max-height: calc(100dvh - 300px) !important;
+        overflow: hidden !important;
+        border-radius: 14px !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
     }
-}
-
     #adminChatLayout.is-viewing-chat .chat-main-header {
         flex: 0 0 auto !important;
     }
@@ -368,16 +396,11 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         min-height: 0 !important;
-    }
-        #adminChatLayout.is-viewing-chat .chat-main {
-        display: flex !important;
-        flex-direction: column !important;
-        height: auto !important;
-        max-height: calc(100dvh - 300px) !important;
-        overflow: hidden !important;
+        max-height: none !important;
     }
     #adminChatLayout.is-viewing-chat .chat-reply-area {
         flex: 0 0 auto !important;
+        margin-top: auto !important;
     }
 }
 
