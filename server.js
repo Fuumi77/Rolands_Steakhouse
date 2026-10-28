@@ -56,6 +56,7 @@ const memoryCache = global.__rolandsMemCache || (global.__rolandsMemCache = {
     floorPlanConfig: { data: null, time: 0 },
     liveChats: { data: null, time: 0 },
     inventoryItems: { data: null, time: 0 },
+    inventoryAuditLog: { data: null, time: 0 },
     staffList: { data: null, time: 0 }
 });
 
@@ -1053,7 +1054,6 @@ app.get('/api/memory/inventory-items', async (req, res) => {
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
         res.json(memoryCache.inventoryItems.data || []);
-        inventoryAuditLog: { data: null, time: 0 },
     }
 });
 
