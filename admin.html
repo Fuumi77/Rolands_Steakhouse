@@ -4305,7 +4305,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                 // Ask the server to remove just this session (not the whole object)
                 window.__justDeletedChat = sId;
                 window.__justDeletedAt = Date.now();
-                fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/delete)', {
+                fetch('https:' + '//rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId: sId })
@@ -4527,12 +4527,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     
                     // 👉 NEW: Download Live Chats from Cloud!
                     try {
-                        const res = await fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=)' + Date.now());
-                        // never resurrect a chat deleted in the last 10 seconds
-                        if (window.__justDeletedChat && Date.now() - (window.__justDeletedAt || 0) < 10000) {
-                            const pending = window.__justDeletedChat;
-                            res.clone = res.clone.bind(res);
-                        }
+                        const res = await fetch('https:' + '//rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now());
                         if (res.ok) {
                             const cloudChats = await res.json();
                             let safe = (cloudChats && typeof cloudChats === 'object') ? cloudChats : {};
