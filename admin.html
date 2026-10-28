@@ -3734,12 +3734,15 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     const unread = window.unreadChatCounts[sId] || 0;
 
                     listHtml += `
-                        <div class="chat-session-card ${isActive ? 'active' : ''}" data-session-id="${sId}" onclick="selectAdminChat('${sId}')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:background 0.15s ease;">
-                            <div>
+                        <div class="chat-session-card ${isActive ? 'active' : ''}" data-session-id="${sId}" onclick="selectAdminChat('${sId}')" style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; transition:background 0.15s ease;">
+                            <div style="flex:1 1 auto; min-width:0;">
                                 <div class="chat-session-title" style="${unread > 0 ? 'font-weight:800; color:#1b5e20;' : ''}">${cName}</div>
                                 <div class="chat-session-meta">${lastMsg.time} • ${msgs.length} messages</div>
                             </div>
-                            ${unread > 0 ? `<span style="background:#ef4444; color:white; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">${unread} NEW</span>` : ''}
+                            <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto;">
+                                    ${unread > 0 ? `<span style="background:#ef4444; color:white; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">${unread} NEW</span>` : ''}
+                                <button type="button" title="Delete this chat" onclick="event.stopPropagation(); window.deleteAdminChat('${sId}')" style="background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:7px; font-size:13px; padding:5px 8px; cursor:pointer; line-height:1;">🗑️</button>
+                            </div>
                         </div>
                     `;
                 });
@@ -4278,7 +4281,39 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     }, 300);
                 })();
             
+                        window.deleteAdminChat = async function (sId) {
+                if (!sId) return;
+                const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
+                const label = Object.keys(allChats).includes(sId) ? '' : 'This chat is already gone. ';
+
+                if (!confirm(`${label}Delete this conversation permanently? This cannot be undone.`)) return;
+
+                delete allChats[sId];
+                localStorage.setItem('liveChats', JSON.stringify(allChats));
+
+                // Clear its unread count too
+                if (window.unreadChatCounts && window.unreadChatCounts[sId]) {
+                    delete window.unreadChatCounts[sId];
+                    if (typeof window.updateSidebarChatBadge === 'function') window.updateSidebarChatBadge();
+                }
+
+                // If it was the open chat, go back to the list
+                if (window.currentActiveChat === sId && typeof window.backToChatList === 'function') {
+                    window.backToChatList();
+                }
+
+                // Wipe it from the cloud so other devices lose it too
+                fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats)', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(allChats)
+                }).catch(() => {});
+
+                renderAdminChats();
+            };
+
             window.clearAllChats = async function() {
+
                 if (confirm("🚨 Are you sure you want to permanently delete all active customer chats?")) {
                     localStorage.setItem('liveChats', '{}');
                     document.getElementById('adminChatMain').innerHTML = '<div class="chat-empty-state">All chats cleared. Select a new chat on the left.</div>';
