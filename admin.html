@@ -7111,21 +7111,23 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                     if (!paidCell) return;
 
                     // Remove any previously injected pair (idempotent — safe to run repeatedly)
-                    paidCell.querySelectorAll('[data-rsh-injected]').forEach(el => el.remove());
-
+                    paidCell.querySelectorAll('button').forEach(b => {
+                        if ((b.innerText || '').includes('View Proof')) b.remove();
+                    });
 
                     const btnWrap = document.createElement('div');
                     btnWrap.style.cssText = 'display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;';
                     btnWrap.innerHTML = `
-                        <button type="button" data-rsh-injected="1" onclick="event.stopPropagation(); window.openProofByResNum('${firstCellText.replace(/'/g, "\\'")}')" style="...">🧾 View Proof</button>
-                        <a data-rsh-injected="1" href="receipt.html?res=${encodeURIComponent(firstCellText)}" target="_blank" onclick="event.stopPropagation();" style="...">🖨️ Receipt</a>
+                        <button type="button" data-rsh-injected="1" onclick="event.stopPropagation(); window.openProofByResNum('${firstCellText.replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>
+                        <a data-rsh-injected="1" href="receipt.html?res=${encodeURIComponent(firstCellText)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">🖨️ Receipt</a>
                     `;
+
                     paidCell.appendChild(btnWrap);
 
                 });
             }
 
-            setInterval(injectProofAndReceiptButtonsIntoTables, 900);
+            setInterval(injectProofAndReceiptButtonsIntoTables, 3000);
             window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
