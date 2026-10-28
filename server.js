@@ -508,10 +508,12 @@ app.get('/reservations', async (req, res) => {
         
         // 👉 FIX: Pull the KDS status from the database so the phone can see it!
         const [rows] = await db.query(`
-            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods, r.kds_status
+            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods, r.kds_status,
+                   r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
             FROM reservation_log r
             JOIN customer_credentials c ON r.customer_id = c.customer_id
         `);
+
 
         cachedReservations = rows.map(r => {
             const d = new Date(r.reservation_time);
@@ -884,6 +886,30 @@ app.post('/api/reservations/update-status', async (req, res) => {
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+app.post('/api/reservations/refund', async (req, res) => {
+    const { id, refundAmount, refundMethod, refundRef, operator } = req.body;
+    try {
+        const numericId = String(id).replace(/[^0-9]/g, '');
+        if (numericId) {
+            await db.query(
+                `UPDATE reservation_log
+                 SET payment_status = 'refunded',
+                     refund_amount = ?,
+                     refund_method = ?,
+                     refund_ref = ?,
+                     refunded_by = ?,
+                     refunded_at = NOW()
+                 WHERE reservation_id = ?`,
+                [refundAmount || 0, refundMethod || '', refundRef || '', operator || 'Admin', numericId]
+            );
+        }
+        cachedReservations = null;
+        resCacheTime = 0;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 
 /* 👉 KITCHEN AND FLOOR PLAN SYNC ROUTES */
 app.post('/api/reservations/update-kds', async (req, res) => {
