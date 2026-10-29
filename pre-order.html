@@ -242,7 +242,21 @@
                     placeholder="Special requests, allergies, or anything for the kitchen…"></textarea>
             </div>
 
+            <div style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
+                <div style="font-weight:800; font-size:12px; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                    Kitchen Timing <span style="color:#ef4444;">*</span></div>
+                <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">
+                    <input type="radio" name="preorder-kitchen-timing" value="SERVE UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                    🍽️ Serve Upon Arrival
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569;">
+                    <input type="radio" name="preorder-kitchen-timing" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                    🔥 Cook Upon Arrival
+                </label>
+            </div>
+
             <button class="checkout-btn" id="go-to-pay-btn" disabled>Proceed to Payment</button>
+
             <button type="button" onclick="handleBack(event, 'seat-selection.html')" 
                     style="width: 100%; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: white; color: #64748b; font-weight: bold; margin-top: 12px; cursor: pointer; transition: all 0.2s;"
                     onmouseover="this.style.background='#f8fafc'; this.style.color='#ef4444'; this.style.borderColor='#fee2e2'"
@@ -295,7 +309,21 @@
                     placeholder="Special requests, allergies, or notes for the kitchen…"></textarea>
             </div>
 
+            <div style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
+                <div style="font-weight:800; font-size:12px; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                    Kitchen Timing <span style="color:#ef4444;">*</span></div>
+                <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">
+                    <input type="radio" name="preorder-kitchen-timing-sheet" value="SERVE UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                    🍽️ Serve Upon Arrival
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569;">
+                    <input type="radio" name="preorder-kitchen-timing-sheet" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                    🔥 Cook Upon Arrival
+                </label>
+            </div>
+
             <button class="checkout-btn" id="go-to-pay-sheet" disabled onclick="handleCheckout()">Proceed to Payment</button>
+
             <button type="button" onclick="handleBack(event, 'seat-selection.html')" 
                     style="width: 100%; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: white; color: #64748b; font-weight: bold; margin-top: 12px; cursor: pointer;">
                 Cancel & Go Back
@@ -908,7 +936,29 @@
         // CHECKOUT
         // ─────────────────────────────────────────────────────────
         window.handleCheckout = function() {
+            // 👉 Required: kitchen timing must be chosen
+            const timingEl = document.querySelector('input[name="preorder-kitchen-timing"]:checked')
+                          || document.querySelector('input[name="preorder-kitchen-timing-sheet"]:checked');
+            const kitchenTiming = timingEl ? timingEl.value : '';
+
+            if (!kitchenTiming) {
+                // reveal the sheet if it's hidden so the user can see the choice
+                if (typeof openCartSheet === 'function' && document.querySelector('input[name="preorder-kitchen-timing-sheet"]')) {
+                    openCartSheet();
+                }
+                if (typeof showNotification === 'function') {
+                    showNotification('Please choose Serve Upon Arrival or Cook Upon Arrival.', 'error', 'Kitchen Timing Required');
+                } else {
+                    alert('Please choose Serve Upon Arrival or Cook Upon Arrival.');
+                }
+                return;
+            }
+
+            localStorage.setItem('kitchenTiming', kitchenTiming);
+            localStorage.setItem('kitchenTimingTag', `[[KITCHEN_TIMING: ${kitchenTiming}]]`);
+
             const itemsArray = [];
+
             for (const id in cart) {
                 const menuItem = menuData.find(m => m.id === id);
                 itemsArray.push({
