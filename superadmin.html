@@ -3465,8 +3465,14 @@ if (window.activeSuperAdminInvSubTab) {
                 }
             });
 
-            window.addEventListener('inventoryUpdated', function () { refreshActiveSuperAdminInvTab(); });
-            window.addEventListener('rawIngredientsUpdated', function () { refreshActiveSuperAdminInvTab(); });
+            window.addEventListener('inventoryUpdated', function () {
+                const invTab = document.getElementById('tab-inventory');
+                if (invTab && !invTab.classList.contains('hidden')) refreshActiveSuperAdminInvTab();
+            });
+            window.addEventListener('rawIngredientsUpdated', function () {
+                const invTab = document.getElementById('tab-inventory');
+                if (invTab && !invTab.classList.contains('hidden')) refreshActiveSuperAdminInvTab();
+            });
 
             window.superAdminRawFilter = 'all';
 
