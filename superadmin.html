@@ -1925,13 +1925,10 @@
                 if (onlineList) {
                     onlineList.textContent = activeNames.length ? activeNames.join(', ') : 'No customers browsing right now.';
                 }
-
-                // 👉 FIX: Removed the aggressive applySearch() that was destroying the table every 5 seconds!
-
+                
                 // Update staff management table too
-                if (typeof renderStaffManagement === 'function') {
-                    renderStaffManagement(true); 
-                }
+                // if (typeof renderStaffManagement === 'function') {
+                    //renderStaffManagement(true); 
             }
             
             const historyTbody = document.getElementById('history-tbody');
@@ -2320,14 +2317,23 @@
             const staffTbody = document.getElementById('staff-list-tbody');
 
             async function renderStaffManagement(isPolling = false) {
+                // 👉 Re-entry lock: never let two runs stack
+                if (window.__staffRenderInFlight) return;
+                window.__staffRenderInFlight = true;
+                try {
+
                 let users = [];
+
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
                         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
                     });
                     if (response.ok) {
                         users = await response.json();
-                        localStorage.setItem('adminUsers', JSON.stringify(users)); // Sync down
+                        // 👉 Only write when the data actually changed, so no listener re-fires
+                        const prev = localStorage.getItem('adminUsers') || '';
+                        const next = JSON.stringify(users);
+                        if (prev !== next) localStorage.setItem('adminUsers', next);
                     } else {
                         users = safeJsonParse(localStorage.getItem('adminUsers'), []);
                     }
