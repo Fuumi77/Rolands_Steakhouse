@@ -1026,6 +1026,18 @@
                 });
             }
 
+            // 👉 Attach doneness + kitchen timing so staff and kitchen can see them
+            const donenessText = (typeof selectedDoneness !== 'undefined' && selectedDoneness) ? selectedDoneness : '';
+            const beefNoteText = (() => {
+                const a = document.getElementById('beef-note-textarea');
+                const b = document.getElementById('beef-note-sheet');
+                return ((a && a.value) || (b && b.value) || '').trim();
+            })();
+
+            localStorage.setItem('beefDoneness', donenessText);
+            localStorage.setItem('beefNoteForOrder', beefNoteText);
+            localStorage.setItem('kitchenTiming', kitchenTiming);
+
             if (itemsArray.length === 0) {
                 superModal({ title: 'Empty Cart 🛒', message: 'Please add items to your cart before proceeding to payment.' });
                 return;
@@ -1044,9 +1056,18 @@
                 }
             }
 
-            // Exact JSON object to pass to payment.html
             localStorage.setItem('currentCartObj', JSON.stringify(cart));
-            window.location.href = 'payment.html'; 
+
+            // 👉 Persist the kitchen instructions with the order
+            localStorage.setItem('orderKitchenMeta', JSON.stringify({
+                kitchenTiming: kitchenTiming,
+                kitchenTimingTag: `[[KITCHEN_TIMING: ${kitchenTiming}]]`,
+                doneness: donenessText,
+                note: beefNoteText
+            }));
+
+            window.location.href = 'payment.html';
+
         };
         document.getElementById('go-to-pay-btn').addEventListener('click', handleCheckout);
 
