@@ -2137,7 +2137,7 @@
     }
 
     setTimeout(syncRawIngredientsFromMySQL, 800);
-    setInterval(syncRawIngredientsFromMySQL, 20000);
+    setInterval(syncRawIngredientsFromMySQL, 60000);
 })();
 
 /* ── MENU ITEMS CLOUD SYNC (pull everywhere, push only from admin pages) ── */
@@ -2165,7 +2165,7 @@
         } catch (e) {}
     }
     setTimeout(pull, 500);
-    if (!/\/admin\.html/i.test(location.pathname)) setInterval(pull, 8000);
+    if (!/\/admin\.html/i.test(location.pathname) && !/\/superadmin\.html/i.test(location.pathname)) setInterval(pull, 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 /* ── AUDIT LOG CLOUD SYNC (shared across all devices) ── */
