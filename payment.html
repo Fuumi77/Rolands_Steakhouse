@@ -522,7 +522,8 @@
                         reservationType: 'priority',
                         paymentAmount: payAmt,
                         beefNote: buildKitchenNote(),
-                        notes: buildKitchenNote(),
+                        notes: [localStorage.getItem('beefNote') || '', localStorage.getItem('beefDoneness') ? `Doneness: ${localStorage.getItem('beefDoneness')}` : ''].filter(Boolean).join(' | '),
+                        kitchenTiming: localStorage.getItem('kitchenTiming') || '',
                         foods: foodArray
                     })
                 });
