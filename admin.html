@@ -2108,7 +2108,7 @@
 
                 // 👉 Strip the machine tag out of what staff reads
                 const rawNote = String(r.notes || r.beefNote || '');
-                const timingLabel = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || ''<br>;
+                const timingLabel = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
                 const cleanNote = rawNote.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
 
                 let text = '';
