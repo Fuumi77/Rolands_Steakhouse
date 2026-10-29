@@ -1037,13 +1037,13 @@
             </div>
 
              <!-- 👉 NEW: PAYMENT PROOF MODAL -->
-                <div id="proof-modal" class="hidden super-modal-overlay" style="z-index: 99999;">
-                    <div class="super-modal-box" style="max-width: 520px;">
-                        <div class="super-modal-header">
+                <div id="proof-modal" class="hidden" style="z-index: 99999;">
+                    <div class="rsh-manager-proof-box">
+                        <div class="rsh-proof-header">
                             <h3>🧾 Payment Proof Attachment</h3>
-                            <div class="close-btn" onclick="document.getElementById('proof-modal').classList.add('hidden')">&times;</div>
+                            <div class="rsh-proof-close" onclick="document.getElementById('proof-modal').classList.add('hidden'); document.getElementById('proof-modal').style.display='none';">&times;</div>
                         </div>
-                        <div class="super-modal-body">
+                        <div style="padding:22px; overflow-y:auto; flex:1 1 auto; -webkit-overflow-scrolling:touch;">
                             <div id="proof-modal-info" style="margin-bottom:16px; font-size:14px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;"></div>
                             <img id="proof-modal-img" src="" style="width:100%; border-radius:10px; border:1px solid #e2e8f0; display:none;">
                             <div id="proof-modal-noimg" style="color:#aaa; font-style:italic; text-align:center; padding:20px;">No screenshot uploaded.</div>
