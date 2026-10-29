@@ -989,12 +989,11 @@
             if (beefInCart && !selectedDoneness) {
                 if (typeof openCartSheet === 'function' && document.getElementById('doneness-chips-sheet')) {
                     openCartSheet();
-                    const row = document.getElementById('doneness-chips-sheet');
-                    if (row) setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
                 }
-                const msg = 'Please choose a doneness for your steak (Rare, Medium Rare, Medium, or Well Done).';
-                if (typeof showNotification === 'function') showNotification(msg, 'error', 'Doneness Required');
-                else alert(msg);
+                superModal({
+                    title: 'Doneness Required 🥩',
+                    message: 'Please choose a doneness for your steak: <b>Rare</b>, <b>Medium Rare</b>, <b>Medium</b>, or <b>Well Done</b>.'
+                });
                 return;
             }
 
@@ -1003,11 +1002,10 @@
                 if (typeof openCartSheet === 'function' && document.querySelector('input[name="preorder-kitchen-timing-sheet"]')) {
                     openCartSheet();
                 }
-                if (typeof showNotification === 'function') {
-                    showNotification('Please choose Serve Upon Arrival or Cook Upon Arrival.', 'error', 'Kitchen Timing Required');
-                } else {
-                    alert('Please choose Serve Upon Arrival or Cook Upon Arrival.');
-                }
+                superModal({
+                    title: 'Kitchen Timing Required 👨🍳',
+                    message: 'Please choose <b>Serve Upon Arrival</b> or <b>Cook Upon Arrival</b> before proceeding to payment.'
+                });
                 return;
             }
 
