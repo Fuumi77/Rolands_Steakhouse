@@ -2105,6 +2105,12 @@
             function foodText(r) {
                 const foods = Array.isArray(r.foods) ? r.foods : [];
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+
+                // 👉 Strip the machine tag out of what staff reads
+                const rawNote = String(r.notes || r.beefNote || '');
+                const timingLabel = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const cleanNote = rawNote.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
+
                 let text = '';
                 if (!foods.length) {
                     if (isVip) text = '👑 VIP Room Down Payment (₱1,000 Fixed Fee)';
@@ -2114,6 +2120,8 @@
                     text = foods.join(', ');
                 }
                 if (r.beefNote) text += ` | ${r.beefNote}`;
+                if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
+                if (timingLabel) text += `${text ? ' ' : ''}<span style="display:inline-block; font-size:10px; font-weight:800; background:#eef2ff; color:#4338cd; border:1px solid #c7d2fe; padding:2px 7px; border-radius:10px; margin-left:4px;">⏱️ ${timingLabel}</span>`;
                 return text;
             }
 
