@@ -2075,16 +2075,6 @@
                         <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">🗑️</button></td>
                     `;
 
-                    // 👉 NEW: Add "View Proof" Button to Manager Dashboard
-                    const paymentCell = tr.querySelector('.payment-cell');
-                    if (r.paymentProof || r.paymentRef) {
-                        const proofBtn = document.createElement('button');
-                        proofBtn.textContent = '🧾 View Proof';
-                        proofBtn.style.cssText = 'font-size:11px; padding:4px 8px; margin-top:8px; background:#e0f2fe; border:1px solid #7ec8e3; color:#0369a1; border-radius:6px; cursor:pointer; display:block; font-weight:700; width:100%; outline:none; box-shadow:none;';
-                        proofBtn.onclick = () => window.openProofModal(r);
-                        paymentCell.appendChild(proofBtn);
-                    }
-                    
                     const foodsCell = tr.querySelector('.foods-cell');
                     
                     // 👉 NEW: Smooth & Clean "See More" inline logic (With Memory!)
