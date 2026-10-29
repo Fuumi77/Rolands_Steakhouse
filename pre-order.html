@@ -255,6 +255,15 @@
                 </label>
             </div>
 
+            <div style="margin:12px 0;">
+                <label for="order-notes-desktop" style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
+                    📝 Special Requests / Preferences</label>
+                <textarea id="order-notes-desktop" rows="3"
+                    placeholder="e.g. No onions, extra sauce, allergy notes, birthday cake..."
+                    style="width:100%; padding:11px 13px; border:1.5px solid #cbd5e1; border-radius:10px; box-sizing:border-box; font-size:13.5px; font-family:inherit; resize:vertical;"></textarea>
+                <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Optional — sent to the kitchen with your order.</div>
+            </div>
+
             <button class="checkout-btn" id="go-to-pay-btn" disabled>Proceed to Payment</button>
 
             <button type="button" onclick="handleBack(event, 'seat-selection.html')" 
@@ -320,6 +329,15 @@
                     <input type="radio" name="preorder-kitchen-timing-sheet" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
                     🔥 Cook Upon Arrival
                 </label>
+            </div>
+
+            <div style="margin:12px 0;">
+                <label for="order-notes-sheet" style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
+                    📝 Special Requests / Preferences</label>
+                <textarea id="order-notes-sheet" rows="3"
+                    placeholder="e.g. No onions, extra sauce, allergy notes, birthday cake..."
+                    style="width:100%; padding:11px 13px; border:1.5px solid #cbd5e1; border-radius:10px; box-sizing:border-box; font-size:13.5px; font-family:inherit; resize:vertical;"></textarea>
+                <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Optional — sent to the kitchen with your order.</div>
             </div>
 
             <button class="checkout-btn" id="go-to-pay-sheet" disabled onclick="handleCheckout()">Proceed to Payment</button>
@@ -935,7 +953,19 @@
         // ─────────────────────────────────────────────────────────
         // CHECKOUT
         // ─────────────────────────────────────────────────────────
+        // 👉 Keep both notes fields in sync
+        (function syncOrderNotes() {
+            const a = document.getElementById('order-notes-desktop');
+            const b = document.getElementById('order-notes-sheet');
+            if (!a || !b) return;
+            const saved = localStorage.getItem('orderNotes') || '';
+            a.value = saved; b.value = saved;
+            a.addEventListener('input', () => { b.value = a.value; localStorage.setItem('orderNotes', a.value); });
+            b.addEventListener('input', () => { a.value = b.value; localStorage.setItem('orderNotes', b.value); });
+        })();
+
         window.handleCheckout = function() {
+
             // 👉 Required: kitchen timing must be chosen
             const timingEl = document.querySelector('input[name="preorder-kitchen-timing"]:checked')
                           || document.querySelector('input[name="preorder-kitchen-timing-sheet"]:checked');
@@ -956,6 +986,11 @@
 
             localStorage.setItem('kitchenTiming', kitchenTiming);
             localStorage.setItem('kitchenTimingTag', `[[KITCHEN_TIMING: ${kitchenTiming}]]`);
+
+            // 👉 Special requests / preferences
+            const notesEl = document.getElementById('order-notes-desktop') || document.getElementById('order-notes-sheet');
+            const orderNotes = notesEl ? String(notesEl.value || '').trim() : '';
+            localStorage.setItem('orderNotes', orderNotes);
 
             const itemsArray = [];
 
