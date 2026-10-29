@@ -162,6 +162,19 @@
 
     <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+        // 👉 Combine doneness + note + kitchen timing into one string for staff & kitchen
+        function buildKitchenNote() {
+            const parts = [];
+            const doneness = localStorage.getItem('beefDoneness') || '';
+            const note = localStorage.getItem('beefNote') || '';
+            const timing = localStorage.getItem('kitchenTiming') || '';
+
+            if (doneness) parts.push(`Doneness: ${doneness}`);
+            if (note) parts.push(note);
+            if (timing) parts.push(`[[KITCHEN_TIMING: ${timing}]]`);
+
+            return parts.join(' | ');
+        }
         // ── Load booking data ──
         const total        = localStorage.getItem('totalBill') || '0';
         const subtotalRaw  = localStorage.getItem('subtotalBill') || total;
@@ -389,7 +402,7 @@
                     reservationType: 'priority',
                     paymentAmount: payAmt,
                     orderSummary: localStorage.getItem('orderSummary') || '',
-                    beefNote: localStorage.getItem('beefNote') || '',
+                    beefNote: buildKitchenNote(),
                     foods: foodArray
                 };
                 sessionStorage.setItem('pendingPaymongoOrder', JSON.stringify(pendingPayload));
@@ -508,6 +521,8 @@
                         status: 'Pending',
                         reservationType: 'priority',
                         paymentAmount: payAmt,
+                        beefNote: buildKitchenNote(),
+                        notes: buildKitchenNote(),
                         foods: foodArray
                     })
                 });
@@ -529,7 +544,8 @@
                     orderSummary:           localStorage.getItem('orderSummary') || '',
                     foods:                  foodArray,
                     cartItems:              cartItems,
-                    beefNote:               localStorage.getItem('beefNote') || '',
+                    beefNote:               buildKitchenNote(),
+                    notes:                  buildKitchenNote(),
                     paymentAmount:          payAmt,
                     paymentRef:             ref,
                     paymentProof:           localStorage.getItem('tempPaymentUpload') || '',
