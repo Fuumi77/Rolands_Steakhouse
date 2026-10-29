@@ -704,15 +704,23 @@
             }).join('');
         }
 
-        // 👉 Note always visible. Doneness chips only show for beef/steak/T-bone items.
+        // 👉 Only true beef cuts unlock the doneness chips
+        const BEEF_ITEM_WORDS = [
+            'fillet mignon', 'tenderloin', 'rib eye', 'ribeye',
+            't-bone', 'tbone', 'sirloin', 'new york strip', 'porterhouse'
+        ];
+        function isBeefItem(item) {
+            if (!item) return false;
+            const hay = ((item.title || '') + ' ' + (item.name || '')).toLowerCase();
+            return BEEF_ITEM_WORDS.some(w => hay.includes(w));
+        }
+
         function updateBeefPrefLock() {
-            const BEEF_CATEGORIES = ['Beef', 'T-Bone', 'Sirloin Steak', 'Rib Eye'];
             let hasBeef = false;
 
             for (const id in cart) {
                 const item = (typeof menuData !== 'undefined' ? menuData : []).find(m => m.id === id);
-                if (!item) continue;
-                if (BEEF_CATEGORIES.includes(item.category)) { hasBeef = true; break; }
+                if (isBeefItem(item)) { hasBeef = true; break; }
             }
 
             // Chips: show only when a beef item is in the cart
@@ -742,10 +750,7 @@
             const itemCount    = Object.values(cart).reduce((s, v) => s + v.qty, 0);
 
             // Check for beef items
-            const hasBeef = Object.keys(cart).some(id => {
-                const item = menuData.find(i => i.id === id);
-                return item && ['Beef', 'T-Bone', 'Sirloin Steak', 'Rib Eye'].includes(item.category);
-            });
+            const hasBeef = Object.keys(cart).some(id => isBeefItem(menuData.find(i => i.id === id)));
 
             // 👉 Panels stay visible; only the doneness chips are gated by updateBeefPrefLock()
             if (!hasBeef) {
@@ -975,6 +980,23 @@
             const timingEl = document.querySelector('input[name="preorder-kitchen-timing"]:checked')
                           || document.querySelector('input[name="preorder-kitchen-timing-sheet"]:checked');
             const kitchenTiming = timingEl ? timingEl.value : '';
+
+            // 👉 Doneness required when a beef cut is in the cart
+            const beefInCart = Object.keys(cart).some(id =>
+                isBeefItem((typeof menuData !== 'undefined' ? menuData : []).find(m => m.id === id))
+            );
+
+            if (beefInCart && !selectedDoneness) {
+                if (typeof openCartSheet === 'function' && document.getElementById('doneness-chips-sheet')) {
+                    openCartSheet();
+                    const row = document.getElementById('doneness-chips-sheet');
+                    if (row) setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+                }
+                const msg = 'Please choose a doneness for your steak (Rare, Medium Rare, Medium, or Well Done).';
+                if (typeof showNotification === 'function') showNotification(msg, 'error', 'Doneness Required');
+                else alert(msg);
+                return;
+            }
 
             if (!kitchenTiming) {
                 // reveal the sheet if it's hidden so the user can see the choice
