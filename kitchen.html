@@ -571,9 +571,24 @@
             }).join('');
             
             let donenessHtml = '';
-            if (r.beefNote) {
-                const cleanDoneness = r.beefNote.replace(/^doneness:\s*/i, '').trim();
-                donenessHtml = `<div class="doneness-badge">🔥 DONENESS / NOTE: ${escapeHtml(cleanDoneness.toUpperCase())}</div>`;
+            if (r.beefNote && r.beefNote.trim() !== '[[KITCHEN_TIMING: SERVE UPON ARRIVAL]]') {
+                // Split the combined note into readable parts
+                const raw = String(r.beefNote);
+                const timingMatch = raw.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i);
+                const timing = timingMatch ? timingMatch[1].trim() : '';
+                const withoutTiming = raw.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
+                const parts = withoutTiming.split('|').map(p => p.trim()).filter(Boolean);
+
+                const donenessPart = parts.find(p => /^doneness:/i.test(p));
+                const otherParts = parts.filter(p => !/^doneness:/i.test(p));
+                const doneness = donenessPart ? donenessPart.replace(/^doneness:\s*/i, '').trim() : '';
+
+                let badge = '';
+                if (doneness) badge += `🔥 DONENESS: ${escapeHtml(doneness.toUpperCase())}`;
+                if (timing) badge += `${badge ? '<br>' : ''}⏱️ KITCHEN TIMING: ${escapeHtml(timing.toUpperCase())}`;
+                if (otherParts.length) badge += `${badge ? '<br>' : ''}📝 ${escapeHtml(otherParts.join(' · ').toUpperCase())}`;
+
+                if (badge) donenessHtml = `<div class="doneness-badge">${badge}</div>`;
             }
             
             let detailHtml = '';
