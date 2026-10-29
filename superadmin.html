@@ -1056,6 +1056,36 @@
 
     <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+                // 👉 Bridge: resolve a reservation number, then open the existing proof modal
+        window.openProofByResNum = function (resNum) {
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const key = String(resNum || '').trim().toLowerCase();
+
+            const rec = hist.find(h => {
+                if (!h) return false;
+                return [h.reservationNumber, h.id, h.resNumber, h.reservation_id]
+                    .filter(Boolean)
+                    .some(v => String(v).trim().toLowerCase() === key);
+            });
+
+            if (!rec) {
+                console.warn('openProofByResNum: no match for', resNum);
+                alert('Could not find that reservation. Refresh the page and try again.');
+                return;
+            }
+
+            if (typeof window.ensureOrderProofUpToDate === 'function') {
+                window.ensureOrderProofUpToDate(rec);
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+            }
+
+            if (typeof window.openProofModal === 'function') {
+                window.openProofModal(rec);
+            } else {
+                console.warn('openProofModal is not available yet');
+                alert('Proof viewer is still loading. Please try again in a moment.');
+            }
+        };
         // Utilities
         async function sha256Hex(str) {
             if (window.crypto && window.crypto.subtle && window.TextEncoder) {
