@@ -2317,8 +2317,14 @@
             const staffTbody = document.getElementById('staff-list-tbody');
 
             async function renderStaffManagement(isPolling = false) {
-                let users = [];
+                // 👉 Skip the network call if we fetched under 15s ago
+                const nowTs = Date.now();
+                if (!isPolling && window.__staffLastFetch && nowTs - window.__staffLastFetch < 15000) {
+                    return;
+                }
+                window.__staffLastFetch = nowTs;
 
+                let users = [];
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/staff?nocache=` + new Date().getTime(), {
                         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
@@ -2510,8 +2516,6 @@
                     }
                 }
             };
-
-            renderStaffManagement();
 
             // --- INVENTORY MANAGEMENT LOGIC ---
             function getInventory() {
@@ -3429,11 +3433,14 @@ if (window.activeSuperAdminInvSubTab) {
                 if (typeof BroadcastChannel !== 'undefined') {
                     const superSyncChannel = new BroadcastChannel('inventory_sync_channel');
                     superSyncChannel.onmessage = function (event) {
+                        // 👉 Throttle: at most one refresh per 3 seconds, no matter how many messages arrive
+                        const now = Date.now();
+                        if (window.__superSyncLastRun && now - window.__superSyncLastRun < 3000) return;
+                        window.__superSyncLastRun = now;
+
                         refreshActiveSuperAdminInvTab();
                         if (typeof renderSuperFloorPlan === 'function') renderSuperFloorPlan();
                         if (typeof renderSuperReservations === 'function') renderSuperReservations();
-                        
-                        // 👉 FIX: Instantly refresh Dashboard & Activity Feed on remote changes!
                         if (typeof renderActivityFeed === 'function') renderActivityFeed();
                         if (typeof renderDashboard === 'function') renderDashboard();
                     };
@@ -3441,6 +3448,10 @@ if (window.activeSuperAdminInvSubTab) {
             } catch (e) {}
 
             window.addEventListener('storage', function (e) {
+                // 👉 Throttle the same way — storage fires for every write on this origin
+                const now = Date.now();
+                if (window.__superStorageLastRun && now - window.__superStorageLastRun < 3000) return;
+                window.__superStorageLastRun = now;
                 if (e.key === 'inventoryItems' || e.key === 'rawIngredients') {
                     refreshActiveSuperAdminInvTab();
                 }
