@@ -2120,8 +2120,9 @@
                     text = foods.join(', ');
                 }
                 if (r.beefNote) text += ` | ${r.beefNote}`;
-                if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
-                if (timingLabel) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
+                const alreadyHasNote = text.includes(cleanNote) && cleanNote;
+                if (cleanNote && !alreadyHasNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
+                if (timingLabel && !text.includes(timingLabel)) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
                 return text;
             }
 
