@@ -934,14 +934,13 @@
         function saveBeefNote() {
             const textarea  = document.getElementById('beef-note-textarea');
             const sheetArea = document.getElementById('beef-note-sheet');
-            // Keep both textareas in sync
+            // Keep both textareas in sync — plain text only, never the doneness
             const note = textarea.value;
             sheetArea.value = note;
 
-            const parts = [];
-            if (selectedDoneness) parts.push(`Doneness: ${selectedDoneness}`);
-            if (note.trim()) parts.push(note.trim());
-            localStorage.setItem('beefNote', parts.join(' | '));
+            // Store the two separately so the doneness never leaks into the note box
+            localStorage.setItem('beefNote', note);
+            localStorage.setItem('beefDoneness', selectedDoneness || '');
         }
 
         document.querySelectorAll('.doneness-chip').forEach(chip => {
@@ -958,6 +957,15 @@
         (function restoreBeefNote() {
             const saved = localStorage.getItem('beefNote') || '';
             if (saved) { textareaDesktop.value = saved; textareaSheet.value = saved; }
+
+            // Re-apply the saved doneness to the chips (not the note box)
+            const savedDoneness = localStorage.getItem('beefDoneness') || '';
+            if (savedDoneness) {
+                selectedDoneness = savedDoneness;
+                document.querySelectorAll('.doneness-chip').forEach(c => {
+                    c.classList.toggle('active', c.getAttribute('data-val') === savedDoneness);
+                });
+            }
         })();
 
         textareaDesktop.addEventListener('input', () => {
@@ -987,9 +995,6 @@
             );
 
             if (beefInCart && !selectedDoneness) {
-                if (typeof openCartSheet === 'function' && document.getElementById('doneness-chips-sheet')) {
-                    openCartSheet();
-                }
                 superModal({
                     title: 'Doneness Required 🥩',
                     message: 'Please choose a doneness for your steak: <b>Rare</b>, <b>Medium Rare</b>, <b>Medium</b>, or <b>Well Done</b>.'
@@ -998,10 +1003,7 @@
             }
 
             if (!kitchenTiming) {
-                // reveal the sheet if it's hidden so the user can see the choice
-                if (typeof openCartSheet === 'function' && document.querySelector('input[name="preorder-kitchen-timing-sheet"]')) {
-                    openCartSheet();
-                }
+                // 👉 No openCartSheet() — the modal alone tells the user what to do
                 superModal({
                     title: 'Kitchen Timing Required 👨🍳',
                     message: 'Please choose <b>Serve Upon Arrival</b> or <b>Cook Upon Arrival</b> before proceeding to payment.'
