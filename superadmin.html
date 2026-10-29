@@ -4962,7 +4962,7 @@ if (window.activeSuperAdminInvSubTab) {
                 setInterval(syncReservations, 10000);
                 
                 pollOnlineAdmins();
-                setInterval(pollOnlineAdmins, 5000);
+                setInterval(pollOnlineAdmins, 10000);
                 setInterval(renderActivityFeed, 10000);
             }
 
@@ -5458,7 +5458,7 @@ if (window.activeSuperAdminInvSubTab) {
                 setTimeout(() => {
                     wrapManagerInventoryFunctions();
                     pullAndMergeInventoryFromCloud();
-                }, 400);
+                }, 1500);
                 setInterval(() => {
                     wrapManagerInventoryFunctions();
                     pullAndMergeInventoryFromCloud();
@@ -5899,8 +5899,8 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             }
 
-            setInterval(injectProofAndReceiptButtonsIntoTables, 900);
-            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
+            setInterval(injectProofAndReceiptButtonsIntoTables, 1500);
+            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 1500));
         })();
     </script>
 </body>
