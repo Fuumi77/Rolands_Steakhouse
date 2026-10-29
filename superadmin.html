@@ -1366,7 +1366,7 @@
                 if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
                 if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
             }
-            if (tabId === 'inventory' && typeof window.switchSuperAdminInvSubTab === 'function') {
+            if (tabId === 'inventory' && typeof window.switchSuperAdminInvSubTab === 'function' && !window.isRefreshingSuperInvTab) {
                 window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
             }
             // Auto close mobile drawer if open
@@ -3407,7 +3407,20 @@ if (window.activeSuperAdminInvSubTab) {
                     } finally {
                         isRefreshingSuperInvTab = false;
                     }
-                }, 1500);
+
+                    // 👉 Re-apply the active subtab highlight so it never resets
+                    if (window.activeSuperAdminInvSubTab) {
+                        const map = { valuation: 'sa-inv-subtab-valuation', food: 'sa-inv-subtab-food',
+                                      raw: 'sa-inv-subtab-raw', recipe: 'sa-inv-subtab-recipe',
+                                      wastage: 'sa-inv-subtab-wastage', audit: 'sa-inv-subtab-audit' };
+                        Object.values(map).forEach(id => {
+                            const b = document.getElementById(id);
+                            if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+                        });
+                        const activeBtn = document.getElementById(map[window.activeSuperAdminInvSubTab]);
+                        if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+                    }
+                }, 10000);
             }
 
             // ── LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS ──
@@ -5899,7 +5912,7 @@ if (window.activeSuperAdminInvSubTab) {
             }
 
             setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
-            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
+            // window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
 </body>
