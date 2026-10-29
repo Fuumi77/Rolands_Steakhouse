@@ -2317,11 +2317,6 @@
             const staffTbody = document.getElementById('staff-list-tbody');
 
             async function renderStaffManagement(isPolling = false) {
-                // 👉 Re-entry lock: never let two runs stack
-                if (window.__staffRenderInFlight) return;
-                window.__staffRenderInFlight = true;
-                try {
-
                 let users = [];
 
                 try {
