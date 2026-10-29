@@ -744,7 +744,7 @@
             // Check for beef items
             const hasBeef = Object.keys(cart).some(id => {
                 const item = menuData.find(i => i.id === id);
-                return item && ['Beef', 'T-Bone', 'Sirloin Steak'].includes(item.category);
+                return item && ['Beef', 'T-Bone', 'Sirloin Steak', 'Rib Eye'].includes(item.category);
             });
 
             // 👉 Panels stay visible; only the doneness chips are gated by updateBeefPrefLock()
