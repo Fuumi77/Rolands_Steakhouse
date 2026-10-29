@@ -1844,10 +1844,14 @@
                 let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let updated = false;
 
-                // 👉 FIX: The Cloud is the absolute source of truth! If a record was wiped from the cloud, wipe it locally!
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
                 const oldLength = localHistory.length;
-                localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
+
+                localHistory = localHistory.filter(local => {
+                    if (cloudIds.includes(local.reservationNumber)) return true;
+                    const st = String(local.approvalStatus || '').toLowerCase();
+                    return ['approved', 'seated', 'completed'].includes(st);
+                });
                 
                 if (localHistory.length !== oldLength) {
                     updated = true;
@@ -1903,8 +1907,18 @@
                             updated = true;
                         }
 
+                        // 👉 Never let a stale DB row undo a local approval
                         const isPending = dbStatus === 'pending';
-                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                        const localApproved = ['approved', 'seated', 'completed'].includes(String(match.approvalStatus).toLowerCase());
+
+                        if (localApproved && isPending) {
+                            // Local is further along than the cloud — push it up instead of overwriting
+                            fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: match.reservationNumber, status: match.approvalStatus.charAt(0).toUpperCase() + match.approvalStatus.slice(1) })
+                            }).catch(() => {});
+                        } else if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
                             if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
                             if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
