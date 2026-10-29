@@ -1041,7 +1041,7 @@
                     <div class="rsh-manager-proof-box">
                         <div class="rsh-proof-header">
                             <h3>🧾 Payment Proof Attachment</h3>
-                            <div class="rsh-proof-close" onclick="document.getElementById('proof-modal').classList.add('hidden'); document.getElementById('proof-modal').style.display='none';">&times;</div>
+                            <div class="rsh-proof-close" onclick="var m=document.getElementById('proof-modal'); m.classList.add('hidden'); m.style.display='none'; m.style.alignItems=''; m.style.justifyContent='';">&times;</div>
                         </div>
                         <div style="padding:22px; overflow-y:auto; flex:1 1 auto; -webkit-overflow-scrolling:touch;">
                             <div id="proof-modal-info" style="margin-bottom:16px; font-size:14px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;"></div>
@@ -5547,8 +5547,10 @@ if (window.activeSuperAdminInvSubTab) {
             box-sizing: border-box !important;
             animation: rshModalBackdropFade 0.2s ease forwards !important;
         }
-        #proof-modal:not(.hidden)[style*="flex"] {
+        #proof-modal:not(.hidden) {
             display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         #proof-modal .rsh-manager-proof-box {
             width: 100% !important;
