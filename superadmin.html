@@ -5894,8 +5894,6 @@ if (window.activeSuperAdminInvSubTab) {
                 if (e.key === 'Escape') window.closeProofModal();
             });
 
-            function injectProofAndReceiptButtonsIntoTables() {
-                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let mutated = false;
                 hist.forEach(r => {
                     if (!r) return;
