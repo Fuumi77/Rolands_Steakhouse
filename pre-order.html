@@ -230,7 +230,7 @@
             </div>
 
             <!-- Beef Preference Panel -->
-            <div class="beef-pref-panel" style="display: none;">
+            <div class="beef-pref-panel" id="beef-pref-panel-desktop" style="display: block;">
                 <div class="beef-pref-label">🥩 Beef Preference</div>
                 <div class="doneness-row" id="doneness-chips">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
@@ -253,15 +253,6 @@
                     <input type="radio" name="preorder-kitchen-timing" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
                     🔥 Cook Upon Arrival
                 </label>
-            </div>
-
-            <div style="margin:12px 0;">
-                <label for="order-notes-desktop" style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
-                    📝 Special Requests / Preferences</label>
-                <textarea id="order-notes-desktop" rows="3"
-                    placeholder="e.g. No onions, allergy notes, Meat doneness..."
-                    style="width:100%; padding:11px 13px; border:1.5px solid #cbd5e1; border-radius:10px; box-sizing:border-box; font-size:13.5px; font-family:inherit; resize:vertical;"></textarea>
-                <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Optional — sent to the kitchen with your order.</div>
             </div>
 
             <button class="checkout-btn" id="go-to-pay-btn" disabled>Proceed to Payment</button>
@@ -306,7 +297,7 @@
             </div>
 
             <!-- Beef Preference in sheet -->
-            <div class="beef-pref-panel" style="display: none;">
+            <div class="beef-pref-panel" id="beef-pref-panel-sheet" style="display: block;">
                 <div class="beef-pref-label">🥩 Beef Preference</div>
                 <div class="doneness-row" id="doneness-chips-sheet">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
@@ -329,15 +320,6 @@
                     <input type="radio" name="preorder-kitchen-timing-sheet" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
                     🔥 Cook Upon Arrival
                 </label>
-            </div>
-
-            <div style="margin:12px 0;">
-                <label for="order-notes-sheet" style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
-                    📝 Special Requests / Preferences</label>
-                <textarea id="order-notes-sheet" rows="3"
-                    placeholder="e.g. No onions, extra sauce, allergy notes, birthday cake..."
-                    style="width:100%; padding:11px 13px; border:1.5px solid #cbd5e1; border-radius:10px; box-sizing:border-box; font-size:13.5px; font-family:inherit; resize:vertical;"></textarea>
-                <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Optional — sent to the kitchen with your order.</div>
             </div>
 
             <button class="checkout-btn" id="go-to-pay-sheet" disabled onclick="handleCheckout()">Proceed to Payment</button>
@@ -719,6 +701,37 @@
             }).join('');
         }
 
+        // 👉 Beef Preference is only interactive when a beef/steak/T-bone item is in the cart
+        function updateBeefPrefLock() {
+            const BEEF_KEYS = ['beef', 'steak', 't-bone', 'tbone', 'sirloin', 'tenderloin', 'ribeye', 'rib eye', 'fillet', 'mignon'];
+            let hasBeef = false;
+
+            for (const id in cart) {
+                const item = (typeof menuData !== 'undefined' ? menuData : []).find(m => m.id === id);
+                if (!item) continue;
+                const hay = ((item.title || '') + ' ' + (item.name || '') + ' ' + (item.category || '')).toLowerCase();
+                if (BEEF_KEYS.some(k => hay.includes(k))) { hasBeef = true; break; }
+            }
+
+            ['beef-pref-panel-desktop', 'beef-pref-panel-sheet'].forEach(panelId => {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+
+                panel.style.opacity = hasBeef ? '1' : '0.55';
+                panel.style.filter = hasBeef ? 'none' : 'grayscale(1)';
+                panel.style.pointerEvents = hasBeef ? 'auto' : 'none';
+                panel.style.cursor = hasBeef ? 'default' : 'not-allowed';
+                panel.title = hasBeef ? '' : 'Select a beef, steak, or T-bone item to use this.';
+
+                panel.querySelectorAll('.doneness-chip').forEach(chip => {
+                    chip.disabled = !hasBeef;
+                });
+                panel.querySelectorAll('textarea, input').forEach(el => {
+                    el.disabled = !hasBeef;
+                });
+            });
+        }
+
         function renderCart() {
             const subtotal = getTotal();
             const finalTotal = subtotal;
@@ -765,6 +778,8 @@
             const hasItems = subtotal > 0;
             document.getElementById('go-to-pay-btn').disabled   = !hasItems;
             document.getElementById('go-to-pay-sheet').disabled = !hasItems;
+
+            updateBeefPrefLock();
 
             if (hasItems) {
                 localStorage.setItem('totalBill', finalTotal);
@@ -953,17 +968,6 @@
         // ─────────────────────────────────────────────────────────
         // CHECKOUT
         // ─────────────────────────────────────────────────────────
-        // 👉 Keep both notes fields in sync
-        (function syncOrderNotes() {
-            const a = document.getElementById('order-notes-desktop');
-            const b = document.getElementById('order-notes-sheet');
-            if (!a || !b) return;
-            const saved = localStorage.getItem('orderNotes') || '';
-            a.value = saved; b.value = saved;
-            a.addEventListener('input', () => { b.value = a.value; localStorage.setItem('orderNotes', a.value); });
-            b.addEventListener('input', () => { a.value = b.value; localStorage.setItem('orderNotes', b.value); });
-        })();
-
         window.handleCheckout = function() {
 
             // 👉 Required: kitchen timing must be chosen
@@ -986,11 +990,6 @@
 
             localStorage.setItem('kitchenTiming', kitchenTiming);
             localStorage.setItem('kitchenTimingTag', `[[KITCHEN_TIMING: ${kitchenTiming}]]`);
-
-            // 👉 Special requests / preferences
-            const notesEl = document.getElementById('order-notes-desktop') || document.getElementById('order-notes-sheet');
-            const orderNotes = notesEl ? String(notesEl.value || '').trim() : '';
-            localStorage.setItem('orderNotes', orderNotes);
 
             const itemsArray = [];
 
