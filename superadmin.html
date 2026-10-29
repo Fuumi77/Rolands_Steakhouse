@@ -5921,10 +5921,6 @@ if (window.activeSuperAdminInvSubTab) {
                     if (!paidCell || paidCell.dataset.rshProofEnhanced === firstCellText) return;
                     paidCell.dataset.rshProofEnhanced = firstCellText;
 
-                    paidCell.querySelectorAll('button').forEach(b => {
-                        if ((b.innerText || '').includes('View Proof')) b.remove();
-                    });
-
                     const btnWrap = document.createElement('div');
                     btnWrap.style.cssText = 'display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;';
                     btnWrap.innerHTML = `
