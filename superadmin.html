@@ -5791,6 +5791,7 @@ if (window.activeSuperAdminInvSubTab) {
                 if (modal) {
                     modal.classList.add('hidden');
                     modal.style.display = 'none';
+                    modal.style.zIndex = '';
                 }
             };
 
@@ -5799,10 +5800,17 @@ if (window.activeSuperAdminInvSubTab) {
                 window.ensureOrderProofUpToDate(r);
 
                 const modal = document.getElementById('proof-modal');
-                if (!modal) return;
+                if (!modal) {
+                    console.warn('Proof modal element (#proof-modal) is missing from the page.');
+                    return;
+                }
                 if (modal.parentElement !== document.body) {
                     document.body.appendChild(modal);
                 }
+                // 👉 Force it visible regardless of class state
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                modal.style.zIndex = '99999';
 
                 const name = r.customerName || 'Walk-in Guest';
                 const resNum = r.reservationNumber || 'N/A';
