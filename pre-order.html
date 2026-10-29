@@ -821,6 +821,7 @@
         }
 
         window.updateQty = function(id, delta) {
+            setTimeout(updateBeefPrefLock, 0);
             const item = menuData.find(i => i.id === id);
             if (!item) return;
 
