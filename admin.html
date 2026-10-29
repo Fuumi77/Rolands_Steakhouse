@@ -2121,7 +2121,7 @@
                 }
                 if (r.beefNote) text += ` | ${r.beefNote}`;
                 if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
-                if (timingLabel) text += `${text ? ' ' : ''}<span style="display:inline-block; font-size:10px; font-weight:800; background:#eef2ff; color:#4338cd; border:1px solid #c7d2fe; padding:2px 7px; border-radius:10px; margin-left:4px;">⏱️ ${timingLabel}</span>`;
+                if (timingLabel) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
                 return text;
             }
 
