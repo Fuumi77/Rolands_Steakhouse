@@ -2064,6 +2064,12 @@
                         <td class="payment-cell">
                             <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             ${paymentBadge}${refundBadge}
+                            ${r.reservationNumber ? `
+                                <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                                    ${(r.paymentProof || r.paymentRef) ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>` : ''}
+                                    <a href="receipt.html?res=${encodeURIComponent(r.reservationNumber)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">🖨️ Receipt</a>
+                                </div>
+                            ` : ''}
                         </td>
                         <td>${statusHtml}</td>
                         <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">🗑️</button></td>
@@ -5929,7 +5935,7 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             }
 
-            setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
+            // setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
             // window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
