@@ -2066,7 +2066,7 @@
                             ${paymentBadge}${refundBadge}
                             ${r.reservationNumber ? `
                                 <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
-                                    ${(r.paymentProof || r.paymentRef) ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>` : ''}
+                                    ${r.reservationNumber ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>` : ''}
                                     <a href="receipt.html?res=${encodeURIComponent(r.reservationNumber)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">🖨️ Receipt</a>
                                 </div>
                             ` : ''}
@@ -5873,8 +5873,25 @@ if (window.activeSuperAdminInvSubTab) {
 
             window.openProofByResNum = function (resNum) {
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-                const idx = hist.findIndex(h => h && h.reservationNumber === resNum);
-                if (idx === -1) return;
+                const key = String(resNum || '').trim().toLowerCase();
+
+                // 👉 Match loosely: exact, case-insensitive, or id/number variants
+                const idx = hist.findIndex(h => {
+                    if (!h) return false;
+                    const candidates = [
+                        h.reservationNumber, h.id, h.resNumber,
+                        h.reservation_id, h.bookingNumber
+                    ].filter(Boolean).map(v => String(v).trim().toLowerCase());
+                    return candidates.includes(key);
+                });
+
+                if (idx === -1) {
+                    console.warn('openProofByResNum: no match for', resNum);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Could not find that reservation locally. Refresh and try again.', 'error', 3000);
+                    }
+                    return;
+                }
                 window.ensureOrderProofUpToDate(hist[idx]);
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 unifiedOpenProofModal(hist[idx]);
