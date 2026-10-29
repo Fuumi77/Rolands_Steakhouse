@@ -3733,6 +3733,30 @@ window.updateSingleReservationStatus = async function (idx, newStatus, tId) {
                 }
             };
 
+            // 👉 Sidebar badge for reservations arriving within 2 hours
+            window.updateSidebarResBadge = function () {
+                const resTabBtn = document.querySelector('.sidebar .tab-link[onclick*="\'reservations\'"]')
+                              || document.querySelector('.sidebar .tab-link[onclick*="\'overview\'"]');
+                if (!resTabBtn) return;
+
+                let count = 0;
+                try { count = getArrivingSoonIds().size; } catch (e) { count = 0; }
+
+                let badge = document.getElementById('sidebar-res-soon-badge');
+
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.id = 'sidebar-res-soon-badge';
+                        badge.style.cssText = 'margin-left:auto; background:#ef4444; color:white; font-size:11px; font-weight:800; padding:2px 7px; border-radius:12px; box-shadow:0 2px 6px rgba(239,68,68,0.35);';
+                        resTabBtn.appendChild(badge);
+                    }
+                    badge.textContent = count;
+                } else if (badge) {
+                    badge.remove();
+                }
+            };
+            
             window.renderAdminChats = function (forceScroll = false) {
                 const allChats = safeJsonParse(localStorage.getItem('liveChats'), {});
                 const listEl = document.getElementById('adminChatList');
@@ -3812,6 +3836,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 });
 
                 window.updateSidebarChatBadge();
+                window.updateSidebarResBadge();
 
                 if (sessions.length === 0) {
                     listEl.innerHTML = '<div style="padding: 15px; color:#666; font-size:14px; text-align:center;">No active chats.</div>';
@@ -4621,6 +4646,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 setInterval(async () => {
                     await syncReservations();
                         if (typeof applySearch === 'function') applySearch();
+                        if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
                         renderFloorPlan();
                     
                     // 👉 NEW: Download Live Chats from Cloud!
