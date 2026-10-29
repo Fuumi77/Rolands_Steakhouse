@@ -706,14 +706,13 @@
 
         // 👉 Note always visible. Doneness chips only show for beef/steak/T-bone items.
         function updateBeefPrefLock() {
-            const BEEF_KEYS = ['beef', 'steak', 't-bone', 'tbone', 'sirloin', 'tenderloin', 'ribeye', 'rib eye', 'fillet', 'mignon'];
+            const BEEF_CATEGORIES = ['Beef', 'T-Bone', 'Sirloin Steak', 'Rib Eye'];
             let hasBeef = false;
 
             for (const id in cart) {
                 const item = (typeof menuData !== 'undefined' ? menuData : []).find(m => m.id === id);
                 if (!item) continue;
-                const hay = ((item.title || '') + ' ' + (item.name || '') + ' ' + (item.category || '')).toLowerCase();
-                if (BEEF_KEYS.some(k => hay.includes(k))) { hasBeef = true; break; }
+                if (BEEF_CATEGORIES.includes(item.category)) { hasBeef = true; break; }
             }
 
             // Chips: show only when a beef item is in the cart
