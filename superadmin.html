@@ -4957,13 +4957,12 @@ if (window.activeSuperAdminInvSubTab) {
             if (!window.superAdminPollingActive) {
                 window.superAdminPollingActive = true;
                 
-                // 👉 FIX: Sync from the cloud immediately on load, then every 10 seconds! (Aggressive Sync)
                 syncReservations();
-                setInterval(syncReservations, 10000);
+                setInterval(syncReservations, 30000);
                 
                 pollOnlineAdmins();
-                setInterval(pollOnlineAdmins, 10000);
-                setInterval(renderActivityFeed, 10000);
+                setInterval(pollOnlineAdmins, 20000);
+                setInterval(renderActivityFeed, 30000);
             }
 
             // UI Reveal
@@ -5462,7 +5461,7 @@ if (window.activeSuperAdminInvSubTab) {
                 setInterval(() => {
                     wrapManagerInventoryFunctions();
                     pullAndMergeInventoryFromCloud();
-                }, 8000);
+                }, 15000);
             });
         })();
     </script>
@@ -5899,8 +5898,8 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             }
 
-            setInterval(injectProofAndReceiptButtonsIntoTables, 1500);
-            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 1500));
+            setInterval(injectProofAndReceiptButtonsIntoTables, 15000);
+            window.addEventListener('load', () => setTimeout(injectProofAndReceiptButtonsIntoTables, 300));
         })();
     </script>
 </body>
