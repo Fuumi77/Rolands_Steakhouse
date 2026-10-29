@@ -53,9 +53,8 @@
             }
         }
         /* 👉 1. Clean Static Card for Beef Preference (No Flash) */
-        [data-beef-only] {
-            display: none;
-        }
+        row.style.display = hasBeef ? '' : 'none';
+        
         .beef-pref-panel {
             background: #f8fafc !important;
             border: 1.5px solid #e2e8f0 !important;
@@ -725,7 +724,7 @@
 
             // Chips: show only when a beef item is in the cart
             document.querySelectorAll('[data-beef-only]').forEach(row => {
-                row.style.display = hasBeef ? '' : 'none';
+                row.style.display = hasBeef ? 'flex' : 'none';
             });
 
             // Panels: always visible and usable
