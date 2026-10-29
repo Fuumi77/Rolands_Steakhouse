@@ -53,6 +53,9 @@
             }
         }
         /* 👉 1. Clean Static Card for Beef Preference (No Flash) */
+        [data-beef-only] {
+            display: none;
+        }
         .beef-pref-panel {
             background: #f8fafc !important;
             border: 1.5px solid #e2e8f0 !important;
@@ -231,8 +234,8 @@
 
             <!-- Beef Preference Panel -->
             <div class="beef-pref-panel" id="beef-pref-panel-desktop" style="display: block;">
-                <div class="beef-pref-label">🥩 Beef Preference</div>
-                <div class="doneness-row" id="doneness-chips">
+                <div class="beef-pref-label">📝 Special Requests</div>
+                <div class="doneness-row" id="doneness-chips" data-beef-only="1">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium Rare">Medium Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium">Medium</button>
@@ -298,8 +301,8 @@
 
             <!-- Beef Preference in sheet -->
             <div class="beef-pref-panel" id="beef-pref-panel-sheet" style="display: block;">
-                <div class="beef-pref-label">🥩 Beef Preference</div>
-                <div class="doneness-row" id="doneness-chips-sheet">
+                <div class="beef-pref-label">📝 Special Requests</div>
+                <div class="doneness-row" id="doneness-chips-sheet" data-beef-only="1">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium Rare">Medium Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium">Medium</button>
@@ -701,7 +704,7 @@
             }).join('');
         }
 
-        // 👉 Beef Preference is only interactive when a beef/steak/T-bone item is in the cart
+        // 👉 Note always visible. Doneness chips only show for beef/steak/T-bone items.
         function updateBeefPrefLock() {
             const BEEF_KEYS = ['beef', 'steak', 't-bone', 'tbone', 'sirloin', 'tenderloin', 'ribeye', 'rib eye', 'fillet', 'mignon'];
             let hasBeef = false;
@@ -713,22 +716,20 @@
                 if (BEEF_KEYS.some(k => hay.includes(k))) { hasBeef = true; break; }
             }
 
+            // Chips: show only when a beef item is in the cart
+            document.querySelectorAll('[data-beef-only]').forEach(row => {
+                row.style.display = hasBeef ? '' : 'none';
+            });
+
+            // Panels: always visible and usable
             ['beef-pref-panel-desktop', 'beef-pref-panel-sheet'].forEach(panelId => {
                 const panel = document.getElementById(panelId);
                 if (!panel) return;
-
-                panel.style.opacity = hasBeef ? '1' : '0.55';
-                panel.style.filter = hasBeef ? 'none' : 'grayscale(1)';
-                panel.style.pointerEvents = hasBeef ? 'auto' : 'none';
-                panel.style.cursor = hasBeef ? 'default' : 'not-allowed';
-                panel.title = hasBeef ? '' : 'Select a beef, steak, or T-bone item to use this.';
-
-                panel.querySelectorAll('.doneness-chip').forEach(chip => {
-                    chip.disabled = !hasBeef;
-                });
-                panel.querySelectorAll('textarea, input').forEach(el => {
-                    el.disabled = !hasBeef;
-                });
+                panel.style.opacity = '1';
+                panel.style.filter = 'none';
+                panel.style.pointerEvents = 'auto';
+                panel.style.cursor = 'default';
+                panel.title = '';
             });
         }
 
@@ -747,18 +748,11 @@
                 return item && ['Beef', 'T-Bone', 'Sirloin Steak'].includes(item.category);
             });
 
-            // Toggle beef preference panels
-            document.querySelectorAll('.beef-pref-panel').forEach(panel => {
-                panel.style.display = hasBeef ? 'block' : 'none';
-            });
+            // 👉 Panels stay visible; only the doneness chips are gated by updateBeefPrefLock()
             if (!hasBeef) {
                 selectedDoneness = '';
                 document.querySelectorAll('.doneness-chip').forEach(c => c.classList.remove('active'));
-                document.getElementById('beef-note-textarea').value = '';
-                document.getElementById('beef-note-sheet').value = '';
-                localStorage.removeItem('beefNote');
             }
-
             // Desktop sidebar
             document.getElementById('cart-items').innerHTML      = html;
             document.getElementById('cart-subtotal').textContent  = fmtSubtotal;
@@ -956,12 +950,20 @@
         const textareaDesktop = document.getElementById('beef-note-textarea');
         const textareaSheet   = document.getElementById('beef-note-sheet');
 
+        // 👉 Restore any note saved from a previous visit
+        (function restoreBeefNote() {
+            const saved = localStorage.getItem('beefNote') || '';
+            if (saved) { textareaDesktop.value = saved; textareaSheet.value = saved; }
+        })();
+
         textareaDesktop.addEventListener('input', () => {
             textareaSheet.value = textareaDesktop.value;
+            localStorage.setItem('beefNote', textareaDesktop.value);
             saveBeefNote();
         });
         textareaSheet.addEventListener('input', () => {
             textareaDesktop.value = textareaSheet.value;
+            localStorage.setItem('beefNote', textareaSheet.value);
             saveBeefNote();
         });
 
