@@ -730,6 +730,23 @@
                                 No items selected yet.
                             </div>
                         </div>
+
+                        <div style="margin-bottom:14px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
+                                Kitchen Timing <span style="color:#ef4444;">*</span></label>
+                            <div style="display:flex; gap:10px;">
+                                <label id="walkin-timing-lbl-serve" style="flex:1; display:flex; align-items:center; gap:8px; padding:11px 13px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13.5px; font-weight:600; color:#475569;">
+                                    <input type="radio" name="walkin-kitchen-timing" value="SERVE UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                                    🍽️ Serve Upon Arrival
+                                </label>
+                                <label id="walkin-timing-lbl-cook" style="flex:1; display:flex; align-items:center; gap:8px; padding:11px 13px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13.5px; font-weight:600; color:#475569;">
+                                    <input type="radio" name="walkin-kitchen-timing" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
+                                    🔥 Cook Upon Arrival
+                                </label>
+                            </div>
+                            <div style="font-size:11.5px; color:#94a3b8; margin-top:5px;">Required — tells the kitchen when to start this order.</div>
+                        </div>
+
                         <div style="margin-bottom:14px;">
                             <label
                                 style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Payment
@@ -2335,7 +2352,10 @@
 
                     tdPaid.innerHTML = `<div style="font-weight:800; color:#1e293b; font-size:14px;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>${methodBadge}${statusBadge}${discountBadge}`;
 
-                    if (r.paymentProof || r.paymentRef) {
+                    // Show at least a Receipt link on every row; View Proof only when a proof exists
+const resKeyForBtn = r.reservationNumber || r.id || r.resNumber || '';
+if (resKeyForBtn) {
+
     const resKeyForBtn = r.reservationNumber || r.id || r.resNumber || '';
 
     const btnWrap = document.createElement('div');
@@ -6324,8 +6344,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
     const guests = document.getElementById('walkin-guests').value;
     const payment = parseFloat(document.getElementById('walkin-payment').value) || 0;
     const notes = (document.getElementById('walkin-notes').value || '').trim();
+    const timingEl = document.querySelector('input[name="walkin-kitchen-timing"]:checked');
+    const kitchenTiming = timingEl ? timingEl.value : '';
 
     if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
+    if (!kitchenTiming) { errorEl.textContent = 'Please choose Serve Upon Arrival or Cook Upon Arrival.'; errorEl.style.display = 'block'; return; }
     
     // 👉 FIX: Force exactly 11 digits for the Contact Number
     if (!contact || contact.length !== 11) { 
@@ -6482,6 +6505,9 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             foods: foodArray,
             orderSummary: orderSummary,
             beefNote: notes,
+            // 👉 Unique, machine-readable kitchen timing tag
+            kitchenTiming: kitchenTiming,
+            kitchenTimingTag: `[[KITCHEN_TIMING: ${kitchenTiming}]]`,
             paymentAmount: finalPaymentAmount,
             paymentStatus: 'pending',
             createdAt: new Date().toISOString(),
@@ -6519,6 +6545,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
         document.getElementById('walkin-guests').value = '';
         document.getElementById('walkin-payment').value = '';
         document.getElementById('walkin-notes').value = '';
+        document.querySelectorAll('input[name="walkin-kitchen-timing"]').forEach(el => {
+            el.checked = false;
+            const lbl = el.closest('label');
+            if (lbl) { lbl.style.borderColor = '#d1d5db'; lbl.style.background = 'white'; lbl.style.color = '#475569'; }
+        });
         document.getElementById('walkin-food-search').value = '';
         document.getElementById('walkin-order-summary').innerHTML = "No items selected yet.";
         currentSelection = {};
