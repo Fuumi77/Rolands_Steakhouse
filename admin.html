@@ -2119,10 +2119,8 @@
                 } else {
                     text = foods.join(', ');
                 }
-                if (r.beefNote) text += ` | ${r.beefNote}`;
-                const alreadyHasNote = text.includes(cleanNote) && cleanNote;
-                if (cleanNote && !alreadyHasNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
-                if (timingLabel && !text.includes(timingLabel)) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
+                if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
+                if (timingLabel) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
                 return text;
             }
 
@@ -4023,6 +4021,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
 
                     ctx.fillStyle = '#475569';
                     ctx.font = '13.5px Arial, sans-serif';
+
                     const summaryText = (Array.isArray(r.foods) && r.foods.length) ? r.foods.join(', ') : (r.orderSummary || 'Standard Reservation Deposit');
                     const words = summaryText.split(' ');
                     let line = '';
