@@ -196,6 +196,7 @@
                 body: JSON.stringify(list)
             }).catch(() => {});
             window.__lastHolidayPush = Date.now();
+            window.__holidayHoldUntil = Date.now() + 4000;
             if (typeof BroadcastChannel !== 'undefined') {
                 try {
                     new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'holidayConfigUpdated', payload: list });
@@ -304,7 +305,10 @@
 
         async function pull() {
             // Don't overwrite a change we just made
-            if (Date.now() - (window.__lastHolidayPush || 0) < 10000) return;
+            // Short hold only — long enough to let our own POST land, short enough
+            // that another device's change still arrives promptly
+            if (Date.now() < (window.__holidayHoldUntil || 0)) return;
+
             try {
                 const r = await fetch(`${API}/api/memory/holidays?nocache=${Date.now()}`);
                 if (!r.ok) return;
@@ -313,7 +317,18 @@
 
                 const localRaw = localStorage.getItem('ph_holiday_config') || '[]';
                 const cloudRaw = JSON.stringify(cloud);
-                if (localRaw === cloudRaw) return;
+
+                // 👉 Compare by meaningful content, not byte-for-byte JSON
+                let localList = [];
+                try { localList = JSON.parse(localRaw) || []; } catch (e) { localList = []; }
+
+                const sig = arr => JSON.stringify(
+                    (Array.isArray(arr) ? arr : [])
+                        .map(h => ({ id: h.id, k: h.isBlocked ? 1 : 0, n: h.name || '' }))
+                        .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+                );
+
+                if (sig(localList) === sig(cloud)) return;
 
                 localStorage.setItem('ph_holiday_config', cloudRaw);
                 window.dispatchEvent(new CustomEvent('holidayConfigUpdated', { detail: cloud }));
@@ -324,7 +339,7 @@
         }
 
         setTimeout(pull, 1500);
-        setInterval(pull, 30000);
+        setInterval(pull, 10000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
     })();
 })();
