@@ -2214,6 +2214,36 @@
                     confirmText: 'YES, WIPE EVERYTHING',
                     cancelText: 'Cancel'
                 });
+                // 👉 NEW: Single Record Deletion Function
+            window.deleteRecord = async function (reservationNumber) {
+                const confirmed = await superModal({
+                    title: '🗑️ Delete Record?',
+                    message: `Are you sure you want to permanently delete reservation <b>${reservationNumber}</b>? This action cannot be undone.`,
+                    type: 'confirm',
+                    confirmText: 'Delete',
+                    cancelText: 'Cancel'
+                });
+
+                if (!confirmed) return;
+
+                try {
+                    const numericId = String(reservationNumber).replace(/[^0-9]/g, '');
+                    const res = await fetch(`${API_BASE_URL}/api/reservations/${numericId}`, { method: 'DELETE' });
+                    
+                    if (!res.ok) throw new Error('Failed to delete from server.');
+
+                    // Update local cache immediately
+                    let hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                    hist = hist.filter(r => r.reservationNumber !== reservationNumber);
+                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+                    if (window.showToast) window.showToast(`Record deleted successfully.`, 'success');
+        
+                    renderDashboard();
+                } catch (err) {
+                    await superModal({ title: '❌ Error', message: `Could not delete record: ${err.message}`, confirmText: 'Close' });
+                }
+            };
 
                 if (!confirmed) return;
 
