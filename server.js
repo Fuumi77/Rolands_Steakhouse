@@ -33,22 +33,43 @@ app.use((req, res, next) => {
     next();
 });
 
-// 👉 PERSISTENT SINGLE-CONNECTION POOL (Prevents Hostinger max_connections_per_hour = 500 error!)
 const pool = global.__rolandsMysqlPool || (global.__rolandsMysqlPool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 1,          // 👈 Uses 1 persistent connection per instance
-    maxIdle: 1,                  // 👈 Never closes the 1 active connection while idle
-    idleTimeout: 3600000,        // 👈 Keep alive for 1 full hour (prevents reconnect burn!)
+    connectionLimit: 1,
+    maxIdle: 1,
+    idleTimeout: 60000,
     queueLimit: 0,
     enableKeepAlive: true,
-    keepAliveInitialDelay: 10000
+    keepAliveInitialDelay: 5000,
+    connectTimeout: 10000,
 }));
 
+// 👈 Detect and drop dead connections so the pool rebuilds them
+pool.on('connection', (conn) => {
+    conn.on('error', (err) => {
+        if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ETIMEDOUT') {
+            console.warn('MySQL connection dropped, pool will reconnect:', err.code);
+        }
+    });
+});
+
 const db = pool.promise();
+
+// 👈 Retry once on a dead-connection error
+async function queryWithRetry(sql, params) {
+    try {
+        return await db.query(sql, params);
+    } catch (err) {
+        if (['ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET'].includes(err.code)) {
+            return await db.query(sql, params);
+        }
+        throw err;
+    }
+}
 
 // Global RAM Cache for system_memory & staff so 5-second polls use 0 MySQL connections!
 const memoryCache = global.__rolandsMemCache || (global.__rolandsMemCache = {
