@@ -470,16 +470,16 @@
                     </div>
                     <div id="staff-error-msg"
                         style="color:var(--sa-danger); margin-bottom:12px; font-size:13px; display:none;"></div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>USERNAME</th>
-                                <th>STATUS SESSION</th>
-                                <th>ACTIONS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="staff-list-tbody"></tbody>
-                    </table>
+<div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+    <!-- Grid Header -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 12px 16px; font-weight: 800; background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: center; color: #475569; font-size: 12px;">
+        <div style="text-align: left;">USERNAME</div>
+        <div>STATUS SESSION</div>
+        <div>ACTIONS</div>
+    </div>
+    <!-- Grid Body -->
+    <div id="staff-list-tbody" style="display: flex; flex-direction: column; width: 100%;"></div>
+</div>
                 </div>
             </div>
 
@@ -2205,15 +2205,6 @@
                 modal.classList.remove('hidden');
             };
 
-            // 👉 NEW: Master Wipe Function with PIN Guard
-            window.wipeAllRecords = async function () {
-                const confirmed = await superModal({
-                    title: '🚨 WIPE ALL RECORDS? 🚨',
-                    message: 'Are you absolutely sure you want to permanently delete ALL reservations, POS orders, and walk-ins? This will completely clear the restaurant history and reset the database to zero. This action CANNOT be undone!',
-                    type: 'confirm',
-                    confirmText: 'YES, WIPE EVERYTHING',
-                    cancelText: 'Cancel'
-                });
                 // 👉 NEW: Single Record Deletion Function
             window.deleteRecord = async function (reservationNumber) {
                 const confirmed = await superModal({
@@ -2244,6 +2235,15 @@
                     await superModal({ title: '❌ Error', message: `Could not delete record: ${err.message}`, confirmText: 'Close' });
                 }
             };
+            // 👉 NEW: Master Wipe Function with PIN Guard
+            window.wipeAllRecords = async function () {
+                const confirmed = await superModal({
+                    title: '🚨 WIPE ALL RECORDS? 🚨',
+                    message: 'Are you absolutely sure you want to permanently delete ALL reservations, POS orders, and walk-ins? This will completely clear the restaurant history and reset the database to zero. This action CANNOT be undone!',
+                    type: 'confirm',
+                    confirmText: 'YES, WIPE EVERYTHING',
+                    cancelText: 'Cancel'
+                });
 
                 if (!confirmed) return;
 
@@ -2412,38 +2412,40 @@
                 }
 
                 const now = Date.now();
+                
                 let newHtml = '';
                 
                 if (users.length === 0) {
-                    newHtml = '<tr><td colspan="3" class="muted" style="text-align: center;">No staff accounts registered.</td></tr>';
+                    newHtml = '<div style="text-align: center; padding: 20px; color: #64748b;">No staff accounts registered.</div>';
                 } else {
                     users.forEach((u) => {
-                        // 👉 FIX: Check the exact cloud timestamp! If they pinged within 15 seconds, they are ONLINE across the globe.
                         const isOnline = u.last_active && (now - u.last_active < 15000);
                         const statusBadge = isOnline
-                            ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">🟢 Online</span>`
-                            : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:8px; font-weight:bold;">⚪ Offline</span>`;
+                            ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">🟢 Online</span>`
+                            : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">⚪ Offline</span>`;
 
+                        // 👉 FIX: Changed from <tr><td> to CSS Grid so the browser doesn't delete the code
                         newHtml += `
-                            <tr>
-                                <td><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></td>
-                                <td>${statusBadge}</td>
-                                <td>
-                                    <div style="display:flex; gap:6px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; padding: 16px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                                <div style="text-align: left;"><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></div>
+                                <div>${statusBadge}</div>
+                                <div>
+                                    <div style="display:flex; justify-content: center; gap:8px;">
                                         <button type="button" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.resetStaffPassword('${u.username}')">Reset Pass</button>
-                                        <button type="button" class="danger" style="padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700;" onclick="window.deleteStaffUser('${u.username}')">Delete</button>
+                                        <button type="button" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight:700; cursor:pointer;" onclick="window.deleteStaffUser('${u.username}')">Delete</button>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         `;
                     });
                 }
                 
-                // 👉 FIX: Only replace HTML if it actually changed, completely eliminating screen flickering!
                 if (staffTbody.innerHTML !== newHtml) {
                     staffTbody.innerHTML = newHtml;
                 }
             }
+            
+            renderStaffManagement();
             
             window.resetStaffPassword = async function(username) {
                 const pin = await superModal({
