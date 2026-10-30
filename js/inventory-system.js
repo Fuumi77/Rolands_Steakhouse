@@ -495,12 +495,20 @@
         return _cachedRawIngredients;
     }
 
-    function saveRawIngredients(list) {
+function saveRawIngredients(list) {
         try {
             _cachedRawIngredients = list;
             localStorage.setItem('rawIngredients', JSON.stringify(list));
             window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: list }));
             broadcastSync('rawIngredientsUpdated', list);
+
+            // 👉 FIX: PUSH RAW INGREDIENTS TO CLOUD SO OTHER DEVICES SEE IT
+            window.__inventoryHoldUntil = Date.now() + 4000;
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/raw-ingredients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(list)
+            }).catch(() => {});
         } catch (e) {
             console.error('Error saving raw ingredients:', e);
         }
@@ -731,10 +739,19 @@
                 items[idx].recipe = recipeArray;
                 items[idx].isCustomRecipe = true;
             } else {
-                items.push({ id: menuId, recipe: recipeArray, isCustomRecipe: true });
-            }
-            localStorage.setItem('inventoryItems', JSON.stringify(items));
-            syncFoodMenuStockFromIngredients();
+                    items.push({ id: menuId, recipe: recipeArray, isCustomRecipe: true });
+                }
+                localStorage.setItem('inventoryItems', JSON.stringify(items));
+
+                // 👉 FIX: PUSH RECIPE UPDATES TO CLOUD SO OTHER DEVICES SEE IT
+                window.__inventoryHoldUntil = Date.now() + 4000;
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                }).catch(() => {});
+
+                syncFoodMenuStockFromIngredients();
 
             logStockMovement({
                 action: 'RECIPE_UPDATE',
@@ -862,6 +879,14 @@
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
                 window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
                 broadcastSync('inventoryUpdated', items);
+
+                // 👉 FIX: PUSH MENU INVENTORY TO CLOUD SO OTHER DEVICES SEE IT
+                window.__inventoryHoldUntil = Date.now() + 4000;
+                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                }).catch(() => {});
 
                 // Push menu portion changes to MySQL menu_stock_change_log!
                 if (menuStockChanges.length > 0) {
@@ -2044,6 +2069,50 @@
         }, 100);
     } catch (e) {}
 
+    // ── 👉 FIX: LIVE CLOUD INVENTORY SYNC FOR CROSS-DEVICE UPDATES ──
+    (function startInventoryCloudSync() {
+        const API = 'https://rolands-steakhouse-vqtr.vercel.app';
+        
+        async function pullInventory() {
+            // Prevent pulling immediately after we just pushed our own changes
+            if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
+            
+            try {
+                // 1. Sync Raw Ingredients
+                const rawRes = await fetch(`${API}/api/memory/raw-ingredients?nocache=${Date.now()}`);
+                if (rawRes.ok) {
+                    const cloudRaw = await rawRes.json();
+                    if (Array.isArray(cloudRaw) && cloudRaw.length > 0) {
+                        const localRaw = localStorage.getItem('rawIngredients');
+                        if (JSON.stringify(cloudRaw) !== localRaw) {
+                            if (typeof _cachedRawIngredients !== 'undefined') _cachedRawIngredients = cloudRaw;
+                            localStorage.setItem('rawIngredients', JSON.stringify(cloudRaw));
+                            window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloudRaw }));
+                            if (typeof broadcastSync === 'function') broadcastSync('rawIngredientsUpdated', cloudRaw);
+                        }
+                    }
+                }
+
+                // 2. Sync Menu/Inventory Items (Recipes & Portions)
+                const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`);
+                if (invRes.ok) {
+                    const cloudInv = await invRes.json();
+                    if (Array.isArray(cloudInv) && cloudInv.length > 0) {
+                        const localInv = localStorage.getItem('inventoryItems');
+                        if (JSON.stringify(cloudInv) !== localInv) {
+                            localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
+                            window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
+                            if (typeof broadcastSync === 'function') broadcastSync('inventoryUpdated', cloudInv);
+                        }
+                    }
+                }
+            } catch (e) { }
+        }
+
+        setTimeout(pullInventory, 1500);
+        setInterval(pullInventory, 5000); // Syncs silently every 5 seconds
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) pullInventory(); });
+    })();
 })(window);
 
 /* ==========================================
