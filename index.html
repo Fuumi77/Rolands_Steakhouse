@@ -1035,7 +1035,7 @@
             return id;
         }
 
-        function toggleChat() {
+function toggleChat() {
             const panel = document.getElementById('chatPanel');
             panel.classList.toggle('active');
             const bubbleIcon = document.getElementById('chat-bubble-icon');
@@ -1047,8 +1047,53 @@
                 document.getElementById('chatFooter').style.display = 'flex';
                 loadChatMessages();
                 checkActiveReservation();
+                
+                // Clear the unread notification badge
+                const unread = document.getElementById('chat-unread-badge');
+                if (unread) unread.remove();
             }
         }
+
+        // 👉 NEW: Global Chat Notification Poller (Triggers red badge and sound)
+        setInterval(() => {
+            const panel = document.getElementById('chatPanel');
+            if (panel && panel.classList.contains('active')) return;
+            
+            const sId = getChatId();
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now())
+                .then(r => r.json())
+                .then(cloudChats => {
+                    if (cloudChats && cloudChats[sId]) {
+                        const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                        const localLen = localChats[sId] ? localChats[sId].length : 0;
+                        const cloudLen = cloudChats[sId].length;
+                        
+                        if (cloudLen > localLen) {
+                            const bubble = document.querySelector('.chat-bubble-btn');
+                            if (bubble && !document.getElementById('chat-unread-badge')) {
+                                const badge = document.createElement('span');
+                                badge.id = 'chat-unread-badge';
+                                badge.style.cssText = 'position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:800; padding:2px 6px; border-radius:10px; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.2); animation: fadeIn 0.3s; pointer-events:none;';
+                                badge.textContent = '1';
+                                bubble.style.position = 'relative';
+                                bubble.appendChild(badge);
+                                
+                                // Play soft ding
+                                try {
+                                    const actx = new (window.AudioContext || window.webkitAudioContext)();
+                                    const osc = actx.createOscillator();
+                                    const gain = actx.createGain();
+                                    osc.connect(gain); gain.connect(actx.destination);
+                                    osc.frequency.setValueAtTime(800, actx.currentTime);
+                                    gain.gain.setValueAtTime(0.1, actx.currentTime);
+                                    osc.start(); osc.stop(actx.currentTime + 0.15);
+                                } catch(e) {}
+                            }
+                            localStorage.setItem('liveChats', JSON.stringify(cloudChats));
+                        }
+                    }
+                }).catch(()=>{});
+        }, 5000);
 
         function renderChatMessagesUI(allChats) {
             const sId = getChatId();
