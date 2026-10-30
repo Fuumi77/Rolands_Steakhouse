@@ -1395,6 +1395,16 @@
             if (tabId === 'kitchen' || tabId === 'holidays') {
                 if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
                 if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+                // 👉 Redraw when the cloud pushes a holiday change
+                window.addEventListener('holidayConfigUpdated', function () {
+                    if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+                    if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
+                });
+                window.addEventListener('storage', function (e) {
+                    if (e.key !== 'ph_holiday_config') return;
+                    if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+                    if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
+                });
             }
             if (tabId === 'inventory' && typeof window.switchSuperAdminInvSubTab === 'function' && !window.isRefreshingSuperInvTab) {
                 window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
