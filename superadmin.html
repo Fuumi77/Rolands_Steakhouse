@@ -219,6 +219,10 @@
                 <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                 Inventory
             </button>
+            <button class="tab-link" onclick="switchTab('branches', this)">
+                <span class="tab-icon" style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">🏬</span>
+                Branches
+            </button>
             <div class="sidebar-label">System</div>
             <button class="tab-link" onclick="switchTab('holidays', this)">
                 <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -948,6 +952,33 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- MULTI-BRANCH TAB -->
+            <div id="tab-branches" class="superadmin-tab-content">
+                <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#1b5e20; margin:0 0 4px 0;">Multi-Branch System</h2>
+                <p style="color:#64748b; font-size:14px; margin:0 0 16px 0;">Cross-branch inventory, revenue and reservations in one place.</p>
+
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:16px;">
+                    <div style="font-weight:800; color:#1b5e20; margin-bottom:10px;">+ Add a Branch</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <input id="br-name" placeholder="Branch name (e.g. Cebu)" style="flex:1; min-width:150px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="br-addr" placeholder="Address (optional)" style="flex:1; min-width:150px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="br-api" placeholder="Branch API URL ([...](https://...)" style="flex:2; min-width:200px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <button type="button" onclick="window.brAddBranch()" style="background:#16a34a; color:#fff; border:none; padding:9px 18px; border-radius:8px; font-weight:700; cursor:pointer;">Add Branch</button>
+                    </div>
+                    <div id="br-msg" style="font-size:12px; margin-top:8px; color:#b91c1c;"></div>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">
+                    <button type="button" class="filter-btn active" data-brview="overview" onclick="window.brSetView('overview')">Overview</button>
+                    <button type="button" class="filter-btn" data-brview="inventory" onclick="window.brSetView('inventory')">Inventory</button>
+                    <button type="button" class="filter-btn" data-brview="revenue" onclick="window.brSetView('revenue')">Revenue</button>
+                    <button type="button" class="filter-btn" data-brview="reservations" onclick="window.brSetView('reservations')">Reservations</button>
+                    <select id="br-filter" onchange="window.brSetFilter(this.value)" style="margin-left:auto; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;"></select>
+                    <button type="button" onclick="window.brRefresh(true)" style="background:#f1f5f9; border:1px solid #e2e8f0; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">↻ Refresh</button>
+                </div>
+                <div id="br-content" style="overflow-x:auto;"></div>
             </div>
 
             <!-- HOLIDAYS & CLOSURES CALENDAR TAB -->
@@ -6023,5 +6054,224 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             })(); // 👉 FIX: Added the missing parentheses to properly close and execute the function!
     </script>
+    <script>
+(function () {
+    const MAIN = { id: 'main', name: 'Main Branch', address: 'This site', apiUrl: API_BASE_URL };
+    let extra = [];
+    let data = {};
+    let view = 'overview';
+    let filter = 'all';
+    let loadedOnce = false;
+
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const allBranches = () => [MAIN, ...extra];
+    const visible = () => allBranches().filter(b => filter === 'all' || b.id === filter);
+
+    async function getJson(url) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 12000);
+        try {
+            const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.json();
+        } finally { clearTimeout(t); }
+    }
+
+    async function loadBranchList() {
+        try {
+            const list = await getJson(API_BASE_URL + '/api/memory/branches');
+            extra = Array.isArray(list) ? list : [];
+            localStorage.setItem('branches_list', JSON.stringify(extra));
+        } catch (e) {
+            try { extra = JSON.parse(localStorage.getItem('branches_list') || '[]'); } catch (_) { extra = []; }
+        }
+    }
+
+    async function saveBranchList() {
+        localStorage.setItem('branches_list', JSON.stringify(extra));
+        const r = await fetch(API_BASE_URL + '/api/memory/branches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(extra)
+        });
+        if (!r.ok) throw new Error('Save failed (HTTP ' + r.status + ')');
+    }
+
+    async function loadBranchData(b) {
+        if (!b.apiUrl) return { res: [], inv: [], error: 'No API URL set' };
+        const base = b.apiUrl.replace(/\/+$/, '');
+        const [r1, r2] = await Promise.allSettled([getJson(base + '/reservations'), getJson(base + '/api/inventory/raw')]);
+        return {
+            res: r1.status === 'fulfilled' && Array.isArray(r1.value) ? r1.value : [],
+            inv: r2.status === 'fulfilled' && Array.isArray(r2.value) ? r2.value : [],
+            error: (r1.status === 'rejected' && r2.status === 'rejected') ? 'Could not reach branch' :
+                   (r1.status === 'rejected' ? 'Reservations unavailable' : (r2.status === 'rejected' ? 'Inventory unavailable' : ''))
+        };
+    }
+
+    window.brRefresh = async function (force) {
+        const box = document.getElementById('br-content');
+        if (box && (force || !loadedOnce)) box.innerHTML = '<p style="color:#64748b;">Loading branches…</p>';
+        await loadBranchList();
+        const bs = allBranches();
+        const results = await Promise.all(bs.map(loadBranchData));
+        data = {};
+        bs.forEach((b, i) => data[b.id] = results[i]);
+        loadedOnce = true;
+        fillFilter();
+        render();
+    };
+
+    function fillFilter() {
+        const sel = document.getElementById('br-filter');
+        if (!sel) return;
+        sel.innerHTML = '<option value="all">All branches</option>' +
+            allBranches().map(b => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
+        sel.value = allBranches().some(b => b.id === filter) ? filter : 'all';
+        if (sel.value === 'all') filter = 'all';
+    }
+
+    window.brSetView = function (v) {
+        view = v;
+        document.querySelectorAll('[data-brview]').forEach(b => b.classList.toggle('active', b.dataset.brview === v));
+        render();
+    };
+    window.brSetFilter = function (f) { filter = f; render(); };
+
+    window.brAddBranch = async function () {
+        const msg = document.getElementById('br-msg');
+        const name = document.getElementById('br-name').value.trim();
+        const address = document.getElementById('br-addr').value.trim();
+        let apiUrl = document.getElementById('br-api').value.trim();
+        msg.style.color = '#b91c1c';
+        if (!name) { msg.textContent = 'Enter a branch name.'; return; }
+        if (apiUrl && !/^https?:\/\//i.test(apiUrl)) { msg.textContent = 'API URL must start with http:// or https://'; return; }
+        if (allBranches().some(b => b.name.toLowerCase() === name.toLowerCase())) { msg.textContent = 'A branch with that name already exists.'; return; }
+        extra.push({ id: 'br-' + Date.now().toString(36), name, address, apiUrl: apiUrl.replace(/\/+$/, '') });
+        try {
+            await saveBranchList();
+            ['br-name', 'br-addr', 'br-api'].forEach(i => document.getElementById(i).value = '');
+            msg.style.color = '#16a34a';
+            msg.textContent = 'Branch added.';
+            window.brRefresh(true);
+        } catch (e) {
+            msg.textContent = 'Saved on this device only: ' + e.message;
+        }
+    };
+
+    window.brRemove = async function (id) {
+        const b = extra.find(x => x.id === id);
+        if (!b || !confirm('Remove branch "' + b.name + '"? Its own data is not deleted.')) return;
+        extra = extra.filter(x => x.id !== id);
+        try { await saveBranchList(); } catch (e) { alert('Removed here, but cloud save failed: ' + e.message); }
+        window.brRefresh(true);
+    };
+
+    const isCounted = r => !/cancel|reject|refund|declin|no.?show/i.test(String(r.status || ''));
+    const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+    function revenueOf(res) {
+        const t = todayStr(), m = t.slice(0, 7);
+        let day = 0, month = 0, all = 0, count = 0;
+        res.filter(isCounted).forEach(r => {
+            const amt = Number(r.paymentAmount) || 0;
+            all += amt; count++;
+            if (r.arrivalDate === t) day += amt;
+            if (String(r.arrivalDate || '').startsWith(m)) month += amt;
+        });
+        return { day, month, all, count };
+    }
+
+    const th = 'text-align:left; padding:10px 12px; font-size:11px; letter-spacing:.5px; text-transform:uppercase; color:#1b5e20; background:#f0fdf4; white-space:nowrap;';
+    const td = 'padding:10px 12px; border-top:1px solid #f1f5f9; font-size:13px;';
+    const tableWrap = (head, body) => `<table style="width:100%; border-collapse:collapse; background:#fff; border:1px solid #e2e8f0; border-radius:12px;"><thead><tr>${head.map(h => `<th style="${th}">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+
+    function viewOverview() {
+        const cards = visible().map(b => {
+            const d = data[b.id] || { res: [], inv: [] };
+            const rev = revenueOf(d.res);
+            const low = d.inv.filter(i => Number(i.stock) <= Number(i.minThreshold)).length;
+            const todayRes = d.res.filter(r => r.arrivalDate === todayStr()).length;
+            return `<div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:16px; min-width:240px; flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
+                    <div><div style="font-weight:800; font-size:16px; color:#1b5e20;">${esc(b.name)}</div>
+                    <div style="font-size:12px; color:#64748b;">${esc(b.address || '')}</div></div>
+                    ${b.id === 'main' ? '<span style="font-size:10px; background:#dcfce7; color:#166534; padding:3px 8px; border-radius:20px; font-weight:700;">MAIN</span>' :
+                        `<button type="button" onclick="window.brRemove('${esc(b.id)}')" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:8px; padding:4px 10px; font-weight:700; cursor:pointer; font-size:12px;">Remove</button>`}
+                </div>
+                ${d.error ? `<div style="margin-top:8px; font-size:12px; color:#b45309;">⚠ ${esc(d.error)}</div>` : ''}
+                <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+                    <div><div style="color:#64748b; font-size:11px;">TODAY'S REVENUE</div><b>${peso(rev.day)}</b></div>
+                    <div><div style="color:#64748b; font-size:11px;">THIS MONTH</div><b>${peso(rev.month)}</b></div>
+                    <div><div style="color:#64748b; font-size:11px;">RESERVATIONS TODAY</div><b>${todayRes}</b></div>
+                    <div><div style="color:#64748b; font-size:11px;">LOW / OUT OF STOCK</div><b style="color:${low ? '#b91c1c' : '#166534'};">${low}</b></div>
+                </div></div>`;
+        }).join('');
+        return `<div style="display:flex; flex-wrap:wrap; gap:14px;">${cards}</div>`;
+    }
+
+    function viewRevenue() {
+        let tot = { day: 0, month: 0, all: 0, count: 0 };
+        const rows = visible().map(b => {
+            const r = revenueOf((data[b.id] || { res: [] }).res);
+            Object.keys(tot).forEach(k => tot[k] += r[k]);
+            return `<tr><td style="${td}"><b>${esc(b.name)}</b></td><td style="${td}">${peso(r.day)}</td><td style="${td}">${peso(r.month)}</td><td style="${td}">${peso(r.all)}</td><td style="${td}">${r.count}</td></tr>`;
+        }).join('');
+        const total = `<tr style="background:#f0fdf4;"><td style="${td}"><b>TOTAL</b></td><td style="${td}"><b>${peso(tot.day)}</b></td><td style="${td}"><b>${peso(tot.month)}</b></td><td style="${td}"><b>${peso(tot.all)}</b></td><td style="${td}"><b>${tot.count}</b></td></tr>`;
+        return tableWrap(['Branch', 'Today', 'This Month', 'All Time', 'Bookings'], rows + total) +
+            '<p style="font-size:12px; color:#64748b; margin-top:8px;">Totals add up each reservation\'s payment amount, skipping cancelled, rejected, refunded and no-show bookings.</p>';
+    }
+
+    function viewReservations() {
+        const list = [];
+        visible().forEach(b => ((data[b.id] || { res: [] }).res).forEach(r => list.push({ b: b.name, r })));
+        list.sort((a, c) => (c.r.arrivalDate + ' ' + c.r.arrivalTime).localeCompare(a.r.arrivalDate + ' ' + a.r.arrivalTime));
+        if (!list.length) return '<p style="color:#64748b;">No reservations found.</p>';
+        const rows = list.slice(0, 200).map(({ b, r }) => `<tr>
+            <td style="${td}"><b>${esc(b)}</b></td><td style="${td}">${esc(r.reservationNumber)}</td><td style="${td}">${esc(r.customerName)}</td>
+            <td style="${td}">${esc(r.arrivalDate)} ${esc(r.arrivalTime)}</td><td style="${td}">${esc(r.bookedTable)}</td>
+            <td style="${td}">${esc(r.status)}</td><td style="${td}">${peso(r.paymentAmount)}</td></tr>`).join('');
+        return tableWrap(['Branch', 'Res #', 'Customer', 'Arrival', 'Table', 'Status', 'Payment'], rows) +
+            (list.length > 200 ? `<p style="font-size:12px; color:#64748b;">Showing the newest 200 of ${list.length}.</p>` : '');
+    }
+
+    function viewInventory() {
+        const bs = visible();
+        const map = new Map();
+        bs.forEach(b => ((data[b.id] || { inv: [] }).inv).forEach(i => {
+            const key = String(i.name || i.id).trim().toLowerCase();
+            if (!map.has(key)) map.set(key, { name: i.name || i.id, category: i.category || '', cells: {} });
+            map.get(key).cells[b.id] = i;
+        }));
+        if (!map.size) return '<p style="color:#64748b;">No inventory data found.</p>';
+        const rows = [...map.values()].sort((a, c) => a.name.localeCompare(c.name)).map(it => {
+            const cells = bs.map(b => {
+                const i = it.cells[b.id];
+                if (!i) return `<td style="${td} color:#94a3b8;">—</td>`;
+                const s = Number(i.stock) || 0, low = s <= (Number(i.minThreshold) || 0);
+                const color = s <= 0 ? '#b91c1c' : (low ? '#b45309' : '#166534');
+                return `<td style="${td} color:${color}; font-weight:700;">${s.toLocaleString()} ${esc(i.unit || '')}${s <= 0 ? ' · OUT' : (low ? ' · LOW' : '')}</td>`;
+            }).join('');
+            return `<tr><td style="${td}"><b>${esc(it.name)}</b></td><td style="${td}">${esc(it.category)}</td>${cells}</tr>`;
+        }).join('');
+        return tableWrap(['Ingredient', 'Category', ...bs.map(b => esc(b.name))], rows);
+    }
+
+    function render() {
+        const box = document.getElementById('br-content');
+        if (!box || !loadedOnce) return;
+        const fn = { overview: viewOverview, inventory: viewInventory, revenue: viewRevenue, reservations: viewReservations }[view];
+        box.innerHTML = fn();
+    }
+
+    // Hook the existing tab switcher so opening the tab loads the data
+    const origSwitch = window.switchTab;
+    window.switchTab = function (tabId, btn) {
+        origSwitch.apply(this, arguments);
+        if (tabId === 'branches') window.brRefresh(false);
+    };
+})();
+</script>
 </body>
 </html>
