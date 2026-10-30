@@ -2379,7 +2379,11 @@
                 }
 
                 const staffTbody = document.getElementById('staff-list-tbody');
-                if (!staffTbody) return;
+                if (!staffTbody) {
+                    // 👉 Tab not in the DOM yet — retry shortly instead of giving up
+                    setTimeout(() => renderStaffManagement(true), 500);
+                    return;
+                }
 
                 const now = Date.now();
                 let newHtml = '';
