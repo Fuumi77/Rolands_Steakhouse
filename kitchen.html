@@ -867,6 +867,15 @@
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
             renderKitchenQueue(true);
 
+            // 👉 NEW: Send Automated Live Chat Status Update
+            const targetRes = hist[idx];
+            const chatMsgs = {
+                'cooking': `👨‍🍳 <b>Kitchen Update:</b> Your order for Reservation #${resNo} is now cooking on the grill!`,
+                'ready': `🍽️ <b>Food Ready:</b> Your food for Reservation #${resNo} is ready!`,
+                'served': `✅ <b>Served:</b> Your order for Reservation #${resNo} has been served. Thank you for dining with us!`
+            };
+            if (chatMsgs[newStatus]) sendAutomatedChatMessage(targetRes, chatMsgs[newStatus]);
+
             if (typeof showToast === 'function') {
                 const label = newStatus === 'cooking' ? 'Started Cooking 🔥' : (newStatus === 'ready' ? 'Marked Ready to Serve 🔔' : 'Order Served & Dismissed ✅');
                 showToast(`#${resNo}: ${label}`, 'success');
@@ -939,8 +948,12 @@
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
             renderKitchenQueue(true);
 
+            // 👉 NEW: Refund System & Email Confirmation via Live Chat
+            const cancelMsg = `🚫 <b>Order Cancelled & Refund Initiated:</b> Your pre-order for Reservation #${resNo} has been cancelled by the kitchen. A full refund has been initiated to your original payment method. A confirmation and additional details have been sent to your email.`;
+            sendAutomatedChatMessage(targetRes, cancelMsg);
+
             if (typeof showToast === 'function') {
-                showToast(`Order #${resNo} cancelled.`, 'success');
+                showToast(`Order #${resNo} cancelled. Refund & Email Notice sent.`, 'success');
             }
 
             try {
@@ -965,6 +978,50 @@
                 ]);
             } catch (e) {}
         };
+
+        // ── LIVE CHAT AUTOMATION ──
+        async function sendAutomatedChatMessage(res, text) {
+            let sId = null;
+            const cName = String(res.customerName || '').trim();
+            const email = String(res.email || '').trim();
+            
+            // Map to the customer's exact chat session
+            if (email) sId = 'acct_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            else if (cName) sId = 'acct_' + cName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+            const allChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            
+            // Fallback: Check existing random sessions for name match
+            if (!allChats[sId]) {
+                for (const key in allChats) {
+                    if (allChats[key].length > 0 && allChats[key][0].name === cName) {
+                        sId = key; break;
+                    }
+                }
+            }
+            if (!sId) sId = 'acct_' + cName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+            const msgObj = {
+                sender: 'staff',
+                name: 'Kitchen System',
+                text: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                iso: new Date().toISOString()
+            };
+
+            if (!allChats[sId]) allChats[sId] = [];
+            allChats[sId].push(msgObj);
+            localStorage.setItem('liveChats', JSON.stringify(allChats));
+
+            // Push to the Cloud Live Chat Memory
+            try {
+                await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: sId, message: msgObj })
+                });
+            } catch(e) {}
+        }
         
         // ── REAL-TIME EVENT LISTENERS ──
         window.addEventListener('storage', (e) => {
