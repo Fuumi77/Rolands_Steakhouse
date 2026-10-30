@@ -2165,24 +2165,25 @@
         } catch (e) {}
     }
     setTimeout(pull, 500);
-if (!/\/admin\.html/i.test(location.pathname) && !/\/superadmin\.html/i.test(location.pathname)) setInterval(pull, 15000);
+    if (!/\/admin\.html/i.test(location.pathname) && !/\/superadmin\.html/i.test(location.pathname)) setInterval(pull, 15000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 
-    // 👉 Push from admin pages whenever the computed menu actually changed.
-    //    (This replaces the removed localStorage hook — nothing else uploads.)
+    // 👉 Push immediately whenever the menu changes from an admin page.
+    //    Runs every 5s and only uploads when something actually differs,
+    //    so it always beats the 15s pull that would otherwise overwrite it.
     if (isAdminPage || /\/superadmin\.html/i.test(location.pathname)) {
-        let lastPushedSig = '';
+        let lastPushed = '';
         setInterval(() => {
             const local = localStorage.getItem('inventoryItems') || '[]';
-            if (local === lastPushedSig) return;      // nothing changed → no request
-            lastPushedSig = local;
+            if (local === lastPushed) return;
+            lastPushed = local;
             window.__lastMenuPush = Date.now();
             fetch(`${API}/api/memory/inventory-items`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: local
             }).catch(() => {});
-        }, 20000);
+        }, 5000);
     }
 })();
 /* ── AUDIT LOG CLOUD SYNC (shared across all devices) ── */
