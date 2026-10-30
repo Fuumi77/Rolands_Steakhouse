@@ -1897,7 +1897,11 @@ function saveRawIngredients(list) {
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
             let overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-            let history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+    let hist = [];
+    try {
+        const v = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        hist = Array.isArray(v) ? v : [];
+    } catch (e) { hist = []; }
             let mutatedOverrides = false;
             let mutatedHistory = false;
 
