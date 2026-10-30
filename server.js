@@ -1127,4 +1127,23 @@ app.post('/api/memory/inventory-items/item', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 👉 PHILIPPINE HOLIDAYS & CLOSURES — shared across all devices */
+app.get('/api/memory/holidays', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('phHolidayConfig', null);
+        res.json(data || null);
+    } catch (err) {
+        res.json(null);
+    }
+});
+
+app.post('/api/memory/holidays', async (req, res) => {
+    try {
+        const list = Array.isArray(req.body) ? req.body : (req.body.list || []);
+        if (list.length === 0) return res.json({ success: true, count: 0 });
+        await setSystemMemoryKey('phHolidayConfig', list);
+        res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
