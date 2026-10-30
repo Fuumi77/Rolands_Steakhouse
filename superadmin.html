@@ -5955,6 +5955,9 @@ if (window.activeSuperAdminInvSubTab) {
                 if (e.key === 'Escape') window.closeProofModal();
             });
 
+                // 👉 FIX: Define 'hist' so the loop doesn't crash on a missing variable!
+                const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                
                 let mutated = false;
                 hist.forEach(r => {
                     if (!r) return;
@@ -5988,7 +5991,7 @@ if (window.activeSuperAdminInvSubTab) {
                     `;
                     paidCell.appendChild(btnWrap);
                 });
-            }
+            })(); // 👉 FIX: Added the missing parentheses to properly close and execute the function!
     </script>
 </body>
 </html>
