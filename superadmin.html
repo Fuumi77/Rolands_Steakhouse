@@ -5986,35 +5986,5 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             }
     </script>
-    <div id="holiday-sync-debug" style="position:fixed; bottom:8px; left:8px; right:8px; z-index:999999; background:#0f172a; color:#fff; font:12px monospace; padding:8px 10px; border-radius:10px; line-height:1.5;">
-    checking…
-</div>
-<script>
-(function holidaySyncDebug() {
-    const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
-    const box = document.getElementById('holiday-sync-debug');
-    async function check() {
-        try {
-            const r = await fetch(`${API}/api/memory/holidays?nocache=${Date.now()}`);
-            const cloud = await r.json();
-            const local = JSON.parse(localStorage.getItem('ph_holiday_config') || '[]');
-            const cloudN = Array.isArray(cloud) ? cloud.length : 0;
-
-            const blocked = arr => (arr || []).filter(h => h && h.isBlocked).length;
-            box.innerHTML =
-                `CLOUD: ${cloudN} items / ${blocked(cloud)} closed<br>` +
-                `LOCAL: ${local.length} items / ${blocked(local)} closed<br>` +
-                `last pull: ${new Date().toLocaleTimeString()}`;
-            box.style.background = cloudN === local.length ? '#14532d' : '#7f1d1d';
-        } catch (e) {
-            box.textContent = 'fetch failed: ' + e.message;
-            box.style.background = '#7f1d1d';
-        }
-    }
-    check();
-    setInterval(check, 10000);
-})();
-</script>
 </body>
-
 </html>
