@@ -1423,6 +1423,26 @@
 
     <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
+
+        // 👈 Guarantee reservationHistory is always an array, whatever is stored
+(function () {
+    try {
+        let v = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        if (!Array.isArray(v)) {
+            localStorage.setItem('reservationHistory', '[]');
+        }
+    } catch (e) {
+        localStorage.setItem('reservationHistory', '[]');
+    }
+})();
+
+// 👈 Safe reader — use this everywhere instead of raw JSON.parse
+window.readReservationHistory = function () {
+    try {
+        const v = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+};
         
         // 👉 NEW: Force the Staff Portal to download the latest accounts from the MySQL cloud before logging in!
         async function syncStaffAccountsFromCloud() {
@@ -1673,7 +1693,7 @@
             const now = new Date();
             const soon = new Set();
 
-            const hist = safeJsonParse(localStorage.getItem('reservationHistory'), []);
+            const hist = window.readReservationHistory();
             hist.forEach(r => {
                 if (!r) return;
 
@@ -1845,7 +1865,8 @@
                 if (!res.ok) return;
                 const dbReservations = await res.json();
                 
-                let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                let localHistory = window.readReservationHistory();
+
                 let updated = false;
 
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
