@@ -3214,19 +3214,39 @@ window.rejectReservation = async function (resNum) {
                 renderFloorPlan();
                 if (typeof showNotification === 'function') showNotification('All tables marked unavailable.', 'success', 'Full Booking Applied');
             };
+window.resetFloor = async function () {
+    const confirmed = await superModal({
+        title: 'Reset Floor Plan? 🔓',
+        message: 'This will reset all tables back to available. Continue?',
+        type: 'confirm'
+    });
+    if (!confirmed) return;
 
-            window.resetFloor = async function () {
-                const confirmed = await superModal({
-                    title: 'Reset Floor Plan? 🔓',
-                    message: 'This will reset all tables back to available. Continue?',
-                    type: 'confirm'
+    try {
+        const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
+        const data = await res.json();
+        for (const r of data) {
+            if (r.bookedTable && r.status !== 'Completed' && r.status !== 'Cancelled') {
+                await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
                 });
-                if (!confirmed) return;
+            }
+        }
+        await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { 
+            method: 'POST', headers: {'Content-Type':'application/json'}, 
+            body: JSON.stringify({})
+        });
+    } catch (e) {
+        console.error("Sync error:", e);
+    }
 
-                localStorage.removeItem('tableOverrides');
-                renderFloorPlan();
-                if (typeof showNotification === 'function') showNotification('All tables are now available.', 'success', 'Floor Plan Reset');
-            };
+    localStorage.removeItem('tableOverrides');
+    renderFloorPlan();
+    if (typeof showNotification === 'function') {
+        showNotification('All tables are now available.', 'success', 'Floor Plan Reset');
+    }
+};
 
             function renderFloorPlan() {
                 const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
