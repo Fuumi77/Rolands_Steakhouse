@@ -1249,6 +1249,10 @@
                         <input type="text" id="refund-reason" placeholder="e.g. Customer requested cancellation"
                             style="width: 100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; box-sizing:border-box; font-size:13px;">
 
+                        <label style="display:block; margin: 12px 0 5px; font-weight:600; font-size:12px; text-transform:uppercase; color:#475569;">Customer Email (For Receipt)</label>
+                        <input type="email" id="refund-email" placeholder="customer@email.com"
+                            style="width: 100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; box-sizing:border-box; font-size:13px; color:#0f172a;">
+
                         <div style="display:flex; gap: 10px; margin-top:20px;">
                             <button type="button" class="secondary" onclick="window.closeRefundModal()"
                                 style="flex:1; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">Cancel</button>
@@ -2477,6 +2481,11 @@ if (resKeyForBtn) {
                 document.getElementById('refund-amount').value = originalPaid;
                 document.getElementById('refund-ref').value = '';
                 document.getElementById('refund-reason').value = r.cancellationReason || 'Customer requested cancellation';
+                
+                const emailInput = document.getElementById('refund-email');
+                if (emailInput) {
+                    emailInput.value = r.email || r.customerEmail || '';
+                }
 
                 const modal = document.getElementById('refund-modal');
                 if (modal) {
@@ -2499,6 +2508,7 @@ if (resKeyForBtn) {
                 const method = document.getElementById('refund-method').value;
                 const ref = document.getElementById('refund-ref').value.trim();
                 const reason = document.getElementById('refund-reason').value.trim() || 'Customer requested cancellation';
+                const email = document.getElementById('refund-email').value.trim();
 
                 if (amt < 0) {
                     alert('Refund amount cannot be negative.');
@@ -2516,6 +2526,36 @@ if (resKeyForBtn) {
                     });
 
                     if (result && result.success) {
+                        if (email) {
+                            try {
+                                await fetch(`${API_BASE_URL}/api/send-receipt`, { 
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        email: email,
+                                        subject: `Refund Processed - Roland's Steakhouse (#${resNum})`,
+                                        html: `
+                                            <div style="font-family: Arial, sans-serif; color: #333;">
+                                                <h2 style="color: #1b5e20;">Refund Processed</h2>
+                                                <p>Hi,</p>
+                                                <p>Your refund for reservation <strong>#${resNum}</strong> has been successfully processed.</p>
+                                                <ul style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                                                    <li><strong>Amount Refunded:</strong> ₱${amt.toLocaleString()}</li>
+                                                    <li><strong>Method:</strong> ${method}</li>
+                                                    <li><strong>Reference No:</strong> ${ref || 'N/A'}</li>
+                                                    <li><strong>Reason:</strong> ${reason}</li>
+                                                </ul>
+                                                <p>Please allow standard processing time for the funds to reflect in your account.</p>
+                                                <p>Thank you,<br><strong>Roland's Steakhouse</strong></p>
+                                            </div>
+                                        `
+                                    })
+                                });
+                            } catch (emailError) {
+                                console.error('Could not send refund email:', emailError);
+                            }
+                        }
+
                         window.closeRefundModal();
                         if (window.showToast) {
                             window.showToast(`Refund of ₱${amt.toLocaleString()} processed for #${resNum}`, 'success', 4000);
