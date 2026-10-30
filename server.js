@@ -90,7 +90,8 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN payment_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN foods TEXT").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN kds_status VARCHAR(50) DEFAULT 'pending'").catch(()=>{});
-    await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val JSON)").catch(()=>{});
+    await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
+    await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
 
     await db.query(`
