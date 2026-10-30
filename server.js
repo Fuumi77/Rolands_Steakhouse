@@ -59,12 +59,12 @@ pool.on('connection', (conn) => {
 
 const db = pool.promise();
 
-// 👈 Retry once on a dead-connection error
 async function queryWithRetry(sql, params) {
     try {
         return await db.query(sql, params);
     } catch (err) {
         if (['ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET'].includes(err.code)) {
+            console.warn('Retrying query after', err.code);
             return await db.query(sql, params);
         }
         throw err;
