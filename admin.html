@@ -7486,6 +7486,34 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             }
         })();
     </script>
+    <script>
+// ── 👉 STAFF/PRE-ORDER CLOUD INVENTORY RECEIVER ──
+(function startStaffInventorySync() {
+    const API = 'https://rolands-steakhouse-vqtr.vercel.app';
+    
+    async function checkCloudInventory() {
+        try {
+            const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`, {
+                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+            });
+            if (invRes.ok) {
+                const cloudInv = await invRes.json();
+                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
+                    const localInv = localStorage.getItem('inventoryItems');
+                    if (JSON.stringify(cloudInv) !== localInv) {
+                        localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
+                        // Trigger a page refresh or UI update function depending on how your staff app works
+                        if (typeof renderMenu === 'function') renderMenu();
+                        window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    
+    setInterval(checkCloudInventory, 6000);
+})();
+</script>
 </body>
 
 </html>
