@@ -528,7 +528,7 @@ app.get('/reservations', async (req, res) => {
         if (cachedReservations && (Date.now() - resCacheTime < 5000)) return res.json(cachedReservations); 
         
         // 👉 FIX: Pull the KDS status from the database so the phone can see it!
-        const [rows] = await db.query(`
+        const [rows] = await queryWithRetry(`
             SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods, r.kds_status,
                    r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
             FROM reservation_log r
@@ -697,7 +697,7 @@ app.get('/api/inventory/raw', async (req, res) => {
     try {
         if (cachedInventory && (Date.now() - invCacheTime < 15000)) return res.json(cachedInventory);
         
-        const [rows] = await db.query('SELECT * FROM master_inventory');
+        const [rows] = await queryWithRetry('SELECT * FROM master_inventory');
         cachedInventory = rows.map(r => {
             const meta = MASTER_INGREDIENT_META[r.item_id] || {};
             return {
@@ -956,7 +956,7 @@ async function getSystemMemoryKey(key, fallbackVal) {
     if (entry && entry.data !== null && (Date.now() - entry.time < 45000)) {
         return entry.data;
     }
-    const [rows] = await db.query("SELECT mem_val FROM system_memory WHERE mem_key = ?", [key]);
+    const [rows] = await queryWithRetry("SELECT mem_val FROM system_memory WHERE mem_key = ?", [key]);
     let val = fallbackVal;
     if (rows.length && rows[0].mem_val) {
         val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
@@ -976,7 +976,7 @@ async function setSystemMemoryKey(key, val) {
         memoryCache.liveChats = { data: val, time: Date.now() };
     }
     const jsonStr = JSON.stringify(val);
-    await db.query(
+    await queryWithRetry(
         "INSERT INTO system_memory (mem_key, mem_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE mem_val = ?",
         [key, jsonStr, jsonStr]
     );
