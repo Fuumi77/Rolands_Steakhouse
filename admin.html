@@ -6581,7 +6581,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             })
         });
 
-        if (!res.ok) throw new Error('Database rejected the save');
+        if (!res.ok) throw new Error('Save rejected');
         const dbData = await res.json();
         
         // Apply official DB ID
@@ -6637,7 +6637,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
         if (typeof superModal === 'function') {
             await superModal({
                 title: 'Reservation Saved! 🎉',
-                message: `Walk-in reservation for <b>${name}</b> at <b>${table}</b> has been successfully saved to the database.`,
+                message: `Walk-in reservation for <b>${name}</b> at <b>${table}</b> has been successfully saved to the list.`,
                 confirmText: 'Done'
             });
         } else {
@@ -6666,8 +6666,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
         renderRecentWalkins();
 
     } catch (err) {
-        console.error("Failed to save to database:", err);
-        errorEl.textContent = 'Failed to connect to live database.';
+        console.error("Failed to save:", err);
+        errorEl.textContent = 'Failed to connect to live.';
         errorEl.style.display = 'block';
     } finally {
         submitBtn.innerHTML = originalBtnHtml;
