@@ -1168,4 +1168,20 @@ app.post('/api/memory/holidays', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 🏬 MULTI-BRANCH LIST — shared across all devices */
+app.get('/api/memory/branches', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('branches', []);
+        res.json(Array.isArray(data) ? data : []);
+    } catch (err) { res.json([]); }
+});
+
+app.post('/api/memory/branches', async (req, res) => {
+    try {
+        const list = Array.isArray(req.body) ? req.body : (req.body.list || []);
+        await setSystemMemoryKey('branches', list);
+        res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
