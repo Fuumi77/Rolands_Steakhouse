@@ -187,6 +187,15 @@
         try {
             localStorage.setItem('ph_holiday_config', JSON.stringify(list));
             window.dispatchEvent(new CustomEvent('holidayConfigUpdated', { detail: list }));
+
+            // 👉 Push to the cloud so every device sees the same closures
+            localStorage.setItem('ph_holiday_config', JSON.stringify(list));
+            fetch('https:' + '//rolands-steakhouse-vqtr.vercel.app/api/memory/holidays', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(list)
+            }).catch(() => {});
+            window.__lastHolidayPush = Date.now();
             if (typeof BroadcastChannel !== 'undefined') {
                 try {
                     new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'holidayConfigUpdated', payload: list });
@@ -288,6 +297,36 @@
     };
 
     console.log('%c» SuperModal, Toast & Philippine Holiday Management: Active', 'color: #10b981; font-weight: bold; font-size: 10px;');
+
+    // 👉 Pull the shared holiday list so every device stays in sync
+    (function holidayCloudSync() {
+        const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
+
+        async function pull() {
+            // Don't overwrite a change we just made
+            if (Date.now() - (window.__lastHolidayPush || 0) < 10000) return;
+            try {
+                const r = await fetch(`${API}/api/memory/holidays?nocache=${Date.now()}`);
+                if (!r.ok) return;
+                const cloud = await r.json();
+                if (!Array.isArray(cloud) || cloud.length === 0) return;
+
+                const localRaw = localStorage.getItem('ph_holiday_config') || '[]';
+                const cloudRaw = JSON.stringify(cloud);
+                if (localRaw === cloudRaw) return;
+
+                localStorage.setItem('ph_holiday_config', cloudRaw);
+                window.dispatchEvent(new CustomEvent('holidayConfigUpdated', { detail: cloud }));
+                if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+                if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
+                if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
+            } catch (e) {}
+        }
+
+        setTimeout(pull, 1500);
+        setInterval(pull, 30000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+    })();
 })();
 
 
