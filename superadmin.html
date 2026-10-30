@@ -1965,10 +1965,8 @@
                 if (onlineList) {
                     onlineList.textContent = activeNames.length ? activeNames.join(', ') : 'No customers browsing right now.';
                 }
-                
-                // Update staff management table too
-                // if (typeof renderStaffManagement === 'function') {
-                    //renderStaffManagement(true); 
+                if (typeof renderStaffManagement === 'function') {
+                    renderStaffManagement(true);
             }
             
             const historyTbody = document.getElementById('history-tbody');
