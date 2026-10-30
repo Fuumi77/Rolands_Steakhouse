@@ -1189,4 +1189,20 @@ app.post('/api/memory/branches', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 🧾 RAW INGREDIENTS SYNC */
+app.get('/api/memory/raw-ingredients', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('rawIngredients', []);
+        res.json(Array.isArray(data) ? data : []);
+    } catch (err) { res.json([]); }
+});
+
+app.post('/api/memory/raw-ingredients', async (req, res) => {
+    try {
+        const list = Array.isArray(req.body) ? req.body : (req.body.items || []);
+        await setSystemMemoryKey('rawIngredients', list);
+        res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
