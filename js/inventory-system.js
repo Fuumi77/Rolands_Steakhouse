@@ -503,7 +503,7 @@ function saveRawIngredients(list) {
             broadcastSync('rawIngredientsUpdated', list);
 
             // 👉 FIX: PUSH RAW INGREDIENTS TO CLOUD SO OTHER DEVICES SEE IT
-            window.__inventoryHoldUntil = Date.now() + 4000;
+            window.__inventoryHoldUntil = Date.now() + 8000;
             fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/raw-ingredients', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -744,7 +744,7 @@ function saveRawIngredients(list) {
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
 
                 // 👉 FIX: PUSH RECIPE UPDATES TO CLOUD SO OTHER DEVICES SEE IT
-                window.__inventoryHoldUntil = Date.now() + 4000;
+                window.__inventoryHoldUntil = Date.now() + 8000;
                 fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -881,7 +881,7 @@ function saveRawIngredients(list) {
                 broadcastSync('inventoryUpdated', items);
 
                 // 👉 FIX: PUSH MENU INVENTORY TO CLOUD SO OTHER DEVICES SEE IT
-                window.__inventoryHoldUntil = Date.now() + 4000;
+                window.__inventoryHoldUntil = Date.now() + 8000;
                 fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2069,22 +2069,33 @@ function saveRawIngredients(list) {
         }, 100);
     } catch (e) {}
 
-    // ── 👉 FIX: LIVE CLOUD INVENTORY SYNC FOR CROSS-DEVICE UPDATES ──
+// ── 👉 UPGRADED: LIVE CLOUD INVENTORY SYNC (ANTI-REVERT & CACHE BUSTED) ──
     (function startInventoryCloudSync() {
         const API = 'https://rolands-steakhouse-vqtr.vercel.app';
         
         async function pullInventory() {
-            // Prevent pulling immediately after we just pushed our own changes
+            // Pause polling for 8 seconds after you make a local change to prevent overriding your typing
             if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
+            // Do not update UI if the manager is currently typing in an input box
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
             
+            const fetchOpts = {
+                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+            };
+
             try {
                 // 1. Sync Raw Ingredients
-                const rawRes = await fetch(`${API}/api/memory/raw-ingredients?nocache=${Date.now()}`);
+                const rawRes = await fetch(`${API}/api/memory/raw-ingredients?nocache=${Date.now()}`, fetchOpts);
                 if (rawRes.ok) {
                     const cloudRaw = await rawRes.json();
-                    if (Array.isArray(cloudRaw) && cloudRaw.length > 0) {
-                        const localRaw = localStorage.getItem('rawIngredients');
-                        if (JSON.stringify(cloudRaw) !== localRaw) {
+                    const localRawStr = localStorage.getItem('rawIngredients');
+                    const localRaw = localRawStr ? JSON.parse(localRawStr) : [];
+                    
+                    if (Array.isArray(cloudRaw)) {
+                        // Vercel Sleep Protection: If cloud is empty/reset, push local back to cloud instead of wiping local
+                        if (cloudRaw.length < localRaw.length - 2) {
+                            fetch(`${API}/api/memory/raw-ingredients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localRawStr }).catch(()=>{});
+                        } else if (JSON.stringify(cloudRaw) !== localRawStr) {
                             if (typeof _cachedRawIngredients !== 'undefined') _cachedRawIngredients = cloudRaw;
                             localStorage.setItem('rawIngredients', JSON.stringify(cloudRaw));
                             window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloudRaw }));
@@ -2093,13 +2104,18 @@ function saveRawIngredients(list) {
                     }
                 }
 
-                // 2. Sync Menu/Inventory Items (Recipes & Portions)
-                const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`);
+                // 2. Sync Menu/Inventory Items (Recipes, Portions, Added, Sold)
+                const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`, fetchOpts);
                 if (invRes.ok) {
                     const cloudInv = await invRes.json();
-                    if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                        const localInv = localStorage.getItem('inventoryItems');
-                        if (JSON.stringify(cloudInv) !== localInv) {
+                    const localInvStr = localStorage.getItem('inventoryItems');
+                    const localInv = localInvStr ? JSON.parse(localInvStr) : [];
+
+                    if (Array.isArray(cloudInv)) {
+                        // Vercel Sleep Protection: Re-hydrate cloud if it lost data
+                        if (cloudInv.length > 0 && cloudInv.length < localInv.length - 2) {
+                            fetch(`${API}/api/memory/inventory-items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localInvStr }).catch(()=>{});
+                        } else if (cloudInv.length > 0 && JSON.stringify(cloudInv) !== localInvStr) {
                             localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
                             window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
                             if (typeof broadcastSync === 'function') broadcastSync('inventoryUpdated', cloudInv);
@@ -2109,8 +2125,7 @@ function saveRawIngredients(list) {
             } catch (e) { }
         }
 
-        setTimeout(pullInventory, 1500);
-        setInterval(pullInventory, 5000); // Syncs silently every 5 seconds
+        setInterval(pullInventory, 5000); 
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pullInventory(); });
     })();
 })(window);
