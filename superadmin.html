@@ -123,6 +123,52 @@
                 white-space: nowrap !important;
             }
         }
+        /* 📱 INVENTORY EDIT MODAL — MOBILE FLEX */
+@media (max-width: 768px) {
+    #inv-modal .super-modal-box {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 92vh !important;
+        margin: 0 !important;
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    /* Stack photo above the fields instead of side-by-side */
+    #inv-modal-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    /* The photo column's right border makes no sense once stacked */
+    #inv-modal-grid > div:first-child {
+        border-right: none !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        padding-right: 0 !important;
+        padding-bottom: 16px !important;
+    }
+
+    /* Fields go one per row so nothing gets cut off */
+    #inv-modal-grid > div:last-child {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+    #inv-modal-grid > div:last-child > div {
+        grid-column: span 1 !important;
+    }
+
+    #inv-img-preview-container {
+        width: 140px !important;
+        height: 140px !important;
+    }
+    #inv-modal-grid input,
+    #inv-modal-grid select {
+        font-size: 16px !important;  /* stops iOS zooming in on focus */
+    }
+
+    .super-modal-body {
+        padding: 16px !important;
+    }
+}
     </style>
 </head>
 
@@ -620,7 +666,7 @@
                         <div class="super-modal-body">
                             <input type="hidden" id="inv-id">
 
-                            <div style="display: grid; grid-template-columns: 160px 1fr; gap: 24px;">
+                            <div id="inv-modal-grid" style="display: grid; grid-template-columns: 160px 1fr; gap: 24px;">
                                 <!-- Left: Image Upload -->
                                 <div style="text-align: center; border-right: 1px solid #f1f5f9; padding-right: 20px;">
                                     <label
