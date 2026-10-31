@@ -7595,6 +7595,35 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
     setInterval(checkCloudInventory, 6000);
 })();
 </script>
+
+    <script>
+// ── 👉 RAW INGREDIENTS RECEIVER (so Portion Availability matches Manager) ──
+(function rawIngredientSync() {
+    const RAW_URL = '[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/memory/raw-ingredients)';
+    let lastRawJson = '';
+
+    async function pullRaw() {
+        try {
+            const r = await fetch(`${RAW_URL}?nocache=${Date.now()}`, {
+                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+            });
+            if (!r.ok) return;
+            const cloud = await r.json();
+            if (!Array.isArray(cloud) || cloud.length === 0) return;
+            const json = JSON.stringify(cloud);
+            if (json === lastRawJson) return;
+            lastRawJson = json;
+            localStorage.setItem('rawIngredients', json);
+            if (window.InventorySystem) window.InventorySystem._cachedRawIngredients = null;
+            window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloud }));
+        } catch (e) {}
+    }
+
+    pullRaw();
+    setInterval(pullRaw, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pullRaw(); });
+})();
+</script>
 </body>
 
 </html>
