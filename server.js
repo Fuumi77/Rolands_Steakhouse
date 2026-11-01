@@ -30,6 +30,7 @@ app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    global.__activeReqBranch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
     next();
 });
 
@@ -95,6 +96,7 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_method VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_ref VARCHAR(100) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refunded_at DATETIME NULL").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN branch VARCHAR(100) DEFAULT 'General Santos City'").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
@@ -531,49 +533,53 @@ let resCacheTime = 0;
 
 app.get('/reservations', async (req, res) => {
     try {
-        if (cachedReservations && (Date.now() - resCacheTime < 5000)) return res.json(cachedReservations); 
-        
-        // 👉 FIX: Pull the KDS status from the database so the phone can see it!
-        const [rows] = await queryWithRetry(`
-            SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by, r.reservation_type, r.payment_amount, r.foods, r.kds_status,
-                   r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
-            FROM reservation_log r
-            JOIN customer_credentials c ON r.customer_id = c.customer_id
-        `);
+        const reqBranch = (req.query.branch || '').trim();
+        if (! cachedReservations || (Date.now() - resCacheTime >= 5000)) {
+            const [rows] = await queryWithRetry(`
+                SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by,
+                       r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
+                       r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
+                FROM reservation_log r
+                JOIN customer_credentials c ON r.customer_id = c.customer_id
+            `);
 
+            cachedReservations = rows.map(r => {
+                const d = new Date(r.reservation_time);
+                const isStaff = r.booked_by === 'staff';
+                const isPos = r.booked_by === 'pos';
+                const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
+                const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
+                let parsedFoods = [];
+                try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
 
-        cachedReservations = rows.map(r => {
-            const d = new Date(r.reservation_time);
-            const isStaff = r.booked_by === 'staff';
-            const isPos = r.booked_by === 'pos';
-            const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
-            const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
-            
-            let parsedFoods = [];
-            try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
+                return {
+                    reservationNumber: `${prefix}${r.reservation_id}`,
+                    customerName: r.name,
+                    arrivalDate: d.toISOString().split('T')[0],
+                    arrivalTime: d.toTimeString().substring(0, 5),
+                    bookedTable: (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`,
+                    status: r.status,
+                    bookedBy: r.booked_by,
+                    reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
+                    paymentAmount: parseFloat(r.payment_amount) || 0,
+                    foods: parsedFoods,
+                    kdsStatus: r.kds_status || 'pending',
+                    branch: r.branch || 'General Santos City'
+                };
+            });
+            resCacheTime = Date.now();
+        }
 
-            return {
-                reservationNumber: `${prefix}${r.reservation_id}`,
-                customerName: r.name,
-                arrivalDate: d.toISOString().split('T')[0],
-                arrivalTime: d.toTimeString().substring(0, 5),
-                bookedTable: (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`,
-                status: r.status,
-                bookedBy: r.booked_by,
-                reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
-                paymentAmount: parseFloat(r.payment_amount) || 0,
-                foods: parsedFoods,
-                kdsStatus: r.kds_status || 'pending'
-            };
-        });
-        
-        resCacheTime = Date.now();
+        if (reqBranch && reqBranch !== 'ALL') {
+            return res.json(cachedReservations.filter(r => (r.branch || 'General Santos City') === reqBranch));
+        }
         res.json(cachedReservations);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/reserve', async (req, res) => {
-    const { name, email, date, time, table, status, reservationType, paymentAmount, foods } = req.body;
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, branch } = req.body;
+    const finalBranch = (branch || req.query.branch || 'General Santos City').trim();
     try {
         const cleanName = (name || 'Guest').trim();
         const cleanEmail = (email || '').trim();
@@ -610,16 +616,15 @@ app.post('/reserve', async (req, res) => {
         const isWalkin = cleanEmail.includes('walkin-');
         const isPos = cleanEmail.includes('pos-'); 
         const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
-        
         const foodsJson = Array.isArray(foods) ? JSON.stringify(foods) : (foods ? JSON.stringify([foods]) : '[]');
 
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson]
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch]
         );
 
         cachedReservations = null;
-        res.json({ success: true, reservationId: result.insertId }); 
+        res.json({ success: true, reservationId: result.insertId, branch: finalBranch }); 
     } catch (err) {
         console.error('Reserve DB Error:', err);
         res.status(500).json({ error: err.message });
@@ -956,35 +961,45 @@ app.post('/api/reservations/update-kds', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Helper: Read/Write system_memory with 45-second RAM cache to save 95% of MySQL connections!
+function scopedMemKey(baseKey, req) {
+    const branch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
+    if (!branch || branch === 'General Santos City' || branch === 'ALL') return baseKey;
+    return `${baseKey}__${branch.replace(/\s+/g, '_')}`;
+}
+
+function resolveBranchMemKey(key) {
+    const branch = global.__activeReqBranch || 'General Santos City';
+    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog'];
+    if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
+        return `${key}__${branch.replace(/\s+/g, '_')}`;
+    }
+    return key;
+}
+
 async function getSystemMemoryKey(key, fallbackVal) {
-    const entry = memoryCache[key];
+    const actualKey = resolveBranchMemKey(key);
+    if (!memoryCache[actualKey]) memoryCache[actualKey] = { data: null, time: 0 };
+    const entry = memoryCache[actualKey];
     if (entry && entry.data !== null && (Date.now() - entry.time < 45000)) {
         return entry.data;
     }
-    const [rows] = await queryWithRetry("SELECT mem_val FROM system_memory WHERE mem_key = ?", [key]);
+    const [rows] = await queryWithRetry("SELECT mem_val FROM system_memory WHERE mem_key = ?", [actualKey]);
     let val = fallbackVal;
     if (rows.length && rows[0].mem_val) {
         val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
     }
-    if (entry) {
-        entry.data = val;
-        entry.time = Date.now();
-    }
+    entry.data = val;
+    entry.time = Date.now();
     return val;
 }
 
 async function setSystemMemoryKey(key, val) {
-    if (memoryCache[key]) {
-        memoryCache[key].data = val;
-        memoryCache[key].time = Date.now();
-    } else if (key === 'liveChats') {
-        memoryCache.liveChats = { data: val, time: Date.now() };
-    }
+    const actualKey = resolveBranchMemKey(key);
+    memoryCache[actualKey] = { data: val, time: Date.now() };
     const jsonStr = JSON.stringify(val);
     await queryWithRetry(
         "INSERT INTO system_memory (mem_key, mem_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE mem_val = ?",
-        [key, jsonStr, jsonStr]
+        [actualKey, jsonStr, jsonStr]
     );
 }
 
