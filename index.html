@@ -266,6 +266,16 @@
         <div class="logo"><img src="images/Rolands logo 2.png" alt="Roland's Steak House"></div>
         <nav>
             <ul>
+                <li>
+    <div class="nav-manage-pill" style="padding: 4px 12px !important; display:inline-flex; align-items:center; gap:6px;">
+        <span>📍</span>
+        <select id="customer-branch-select" onchange="window.setActiveBranch(this.value)" title="Select Branch"
+            style="background:transparent; border:none; color:inherit; font-weight:800; font-size:13px; cursor:pointer; outline:none;">
+            <option value="General Santos City" style="color:#0f172a;">General Santos City</option>
+            <option value="Koronadal City" style="color:#0f172a;">Koronadal City</option>
+        </select>
+    </div>
+</li>
                 <li><a href="#home" class="nav-link active">Home</a></li>
                 <li><a href="#about" class="nav-link">About</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
@@ -551,10 +561,11 @@
             event.preventDefault();
             const nameInput = document.getElementById('customer-name-input');
             const emailInput = document.getElementById('customer-email-input');
-            const phoneInput = document.querySelector('input[type="tel"]'); // 👉 NEW: Grabs phone number
+            const phoneInput = document.querySelector('input[type="tel"]');
             const arrivalDateInput = document.getElementById('arrival-date-input');
             const arrivalTimeInput = document.getElementById('arrival-time-input');
-            const partySizeInput = document.getElementById('party-size-select'); // 👉 NEW: Grabs party size
+            const partySizeInput = document.getElementById('party-size-select');
+            localStorage.setItem('selectedBranch', window.getCurrentBranch ? window.getCurrentBranch() : 'General Santos City');
 
             // Enforce time bounds manually for older browsers
             if (arrivalDateInput && arrivalTimeInput && arrivalTimeInput.value) {
@@ -2773,6 +2784,12 @@ function toggleChat() {
             window.location.reload();
         };
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var sel = document.getElementById('customer-branch-select');
+        if (sel && window.getCurrentBranch) sel.value = window.getCurrentBranch();
+    });
+</script>
 </body>
 
 </html>
