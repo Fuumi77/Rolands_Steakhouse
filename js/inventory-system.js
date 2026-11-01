@@ -2342,4 +2342,237 @@ function saveRawIngredients(list) {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();
 
+/* ============================================================================
+   🏬 ROLAND'S MULTI-BRANCH ENGINE (General Santos City & Koronadal City)
+   Automatically isolates branch data for Customers & Staff, and aggregates
+   totals for Super Admin!
+============================================================================ */
+(function initMultiBranchEngine() {
+    const BRANCHES = [
+        {
+            id: 'General Santos City',
+            name: 'General Santos City',
+            shortName: 'Gensan (Main)',
+            tagline: 'Fine Dining Excellence in Gensan',
+            address: 'Jose Catolico Sr. Ave., General Santos City (Dadiangas), 9500 South Cotabato',
+            mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.386053151522!2d125.190588!3d6.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32f09fb579f4695d%3A0x3498bc0e23698fc3!2sRoland's%20Steak%20House!5e0!3m2!1sen!2sph!4v1711000000000!5m2!1sen!2sph"
+        },
+        {
+            id: 'Koronadal City',
+            name: 'Koronadal City',
+            shortName: 'Koronadal Branch',
+            tagline: 'Fine Dining Excellence in Koronadal',
+            address: 'Gensan Drive, Zone II, Koronadal City (Marbel), 9506 South Cotabato',
+            mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15855.77258843554!2d124.8415!3d6.4975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32f81891f88f8889%3A0x123456789abcdef!2sKoronadal%20City%2C%20South%20Cotabato!5e0!3m2!1sen!2sph!4v1711000000000!5m2!1sen!2sph"
+        }
+    ];
 
+    const pagePath = window.location.pathname.toLowerCase();
+    const isSuperAdminPage = pagePath.includes('superadmin');
+    const isAdminPage      = !isSuperAdminPage && (pagePath.includes('admin') || pagePath.includes('kitchen') || pagePath.includes('pos'));
+
+    window.ROLANDS_BRANCHES = BRANCHES;
+
+    // 1. Get / Set Active Branch depending on role
+    window.getCurrentBranch = function () {
+        if (isSuperAdminPage) {
+            return localStorage.getItem('superAdminSelectedBranch') || 'ALL';
+        }
+        if (isAdminPage) {
+            return localStorage.getItem('adminSelectedBranch') || 'General Santos City';
+        }
+        return localStorage.getItem('selectedBranch') || 'General Santos City';
+    };
+
+    window.getEffectiveBranch = function () {
+        const b = window.getCurrentBranch();
+        return b === 'ALL' ? 'General Santos City' : b;
+    };
+
+    window.setActiveBranch = function (branchName) {
+        if (isSuperAdminPage) {
+            localStorage.setItem('superAdminSelectedBranch', branchName);
+        } else if (isAdminPage) {
+            localStorage.setItem('adminSelectedBranch', branchName);
+        } else {
+            localStorage.setItem('selectedBranch', branchName);
+        }
+        window.dispatchEvent(new CustomEvent('branchChanged', { detail: branchName }));
+        window.location.reload();
+    };
+
+    // 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, and chats per branch!
+    const SCOPED_KEYS = new Set([
+        'tableOverrides',
+        'floorPlanConfig',
+        'inventoryItems',
+        'rawIngredients',
+        'inventory_audit_logs',
+        'inventory_wastage_logs',
+        'activePromos',
+        'liveChats',
+        'store_status'
+    ]);
+
+    const rawGetItem = Storage.prototype.getItem;
+    const rawSetItem = Storage.prototype.setItem;
+    const rawRemoveItem = Storage.prototype.removeItem;
+
+    function resolveScopedKey(key) {
+        const activeBranch = window.getCurrentBranch();
+        // Keep General Santos City on the default keys for 100% backward compatibility;
+        // prefix Koronadal City (or any future branch) with "Koronadal City__<key>"
+        if (SCOPED_KEYS.has(key) && activeBranch !== 'General Santos City' && activeBranch !== 'ALL') {
+            return `${activeBranch}__${key}`;
+        }
+        return key;
+    }
+
+    Storage.prototype.getItem = function (key) {
+        if (this === localStorage) {
+            const activeBranch = window.getCurrentBranch();
+
+            // Filter reservationHistory automatically by branch for Admin/Kitchen/POS
+            if (key === 'reservationHistory') {
+                const raw = rawGetItem.call(this, 'reservationHistory');
+                if (!raw) return raw;
+                try {
+                    const list = JSON.parse(raw);
+                    if (!Array.isArray(list)) return raw;
+                    // Normalize missing branch field to General Santos City
+                    list.forEach(r => { if (r && !r.branch) r.branch = 'General Santos City'; });
+
+                    // If SuperAdmin is in 'ALL' mode, return every branch's records!
+                    if (isSuperAdminPage && activeBranch === 'ALL') {
+                        return JSON.stringify(list);
+                    }
+                    // If on Admin/Kitchen/POS or SuperAdmin viewing a specific branch, filter to that branch
+                    if (isAdminPage || (isSuperAdminPage && activeBranch !== 'ALL')) {
+                        const target = window.getEffectiveBranch();
+                        return JSON.stringify(list.filter(r => (r.branch || 'General Santos City') === target));
+                    }
+                    return JSON.stringify(list);
+                } catch (e) {
+                    return raw;
+                }
+            }
+
+            // SuperAdmin "ALL" mode: combine rawIngredients & inventoryItems across branches if needed, or read effective branch
+            const scopedKey = resolveScopedKey(key);
+            let val = rawGetItem.call(this, scopedKey);
+
+            // Seed Koronadal's initial menu/ingredients/floorplan from Gensan defaults on first run
+            if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients', 'floorPlanConfig'].includes(key)) {
+                const fallback = rawGetItem.call(this, key);
+                if (fallback) {
+                    rawSetItem.call(this, scopedKey, fallback);
+                    return fallback;
+                }
+            }
+            return val;
+        }
+        return rawGetItem.call(this, key);
+    };
+
+    Storage.prototype.setItem = function (key, value) {
+        if (this === localStorage) {
+            const activeBranch = window.getCurrentBranch();
+
+            // When saving reservationHistory on a branch-filtered page, merge with other branches so we never erase the other branch's bookings!
+            if (key === 'reservationHistory') {
+                try {
+                    const incoming = JSON.parse(value);
+                    if (Array.isArray(incoming)) {
+                        const targetBranch = window.getEffectiveBranch();
+                        incoming.forEach(r => {
+                            if (r && !r.branch) r.branch = targetBranch;
+                        });
+
+                        if (isAdminPage || (isSuperAdminPage && activeBranch !== 'ALL')) {
+                            const fullRaw = rawGetItem.call(this, 'reservationHistory');
+                            const fullList = fullRaw ? JSON.parse(fullRaw) : [];
+                            const otherBranches = Array.isArray(fullList)
+                                ? fullList.filter(r => (r.branch || 'General Santos City') !== targetBranch)
+                                : [];
+                            return rawSetItem.call(this, 'reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
+                        }
+                        return rawSetItem.call(this, 'reservationHistory', JSON.stringify(incoming));
+                    }
+                } catch (e) {}
+            }
+
+            const scopedKey = resolveScopedKey(key);
+            return rawSetItem.call(this, scopedKey, value);
+        }
+        return rawSetItem.call(this, key, value);
+    };
+
+    Storage.prototype.removeItem = function (key) {
+        if (this === localStorage && SCOPED_KEYS.has(key)) {
+            return rawRemoveItem.call(this, resolveScopedKey(key));
+        }
+        return rawRemoveItem.call(this, key);
+    };
+
+    // 3. Intercept fetch() so every API call automatically sends & receives the active branch!
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async function (input, init = {}) {
+        let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        const activeBranch = window.getCurrentBranch();
+        const effectiveBranch = window.getEffectiveBranch();
+
+        // Tag /api/memory/*, /api/inventory/*, and /reservations with ?branch=...
+        if (url && (url.includes('/api/memory/') || url.includes('/api/inventory/') || url.includes('/reservations'))) {
+            // Do not filter /reservations if SuperAdmin is viewing ALL branches
+            const skipBranchParam = isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations');
+            if (!skipBranchParam && !url.includes('branch=')) {
+                const sep = url.includes('?') ? '&' : '?';
+                url = `${url}${sep}branch=${encodeURIComponent(effectiveBranch)}`;
+                input = url;
+            }
+        }
+
+        // Tag POST /reserve or /api/inventory/* body with branch
+        if (init && init.body && typeof init.body === 'string' && (url.includes('/reserve') || url.includes('/api/inventory/'))) {
+            try {
+                const parsed = JSON.parse(init.body);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && !parsed.branch) {
+                    parsed.branch = effectiveBranch;
+                    init.body = JSON.stringify(parsed);
+                }
+            } catch (e) {}
+        }
+
+        return origFetch(input, init);
+    };
+
+    // 4. Update Customer UI (index.html) when branch changes
+    window.applyCustomerBranchUI = function () {
+        const bName = window.getEffectiveBranch();
+        const branchObj = BRANCHES.find(b => b.name === bName) || BRANCHES[0];
+
+        // Update hero subtitle
+        const heroSub = document.querySelector('#home .hero-content p');
+        if (heroSub) heroSub.textContent = branchObj.tagline;
+
+        // Update Location section address & map
+        const locAddress = document.querySelector('#location p');
+        if (locAddress) locAddress.textContent = branchObj.address;
+        const locIframe = document.querySelector('#location iframe');
+        if (locIframe && locIframe.src !== branchObj.mapEmbed) {
+            locIframe.src = branchObj.mapEmbed;
+        }
+
+        // Update Reservation modal subtitle
+        const modalSub = document.querySelector('#reservation-modal-overlay h2 + p');
+        if (modalSub) {
+            modalSub.textContent = `Booking for Roland's Steakhouse — ${branchObj.name} Branch`;
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!isAdminPage && !isSuperAdminPage) {
+            window.applyCustomerBranchUI();
+        }
+    });
+})();
