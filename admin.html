@@ -496,6 +496,20 @@
         </div>
         <div class="actions">
             <div id="live-clock" style="color: #e2e8f0; font-weight: 600; font-size: 13px; margin-right: auto; line-height:1.2;"></div>
+            <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.14); padding:5px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.28); color:white; font-size:12.5px; font-weight:800;">
+    <span>🏬 Branch:</span>
+    <select id="admin-branch-select" onchange="window.setActiveBranch(this.value)" title="Select Branch to Manage"
+        style="background:transparent; border:none; color:white; font-weight:800; font-size:12.5px; cursor:pointer; outline:none;">
+        <option value="General Santos City" style="color:#0f172a;">General Santos City</option>
+        <option value="Koronadal City" style="color:#0f172a;">Koronadal City</option>
+    </select>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var sel = document.getElementById('admin-branch-select');
+        if (sel && window.getCurrentBranch) sel.value = window.getCurrentBranch();
+    });
+</script>
             <div id="admin-status-pill" style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.1); padding:6px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); color:white; font-size:13px; font-weight:700; visibility:hidden;">
                 <div style="width:10px; height:10px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px #4ade80;"></div>
                 <span id="admin-status-text">Staff</span>
