@@ -342,6 +342,22 @@
         setInterval(pull, 10000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
     })();
+   // 3. Intercept fetch() so every API call sends & receives the active branch + remembers dbRes.branch!
+    const origFetch = window.fetch.bind(window);
+    window.__origFetch = origFetch;
+
+    // 👉 AUTO-REDIRECT OLD VERCEL URL TO YOUR NEW BACKEND!
+    // If frontend & backend are hosted together on Render, window.location.origin works automatically!
+    const NEW_BACKEND_URL = window.location.origin;
+
+    window.fetch = async function (input, init = {}) {
+        let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        if (url && url.includes('rolands-steakhouse-vqtr.vercel.app')) {
+            url = url.replace('https://rolands-steakhouse-vqtr.vercel.app', NEW_BACKEND_URL);
+            input = url;
+        }
+        const activeBranch = window.getCurrentBranch();
+        const effectiveBranch = window.getEffectiveBranch();
 })();
 
 
