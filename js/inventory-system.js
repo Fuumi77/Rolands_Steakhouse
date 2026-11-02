@@ -2344,8 +2344,7 @@ function saveRawIngredients(list) {
 
 /* ============================================================================
    🏬 ROLAND'S MULTI-BRANCH ENGINE (General Santos City & Koronadal City)
-   Automatically isolates branch data for Customers & Staff, and aggregates
-   totals for Super Admin!
+   Fixed: No recursion, automatic cloud branch memory, and full UI sync!
 ============================================================================ */
 (function initMultiBranchEngine() {
     const BRANCHES = [
@@ -2355,6 +2354,7 @@ function saveRawIngredients(list) {
             shortName: 'Gensan (Main)',
             tagline: 'Fine Dining Excellence in Gensan',
             address: 'Jose Catolico Sr. Ave., General Santos City (Dadiangas), 9500 South Cotabato',
+            tel: '(083) 123-4567',
             mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.386053151522!2d125.190588!3d6.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32f09fb579f4695d%3A0x3498bc0e23698fc3!2sRoland's%20Steak%20House!5e0!3m2!1sen!2sph!4v1711000000000!5m2!1sen!2sph"
         },
         {
@@ -2363,6 +2363,7 @@ function saveRawIngredients(list) {
             shortName: 'Koronadal Branch',
             tagline: 'Fine Dining Excellence in Koronadal',
             address: 'Gensan Drive, Zone II, Koronadal City (Marbel), 9506 South Cotabato',
+            tel: '(083) 228-9876',
             mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15855.77258843554!2d124.8415!3d6.4975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32f81891f88f8889%3A0x123456789abcdef!2sKoronadal%20City%2C%20South%20Cotabato!5e0!3m2!1sen!2sph!4v1711000000000!5m2!1sen!2sph"
         }
     ];
@@ -2373,29 +2374,44 @@ function saveRawIngredients(list) {
 
     window.ROLANDS_BRANCHES = BRANCHES;
 
+    // Bind native storage methods FIRST so we never trigger infinite recursion!
+    const rawGet = Storage.prototype.getItem.bind(localStorage);
+    const rawSet = Storage.prototype.setItem.bind(localStorage);
+    const rawRem = Storage.prototype.removeItem.bind(localStorage);
+    window.__rawGetStorage = rawGet;
+    window.__rawSetStorage = rawSet;
+
+    // Map of reservationNumber -> branch from the cloud database
+    const cloudBranchMap = {};
+
     // 1. Get / Set Active Branch depending on role
     window.getCurrentBranch = function () {
         if (isSuperAdminPage) {
-            return localStorage.getItem('superAdminSelectedBranch') || 'ALL';
+            return rawGet('superAdminSelectedBranch') || 'ALL';
         }
         if (isAdminPage) {
-            return localStorage.getItem('adminSelectedBranch') || 'General Santos City';
+            return rawGet('adminSelectedBranch') || 'General Santos City';
         }
-        return localStorage.getItem('selectedBranch') || 'General Santos City';
+        return rawGet('selectedBranch') || 'General Santos City';
     };
 
     window.getEffectiveBranch = function () {
         const b = window.getCurrentBranch();
-        return b === 'ALL' ? 'General Santos City' : b;
+        return (!b || b === 'ALL') ? 'General Santos City' : b;
+    };
+
+    window.getBranchInfo = function (branchName) {
+        const target = branchName || window.getEffectiveBranch();
+        return BRANCHES.find(b => b.name === target) || BRANCHES[0];
     };
 
     window.setActiveBranch = function (branchName) {
         if (isSuperAdminPage) {
-            localStorage.setItem('superAdminSelectedBranch', branchName);
+            rawSet('superAdminSelectedBranch', branchName);
         } else if (isAdminPage) {
-            localStorage.setItem('adminSelectedBranch', branchName);
+            rawSet('adminSelectedBranch', branchName);
         } else {
-            localStorage.setItem('selectedBranch', branchName);
+            rawSet('selectedBranch', branchName);
         }
         window.dispatchEvent(new CustomEvent('branchChanged', { detail: branchName }));
         window.location.reload();
@@ -2414,14 +2430,8 @@ function saveRawIngredients(list) {
         'store_status'
     ]);
 
-    const rawGetItem = Storage.prototype.getItem;
-    const rawSetItem = Storage.prototype.setItem;
-    const rawRemoveItem = Storage.prototype.removeItem;
-
     function resolveScopedKey(key) {
         const activeBranch = window.getCurrentBranch();
-        // Keep General Santos City on the default keys for 100% backward compatibility;
-        // prefix Koronadal City (or any future branch) with "Koronadal City__<key>"
         if (SCOPED_KEYS.has(key) && activeBranch !== 'General Santos City' && activeBranch !== 'ALL') {
             return `${activeBranch}__${key}`;
         }
@@ -2432,98 +2442,110 @@ function saveRawIngredients(list) {
         if (this === localStorage) {
             const activeBranch = window.getCurrentBranch();
 
-            // Filter reservationHistory automatically by branch for Admin/Kitchen/POS
             if (key === 'reservationHistory') {
-                const raw = rawGetItem.call(this, 'reservationHistory');
+                const raw = rawGet('reservationHistory');
                 if (!raw) return raw;
                 try {
                     const list = JSON.parse(raw);
                     if (!Array.isArray(list)) return raw;
-                    // Normalize missing branch field to General Santos City
-                    list.forEach(r => { if (r && !r.branch) r.branch = 'General Santos City'; });
+                    list.forEach(r => {
+                        if (r) {
+                            if (cloudBranchMap[r.reservationNumber]) r.branch = cloudBranchMap[r.reservationNumber];
+                            if (!r.branch) r.branch = 'General Santos City';
+                        }
+                    });
 
-                    // If SuperAdmin is in 'ALL' mode, return every branch's records!
+                    // SuperAdmin in 'ALL' mode sees all branches combined
                     if (isSuperAdminPage && activeBranch === 'ALL') {
                         return JSON.stringify(list);
                     }
-                    // If on Admin/Kitchen/POS or SuperAdmin viewing a specific branch, filter to that branch
-                    if (isAdminPage || (isSuperAdminPage && activeBranch !== 'ALL')) {
-                        const target = window.getEffectiveBranch();
-                        return JSON.stringify(list.filter(r => (r.branch || 'General Santos City') === target));
-                    }
-                    return JSON.stringify(list);
+                    // Admin, POS, Kitchen, Seat-Selection, or SuperAdmin viewing 1 branch: filter to active branch
+                    const target = window.getEffectiveBranch();
+                    return JSON.stringify(list.filter(r => (r.branch || 'General Santos City') === target));
                 } catch (e) {
                     return raw;
                 }
             }
 
-            // SuperAdmin "ALL" mode: combine rawIngredients & inventoryItems across branches if needed, or read effective branch
             const scopedKey = resolveScopedKey(key);
-            let val = rawGetItem.call(this, scopedKey);
+            let val = rawGet(scopedKey);
 
             // Seed Koronadal's initial menu/ingredients/floorplan from Gensan defaults on first run
             if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients', 'floorPlanConfig'].includes(key)) {
-                const fallback = rawGetItem.call(this, key);
+                const fallback = rawGet(key);
                 if (fallback) {
-                    rawSetItem.call(this, scopedKey, fallback);
+                    rawSet(scopedKey, fallback);
                     return fallback;
                 }
             }
             return val;
         }
-        return rawGetItem.call(this, key);
+        return rawGet(key);
     };
 
     Storage.prototype.setItem = function (key, value) {
         if (this === localStorage) {
             const activeBranch = window.getCurrentBranch();
 
-            // When saving reservationHistory on a branch-filtered page, merge with other branches so we never erase the other branch's bookings!
             if (key === 'reservationHistory') {
                 try {
                     const incoming = JSON.parse(value);
                     if (Array.isArray(incoming)) {
                         const targetBranch = window.getEffectiveBranch();
+                        const existingRaw = rawGet('reservationHistory');
+                        const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+                        const existingBranchByRes = {};
+                        if (Array.isArray(existingList)) {
+                            existingList.forEach(r => {
+                                if (r && r.reservationNumber && r.branch) {
+                                    existingBranchByRes[r.reservationNumber] = r.branch;
+                                }
+                            });
+                        }
+
                         incoming.forEach(r => {
-                            if (r && !r.branch) r.branch = targetBranch;
+                            if (!r) return;
+                            if (cloudBranchMap[r.reservationNumber]) {
+                                r.branch = cloudBranchMap[r.reservationNumber];
+                            } else if (!r.branch && existingBranchByRes[r.reservationNumber]) {
+                                r.branch = existingBranchByRes[r.reservationNumber];
+                            } else if (!r.branch) {
+                                r.branch = targetBranch;
+                            }
                         });
 
-                        if (isAdminPage || (isSuperAdminPage && activeBranch !== 'ALL')) {
-                            const fullRaw = rawGetItem.call(this, 'reservationHistory');
-                            const fullList = fullRaw ? JSON.parse(fullRaw) : [];
-                            const otherBranches = Array.isArray(fullList)
-                                ? fullList.filter(r => (r.branch || 'General Santos City') !== targetBranch)
+                        if (!(isSuperAdminPage && activeBranch === 'ALL')) {
+                            const otherBranches = Array.isArray(existingList)
+                                ? existingList.filter(r => (r.branch || 'General Santos City') !== targetBranch)
                                 : [];
-                            return rawSetItem.call(this, 'reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
+                            return rawSet('reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
                         }
-                        return rawSetItem.call(this, 'reservationHistory', JSON.stringify(incoming));
+                        return rawSet('reservationHistory', JSON.stringify(incoming));
                     }
                 } catch (e) {}
             }
 
-            const scopedKey = resolveScopedKey(key);
-            return rawSetItem.call(this, scopedKey, value);
+            return rawSet(resolveScopedKey(key), value);
         }
-        return rawSetItem.call(this, key, value);
+        return rawSet(key, value);
     };
 
     Storage.prototype.removeItem = function (key) {
         if (this === localStorage && SCOPED_KEYS.has(key)) {
-            return rawRemoveItem.call(this, resolveScopedKey(key));
+            return rawRem(resolveScopedKey(key));
         }
-        return rawRemoveItem.call(this, key);
+        return rawRem(key);
     };
 
-    // 3. Intercept fetch() so every API call automatically sends & receives the active branch!
+    // 3. Intercept fetch() so every API call sends & receives the active branch + remembers dbRes.branch!
     const origFetch = window.fetch.bind(window);
+    window.__origFetch = origFetch;
     window.fetch = async function (input, init = {}) {
         let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
         const activeBranch = window.getCurrentBranch();
         const effectiveBranch = window.getEffectiveBranch();
 
-        // Tag /api/memory/*, /api/inventory/*, and /reservations with ?branch=...
         if (url && (url.includes('/api/memory/') || url.includes('/api/inventory/') || url.includes('/reservations'))) {
-            // Do not filter /reservations if SuperAdmin is viewing ALL branches
             const skipBranchParam = isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations');
             if (!skipBranchParam && !url.includes('branch=')) {
                 const sep = url.includes('?') ? '&' : '?';
@@ -2532,7 +2554,6 @@ function saveRawIngredients(list) {
             }
         }
 
-        // Tag POST /reserve or /api/inventory/* body with branch
         if (init && init.body && typeof init.body === 'string' && (url.includes('/reserve') || url.includes('/api/inventory/'))) {
             try {
                 const parsed = JSON.parse(init.body);
@@ -2543,19 +2564,35 @@ function saveRawIngredients(list) {
             } catch (e) {}
         }
 
-        return origFetch(input, init);
+        const response = await origFetch(input, init);
+
+        // Automatically capture each reservation's branch from /reservations so syncReservations() never loses it!
+        if (url && url.includes('/reservations') && response.ok) {
+            try {
+                const clone = response.clone();
+                clone.json().then(arr => {
+                    if (Array.isArray(arr)) {
+                        arr.forEach(r => {
+                            if (r && r.reservationNumber && r.branch) {
+                                cloudBranchMap[r.reservationNumber] = r.branch;
+                            }
+                        });
+                    }
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        return response;
     };
 
-    // 4. Update Customer UI (index.html) when branch changes
+    // 4. Update Customer UI (index.html, payment.html, receipt.html, pos.html, superadmin.html)
     window.applyCustomerBranchUI = function () {
         const bName = window.getEffectiveBranch();
-        const branchObj = BRANCHES.find(b => b.name === bName) || BRANCHES[0];
+        const branchObj = window.getBranchInfo(bName);
 
-        // Update hero subtitle
         const heroSub = document.querySelector('#home .hero-content p');
         if (heroSub) heroSub.textContent = branchObj.tagline;
 
-        // Update Location section address & map
         const locAddress = document.querySelector('#location p');
         if (locAddress) locAddress.textContent = branchObj.address;
         const locIframe = document.querySelector('#location iframe');
@@ -2563,7 +2600,6 @@ function saveRawIngredients(list) {
             locIframe.src = branchObj.mapEmbed;
         }
 
-        // Update Reservation modal subtitle
         const modalSub = document.querySelector('#reservation-modal-overlay h2 + p');
         if (modalSub) {
             modalSub.textContent = `Booking for Roland's Steakhouse — ${branchObj.name} Branch`;
@@ -2571,8 +2607,90 @@ function saveRawIngredients(list) {
     };
 
     document.addEventListener('DOMContentLoaded', () => {
+        const currentBranch = window.getCurrentBranch();
+        const effectiveInfo = window.getBranchInfo();
+
         if (!isAdminPage && !isSuperAdminPage) {
             window.applyCustomerBranchUI();
+        }
+
+        // Inject branch selector into POS (pos.html) & Kitchen (kitchen.html) if not already on page
+        if (isAdminPage && !document.getElementById('admin-branch-select') && !document.getElementById('rsh-staff-branch-select')) {
+            const targetBar = document.querySelector('header .metrics-bar') || document.querySelector('header > div:last-child');
+            if (targetBar) {
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.15); padding:6px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.3); color:white; font-size:12.5px; font-weight:800;';
+                wrap.innerHTML = `
+                    <span>🏬 Branch:</span>
+                    <select id="rsh-staff-branch-select" onchange="window.setActiveBranch(this.value)"
+                        style="background:transparent; border:none; color:white; font-weight:800; font-size:12.5px; cursor:pointer; outline:none;">
+                        ${BRANCHES.map(b => `<option value="${b.name}" style="color:#0f172a;" ${b.name === currentBranch ? 'selected' : ''}>${b.name}</option>`).join('')}
+                    </select>
+                `;
+                targetBar.insertBefore(wrap, targetBar.firstChild);
+            }
+        }
+
+        // Show Branch on payment.html & standard-payment.html
+        const summaryTableEl = document.getElementById('summary-table');
+        if (summaryTableEl && summaryTableEl.parentElement && !document.getElementById('summary-branch')) {
+            const tableRow = summaryTableEl.parentElement;
+            const branchRow = document.createElement('div');
+            branchRow.className = 'order-row';
+            branchRow.innerHTML = `<span>Branch</span><span id="summary-branch" style="font-weight:700; color:#1b5e20;">📍 ${effectiveInfo.name}</span>`;
+            tableRow.parentElement.insertBefore(branchRow, tableRow);
+        }
+
+        // Show Branch & Branch Address on receipt.html
+        const receiptTableEl = document.getElementById('table-id');
+        if (receiptTableEl && receiptTableEl.parentElement && !document.getElementById('receipt-branch-id')) {
+            const urlRes = new URLSearchParams(window.location.search).get('res');
+            let resBranch = effectiveInfo.name;
+            if (urlRes) {
+                try {
+                    const allHist = JSON.parse(rawGet('reservationHistory') || '[]');
+                    const found = allHist.find(r => r && r.reservationNumber === urlRes);
+                    if (found && found.branch) resBranch = found.branch;
+                } catch (e) {}
+            }
+            const bInfo = window.getBranchInfo(resBranch);
+            const tableRow = receiptTableEl.parentElement;
+            const bRow = document.createElement('div');
+            bRow.className = 'info-row';
+            bRow.innerHTML = `<span>BRANCH</span><span id="receipt-branch-id" style="font-weight:bold;">${bInfo.name}</span>`;
+            tableRow.parentElement.insertBefore(bRow, tableRow);
+
+            const centerPs = document.querySelectorAll('#receipt-capture-area .center p');
+            if (centerPs.length >= 2) {
+                centerPs[1].innerHTML = `${bInfo.address}<br>Tel: ${bInfo.tel}`;
+            }
+        }
+
+        // Add Branch badge to every row in SuperAdmin "All Records" table
+        if (isSuperAdminPage) {
+            const histTbody = document.getElementById('history-tbody');
+            if (histTbody) {
+                const tagRowsWithBranch = () => {
+                    const allHist = JSON.parse(rawGet('reservationHistory') || '[]');
+                    const map = {};
+                    allHist.forEach(r => { if (r && r.reservationNumber) map[r.reservationNumber] = cloudBranchMap[r.reservationNumber] || r.branch || 'General Santos City'; });
+                    histTbody.querySelectorAll('tr').forEach(tr => {
+                        if (tr.dataset.branchTagged || tr.children.length < 4) return;
+                        const orderCellText = (tr.children[0].innerText || '').replace(/^NEW\s*/i, '').trim();
+                        const bName = map[orderCellText] || 'General Santos City';
+                        const tableCell = tr.children[3];
+                        if (tableCell) {
+                            tr.dataset.branchTagged = 'true';
+                            const badge = document.createElement('div');
+                            badge.style.cssText = 'font-size:10px; font-weight:800; color:#166534; background:#dcfce7; border:1px solid #86efac; padding:2px 6px; border-radius:6px; display:inline-block; margin-top:4px;';
+                            badge.textContent = '📍 ' + bName;
+                            tableCell.appendChild(badge);
+                        }
+                    });
+                };
+                new MutationObserver(tagRowsWithBranch).observe(histTbody, { childList: true });
+                setTimeout(tagRowsWithBranch, 800);
+            }
         }
     });
 })();
