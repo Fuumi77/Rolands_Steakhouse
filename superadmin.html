@@ -6115,213 +6115,197 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             })(); // 👉 FIX: Added the missing parentheses to properly close and execute the function!
     </script>
-    <script>
-(function () {
-    const DEFAULT_BRANCHES = [
-        { id: 'gensan', name: 'General Santos City', address: 'Jose Catolico Sr. Ave., General Santos City', branchKey: 'General Santos City' },
-        { id: 'koronadal', name: 'Koronadal City', address: 'Gensan Drive, Zone II, Koronadal City', branchKey: 'Koronadal City' }
-    ];
-    let extra = [];
-    let data = {};
-    let view = 'overview';
-    let filter = 'all';
+<script>
+    (function () {
+        const DEFAULT_BRANCHES = [
+            { id: 'gensan', name: 'General Santos City', address: 'Jose Catolico Sr. Ave., General Santos City', branchKey: 'General Santos City' },
+            { id: 'koronadal', name: 'Koronadal City', address: 'Gensan Drive, Zone II, Koronadal City', branchKey: 'Koronadal City' }
+        ];
+        let view = 'overview';
+        let filter = 'all';
+        let data = {};
 
-    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const allBranches = () => [...DEFAULT_BRANCHES, ...extra];
-    const visible = () => allBranches().filter(b => filter === 'all' || b.id === filter);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const rawRead = key => (window.__rawGetStorage ? window.__rawGetStorage(key) : localStorage.getItem(key));
 
-    function getBranchLocalInventory(branchKey) {
-        try {
-            const storageKey = branchKey === 'General Santos City' ? 'rawIngredients' : `${branchKey}__rawIngredients`;
-            const raw = localStorage.getItem(storageKey) || localStorage.getItem('rawIngredients') || '[]';
-            return JSON.parse(raw);
-        } catch (e) { return []; }
-    }
-
-    function getBranchLocalReservations(branchKey) {
-        try {
-            const raw = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            return raw.filter(r => (r.branch || 'General Santos City') === branchKey);
-        } catch (e) { return []; }
-    }
-
-    window.brRefresh = async function () {
-        const bs = allBranches();
-        data = {};
-        for (const b of bs) {
-            const bKey = b.branchKey || b.name;
-            const resList = getBranchLocalReservations(bKey);
-            const invList = getBranchLocalInventory(bKey);
-            data[b.id] = { res: resList, inv: invList, error: '' };
+        function getBranchLocalInventory(branchKey) {
+            try {
+                const storageKey = branchKey === 'General Santos City' ? 'rawIngredients' : `${branchKey}__rawIngredients`;
+                return JSON.parse(rawRead(storageKey) || rawRead('rawIngredients') || '[]');
+            } catch (e) { return []; }
         }
-        fillFilter();
-        render();
-    };
 
-    function fillFilter() {
-        const sel = document.getElementById('br-filter');
-        if (!sel) return;
-        sel.innerHTML = '<option value="all">🌐 All Branches</option>' +
-            allBranches().map(b => `<option value="${esc(b.id)}">📍 ${esc(b.name)}</option>`).join('');
-        sel.value = allBranches().some(b => b.id === filter) ? filter : 'all';
-    }
+        function getBranchLocalReservations(branchKey) {
+            try {
+                const all = JSON.parse(rawRead('reservationHistory') || '[]');
+                return all.filter(r => (r.branch || 'General Santos City') === branchKey);
+            } catch (e) { return []; }
+        }
 
-    window.brSetView = function (v) {
-        view = v;
-        document.querySelectorAll('[data-brview]').forEach(b => b.classList.toggle('active', b.dataset.brview === v));
-        render();
-    };
-
-    window.brSetFilter = function (f) { filter = f; render(); };
-
-    const isCounted = r => {
-        const st = String(r.approvalStatus || r.status || '').toLowerCase();
-        return !/cancel|reject|refund/.test(st);
-    };
-    const isVerifiedRev = r => {
-        const p = String(r.paymentStatus || '').toLowerCase();
-        if (p !== 'paid' && p !== 'verified' && p !== 'walk-in') return false;
-        let amt = Number(r.paymentAmount || 0);
-        if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) return false;
-        return true;
-    };
-
-    function revenueOf(res) {
-        const today = new Date().toISOString().slice(0, 10);
-        const month = today.slice(0, 7);
-        let day = 0, mth = 0, all = 0, count = 0;
-        res.filter(isCounted).forEach(r => {
-            count++;
-            if (isVerifiedRev(r)) {
-                const amt = Number(r.paymentAmount) || 0;
-                all += amt;
-                if (r.arrivalDate === today) day += amt;
-                if (String(r.arrivalDate || '').startsWith(month)) mth += amt;
+        window.brRefresh = async function () {
+            data = {};
+            for (const b of DEFAULT_BRANCHES) {
+                data[b.id] = {
+                    res: getBranchLocalReservations(b.branchKey),
+                    inv: getBranchLocalInventory(b.branchKey)
+                };
             }
-        });
-        return { day, month: mth, all, count };
-    }
+            const sel = document.getElementById('br-filter');
+            if (sel) {
+                sel.innerHTML = '<option value="all">🌐 All Branches</option>' +
+                    DEFAULT_BRANCHES.map(b => `<option value="${esc(b.id)}">📍 ${esc(b.name)}</option>`).join('');
+                sel.value = filter;
+            }
+            render();
+        };
 
-    function render() {
-        const box = document.getElementById('br-content');
-        if (!box) return;
-        const bs = visible();
+        window.brSetView = function (v) {
+            view = v;
+            document.querySelectorAll('[data-brview]').forEach(b => b.classList.toggle('active', b.dataset.brview === v));
+            render();
+        };
 
-        // Calculate Grand Totals across all visible branches
-        let totalRevAll = 0, totalRevToday = 0, totalBookings = 0;
-        bs.forEach(b => {
-            const d = data[b.id] || { res: [], inv: [] };
-            const rev = revenueOf(d.res);
-            totalRevAll += rev.all;
-            totalRevToday += rev.day;
-            totalBookings += d.res.length;
-        });
+        window.brSetFilter = function (f) { filter = f; render(); };
 
-        const summaryBanner = `
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:20px;">
-                <div class="card" style="border-left:4px solid #16a34a; margin:0;">
-                    <h3>Combined Total Revenue</h3>
-                    <div class="value" style="color:#16a34a;">${peso(totalRevAll)}</div>
-                    <div class="muted">Across ${bs.length} branch(es)</div>
+        function revenueOf(res) {
+            const today = new Date().toISOString().slice(0, 10);
+            const month = today.slice(0, 7);
+            let day = 0, mth = 0, all = 0, count = 0;
+            (res || []).forEach(r => {
+                const st = String(r.approvalStatus || r.status || '').toLowerCase();
+                if (/cancel|reject|refund/.test(st)) return;
+                count++;
+                const p = String(r.paymentStatus || '').toLowerCase();
+                if (p === 'paid' || p === 'verified' || p === 'walk-in') {
+                    let amt = Number(r.paymentAmount || 0);
+                    if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) amt = 0;
+                    all += amt;
+                    if (r.arrivalDate === today) day += amt;
+                    if (String(r.arrivalDate || '').startsWith(month)) mth += amt;
+                }
+            });
+            return { day, month: mth, all, count };
+        }
+
+        function render() {
+            const box = document.getElementById('br-content');
+            if (!box) return;
+            const bs = DEFAULT_BRANCHES.filter(b => filter === 'all' || b.id === filter);
+
+            let totalRevAll = 0, totalRevToday = 0, totalBookings = 0;
+            bs.forEach(b => {
+                const d = data[b.id] || { res: [], inv: [] };
+                const rev = revenueOf(d.res);
+                totalRevAll += rev.all;
+                totalRevToday += rev.day;
+                totalBookings += d.res.length;
+            });
+
+            const summaryBanner = `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:20px;">
+                    <div class="card" style="border-left:4px solid #16a34a; margin:0;">
+                        <h3>Combined Total Revenue</h3>
+                        <div class="value" style="color:#16a34a;">${peso(totalRevAll)}</div>
+                        <div class="muted">Across ${bs.length} branch(es)</div>
+                    </div>
+                    <div class="card" style="border-left:4px solid #0284c7; margin:0;">
+                        <h3>Today's Combined Revenue</h3>
+                        <div class="value" style="color:#0284c7;">${peso(totalRevToday)}</div>
+                        <div class="muted">Today's verified sales</div>
+                    </div>
+                    <div class="card" style="border-left:4px solid #7c3aed; margin:0;">
+                        <h3>Total Combined Bookings</h3>
+                        <div class="value" style="color:#7c3aed;">${totalBookings}</div>
+                        <div class="muted">All recorded reservations</div>
+                    </div>
                 </div>
-                <div class="card" style="border-left:4px solid #0284c7; margin:0;">
-                    <h3>Today's Combined Revenue</h3>
-                    <div class="value" style="color:#0284c7;">${peso(totalRevToday)}</div>
-                    <div class="muted">Today's verified sales</div>
-                </div>
-                <div class="card" style="border-left:4px solid #7c3aed; margin:0;">
-                    <h3>Total Combined Bookings</h3>
-                    <div class="value" style="color:#7c3aed;">${totalBookings}</div>
-                    <div class="muted">All recorded reservations</div>
-                </div>
-            </div>
-        `;
+            `;
 
-        if (view === 'overview') {
-            box.innerHTML = summaryBanner + `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">` +
-                bs.map(b => {
-                    const d = data[b.id] || { res: [], inv: [] };
-                    const rev = revenueOf(d.res);
-                    const lowStock = d.inv.filter(i => Number(i.stock) <= Number(i.minThreshold || 10)).length;
-                    return `
-                        <div class="card" style="margin:0; border:1px solid #e2e8f0;">
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                                <div>
-                                    <h3 style="margin:0; font-size:18px; color:#1b5e20;">📍 ${esc(b.name)}</h3>
-                                    <div style="font-size:12px; color:#64748b;">${esc(b.address || '')}</div>
+            if (view === 'overview') {
+                box.innerHTML = summaryBanner + `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">` +
+                    bs.map(b => {
+                        const d = data[b.id] || { res: [], inv: [] };
+                        const rev = revenueOf(d.res);
+                        const lowStock = d.inv.filter(i => Number(i.stock) <= Number(i.minThreshold || 10)).length;
+                        return `
+                            <div class="card" style="margin:0; border:1px solid #e2e8f0;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                    <div>
+                                        <h3 style="margin:0; font-size:18px; color:#1b5e20;">📍 ${esc(b.name)}</h3>
+                                        <div style="font-size:12px; color:#64748b;">${esc(b.address)}</div>
+                                    </div>
+                                    <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey)}')" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">
+                                        Manage Branch →
+                                    </button>
                                 </div>
-                                <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey || b.name)}')" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">
-                                    Manage Branch →
-                                </button>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
+                                    <div><span style="font-size:11px; color:#64748b;">Total Revenue</span><div style="font-size:16px; font-weight:800; color:#16a34a;">${peso(rev.all)}</div></div>
+                                    <div><span style="font-size:11px; color:#64748b;">Today Revenue</span><div style="font-size:16px; font-weight:800; color:#0f172a;">${peso(rev.day)}</div></div>
+                                    <div><span style="font-size:11px; color:#64748b;">Reservations</span><div style="font-size:15px; font-weight:800; color:#1e3a8a;">${d.res.length} Bookings</div></div>
+                                    <div><span style="font-size:11px; color:#64748b;">Inventory Health</span><div style="font-size:14px; font-weight:800; color:${lowStock > 0 ? '#dc2626' : '#16a34a'};">${lowStock > 0 ? lowStock + ' Low Stock' : 'Optimal'}</div></div>
+                                </div>
                             </div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
-                                <div><span style="font-size:11px; color:#64748b;">Total Revenue</span><div style="font-size:16px; font-weight:800; color:#16a34a;">${peso(rev.all)}</div></div>
-                                <div><span style="font-size:11px; color:#64748b;">Today Revenue</span><div style="font-size:16px; font-weight:800; color:#0f172a;">${peso(rev.day)}</div></div>
-                                <div><span style="font-size:11px; color:#64748b;">Reservations</span><div style="font-size:15px; font-weight:800; color:#1e3a8a;">${d.res.length} Bookings</div></div>
-                                <div><span style="font-size:11px; color:#64748b;">Inventory Health</span><div style="font-size:14px; font-weight:800; color:${lowStock > 0 ? '#dc2626' : '#16a34a'};">${lowStock > 0 ? lowStock + ' Low Stock' : 'Optimal'}</div></div>
+                        `;
+                    }).join('') + `</div>`;
+            } else if (view === 'inventory') {
+                box.innerHTML = bs.map(b => {
+                    const d = data[b.id] || { inv: [] };
+                    return `
+                        <div class="card" style="margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <h3 style="margin:0; color:#1b5e20;">📦 ${esc(b.name)} — Raw Inventory (${d.inv.length} Items)</h3>
+                                <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey)}')" style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Edit ${esc(b.name)} Inventory</button>
                             </div>
+                            <table>
+                                <thead><tr><th>Ingredient</th><th>Category</th><th>Current Stock</th><th>Min Threshold</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    ${d.inv.map(i => {
+                                        const s = Number(i.stock) || 0, m = Number(i.minThreshold) || 10;
+                                        const status = s <= 0 ? 'OUT OF STOCK' : (s <= m ? 'LOW STOCK' : 'OK');
+                                        const col = s <= 0 ? '#dc2626' : (s <= m ? '#d97706' : '#16a34a');
+                                        return `<tr><td><strong>${esc(i.name)}</strong></td><td>${esc(i.category)}</td><td style="font-weight:800; color:${col};">${s} ${esc(i.unit)}</td><td>${m} ${esc(i.unit)}</td><td><span style="color:${col}; font-weight:800; font-size:11px;">${status}</span></td></tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
                         </div>
                     `;
-                }).join('') + `</div>`;
-        } else if (view === 'inventory') {
-            box.innerHTML = bs.map(b => {
-                const d = data[b.id] || { inv: [] };
-                return `
-                    <div class="card" style="margin-bottom:20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                            <h3 style="margin:0; color:#1b5e20;">📦 ${esc(b.name)} — Raw Inventory (${d.inv.length} Items)</h3>
-                            <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey || b.name)}'); switchTab('inventory');" style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Edit ${esc(b.name)} Inventory</button>
-                        </div>
+                }).join('');
+            } else if (view === 'revenue') {
+                box.innerHTML = summaryBanner + `
+                    <div class="card">
                         <table>
-                            <thead><tr><th>Ingredient</th><th>Category</th><th>Current Stock</th><th>Min Threshold</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Branch</th><th>Today's Revenue</th><th>This Month</th><th>All-Time Revenue</th><th>Active Bookings</th></tr></thead>
                             <tbody>
-                                ${d.inv.map(i => {
-                                    const s = Number(i.stock) || 0, m = Number(i.minThreshold) || 10;
-                                    const status = s <= 0 ? 'OUT OF STOCK' : (s <= m ? 'LOW STOCK' : 'OK');
-                                    const col = s <= 0 ? '#dc2626' : (s <= m ? '#d97706' : '#16a34a');
-                                    return `<tr><td><strong>${esc(i.name)}</strong></td><td>${esc(i.category)}</td><td style="font-weight:800; color:${col};">${s} ${esc(i.unit)}</td><td>${m} ${esc(i.unit)}</td><td><span style="color:${col}; font-weight:800; font-size:11px;">${status}</span></td></tr>`;
+                                ${bs.map(b => {
+                                    const rev = revenueOf((data[b.id] || { res: [] }).res);
+                                    return `<tr><td><strong>📍 ${esc(b.name)}</strong></td><td>${peso(rev.day)}</td><td>${peso(rev.month)}</td><td style="font-weight:800; color:#16a34a;">${peso(rev.all)}</td><td>${rev.count}</td></tr>`;
                                 }).join('')}
                             </tbody>
                         </table>
                     </div>
                 `;
-            }).join('');
-        } else if (view === 'revenue') {
-            box.innerHTML = summaryBanner + `
-                <div class="card">
-                    <table>
-                        <thead><tr><th>Branch</th><th>Today's Revenue</th><th>This Month</th><th>All-Time Revenue</th><th>Active Bookings</th></tr></thead>
-                        <tbody>
-                            ${bs.map(b => {
-                                const rev = revenueOf((data[b.id] || { res: [] }).res);
-                                return `<tr><td><strong>📍 ${esc(b.name)}</strong></td><td>${peso(rev.day)}</td><td>${peso(rev.month)}</td><td style="font-weight:800; color:#16a34a;">${peso(rev.all)}</td><td>${rev.count}</td></tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } else if (view === 'reservations') {
-            box.innerHTML = bs.map(b => {
-                const d = data[b.id] || { res: [] };
-                return `
-                    <div class="card" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 12px 0; color:#1b5e20;">🎫 ${esc(b.name)} — Reservations (${d.res.length})</h3>
-                        <table>
-                            <thead><tr><th>Order #</th><th>Customer</th><th>Schedule</th><th>Table</th><th>Amount</th><th>Status</th></tr></thead>
-                            <tbody>
-                                ${d.res.length === 0 ? `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">No reservations for ${esc(b.name)} yet.</td></tr>` :
-                                d.res.map(r => `<tr><td><strong>${esc(r.reservationNumber)}</strong></td><td>${esc(r.customerName)}</td><td>${esc(r.arrivalDate)} ${esc(r.arrivalTime)}</td><td>${esc(r.bookedTable)}</td><td style="font-weight:800;">${peso(r.paymentAmount)}</td><td>${esc(r.approvalStatus || r.status || 'Pending')}</td></tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }).join('');
+            } else if (view === 'reservations') {
+                box.innerHTML = bs.map(b => {
+                    const d = data[b.id] || { res: [] };
+                    return `
+                        <div class="card" style="margin-bottom:20px;">
+                            <h3 style="margin:0 0 12px 0; color:#1b5e20;">🎫 ${esc(b.name)} — Reservations (${d.res.length})</h3>
+                            <table>
+                                <thead><tr><th>Order #</th><th>Customer</th><th>Schedule</th><th>Table</th><th>Amount</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    ${d.res.length === 0 ? `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">No reservations for ${esc(b.name)} yet.</td></tr>` :
+                                    d.res.map(r => `<tr><td><strong>${esc(r.reservationNumber)}</strong></td><td>${esc(r.customerName)}</td><td>${esc(r.arrivalDate)} ${esc(r.arrivalTime)}</td><td>${esc(r.bookedTable)}</td><td style="font-weight:800;">${peso(r.paymentAmount)}</td><td>${esc(r.approvalStatus || r.status || 'Pending')}</td></tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
-    }
 
-    window.addEventListener('load', () => setTimeout(() => window.brRefresh(), 800));
-})();
-</script>
+        window.addEventListener('load', () => setTimeout(() => window.brRefresh(), 800));
+    })();
+    </script>
 </body>
 </html>
