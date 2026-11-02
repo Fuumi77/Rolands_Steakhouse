@@ -1,3 +1,16 @@
+/* 👉 GLOBAL RENDER BACKEND REDIRECT (Catches login.html, receipt.html, payment-success.html, etc.) */
+(function redirectVercelToRender() {
+    const RENDER_URL = 'https://rolands-steakhouse.onrender.com';
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+        if (typeof input === 'string' && input.includes('rolands-steakhouse-vqtr.vercel.app')) {
+            input = input.replace('https://rolands-steakhouse-vqtr.vercel.app', RENDER_URL);
+        } else if (input && typeof input === 'object' && input.url && input.url.includes('rolands-steakhouse-vqtr.vercel.app')) {
+            input = new Request(input.url.replace('https://rolands-steakhouse-vqtr.vercel.app', RENDER_URL), input);
+        }
+        return nativeFetch(input, init);
+    };
+})();
 /* 
    ROLAND'S STEAKHOUSE - DESIGN SYSTEM JS
    Centralized Logic for Premium Modals and Console Branding
