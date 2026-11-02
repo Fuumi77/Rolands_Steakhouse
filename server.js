@@ -1231,4 +1231,13 @@ app.post('/api/memory/raw-ingredients', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Serve static HTML, CSS, JS, and images automatically on Render / Railway / Koyeb / Localhost
+const path = require('path');
+app.use(express.static(path.join(__dirname)));
+
+const PORT = process.env.PORT || 3000;
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`🚀 Roland's Server running on port ${PORT}`));
+}
+
 module.exports = app;
