@@ -2541,9 +2541,8 @@ function saveRawIngredients(list) {
     const origFetch = window.fetch.bind(window);
     window.__origFetch = origFetch;
 
-    // 👉 AUTO-REDIRECT OLD VERCEL URL TO YOUR NEW BACKEND!
-    // If frontend & backend are hosted together on Render, window.location.origin works automatically!
-    const NEW_BACKEND_URL = window.location.origin;
+    // 👉 AUTO-REDIRECT OLD VERCEL URL TO YOUR NEW RENDER BACKEND!
+    const NEW_BACKEND_URL = 'https://rolands-steakhouse.onrender.com';
 
     window.fetch = async function (input, init = {}) {
         let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
