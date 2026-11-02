@@ -704,55 +704,63 @@ setTimeout(async () => {
     } catch (e) {}
 }, 2000);
 
+function scopedInvItemId(id, req) {
+    const branch = (req.query.branch || (req.body && req.body.branch) || global.__activeReqBranch || 'General Santos City').trim();
+    if (!branch || branch === 'General Santos City' || branch === 'ALL') return { dbId: id, branch: 'General Santos City' };
+    const prefix = branch.replace(/\s+/g, '_').toUpperCase() + '__';
+    return { dbId: String(id).startsWith(prefix) ? id : `${prefix}${id}`, branch, prefix };
+}
+
 app.get('/api/inventory/raw', async (req, res) => {
     try {
-        if (cachedInventory && (Date.now() - invCacheTime < 15000)) return res.json(cachedInventory);
-        
-        const [rows] = await queryWithRetry('SELECT * FROM master_inventory');
-        cachedInventory = rows.map(r => {
-            const meta = MASTER_INGREDIENT_META[r.item_id] || {};
+        const { branch, prefix } = scopedInvItemId('', req);
+        const [rows] = await queryWithRetry('SELECT * FROM master_inventory WHERE branch_location = ?', [branch]);
+        const result = rows.map(r => {
+            const cleanId = prefix && String(r.item_id).startsWith(prefix) ? r.item_id.slice(prefix.length) : r.item_id;
+            const meta = MASTER_INGREDIENT_META[cleanId] || {};
             return {
-                id: r.item_id,
+                id: cleanId,
                 name: r.item_name,
                 category: (r.category && r.category !== 'General') ? r.category : (meta.category || 'General'),
                 stock: parseFloat(r.current_stock) || 0,
                 minThreshold: parseFloat(r.min_threshold) > 10 ? parseFloat(r.min_threshold) : (meta.minThreshold || 10),
-                unit: meta.unit || r.unit_of_measurement || 'g'
+                unit: meta.unit || r.unit_of_measurement || 'g',
+                branch: r.branch_location || branch
             };
         });
-        invCacheTime = Date.now();
-        res.json(cachedInventory);
+        res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/inventory/restock', async (req, res) => {
     const { id, name, category, addAmount, minThreshold, unit, timestamp } = req.body;
     try {
+        const { dbId, branch } = scopedInvItemId(id, req);
         const meta = MASTER_INGREDIENT_META[id] || {};
         const finalUnit = unit || meta.unit || 'g';
         const finalCat = (category && category !== 'General') ? category : (meta.category || 'General');
         const finalThresh = minThreshold || meta.minThreshold || 100;
         const phNow = toPhilippineTimeSQL(timestamp);
 
-        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [id, name]);
+        const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? LIMIT 1', [dbId]);
         const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
         const newStock = prevStock + Number(addAmount || 0);
 
         if (current.length > 0) {
             await db.query(
-                'UPDATE master_inventory SET current_stock = ?, category = ?, min_threshold = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ? OR item_name = ?',
-                [newStock, finalCat, finalThresh, finalUnit, phNow, id, name]
+                'UPDATE master_inventory SET current_stock = ?, category = ?, min_threshold = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ?',
+                [newStock, finalCat, finalThresh, finalUnit, phNow, dbId]
             );
         } else {
             await db.query(
                 'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [id, name, finalCat, newStock, finalThresh, finalUnit, 'General Santos City', phNow]
+                [dbId, name, finalCat, newStock, finalThresh, finalUnit, branch, phNow]
             );
         }
 
         await db.query(
             'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [name, prevStock, newStock, finalUnit, 1, phNow]
+            [`[${branch}] ${name}`, prevStock, newStock, finalUnit, 1, phNow]
         );
         cachedInventory = null; 
         res.json({ success: true, newStock: newStock });
@@ -765,19 +773,20 @@ app.post('/api/inventory/deduct-raw', async (req, res) => {
         const staffId = parseInt(operator) || 1;
         const phNow = toPhilippineTimeSQL(timestamp);
         for (let i of (items || [])) {
+            const { dbId, branch } = scopedInvItemId(i.id, req);
             const meta = MASTER_INGREDIENT_META[i.id] || {};
             const finalUnit = i.unit || meta.unit || 'g';
-            const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1', [i.id, i.name]);
+            const [current] = await db.query('SELECT current_stock FROM master_inventory WHERE item_id = ? LIMIT 1', [dbId]);
             const prevStock = current.length > 0 ? parseFloat(current[0].current_stock) : 0;
             const newStock = Math.max(0, prevStock - Number(i.deductQty || 0));
 
             if (current.length > 0) {
-                await db.query('UPDATE master_inventory SET current_stock = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ? OR item_name = ?', [newStock, finalUnit, phNow, i.id, i.name]);
+                await db.query('UPDATE master_inventory SET current_stock = ?, unit_of_measurement = ?, last_updated = ? WHERE item_id = ?', [newStock, finalUnit, phNow, dbId]);
             }
             
             await db.query(
                 'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                [i.name, prevStock, newStock, finalUnit, staffId, phNow]
+                [`[${branch}] ${i.name}`, prevStock, newStock, finalUnit, staffId, phNow]
             );
         }
         cachedInventory = null; 
@@ -792,6 +801,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             const { ingredientId, ingredientName, category, minThreshold, changeQty, newStock, unit, operator, timestamp } = m;
             if (!ingredientId) continue;
 
+            const { dbId, branch } = scopedInvItemId(ingredientId, req);
             const meta = MASTER_INGREDIENT_META[ingredientId] || {};
             const finalUnit = meta.unit || unit || 'g';
             const finalCat = (category && category !== 'General') ? category : (meta.category || 'General');
@@ -799,8 +809,8 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             const phNow = toPhilippineTimeSQL(timestamp);
 
             const [current] = await db.query(
-                'SELECT item_id, current_stock FROM master_inventory WHERE item_id = ? OR item_name = ? LIMIT 1',
-                [ingredientId, ingredientName || '']
+                'SELECT item_id, current_stock FROM master_inventory WHERE item_id = ? LIMIT 1',
+                [dbId]
             );
             let prevStock = 0;
             const safeNewStock = Math.max(0, parseFloat(newStock) || 0);
@@ -814,15 +824,16 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
                          category = ?,
                          min_threshold = ?,
                          unit_of_measurement = ?,
+                         branch_location = ?,
                          last_updated = ?
                      WHERE item_id = ?`,
-                    [safeNewStock, ingredientName || null, finalCat, finalThresh, finalUnit, phNow, current[0].item_id]
+                    [safeNewStock, ingredientName || null, finalCat, finalThresh, finalUnit, branch, phNow, current[0].item_id]
                 );
             } else {
                 prevStock = Math.max(0, safeNewStock - (parseFloat(changeQty) || 0));
                 await db.query(
                     'INSERT INTO master_inventory (item_id, item_name, category, current_stock, min_threshold, unit_of_measurement, branch_location, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [ingredientId, ingredientName || ingredientId, finalCat, safeNewStock, finalThresh, finalUnit, 'General Santos City', phNow]
+                    [dbId, ingredientName || ingredientId, finalCat, safeNewStock, finalThresh, finalUnit, branch, phNow]
                 );
             }
 
@@ -830,7 +841,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             if (Math.abs(safeNewStock - prevStock) > 0.001 || Number(changeQty) !== 0) {
                 await db.query(
                     'INSERT INTO raw_ingredients_change_log (ingredient_name, previous_quantity, new_quantity, unit_of_measurement, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-                    [ingredientName || ingredientId, prevStock, safeNewStock, finalUnit, staffId, phNow]
+                    [`[${branch}] ${ingredientName || ingredientId}`, prevStock, safeNewStock, finalUnit, staffId, phNow]
                 );
             }
         }
