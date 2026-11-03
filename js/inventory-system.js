@@ -2381,8 +2381,9 @@ function saveRawIngredients(list) {
     window.__rawGetStorage = rawGet;
     window.__rawSetStorage = rawSet;
 
-    // Map of reservationNumber -> branch from the cloud database
-    const cloudBranchMap = {};
+// Persistent map of reservationNumber -> branch from the cloud database
+    let cloudBranchMap = {};
+    try { cloudBranchMap = JSON.parse(rawGet('__cloudBranchMap') || '{}') || {}; } catch (e) { cloudBranchMap = {}; }
 
     // 1. Get / Set Active Branch depending on role
     window.getCurrentBranch = function () {
@@ -2529,16 +2530,23 @@ function safeRawSet(k, v) {
                             if (!r) return;
                             if (cloudBranchMap[r.reservationNumber]) {
                                 r.branch = cloudBranchMap[r.reservationNumber];
-                            } else if (!r.branch && existingBranchByRes[r.reservationNumber]) {
+                            } else if (r.branch) {
+                                cloudBranchMap[r.reservationNumber] = r.branch;
+                            } else if (existingBranchByRes[r.reservationNumber]) {
                                 r.branch = existingBranchByRes[r.reservationNumber];
-                            } else if (!r.branch) {
-                                r.branch = targetBranch;
+                            } else {
+                                // Only tag brand-new reservations (<15s old) with targetBranch; older untagged ones belong to Gensan
+                                const isBrandNew = r.createdAt && (Date.now() - new Date(r.createdAt).getTime() < 15000);
+                                r.branch = isBrandNew ? targetBranch : 'General Santos City';
                             }
                         });
 
                         if (!(isSuperAdminPage && activeBranch === 'ALL')) {
                             const otherBranches = Array.isArray(existingList)
-                                ? existingList.filter(r => (r.branch || 'General Santos City') !== targetBranch)
+                                ? existingList.filter(r => {
+                                    const b = cloudBranchMap[r.reservationNumber] || r.branch || 'General Santos City';
+                                    return b !== targetBranch;
+                                })
                                 : [];
                             return safeRawSet('reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
                         }
@@ -2607,6 +2615,7 @@ function safeRawSet(k, v) {
                                 cloudBranchMap[r.reservationNumber] = r.branch;
                             }
                         });
+                        safeRawSet('__cloudBranchMap', JSON.stringify(cloudBranchMap));
                     }
                 }).catch(() => {});
             } catch (e) {}
