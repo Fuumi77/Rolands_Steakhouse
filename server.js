@@ -1100,6 +1100,20 @@ app.delete('/api/reservations/all', async (req, res) => {
         await db.query('DELETE FROM reservation_log');
         await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1'); 
         cachedReservations = null;
+        resCacheTime = 0;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* DELETE SINGLE RECORD ROUTE */
+app.delete('/api/reservations/:id', async (req, res) => {
+    try {
+        const numericId = String(req.params.id || '').replace(/[^0-9]/g, '');
+        if (numericId) {
+            await db.query('DELETE FROM reservation_log WHERE reservation_id = ?', [numericId]);
+        }
+        cachedReservations = null;
+        resCacheTime = 0;
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
