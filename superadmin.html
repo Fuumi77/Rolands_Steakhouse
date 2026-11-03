@@ -1318,7 +1318,6 @@
 
         async function syncReservations() {
             try {
-                // 👉 FIX: Instantly download the live Floor Plan from the Cloud!
                 try {
                     const floorRes = await fetch(`${API_BASE_URL}/api/memory/table-overrides`);
                     if (floorRes.ok) {
@@ -1335,7 +1334,6 @@
                 let localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 let updated = false;
 
-                // 👉 FIX: The Cloud is the absolute source of truth! If a record was wiped from the cloud, wipe it locally!
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
                 const oldLength = localHistory.length;
                 localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
@@ -1345,7 +1343,6 @@
                 }
 
                 dbReservations.forEach(dbRes => {
-                    // 👉 THE FIX: If the cloud stored 'cartItems' instead of 'foods', automatically rebuild the list!
                     let cloudFoods = dbRes.foods || [];
                     if (cloudFoods.length === 0 && dbRes.cartItems) {
                         try {
@@ -1354,42 +1351,47 @@
                         } catch(e) {}
                     }
 
+                    const recBranch = dbRes.branch || 'General Santos City';
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
-
-                    // 👉 THE FIX: Stop merging wrong orders! Force it to match BOTH Table AND Customer Name!
-                    if (!match) {
-                        match = localHistory.find(local => {
-                            const localName = String(local.customerName).toLowerCase().trim();
-                            const dbName = String(dbRes.customerName).toLowerCase().trim();
-                            const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
-                            return isTempId && local.bookedTable === dbRes.bookedTable && localName === dbName;
-                        });
-                        if (match) {
-                            match.reservationNumber = dbRes.reservationNumber; 
-                            updated = true;
-                        }
-                    }
 
                     let rawStatus = dbRes.status || 'Pending';
                     let dbStatus = String(rawStatus).toLowerCase().trim();
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
 
                     if (match) {
+                        if (match.branch !== recBranch) {
+                            match.branch = recBranch;
+                            updated = true;
+                        }
                         if (match.customerName !== dbRes.customerName) {
                             match.customerName = dbRes.customerName;
                             updated = true;
                         }
+                        if (dbRes.bookedTable && match.bookedTable !== dbRes.bookedTable) {
+                            match.bookedTable = dbRes.bookedTable;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalDate && match.arrivalDate !== dbRes.arrivalDate) {
+                            match.arrivalDate = dbRes.arrivalDate;
+                            updated = true;
+                        }
+                        if (dbRes.arrivalTime && match.arrivalTime !== dbRes.arrivalTime) {
+                            match.arrivalTime = dbRes.arrivalTime;
+                            updated = true;
+                        }
 
-                        const isPending = dbStatus === 'pending';
-                        if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                        if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
-                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
                             if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
-                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
+                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`;
+                            updated = true;
+                        }
+
+                        if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
+                            match.paymentStatus = 'verified';
                             updated = true;
                         }
                         
-                        // 👉 Apply the rebuilt foods list so the Kitchen never loses items!
                         if (cloudFoods.length > 0 && JSON.stringify(match.foods) !== JSON.stringify(cloudFoods)) { 
                             match.foods = cloudFoods; 
                             updated = true; 
@@ -1402,21 +1404,13 @@
                             match.reservationType = dbRes.reservationType || 'standard'; 
                             updated = true; 
                         }
-
                         if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
-
-                        if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
-                            match.paymentStatus = 'verified';
-                            updated = true;
-                        }
-
                     } else {
-                        // 👉 Assign the rebuilt foods list to completely new devices (like your phone)!
-                        if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
-
+                        // Sync ALL reservations (including completed/cancelled) so every device matches 100%!
+                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -1426,14 +1420,15 @@
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated') ? 'paid' : 'pending',
-                            paymentMethod: (dbRes.bookedBy === 'online' && (dbStatus === 'approved' || dbStatus === 'completed')) ? 'paymongo' : 'manual',
-                            kdsStatus: dbRes.kdsStatus || 'pending',
-                            completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
-                            createdAt: new Date().toISOString(),
+                            paymentStatus: isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending'),
+                            paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
+                            kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
+                            completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
+                            createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods, 
                             paymentAmount: dbRes.paymentAmount || 0,
-                            bookedBy: dbRes.bookedBy 
+                            bookedBy: dbRes.bookedBy,
+                            branch: recBranch
                         });
                         updated = true;
                     }
@@ -1442,6 +1437,7 @@
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
                     renderDashboard();
+                    if (typeof window.brRefresh === 'function') window.brRefresh();
                 }
             } catch (err) {
                 console.error("Sync error:", err);
