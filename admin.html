@@ -1863,9 +1863,8 @@ window.readReservationHistory = function () {
             });
         }
         
-        async function syncReservations() {
+async function syncReservations() {
             try {
-                // 👉 FIX: Instantly download the live Floor Plan from the Cloud!
                 try {
                     const floorRes = await fetch(`${API_BASE_URL}/api/memory/table-overrides`);
                     if (floorRes.ok) {
@@ -1880,24 +1879,17 @@ window.readReservationHistory = function () {
                 const dbReservations = await res.json();
                 
                 let localHistory = window.readReservationHistory();
-
                 let updated = false;
 
+                // Cloud is the single source of truth for the active branch
                 const cloudIds = dbReservations.map(dbRes => dbRes.reservationNumber);
                 const oldLength = localHistory.length;
-
-                localHistory = localHistory.filter(local => {
-                    if (cloudIds.includes(local.reservationNumber)) return true;
-                    const st = String(local.approvalStatus || '').toLowerCase();
-                    return ['approved', 'seated', 'completed'].includes(st);
-                });
-                
+                localHistory = localHistory.filter(local => cloudIds.includes(local.reservationNumber));
                 if (localHistory.length !== oldLength) {
                     updated = true;
                 }
 
                 dbReservations.forEach(dbRes => {
-                    // 👉 THE FIX: If the cloud stored 'cartItems' instead of 'foods', automatically rebuild the list!
                     let cloudFoods = dbRes.foods || [];
                     if (cloudFoods.length === 0 && dbRes.cartItems) {
                         try {
@@ -1906,29 +1898,18 @@ window.readReservationHistory = function () {
                         } catch(e) {}
                     }
 
+                    const recBranch = dbRes.branch || window.getEffectiveBranch?.() || 'General Santos City';
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
-
-                    // 👉 THE FIX: Stop merging wrong orders! Force it to match BOTH Table AND Customer Name!
-                    if (!match) {
-                        match = localHistory.find(local => {
-                            const localName = String(local.customerName).toLowerCase().trim();
-                            const dbName = String(dbRes.customerName).toLowerCase().trim();
-                            const localTab = String(local.bookedTable).replace(/[^0-9]/g, '');
-                            const dbTab = String(dbRes.bookedTable).replace(/[^0-9]/g, '');
-                            const isTempId = String(local.reservationNumber).startsWith('WI-') || String(local.reservationNumber).startsWith('POS-');
-                            return isTempId && localTab === dbTab && localName === dbName;
-                        });
-                        if (match) {
-                            match.reservationNumber = dbRes.reservationNumber; 
-                            updated = true;
-                        }
-                    }
 
                     let rawStatus = dbRes.status || 'Pending';
                     let dbStatus = String(rawStatus).toLowerCase().trim();
                     if (dbStatus === 'walk-in') dbStatus = 'approved';
 
                     if (match) {
+                        if (match.branch !== recBranch) {
+                            match.branch = recBranch;
+                            updated = true;
+                        }
                         if (match.customerName !== dbRes.customerName) {
                             match.customerName = dbRes.customerName;
                             updated = true;
@@ -1946,26 +1927,19 @@ window.readReservationHistory = function () {
                             updated = true;
                         }
 
-                        // 👉 Never let a stale DB row undo a local approval
-                        const isPending = dbStatus === 'pending';
-                        const localApproved = ['approved', 'seated', 'completed'].includes(String(match.approvalStatus).toLowerCase());
-
-                        if (localApproved && isPending) {
-                            // Local is further along than the cloud — push it up instead of overwriting
-                            fetch(`${API_BASE_URL}/api/reservations/update-status`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: match.reservationNumber, status: match.approvalStatus.charAt(0).toUpperCase() + match.approvalStatus.slice(1) })
-                            }).catch(() => {});
-                        } else if (!isPending && String(match.approvalStatus).toLowerCase() !== dbStatus) {
+                        if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
-                            if (dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') match.paymentStatus = 'verified';
                             if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
-                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = new Date().toISOString();
+                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`;
                             updated = true;
                         }
-                        
-                        // 👉 Apply the rebuilt foods list so the Dashboards never lose items!
+
+                        // Ensure verified payment status for approved, seated, or completed orders
+                        if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
+                            match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+
                         if (cloudFoods.length > 0 && JSON.stringify(match.foods) !== JSON.stringify(cloudFoods)) { 
                             match.foods = cloudFoods; 
                             updated = true; 
@@ -1978,21 +1952,13 @@ window.readReservationHistory = function () {
                             match.reservationType = dbRes.reservationType || 'standard'; 
                             updated = true; 
                         }
-
                         if (dbRes.kdsStatus && match.kdsStatus !== dbRes.kdsStatus) {
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
-
-                        if (dbRes.bookedBy === 'pos' && match.paymentStatus === 'pending') {
-                            match.paymentStatus = 'verified';
-                            updated = true;
-                        }
-
                     } else {
-                        // 👉 Assign the rebuilt foods list to completely new devices (like your phone)!
-                        if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
-
+                        // Sync ALL reservations (including completed/cancelled) so every device has the exact same list & revenue!
+                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -2002,14 +1968,15 @@ window.readReservationHistory = function () {
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated') ? 'paid' : 'pending',
-                            paymentMethod: (dbRes.bookedBy === 'online' && (dbStatus === 'approved' || dbStatus === 'completed')) ? 'paymongo' : 'manual',
-                            kdsStatus: dbRes.kdsStatus || 'pending',
-                            completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
-                            createdAt: new Date().toISOString(),
+                            paymentStatus: isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending'),
+                            paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
+                            kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
+                            completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
+                            createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods, 
                             paymentAmount: dbRes.paymentAmount || 0,
-                            bookedBy: dbRes.bookedBy 
+                            bookedBy: dbRes.bookedBy,
+                            branch: recBranch
                         });
                         updated = true;
                     }
