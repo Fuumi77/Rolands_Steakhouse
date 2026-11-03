@@ -1897,11 +1897,11 @@ function saveRawIngredients(list) {
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
             let overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-    let hist = [];
-    try {
-        const v = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-        hist = Array.isArray(v) ? v : [];
-    } catch (e) { hist = []; }
+            let history = [];
+            try {
+                const v = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                history = Array.isArray(v) ? v : [];
+            } catch (e) { history = []; }
             let mutatedOverrides = false;
             let mutatedHistory = false;
 
@@ -2438,6 +2438,34 @@ function saveRawIngredients(list) {
         return key;
     }
 
+function safeRawSet(k, v) {
+        try {
+            rawSet(k, v);
+        } catch (quotaErr) {
+            // Free up localStorage space by removing heavy auto-generated base64 receipt canvases & duplicate images
+            try {
+                const histRaw = rawGet('reservationHistory');
+                if (histRaw) {
+                    const list = JSON.parse(histRaw);
+                    if (Array.isArray(list)) {
+                        list.forEach(r => { if (r && !r.hasCustomProof) delete r.paymentProof; });
+                        rawSet('reservationHistory', JSON.stringify(list));
+                    }
+                }
+                if (k.includes('__inventoryItems')) {
+                    const items = JSON.parse(v);
+                    if (Array.isArray(items)) {
+                        items.forEach(i => { if (i && i.image && i.image.length > 500) delete i.image; });
+                        v = JSON.stringify(items);
+                    }
+                }
+                rawSet(k, v);
+            } catch (e2) {
+                console.warn('Storage quota full, skipped write for:', k);
+            }
+        }
+    }
+
     Storage.prototype.getItem = function (key) {
         if (this === localStorage) {
             const activeBranch = window.getCurrentBranch();
@@ -2455,11 +2483,9 @@ function saveRawIngredients(list) {
                         }
                     });
 
-                    // SuperAdmin in 'ALL' mode sees all branches combined
                     if (isSuperAdminPage && activeBranch === 'ALL') {
                         return JSON.stringify(list);
                     }
-                    // Admin, POS, Kitchen, Seat-Selection, or SuperAdmin viewing 1 branch: filter to active branch
                     const target = window.getEffectiveBranch();
                     return JSON.stringify(list.filter(r => (r.branch || 'General Santos City') === target));
                 } catch (e) {
@@ -2470,13 +2496,9 @@ function saveRawIngredients(list) {
             const scopedKey = resolveScopedKey(key);
             let val = rawGet(scopedKey);
 
-            // Seed Koronadal's initial menu/ingredients/floorplan from Gensan defaults on first run
+            // Return Gensan fallback without duplicating 3MB of base64 images in localStorage!
             if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients', 'floorPlanConfig'].includes(key)) {
-                const fallback = rawGet(key);
-                if (fallback) {
-                    rawSet(scopedKey, fallback);
-                    return fallback;
-                }
+                return rawGet(key);
             }
             return val;
         }
@@ -2518,16 +2540,16 @@ function saveRawIngredients(list) {
                             const otherBranches = Array.isArray(existingList)
                                 ? existingList.filter(r => (r.branch || 'General Santos City') !== targetBranch)
                                 : [];
-                            return rawSet('reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
+                            return safeRawSet('reservationHistory', JSON.stringify([...otherBranches, ...incoming]));
                         }
-                        return rawSet('reservationHistory', JSON.stringify(incoming));
+                        return safeRawSet('reservationHistory', JSON.stringify(incoming));
                     }
                 } catch (e) {}
             }
 
-            return rawSet(resolveScopedKey(key), value);
+            return safeRawSet(resolveScopedKey(key), value);
         }
-        return rawSet(key, value);
+        return safeRawSet(key, value);
     };
 
     Storage.prototype.removeItem = function (key) {
