@@ -996,21 +996,28 @@
                         </button>
                     </div>
 
-<!-- POS Branch Switch PIN Card -->
+                    <!-- Per-Branch POS Switch PIN Card -->
                     <div style="background:white; border-radius:20px; border:1px solid #e2e8f0; padding:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.05); transition:all 0.3s ease; position:relative; overflow:hidden;">
                         <div style="position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, #d97706, #f59e0b);"></div>
-                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:18px;">
+                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px;">
                             <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(217,119,6,0.15);">
                                 <span style="font-size:24px;">🏬</span>
                             </div>
                             <div>
-                                <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS Branch Switch PIN</h3>
-                                <span style="font-size:12px; font-weight:700; color:#b45309; background:#fffbeb; padding:3px 8px; border-radius:12px; border:1px solid #fde68a;">Branch Transfer Lock</span>
+                                <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS Branch Switch PINs</h3>
+                                <span style="font-size:12px; font-weight:700; color:#b45309; background:#fffbeb; padding:3px 8px; border-radius:12px; border:1px solid #fde68a;">Per-Branch Lock</span>
                             </div>
                         </div>
-                        <p style="color:#64748b; font-size:13px; margin-bottom:20px; line-height:1.6;">Security PIN required whenever someone tries to switch branches inside the POS Terminal (Default: <code>1234</code>).</p>
+                        <p style="color:#64748b; font-size:13px; margin-bottom:14px; line-height:1.5;">Each branch has its own dedicated PIN required when switching a POS Terminal to that branch.</p>
 
-                        <label for="pos-branch-pin-input" style="display:block; margin-bottom:8px; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.8px;">Branch Switch Code</label>
+                        <label for="pos-branch-pin-select" style="display:block; margin-bottom:6px; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.8px;">Select Branch to Configure</label>
+                        <select id="pos-branch-pin-select" onchange="window.loadPosBranchPinInput()"
+                            style="width:100%; padding:10px 12px; margin-bottom:12px; border:2px solid #fde68a; border-radius:10px; background:#fffbeb; color:#92400e; font-weight:800; font-size:13.5px; cursor:pointer; outline:none;">
+                            <option value="General Santos City">📍 General Santos City</option>
+                            <option value="Koronadal City">📍 Koronadal City</option>
+                        </select>
+
+                        <label for="pos-branch-pin-input" style="display:block; margin-bottom:6px; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.8px;">Branch Switch PIN</label>
                         <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
                             <div style="position:relative; flex:1;">
                                 <input id="pos-branch-pin-input" type="password" placeholder="••••" title="POS Branch Switch Code" maxlength="6"
@@ -1019,7 +1026,7 @@
                             <button type="button" onclick="window.togglePinVisibility('pos-branch-pin-input', this)" style="padding:12px 14px; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; color:#475569; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">Reveal PIN</button>
                         </div>
                         <button type="button" onclick="window.savePosBranchPin()" style="width:100%; padding:13px; background:linear-gradient(135deg, #b45309, #d97706); color:white; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(217,119,6,0.3);">
-                            Update Branch Switch PIN
+                            Update Selected Branch PIN
                         </button>
                     </div>
 
@@ -1039,10 +1046,11 @@
                         
                         <div style="background:#faf5ff; border:1.5px dashed #d8b4fe; border-radius:12px; padding:14px; margin-bottom:14px;">
                             <div style="font-size:12px; font-weight:800; color:#6b21a8; margin-bottom:4px;">Default Terminal PINs:</div>
-                            <div style="font-size:12px; color:#4c1d95; line-height:1.5;">
+                            <div style="font-size:12px; color:#4c1d95; line-height:1.6;">
                                 • Kitchen Default: <code style="font-weight:700;">1234</code><br>
                                 • POS Terminal Default: <code style="font-weight:700;">0000</code><br>
-                                • POS Branch Switch Default: <code style="font-weight:700;">1234</code>
+                                • POS Switch (GenSan Default): <code style="font-weight:700;">1111</code><br>
+                                • POS Switch (Koronadal Default): <code style="font-weight:700;">2222</code>
                             </div>
                         </div>
                     </div>
@@ -1706,7 +1714,7 @@
             }
         };
 
-        // Kitchen Password Logic
+// Kitchen Password Logic
         window.saveKitchenPassword = async function () {
             const pass = document.getElementById('kitchen-password-input').value.trim();
             if (!pass) {
@@ -1717,7 +1725,6 @@
                 });
             }
 
-            // Pincode Security
             const pin = await superModal({
                 title: '🔒 Security Authorization',
                 message: 'Enter Pincode to authorize changing the Kitchen Access Code:',
@@ -1726,11 +1733,11 @@
                 confirmText: 'Authorize Update'
             });
 
-if (pin === "789456") {
-                localStorage.setItem('posPassword', pass);
+            if (pin === "789456") {
+                localStorage.setItem('kitchenPassword', pass);
                 await superModal({
                     title: '✅ Success',
-                    message: 'POS Terminal Access Code has been updated successfully.',
+                    message: 'Kitchen Area Access Code has been updated successfully.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
@@ -1742,30 +1749,43 @@ if (pin === "789456") {
             }
         };
 
+        window.loadPosBranchPinInput = function () {
+            const sel = document.getElementById('pos-branch-pin-select');
+            const input = document.getElementById('pos-branch-pin-input');
+            if (!sel || !input) return;
+            const branchName = sel.value || 'General Santos City';
+            const currentPin = window.getPosBranchPin ? window.getPosBranchPin(branchName) : (branchName === 'Koronadal City' ? '2222' : '1111');
+            input.value = currentPin;
+        };
+
         window.savePosBranchPin = async function () {
+            const sel = document.getElementById('pos-branch-pin-select');
+            const branchName = sel ? sel.value : 'General Santos City';
             const pass = document.getElementById('pos-branch-pin-input').value.trim();
+
             if (!pass) {
                 return await superModal({
                     title: '⚠️ Input Missing',
-                    message: 'Please enter a valid POS Branch Switch PIN.',
+                    message: `Please enter a valid POS Branch Switch PIN for <b>${branchName}</b>.`,
                     confirmText: 'OK'
                 });
             }
 
             const pin = await superModal({
                 title: '🔒 Security Authorization',
-                message: 'Enter Master PIN (789456) to authorize changing the POS Branch Switch PIN:',
+                message: `Enter Master PIN (789456) to update the POS Branch Switch PIN for <b>${branchName}</b>:`,
                 showInput: true,
                 placeholder: 'Enter 6-digit pin',
                 confirmText: 'Authorize Update'
             });
 
             if (pin === "789456") {
-                if (window.__rawSetStorage) window.__rawSetStorage('posBranchSwitchPin', pass);
-                else localStorage.setItem('posBranchSwitchPin', pass);
+                if (typeof window.setPosBranchPin === 'function') {
+                    await window.setPosBranchPin(branchName, pass);
+                }
                 await superModal({
-                    title: '✅ Success',
-                    message: 'POS Branch Switch PIN has been updated! Cashiers will need this PIN to switch branches on POS.',
+                    title: '✅ Branch PIN Updated',
+                    message: `The POS Branch Switch PIN for <b>${branchName}</b> has been updated to <code>${pass}</code> and synced across all terminals!`,
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
@@ -2062,6 +2082,7 @@ if (pin === "789456") {
             document.getElementById('kitchen-password-input').value = kPass;
             const pPass = localStorage.getItem('posPassword') || '';
             if (document.getElementById('pos-password-input')) document.getElementById('pos-password-input').value = pPass;
+            if (typeof window.loadPosBranchPinInput === 'function') window.loadPosBranchPinInput();
             const dashboard = document.getElementById('dashboard-section');
             const auth = document.getElementById('auth-section');
             const statusPill = document.getElementById('admin-status-pill');
