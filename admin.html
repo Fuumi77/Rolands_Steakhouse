@@ -2003,6 +2003,7 @@ async function syncReservations() {
                 localStorage.setItem('onlineAdmins', JSON.stringify(online));
             }
             sessionStorage.removeItem('adminLoggedInUser');
+            sessionStorage.removeItem('adminAssignedBranch');
             window.location.reload();
         }
 
@@ -6264,23 +6265,36 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         return;
                     }
 
+                    // 👉 BRANCH ACCESS CHECK: Block staff if they try to log into a branch they are not assigned to!
+                    const assignedBranch = user.branch || user.assigned_branch || 'General Santos City';
+                    const selectedBranch = window.getCurrentBranch ? window.getCurrentBranch() : 'General Santos City';
+
+                    if (assignedBranch !== 'ALL' && selectedBranch !== assignedBranch) {
+                        authMsg2.style.color = '#dc2626';
+                        authMsg2.innerHTML = `🚫 <b>Access Denied:</b> Account "<b>${user.username}</b>" is assigned to <b>${assignedBranch}</b> only. You cannot sign in to <b>${selectedBranch}</b>.`;
+                        btn.textContent = 'Sign In';
+                        btn.disabled = false;
+                        return;
+                    }
+
                     // Upgrade legacy plain-text password to hash silently
                     if (isLegacyMatch && !storedHash) {
                         user.passwordHash = passwordHash;
                         delete user.password;
                         localStorage.setItem('adminUsers', JSON.stringify(usersNow));
                     }
-                    // ✅ Login successful
+
+                    // ✅ Login successful — save both username and assignedBranch in session
                     authMsg2.style.color = '#16a34a';
                     authMsg2.textContent = '✅ Login successful! Loading dashboard...';
                     setAdminSession(user.username);
+                    sessionStorage.setItem('adminAssignedBranch', assignedBranch);
 
                     fetch(`${API_BASE_URL}/api/staff/log-login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username: user.username })
                     }).catch(() => {});
-
 
                     setTimeout(() => renderDashboard(), 100);
 
