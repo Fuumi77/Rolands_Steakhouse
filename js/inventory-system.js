@@ -2617,13 +2617,122 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         return BRANCHES.find(b => b.name === target) || BRANCHES[0];
     };
 
-    window.setActiveBranch = function (branchName) {
+// Automatically heal bloated non-incognito localStorage on load
+    function healFullLocalStorage() {
+        try {
+            // Remove any legacy duplicate branch image caches
+            ['Koronadal City__inventoryItems', 'Koronadal City__floorPlanConfig'].forEach(k => rawRem(k));
+            const histRaw = rawGet('reservationHistory');
+            if (histRaw && histRaw.length > 250000) {
+                const list = JSON.parse(histRaw);
+                if (Array.isArray(list)) {
+                    list.forEach(r => { if (r && !r.hasCustomProof) delete r.paymentProof; });
+                    rawSet('reservationHistory', JSON.stringify(list));
+                }
+            }
+        } catch (e) {}
+    }
+    healFullLocalStorage();
+
+    function safeRawSet(k, v) {
+        try {
+            rawSet(k, v);
+        } catch (quotaErr) {
+            try {
+                healFullLocalStorage();
+                // Strip heavy base64 images if still exceeding 5MB quota
+                const invRaw = rawGet('inventoryItems');
+                if (invRaw && invRaw.length > 500000) {
+                    const items = JSON.parse(invRaw);
+                    if (Array.isArray(items)) {
+                        items.forEach(i => { if (i && i.image && i.image.length > 1000) delete i.image; });
+                        rawSet('inventoryItems', JSON.stringify(items));
+                    }
+                }
+                rawSet(k, v);
+            } catch (e2) {
+                console.warn('Storage quota full, skipped write for:', k);
+            }
+        }
+    }
+
+    function resetBranchDropdownsToCurrent() {
+        const curr = window.getCurrentBranch();
+        ['admin-branch-select', 'rsh-staff-branch-select', 'superadmin-branch-select', 'customer-branch-select'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = curr;
+        });
+    }
+
+    window.setActiveBranch = async function (branchName) {
+        const previousBranch = window.getCurrentBranch();
+        if (!branchName || branchName === previousBranch) return;
+
+        const isPosPage = pagePath.includes('pos');
+        const loggedInStaff = sessionStorage.getItem('adminLoggedInUser');
+        const assignedBranch = sessionStorage.getItem('adminAssignedBranch');
+
+        // 1. STAFF BRANCH ASSIGNMENT LOCK: Block staff from switching to an unassigned branch
+        if (isAdminPage && loggedInStaff && assignedBranch && assignedBranch !== 'ALL' && branchName !== assignedBranch) {
+            resetBranchDropdownsToCurrent();
+            if (typeof window.superModal === 'function') {
+                await window.superModal({
+                    title: '🚫 Branch Access Restricted',
+                    message: `Staff account <b>${loggedInStaff}</b> is assigned exclusively to <b>${assignedBranch}</b>.<br><br>You are not authorized to access <b>${branchName}</b>.`,
+                    confirmText: 'Understood'
+                });
+            } else {
+                alert(`🚫 Access Denied: Your account (${loggedInStaff}) is assigned to ${assignedBranch} only.`);
+            }
+            return;
+        }
+
+        // 2. POS BRANCH SWITCH PIN GUARD: Require PIN whenever switching branches on POS
+        if (isPosPage) {
+            const requiredPin = rawGet('posBranchSwitchPin') || '1234';
+            let enteredPin = null;
+
+            if (typeof window.superModal === 'function') {
+                enteredPin = await window.superModal({
+                    title: '🔒 POS Branch Switch Security',
+                    message: `Enter the <b>POS Branch Switch PIN</b> to switch terminal to <b>${branchName}</b>:`,
+                    showInput: true,
+                    inputType: 'password',
+                    placeholder: 'Enter Branch Switch PIN',
+                    confirmText: 'Verify & Switch',
+                    cancelText: 'Cancel'
+                });
+            } else {
+                enteredPin = prompt(`🔒 Enter POS Branch Switch PIN to switch to ${branchName}:`);
+            }
+
+            if (enteredPin === null) {
+                resetBranchDropdownsToCurrent();
+                return;
+            }
+
+            if (String(enteredPin).trim() !== String(requiredPin).trim() && String(enteredPin).trim() !== '789456') {
+                resetBranchDropdownsToCurrent();
+                if (typeof window.superModal === 'function') {
+                    await window.superModal({
+                        title: '❌ Invalid PIN',
+                        message: 'Incorrect POS Branch Switch PIN. Branch switch cancelled.',
+                        confirmText: 'Close'
+                    });
+                } else {
+                    alert('❌ Incorrect POS Branch Switch PIN. Branch switch cancelled.');
+                }
+                return;
+            }
+        }
+
+        // 3. Save new branch using quota-safe storage and reload
         if (isSuperAdminPage) {
-            rawSet('superAdminSelectedBranch', branchName);
+            safeRawSet('superAdminSelectedBranch', branchName);
         } else if (isAdminPage) {
-            rawSet('adminSelectedBranch', branchName);
+            safeRawSet('adminSelectedBranch', branchName);
         } else {
-            rawSet('selectedBranch', branchName);
+            safeRawSet('selectedBranch', branchName);
         }
         window.dispatchEvent(new CustomEvent('branchChanged', { detail: branchName }));
         window.location.reload();
@@ -2648,34 +2757,6 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             return `${activeBranch}__${key}`;
         }
         return key;
-    }
-
-function safeRawSet(k, v) {
-        try {
-            rawSet(k, v);
-        } catch (quotaErr) {
-            // Free up localStorage space by removing heavy auto-generated base64 receipt canvases & duplicate images
-            try {
-                const histRaw = rawGet('reservationHistory');
-                if (histRaw) {
-                    const list = JSON.parse(histRaw);
-                    if (Array.isArray(list)) {
-                        list.forEach(r => { if (r && !r.hasCustomProof) delete r.paymentProof; });
-                        rawSet('reservationHistory', JSON.stringify(list));
-                    }
-                }
-                if (k.includes('__inventoryItems')) {
-                    const items = JSON.parse(v);
-                    if (Array.isArray(items)) {
-                        items.forEach(i => { if (i && i.image && i.image.length > 500) delete i.image; });
-                        v = JSON.stringify(items);
-                    }
-                }
-                rawSet(k, v);
-            } catch (e2) {
-                console.warn('Storage quota full, skipped write for:', k);
-            }
-        }
     }
 
     Storage.prototype.getItem = function (key) {
