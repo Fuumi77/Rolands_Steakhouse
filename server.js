@@ -732,6 +732,17 @@ app.get('/api/inventory/raw', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* DELETE RAW INGREDIENT ROUTE */
+app.delete('/api/inventory/raw/:id', async (req, res) => {
+    try {
+        const rawId = decodeURIComponent(req.params.id || '');
+        const { dbId } = scopedInvItemId(rawId, req);
+        await db.query('DELETE FROM master_inventory WHERE item_id = ? OR item_id = ?', [dbId, rawId]);
+        cachedInventory = null;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/inventory/restock', async (req, res) => {
     const { id, name, category, addAmount, minThreshold, unit, timestamp } = req.body;
     try {
