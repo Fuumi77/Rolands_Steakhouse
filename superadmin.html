@@ -523,28 +523,34 @@
 
             <!-- STAFF TAB -->
             <div id="tab-staff" class="superadmin-tab-content">
-                <h2 class="section-title">Staff Management</h2>
+                <h2 class="section-title">Staff Management & Branch Assignment</h2>
                 <div class="card" style="margin-bottom:24px;">
-                    <!-- 👉 FIX: Switched to align-items: stretch and forced full width on small screens -->
                     <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:stretch;">
                         <input type="text" id="new-staff-username" placeholder="New Username"
-                            style="flex:1; min-width:200px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
+                            style="flex:1; min-width:180px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
                         <input type="password" id="new-staff-password" placeholder="Passphrase"
-                            style="flex:1; min-width:200px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
-                        <button type="button" id="create-staff-btn" style="flex:1; min-width:200px; padding:12px 14px; box-sizing:border-box;">+ Create Account</button>
+                            style="flex:1; min-width:180px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
+                        <select id="new-staff-branch" title="Assign Branch"
+                            style="flex:1; min-width:190px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-weight:700; font-family:inherit; box-sizing:border-box; cursor:pointer;">
+                            <option value="General Santos City">📍 General Santos City Only</option>
+                            <option value="Koronadal City">📍 Koronadal City Only</option>
+                            <option value="ALL">🌐 All Branches (Floating Staff)</option>
+                        </select>
+                        <button type="button" id="create-staff-btn" style="flex:1; min-width:180px; padding:12px 14px; box-sizing:border-box;">+ Create Account</button>
                     </div>
                     <div id="staff-error-msg"
                         style="color:var(--sa-danger); margin-bottom:12px; font-size:13px; display:none;"></div>
-<div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-    <!-- Grid Header -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 12px 16px; font-weight: 800; background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: center; color: #475569; font-size: 12px;">
-        <div style="text-align: left;">USERNAME</div>
-        <div>STATUS SESSION</div>
-        <div>ACTIONS</div>
-    </div>
-    <!-- Grid Body -->
-    <div id="staff-list-tbody" style="display: flex; flex-direction: column; width: 100%;"></div>
-</div>
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                        <!-- Grid Header -->
+                        <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr 1.2fr; padding: 12px 16px; font-weight: 800; background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: center; color: #475569; font-size: 12px;">
+                            <div style="text-align: left;">USERNAME</div>
+                            <div>ASSIGNED BRANCH</div>
+                            <div>STATUS SESSION</div>
+                            <div>ACTIONS</div>
+                        </div>
+                        <!-- Grid Body -->
+                        <div id="staff-list-tbody" style="display: flex; flex-direction: column; width: 100%;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -990,6 +996,33 @@
                         </button>
                     </div>
 
+<!-- POS Branch Switch PIN Card -->
+                    <div style="background:white; border-radius:20px; border:1px solid #e2e8f0; padding:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.05); transition:all 0.3s ease; position:relative; overflow:hidden;">
+                        <div style="position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, #d97706, #f59e0b);"></div>
+                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:18px;">
+                            <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(217,119,6,0.15);">
+                                <span style="font-size:24px;">🏬</span>
+                            </div>
+                            <div>
+                                <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS Branch Switch PIN</h3>
+                                <span style="font-size:12px; font-weight:700; color:#b45309; background:#fffbeb; padding:3px 8px; border-radius:12px; border:1px solid #fde68a;">Branch Transfer Lock</span>
+                            </div>
+                        </div>
+                        <p style="color:#64748b; font-size:13px; margin-bottom:20px; line-height:1.6;">Security PIN required whenever someone tries to switch branches inside the POS Terminal (Default: <code>1234</code>).</p>
+
+                        <label for="pos-branch-pin-input" style="display:block; margin-bottom:8px; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.8px;">Branch Switch Code</label>
+                        <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+                            <div style="position:relative; flex:1;">
+                                <input id="pos-branch-pin-input" type="password" placeholder="••••" title="POS Branch Switch Code" maxlength="6"
+                                    style="width:100%; padding:12px; border:2px solid #cbd5e1; border-radius:12px; font-size:20px; letter-spacing:8px; text-align:center; background:#f8fafc; color:#1e293b; font-weight:800; box-sizing:border-box; outline:none; transition:all 0.2s;">
+                            </div>
+                            <button type="button" onclick="window.togglePinVisibility('pos-branch-pin-input', this)" style="padding:12px 14px; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; color:#475569; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">Reveal PIN</button>
+                        </div>
+                        <button type="button" onclick="window.savePosBranchPin()" style="width:100%; padding:13px; background:linear-gradient(135deg, #b45309, #d97706); color:white; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(217,119,6,0.3);">
+                            Update Branch Switch PIN
+                        </button>
+                    </div>
+
                     <!-- Authorization Info Card -->
                     <div style="background:white; border-radius:20px; border:1px solid #e2e8f0; padding:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.05); transition:all 0.3s ease; position:relative; overflow:hidden;">
                         <div style="position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, #7c3aed, #a855f7);"></div>
@@ -1008,7 +1041,8 @@
                             <div style="font-size:12px; font-weight:800; color:#6b21a8; margin-bottom:4px;">Default Terminal PINs:</div>
                             <div style="font-size:12px; color:#4c1d95; line-height:1.5;">
                                 • Kitchen Default: <code style="font-weight:700;">1234</code><br>
-                                • POS Terminal Default: <code style="font-weight:700;">0000</code>
+                                • POS Terminal Default: <code style="font-weight:700;">0000</code><br>
+                                • POS Branch Switch Default: <code style="font-weight:700;">1234</code>
                             </div>
                         </div>
                     </div>
@@ -1692,17 +1726,52 @@
                 confirmText: 'Authorize Update'
             });
 
-            if (pin === "789456") {
-                localStorage.setItem('kitchenPassword', pass);
+if (pin === "789456") {
+                localStorage.setItem('posPassword', pass);
                 await superModal({
                     title: '✅ Success',
-                    message: 'Kitchen Access Code has been updated successfully. Staff will need this code to access the queue.',
+                    message: 'POS Terminal Access Code has been updated successfully.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
                 await superModal({
                     title: '❌ Denied',
                     message: 'Incorrect pincode. Update cancelled.',
+                    confirmText: 'Close'
+                });
+            }
+        };
+
+        window.savePosBranchPin = async function () {
+            const pass = document.getElementById('pos-branch-pin-input').value.trim();
+            if (!pass) {
+                return await superModal({
+                    title: '⚠️ Input Missing',
+                    message: 'Please enter a valid POS Branch Switch PIN.',
+                    confirmText: 'OK'
+                });
+            }
+
+            const pin = await superModal({
+                title: '🔒 Security Authorization',
+                message: 'Enter Master PIN (789456) to authorize changing the POS Branch Switch PIN:',
+                showInput: true,
+                placeholder: 'Enter 6-digit pin',
+                confirmText: 'Authorize Update'
+            });
+
+            if (pin === "789456") {
+                if (window.__rawSetStorage) window.__rawSetStorage('posBranchSwitchPin', pass);
+                else localStorage.setItem('posBranchSwitchPin', pass);
+                await superModal({
+                    title: '✅ Success',
+                    message: 'POS Branch Switch PIN has been updated! Cashiers will need this PIN to switch branches on POS.',
+                    confirmText: 'Done'
+                });
+            } else if (pin !== null) {
+                await superModal({
+                    title: '❌ Denied',
+                    message: 'Incorrect Master PIN. Update cancelled.',
                     confirmText: 'Close'
                 });
             }
@@ -2511,11 +2580,18 @@
                         const statusBadge = isOnline
                             ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">🟢 Online</span>`
                             : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">⚪ Offline</span>`;
+                        const staffBranch = u.branch || u.assigned_branch || 'General Santos City';
 
-                        // 👉 FIX: Changed from <tr><td> to CSS Grid so the browser doesn't delete the code
                         newHtml += `
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; padding: 16px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr 1.2fr; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: center; gap: 8px;">
                                 <div style="text-align: left;"><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></div>
+                                <div>
+                                    <select onchange="window.changeStaffBranch('${u.username}', this.value)" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#1e293b; font-size:12px; font-weight:700; cursor:pointer;">
+                                        <option value="General Santos City" ${staffBranch === 'General Santos City' ? 'selected' : ''}>📍 General Santos City</option>
+                                        <option value="Koronadal City" ${staffBranch === 'Koronadal City' ? 'selected' : ''}>📍 Koronadal City</option>
+                                        <option value="ALL" ${staffBranch === 'ALL' ? 'selected' : ''}>🌐 All Branches</option>
+                                    </select>
+                                </div>
                                 <div>${statusBadge}</div>
                                 <div>
                                     <div style="display:flex; justify-content: center; gap:8px;">
@@ -2624,11 +2700,53 @@
                 }
             };
 
+window.changeStaffBranch = async function (username, newBranch) {
+                const pin = await superModal({
+                    title: '🔒 Authorize Branch Assignment',
+                    message: `Enter Master PIN (789456) to assign <b>${username}</b> to <b>${newBranch === 'ALL' ? 'All Branches' : newBranch}</b>:`,
+                    showInput: true,
+                    placeholder: 'Enter 6-digit pin',
+                    confirmText: 'Assign Branch'
+                });
+
+                if (pin !== "789456") {
+                    if (pin !== null) await superModal({ title: '❌ Denied', message: 'Incorrect Master PIN.', confirmText: 'Close' });
+                    window.__staffLastFetch = 0;
+                    renderStaffManagement(true);
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/staff/${encodeURIComponent(username)}/branch`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ branch: newBranch })
+                    });
+                    if (!res.ok) throw new Error('Failed to update branch in database.');
+
+                    const localUsers = getAdminUsers();
+                    const u = localUsers.find(x => (x.username || '').toLowerCase() === username.toLowerCase());
+                    if (u) {
+                        u.branch = newBranch;
+                        u.assigned_branch = newBranch;
+                        localStorage.setItem('adminUsers', JSON.stringify(localUsers));
+                    }
+
+                    if (window.showToast) window.showToast(`Assigned ${username} to ${newBranch}`, 'success');
+                    window.__staffLastFetch = 0;
+                    renderStaffManagement(true);
+                } catch (e) {
+                    await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
+                }
+            };
+
             document.getElementById('create-staff-btn').onclick = async () => {
                 const uInput = document.getElementById('new-staff-username');
                 const pInput = document.getElementById('new-staff-password');
+                const bInput = document.getElementById('new-staff-branch');
                 const username = uInput.value.trim();
                 const password = pInput.value;
+                const branch = bInput ? bInput.value : 'General Santos City';
 
                 if (!username || password.length < 4) {
                     return await superModal({ title: '⚠️ Input Required', message: 'Please provide a username and a password (min. 4 characters).', confirmText: 'Got it' });
@@ -2636,7 +2754,7 @@
 
                 const pin = await superModal({
                     title: '🔒 Security Authorization',
-                    message: `Enter Pincode to authorize the creation of a new staff account: <b>${username}</b>`,
+                    message: `Enter Pincode to authorize creating staff account <b>${username}</b> assigned to <b>${branch === 'ALL' ? 'All Branches' : branch}</b>:`,
                     showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Authorize Creation'
                 });
 
@@ -2647,11 +2765,10 @@
                     btn.disabled = true;
 
                     try {
-                        // 👉 FIX: Strictly await the database response!
                         const res = await fetch(`${API_BASE_URL}/api/staff`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, passwordHash })
+                            body: JSON.stringify({ username, passwordHash, branch })
                         });
                         
                         if (!res.ok) {
@@ -2660,11 +2777,11 @@
                         }
 
                         uInput.value = ''; pInput.value = '';
-                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> was securely saved to the cloud database!`, confirmText: 'Done' });
-                        renderStaffManagement(); // Instantly downloads the fresh list from the cloud
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> (assigned to <b>${branch}</b>) was saved to the cloud database!`, confirmText: 'Done' });
+                        window.__staffLastFetch = 0;
+                        renderStaffManagement(true);
 
                     } catch (e) { 
-                        // 👉 FIX: Alerts you if the database fails instead of silently breaking!
                         await superModal({ title: '❌ Database Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
                     } finally {
                         btn.textContent = '+ Create Account';
