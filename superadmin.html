@@ -3713,15 +3713,21 @@ if (window.activeSuperAdminInvSubTab) {
                                                 </span>
                                             </td>
                                             <td style="padding:12px; text-align:right;">
-                                                <div style="display:inline-flex; gap:6px;">
-                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill1})" style="background:#f0fdf4; color:#16a34a; border:1px solid #86efac; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.15s;">
+                                                <div style="display:inline-flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill1})" style="background:#f0fdf4; color:#16a34a; border:1px solid #86efac; padding:5px 9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         ${pill1Label}
                                                     </button>
-                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill2})" style="background:#2e7d32; color:white; border:none; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.15s;">
+                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill2})" style="background:#2e7d32; color:white; border:none; padding:5px 9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         ${pill2Label}
                                                     </button>
                                                     <button onclick="promptRestockRawIngredient('${ing.id}')" style="background:#cbd5e1; color:#334155; border:none; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
-                                                        Custom
+                                                        + Custom
+                                                    </button>
+                                                    <button onclick="window.promptRemoveRawIngredientStock('${ing.id}', 'Manager')" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                        − Remove
+                                                    </button>
+                                                    <button onclick="window.confirmDeleteRawIngredient('${ing.id}', 'Manager')" title="Delete Ingredient" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                        🗑️
                                                     </button>
                                                 </div>
                                             </td>
@@ -4149,14 +4155,15 @@ if (window.activeSuperAdminInvSubTab) {
                 const fragment = document.createDocumentFragment();
 
                 filtered.forEach((item) => {
-                    const total = parseInt(item.total_stock || 0);
+                    const isManualOff = Boolean(item.manualUnavailable);
+                    const total = isManualOff ? 0 : parseInt(item.total_stock || 0);
                     const add = parseInt(item.added_stock || 0);
                     const sold = parseInt(item.sold_stock || 0);
-                    const eod = total + add - sold;
+                    const eod = isManualOff ? 0 : Math.max(0, total + add - sold);
 
-                    const isLow = eod <= (item.threshold || 5);
-                    const isOut = eod <= 0;
-                    const statusLabel = isOut ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'NORMAL');
+                    const isLow = !isManualOff && eod <= (item.threshold || 5);
+                    const isOut = isManualOff || eod <= 0;
+                    const statusLabel = isManualOff ? 'UNAVAILABLE (MANUAL)' : (isOut ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'AVAILABLE'));
                     const statusColor = isOut ? '#ef4444' : (isLow ? '#f59e0b' : '#16a34a');
 
                     const tr = document.createElement('tr');
@@ -4184,17 +4191,27 @@ if (window.activeSuperAdminInvSubTab) {
                         tr.innerHTML = `
                             <td style="font-weight:700; color:#1e293b;">${imgHtml}${item.title}</td>
                             <td style="font-weight:600; color:#1b5e20;">${priceDisplay}</td>
-                            <td>${total}</td>
+                            <td>
+                                ${total}
+                                <button class="stock-adjust-btn" title="Remove Portions" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;" onclick="window.promptRemoveMenuPortions('${item.id}', 'Manager')">−</button>
+                            </td>
                             <td style="color:#16a34a;">
                                 +${add}
                                 <button class="stock-adjust-btn" onclick="adjustStock('${item.id}', 'added_stock', 1, event)">+</button>
                             </td>
                             <td style="color:#ef4444;">-${sold}</td>
                             <td style="font-weight:800; background:#f8fafc;">${eod}</td>
-                            <td><span style="color:${statusColor}; font-weight:bold; font-size:11px; padding:4px 8px; background:${statusColor}15; border-radius:12px;">${statusLabel}</span></td>
                             <td>
-                                <button type="button" class="secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openInventoryModal('${item.id}')">Edit</button>
-                                <button type="button" class="danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteInventoryItem('${item.id}')">Delete</button>
+                                <span style="color:${statusColor}; font-weight:bold; font-size:11px; padding:4px 8px; background:${statusColor}15; border-radius:12px; display:inline-block;">${statusLabel}</span>
+                            </td>
+                            <td>
+                                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                                    <button type="button" onclick="window.toggleItemManualAvailability('${item.id}', 'Manager')" style="padding:4px 8px; font-size:11px; font-weight:800; border-radius:6px; cursor:pointer; border:1px solid ${isManualOff ? '#86efac' : '#fca5a5'}; background:${isManualOff ? '#f0fdf4' : '#fef2f2'}; color:${isManualOff ? '#166534' : '#dc2626'};">
+                                        ${isManualOff ? '🟢 Set Available' : '🚫 Set Unavailable'}
+                                    </button>
+                                    <button type="button" class="secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openInventoryModal('${item.id}')">Edit</button>
+                                    <button type="button" class="danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteInventoryItem('${item.id}')">Delete</button>
+                                </div>
                             </td>
                         `;
                     }
