@@ -5163,13 +5163,21 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                 ${missingText}
                             </div>
                             
-                            <div style="margin-top:12px;">
-                                <div style="font-size: 14px; font-weight: 800; margin-bottom: 8px; color:#0f172a;">
+                            <div style="margin-top:12px; display:flex; flex-direction:column; gap:6px;">
+                                <div style="font-size: 14px; font-weight: 800; margin-bottom: 4px; color:#0f172a;">
                                     Portions: <span style="color: ${statusColor}; font-size:16px;">${avail.availablePortions}</span>
                                 </div>
-                                <button onclick="openRecipeEditorModal('${item.id}')" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">
-                                    ✏️ Edit Recipe
+                                <button type="button" onclick="window.toggleItemManualAvailability('${item.id}', 'Admin Staff')" style="width:100%; padding:7px; border-radius:6px; border:1px solid ${item.manualUnavailable ? '#86efac' : '#fca5a5'}; background:${item.manualUnavailable ? '#f0fdf4' : '#fef2f2'}; color:${item.manualUnavailable ? '#166534' : '#dc2626'}; font-size:11.5px; font-weight:800; cursor:pointer;">
+                                    ${item.manualUnavailable ? '🟢 Set Available' : '🚫 Set Unavailable'}
                                 </button>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" onclick="window.promptRemoveMenuPortions('${item.id}', 'Admin Staff')" style="flex:1; padding:7px 6px; border-radius:6px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:11px; font-weight:800; cursor:pointer;">
+                                        ➖ Portions
+                                    </button>
+                                    <button type="button" onclick="openRecipeEditorModal('${item.id}')" style="flex:1; padding:7px 6px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:11px; font-weight:700; cursor:pointer;">
+                                        ✏️ Recipe
+                                    </button>
+                                </div>
                             </div>
                         `;
                         grid.appendChild(el);
@@ -5395,15 +5403,21 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                                 </span>
                                             </td>
                                             <td style="padding:12px; text-align:right;">
-                                                <div style="display:inline-flex; gap:6px;">
-                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill1})" style="background:#f0fdf4; color:#16a34a; border:1px solid #86efac; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.15s;">
+                                                <div style="display:inline-flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill1})" style="background:#f0fdf4; color:#16a34a; border:1px solid #86efac; padding:5px 9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         ${pill1Label}
                                                     </button>
-                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill2})" style="background:#2e7d32; color:white; border:none; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.15s;">
+                                                    <button onclick="quickRestockIngredientInline('${ing.id}', ${pill2})" style="background:#2e7d32; color:white; border:none; padding:5px 9px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         ${pill2Label}
                                                     </button>
                                                     <button onclick="promptRestockRawIngredient('${ing.id}')" style="background:#cbd5e1; color:#334155; border:none; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
-                                                        Custom
+                                                        + Custom
+                                                    </button>
+                                                    <button onclick="window.promptRemoveRawIngredientStock('${ing.id}', 'Admin Staff')" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                        − Remove
+                                                    </button>
+                                                    <button onclick="window.confirmDeleteRawIngredient('${ing.id}', 'Admin Staff')" title="Delete Ingredient" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                        🗑️
                                                     </button>
                                                 </div>
                                             </td>
