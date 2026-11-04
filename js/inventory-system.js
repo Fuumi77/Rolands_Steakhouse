@@ -2656,6 +2656,53 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         }
     }
 
+const DEFAULT_POS_BRANCH_PINS = {
+        'General Santos City': '1111',
+        'Koronadal City': '2222'
+    };
+
+    window.getPosBranchPinMap = function () {
+        let saved = {};
+        try {
+            saved = JSON.parse(rawGet('posBranchSwitchPins') || '{}') || {};
+        } catch (e) { saved = {}; }
+        return { ...DEFAULT_POS_BRANCH_PINS, ...saved };
+    };
+
+    window.getPosBranchPin = function (branchName) {
+        const map = window.getPosBranchPinMap();
+        return map[branchName] || DEFAULT_POS_BRANCH_PINS[branchName] || '1234';
+    };
+
+    window.setPosBranchPin = async function (branchName, newPin) {
+        const map = window.getPosBranchPinMap();
+        map[branchName] = String(newPin).trim();
+        safeRawSet('posBranchSwitchPins', JSON.stringify(map));
+        try {
+            await fetch('https://rolands-steakhouse.onrender.com/api/memory/pos-branch-pins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(map)
+            });
+        } catch (e) {}
+        return map;
+    };
+
+    // Sync per-branch POS PINs from cloud on startup
+    setTimeout(async () => {
+        try {
+            const res = await fetch(`https://rolands-steakhouse.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
+            if (res.ok) {
+                const cloudPins = await res.json();
+                if (cloudPins && typeof cloudPins === 'object' && Object.keys(cloudPins).length > 0) {
+                    const merged = { ...DEFAULT_POS_BRANCH_PINS, ...cloudPins };
+                    safeRawSet('posBranchSwitchPins', JSON.stringify(merged));
+                    if (typeof window.loadPosBranchPinInput === 'function') window.loadPosBranchPinInput();
+                }
+            }
+        } catch (e) {}
+    }, 600);
+
     function resetBranchDropdownsToCurrent() {
         const curr = window.getCurrentBranch();
         ['admin-branch-select', 'rsh-staff-branch-select', 'superadmin-branch-select', 'customer-branch-select'].forEach(id => {
@@ -2687,23 +2734,23 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             return;
         }
 
-        // 2. POS BRANCH SWITCH PIN GUARD: Require PIN whenever switching branches on POS
+        // 2. PER-BRANCH POS SWITCH PIN GUARD: Require the target branch's specific PIN on POS
         if (isPosPage) {
-            const requiredPin = rawGet('posBranchSwitchPin') || '1234';
+            const requiredPin = window.getPosBranchPin(branchName);
             let enteredPin = null;
 
             if (typeof window.superModal === 'function') {
                 enteredPin = await window.superModal({
-                    title: '🔒 POS Branch Switch Security',
-                    message: `Enter the <b>POS Branch Switch PIN</b> to switch terminal to <b>${branchName}</b>:`,
+                    title: `🔒 ${branchName} — POS Security`,
+                    message: `Enter the <b>${branchName}</b> POS Branch PIN to switch this terminal:`,
                     showInput: true,
                     inputType: 'password',
-                    placeholder: 'Enter Branch Switch PIN',
+                    placeholder: `Enter ${branchName} PIN`,
                     confirmText: 'Verify & Switch',
                     cancelText: 'Cancel'
                 });
             } else {
-                enteredPin = prompt(`🔒 Enter POS Branch Switch PIN to switch to ${branchName}:`);
+                enteredPin = prompt(`🔒 Enter the POS Branch PIN for ${branchName}:`);
             }
 
             if (enteredPin === null) {
@@ -2715,12 +2762,12 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 resetBranchDropdownsToCurrent();
                 if (typeof window.superModal === 'function') {
                     await window.superModal({
-                        title: '❌ Invalid PIN',
-                        message: 'Incorrect POS Branch Switch PIN. Branch switch cancelled.',
+                        title: '❌ Invalid Branch PIN',
+                        message: `Incorrect POS Branch PIN for <b>${branchName}</b>. Branch switch cancelled.`,
                         confirmText: 'Close'
                     });
                 } else {
-                    alert('❌ Incorrect POS Branch Switch PIN. Branch switch cancelled.');
+                    alert(`❌ Incorrect POS Branch PIN for ${branchName}. Branch switch cancelled.`);
                 }
                 return;
             }
