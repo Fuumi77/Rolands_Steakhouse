@@ -453,17 +453,18 @@
         return wasteEntry;
     }
 
-    // ── RAW INGREDIENTS STORAGE HELPERS ──
+// ── RAW INGREDIENTS STORAGE HELPERS ──
     function getRawIngredients() {
         if (_cachedRawIngredients) return _cachedRawIngredients;
         try {
             const stored = localStorage.getItem('rawIngredients');
+            const deletedIds = JSON.parse(localStorage.getItem('deletedRawIngredientIds') || '[]');
             if (stored) {
                 const parsed = JSON.parse(stored);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     let updated = false;
                     DEFAULT_RAW_INGREDIENTS.forEach(def => {
-                        if (!parsed.find(p => p.id === def.id)) {
+                        if (!deletedIds.includes(def.id) && !parsed.find(p => p.id === def.id)) {
                             parsed.push(JSON.parse(JSON.stringify(def)));
                             updated = true;
                         }
@@ -618,13 +619,24 @@ function saveRawIngredients(list) {
         return null;
     }
 
-    function deleteRawIngredient(id, operator = 'Super Admin') {
+function deleteRawIngredient(id, operator = 'Super Admin') {
         const list = getRawIngredients();
         const idx = list.findIndex(i => i.id === id);
         if (idx !== -1) {
             const removed = list.splice(idx, 1)[0];
+            try {
+                const delIds = JSON.parse(localStorage.getItem('deletedRawIngredientIds') || '[]');
+                if (!delIds.includes(id)) {
+                    delIds.push(id);
+                    localStorage.setItem('deletedRawIngredientIds', JSON.stringify(delIds));
+                }
+            } catch (e) {}
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients();
+
+            fetch(`https://rolands-steakhouse.onrender.com/api/inventory/raw/${encodeURIComponent(id)}`, {
+                method: 'DELETE'
+            }).catch(() => {});
 
             logStockMovement({
                 action: 'ADJUSTMENT',
@@ -769,22 +781,33 @@ function saveRawIngredients(list) {
         }
     }
 
-    // ── DYNAMIC FOOD AVAILABILITY CALCULATION ──
+// ── DYNAMIC FOOD AVAILABILITY CALCULATION ──
     function calculateFoodAvailability(menuItem, ingredientsCatalog) {
         const catalog = ingredientsCatalog || getRawIngredients();
         const rawMap = {};
         catalog.forEach(ing => { rawMap[ing.id] = ing; });
 
+        // Check if item is manually toggled Unavailable by Staff or Manager
+        let isManualUnavailable = Boolean(menuItem && menuItem.manualUnavailable);
+        try {
+            if (!isManualUnavailable && menuItem && menuItem.id) {
+                const storedInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                const found = storedInv.find(i => i && i.id === menuItem.id);
+                if (found && found.manualUnavailable) isManualUnavailable = true;
+            }
+        } catch (e) {}
+
         const recipe = getItemRecipe(menuItem.id, menuItem);
 
         if (!recipe || recipe.length === 0) {
-            const legacyStock = (menuItem.total_stock !== undefined) ? menuItem.total_stock : (menuItem.stock || 0);
+            const legacyStock = isManualUnavailable ? 0 : ((menuItem.total_stock !== undefined) ? menuItem.total_stock : (menuItem.stock || 0));
             return {
                 availablePortions: Math.max(0, legacyStock),
-                isAvailable: legacyStock > 0,
-                status: legacyStock <= 0 ? 'Out of Stock' : (legacyStock <= (menuItem.threshold || 5) ? 'Low Stock' : 'Available'),
+                isAvailable: !isManualUnavailable && legacyStock > 0,
+                isManualUnavailable: isManualUnavailable,
+                status: isManualUnavailable ? 'Unavailable (Manual)' : (legacyStock <= 0 ? 'Out of Stock' : (legacyStock <= (menuItem.threshold || 5) ? 'Low Stock' : 'Available')),
                 recipe: [],
-                missingIngredients: legacyStock <= 0 ? ['Legacy Direct Stock depleted'] : []
+                missingIngredients: isManualUnavailable ? ['Manually marked Unavailable'] : (legacyStock <= 0 ? ['Legacy Direct Stock depleted'] : [])
             };
         }
 
@@ -825,6 +848,18 @@ function saveRawIngredients(list) {
 
         if (minPossiblePortions === Infinity) minPossiblePortions = 0;
 
+        if (isManualUnavailable) {
+            return {
+                availablePortions: 0,
+                rawPortions: minPossiblePortions,
+                isAvailable: false,
+                isManualUnavailable: true,
+                status: 'Unavailable (Manual)',
+                recipe: recipeDetails,
+                missingIngredients: ['Manually marked Unavailable by Staff/Manager']
+            };
+        }
+
         const isAvailable = minPossiblePortions > 0;
         let status = 'Available';
         if (minPossiblePortions <= 0) {
@@ -836,11 +871,187 @@ function saveRawIngredients(list) {
         return {
             availablePortions: minPossiblePortions,
             isAvailable: isAvailable,
+            isManualUnavailable: false,
             status: status,
             recipe: recipeDetails,
             missingIngredients: missingIngredients
         };
     }
+
+    // ── GLOBAL HANDLERS FOR ADMIN & SUPERADMIN: TOGGLE AVAILABILITY, REMOVE PORTIONS, REMOVE/DELETE RAW INGREDIENTS ──
+    window.toggleItemManualAvailability = async function (menuId, operator = 'Staff/Manager') {
+        try {
+            const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            const idx = items.findIndex(i => i && i.id === menuId);
+            if (idx === -1) return;
+
+            items[idx].manualUnavailable = !items[idx].manualUnavailable;
+            items[idx].last_updated = new Date().toISOString();
+            const isNowOff = items[idx].manualUnavailable;
+
+            localStorage.setItem('inventoryItems', JSON.stringify(items));
+            window.__inventoryHoldUntil = Date.now() + 8000;
+            window.__lastMenuPush = Date.now();
+
+            fetch('https://rolands-steakhouse.onrender.com/api/memory/inventory-items', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(items)
+            }).catch(() => {});
+
+            syncFoodMenuStockFromIngredients();
+
+            if (window.showToast) {
+                window.showToast(
+                    `${items[idx].title || menuId} is now ${isNowOff ? '🔴 UNAVAILABLE' : '🟢 AVAILABLE'}`,
+                    isNowOff ? 'warning' : 'success',
+                    3000
+                );
+            }
+
+            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+            if (typeof window.renderRecipeBuilderContainer === 'function') window.renderRecipeBuilderContainer();
+            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
+            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        } catch (e) {
+            console.error('Toggle availability error:', e);
+        }
+    };
+
+    window.promptRemoveMenuPortions = async function (menuId, operator = 'Staff/Manager') {
+        try {
+            const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            const item = items.find(i => i && i.id === menuId);
+            if (!item) return;
+
+            const avail = calculateFoodAvailability(item);
+            const currentPortions = avail.availablePortions;
+
+            let amountStr = null;
+            if (typeof window.superModal === 'function') {
+                amountStr = await window.superModal({
+                    title: `➖ Remove Portions — ${item.title}`,
+                    message: `Current Available Portions: <b>${currentPortions}</b>.<br>Enter how many portions to REMOVE (deducts corresponding raw ingredients):`,
+                    showInput: true,
+                    placeholder: 'e.g. 5',
+                    inputType: 'number',
+                    confirmText: 'Remove Portions',
+                    cancelText: 'Cancel'
+                });
+            } else {
+                amountStr = prompt(`Remove portions from ${item.title} (Available: ${currentPortions}):`, '1');
+            }
+
+            if (amountStr === null || amountStr === undefined || String(amountStr).trim() === '') return;
+            const qty = Math.floor(Number(amountStr));
+            if (isNaN(qty) || qty <= 0) {
+                if (window.showToast) window.showToast('Please enter a valid positive portion count.', 'warning');
+                return;
+            }
+
+            const recipe = getItemRecipe(item.id, item);
+            if (recipe && recipe.length > 0) {
+                const rawList = getRawIngredients();
+                recipe.forEach(r => {
+                    const ing = rawList.find(x => x.id === r.ingredientId);
+                    if (ing) {
+                        const deductAmt = (Number(r.qty) || 0) * qty;
+                        ing.stock = Math.max(0, (Number(ing.stock) || 0) - deductAmt);
+                        logStockMovement({
+                            action: 'ADJUSTMENT',
+                            ingredientId: ing.id,
+                            ingredientName: ing.name,
+                            changeQty: -deductAmt,
+                            newStock: ing.stock,
+                            unit: ing.unit,
+                            operator: operator,
+                            notes: `Removed ${qty} portion(s) of ${item.title}`,
+                            financialValue: deductAmt * (Number(ing.unitCost) || 0)
+                        });
+                    }
+                });
+                saveRawIngredients(rawList);
+            } else {
+                item.total_stock = Math.max(0, (Number(item.total_stock) || 0) - qty);
+                item.stock = item.total_stock;
+                item.last_updated = new Date().toISOString();
+                localStorage.setItem('inventoryItems', JSON.stringify(items));
+            }
+
+            syncFoodMenuStockFromIngredients();
+            if (window.showToast) window.showToast(`Removed ${qty} portion(s) of ${item.title}.`, 'info');
+            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
+            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        } catch (e) {
+            console.error('Remove portions error:', e);
+        }
+    };
+
+    window.promptRemoveRawIngredientStock = async function (ingId, operator = 'Staff/Manager') {
+        const rawList = getRawIngredients();
+        const ing = rawList.find(i => i.id === ingId);
+        if (!ing) return;
+
+        let amountStr = null;
+        if (typeof window.superModal === 'function') {
+            amountStr = await window.superModal({
+                title: `➖ Remove Raw Stock — ${ing.name}`,
+                message: `Current Stock: <b>${Number(ing.stock).toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to REMOVE / DEDUCT:`,
+                showInput: true,
+                placeholder: `e.g. 500 (${ing.unit})`,
+                inputType: 'number',
+                confirmText: 'Remove Stock',
+                cancelText: 'Cancel'
+            });
+        } else {
+            amountStr = prompt(`Remove stock from ${ing.name} (Current: ${ing.stock} ${ing.unit}):`, '500');
+        }
+
+        if (amountStr === null || amountStr === undefined || String(amountStr).trim() === '') return;
+        const deductAmt = Number(amountStr);
+        if (isNaN(deductAmt) || deductAmt <= 0) {
+            if (window.showToast) window.showToast('Please enter a valid positive number.', 'warning');
+            return;
+        }
+
+        const newStock = Math.max(0, (Number(ing.stock) || 0) - deductAmt);
+        setRawIngredientStock(ingId, newStock, operator, `Manual stock removal (-${deductAmt} ${ing.unit})`);
+
+        if (window.showToast) {
+            window.showToast(`Removed ${deductAmt} ${ing.unit} from ${ing.name}. New stock: ${newStock} ${ing.unit}`, 'info');
+        }
+        if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
+        if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    };
+
+    window.confirmDeleteRawIngredient = async function (ingId, operator = 'Staff/Manager') {
+        const rawList = getRawIngredients();
+        const ing = rawList.find(i => i.id === ingId);
+        if (!ing) return;
+
+        let confirmed = false;
+        if (typeof window.superModal === 'function') {
+            confirmed = await window.superModal({
+                title: `🗑️ Delete Raw Ingredient?`,
+                message: `Are you sure you want to permanently remove <b>${ing.name}</b> from the Raw Ingredients Catalog?`,
+                type: 'confirm',
+                confirmText: 'Delete Ingredient',
+                cancelText: 'Cancel'
+            });
+        } else {
+            confirmed = confirm(`Delete ${ing.name} from Raw Ingredients?`);
+        }
+
+        if (!confirmed) return;
+        deleteRawIngredient(ingId, operator);
+        if (window.showToast) window.showToast(`Deleted ${ing.name} from Raw Ingredients.`, 'info');
+        if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
+        if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    };
 
     let isSyncingStock = false;
     function syncFoodMenuStockFromIngredients() {
