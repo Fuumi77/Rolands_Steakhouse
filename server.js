@@ -100,6 +100,7 @@ db.query('SELECT 1').then(async () => {
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
+    await db.query("ALTER TABLE staff_credentials ADD COLUMN assigned_branch VARCHAR(100) DEFAULT 'General Santos City'").catch(()=>{});
 
     await db.query(`
         CREATE TABLE IF NOT EXISTS master_inventory (
@@ -472,13 +473,23 @@ app.put('/api/staff/:username/password', async (req, res) => {
     } catch (err) { res.status(500).send("Database error"); }
 });
 
+/* UPDATE STAFF ASSIGNED BRANCH */
+app.put('/api/staff/:username/branch', async (req, res) => {
+    const { branch } = req.body;
+    try {
+        await db.query('UPDATE staff_credentials SET assigned_branch = ? WHERE username = ?', [branch || 'General Santos City', req.params.username]);
+        memoryCache.staffList.time = 0;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
 /* CREATE NEW STAFF ACCOUNT */
 app.post('/api/staff', async (req, res) => {
-    const { username, passwordHash } = req.body;
+    const { username, passwordHash, branch } = req.body;
     try {
         await db.query(
-            "INSERT INTO staff_credentials (username, password_hash, role) VALUES (?, ?, 'Staff')",
-            [username, passwordHash]
+            "INSERT INTO staff_credentials (username, password_hash, role, assigned_branch) VALUES (?, ?, 'Staff', ?)",
+            [username, passwordHash, branch || 'General Santos City']
         );
         memoryCache.staffList.time = 0;
         res.json({ success: true });
@@ -494,7 +505,7 @@ app.get('/api/staff', async (req, res) => {
         if (memoryCache.staffList.data && (Date.now() - memoryCache.staffList.time < 60000)) {
             return res.json(memoryCache.staffList.data);
         }
-        const [rows] = await db.query('SELECT username, password_hash, role, last_active FROM staff_credentials');
+        const [rows] = await db.query("SELECT username, password_hash, role, last_active, COALESCE(assigned_branch, 'General Santos City') AS branch FROM staff_credentials");
         memoryCache.staffList.data = rows;
         memoryCache.staffList.time = Date.now();
         res.json(rows);
