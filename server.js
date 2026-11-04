@@ -1251,6 +1251,27 @@ app.post('/api/memory/branches', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 🔒 PER-BRANCH POS SWITCH PINS — shared across all devices */
+app.get('/api/memory/pos-branch-pins', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('posBranchPins', {
+            'General Santos City': '1111',
+            'Koronadal City': '2222'
+        });
+        res.json((data && typeof data === 'object') ? data : {});
+    } catch (err) {
+        res.json({ 'General Santos City': '1111', 'Koronadal City': '2222' });
+    }
+});
+
+app.post('/api/memory/pos-branch-pins', async (req, res) => {
+    try {
+        const pins = (req.body && typeof req.body === 'object') ? req.body : {};
+        await setSystemMemoryKey('posBranchPins', pins);
+        res.json({ success: true, pins });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /* 🧾 RAW INGREDIENTS SYNC */
 app.get('/api/memory/raw-ingredients', async (req, res) => {
     try {
