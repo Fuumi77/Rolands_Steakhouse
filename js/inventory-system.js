@@ -1748,12 +1748,16 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 </div>
             </div>
 
-            <!-- DISH COGS & MARGIN ANALYSIS TABLE -->
+            <!-- DISH COGS & MARGIN ANALYSIS TABLE WITH LIVE SEARCH -->
             <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:24px; box-shadow:0 2px 10px rgba(0,0,0,0.03);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
                     <div>
                         <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:18px;">Dish Recipe COGS & Profit Margin Breakdown</h3>
                         <span style="font-size:12px; color:#64748b;">Calculated production cost based on raw ingredient BOM recipes vs menu prices</span>
+                    </div>
+                    <div style="position:relative; width:100%; max-width:320px;">
+                        <input type="text" id="valuation-dish-search" placeholder="🔍 Search dish or category..." oninput="window.filterValuationTable(this.value)"
+                            style="width:100%; padding:9px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box; outline:none; background:#f8fafc;">
                     </div>
                 </div>
 
@@ -1769,7 +1773,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                 <th style="padding:12px;">Margin %</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="valuation-tbody">
                             ${items.map(item => {
                                 const cogs = calculateDishRecipeCost(item.id, item);
                                 const marginPctNum = parseFloat(cogs.marginPct) || 0;
@@ -1777,7 +1781,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                 const badgeColor = marginPctNum >= 60 ? '#15803d' : (marginPctNum >= 40 ? '#b45309' : '#b91c1c');
 
                                 return `
-                                    <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <tr class="val-dish-row" data-name="${(item.title || item.name || '').toLowerCase()}" data-cat="${(item.category || '').toLowerCase()}" style="border-bottom:1px solid #f1f5f9;">
                                         <td style="padding:12px; font-weight:bold; color:#0f172a;">${item.title || item.name}</td>
                                         <td style="padding:12px; color:#64748b;">${item.category || 'General'}</td>
                                         <td style="padding:12px; font-weight:bold;">₱${(Number(item.price)||0).toFixed(2)}</td>
@@ -1795,6 +1799,16 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     </table>
                 </div>
             </div>
+        `;
+
+        window.filterValuationTable = function(q) {
+            const query = (q || '').toLowerCase().trim();
+            document.querySelectorAll('#valuation-tbody .val-dish-row').forEach(row => {
+                const name = row.getAttribute('data-name') || '';
+                const cat = row.getAttribute('data-cat') || '';
+                row.style.display = (!query || name.includes(query) || cat.includes(query)) ? '' : 'none';
+            });
+        };
         `;
     }
 
