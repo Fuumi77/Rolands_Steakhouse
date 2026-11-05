@@ -2405,7 +2405,6 @@ if (resKeyForBtn) {
                     if (!aStatus || aStatus === '') aStatus = 'pending';
                     
                     if (aStatus === 'pending' || aStatus === 'pending_paymongo') {
-                        // 👉 FIX: Approve and Reject are now cleanly split 50/50 on a second row
                         approvalBtns = `
                             <div style="display:flex; gap:4px; width:100%; margin-top:4px;">
                                 <button type="button" style="flex:1; background:#16a34a; color:white; font-size:11.5px; border-radius:6px; justify-content:center;" onclick="event.stopPropagation(); window.approveReservation('${resKey}')">Approve</button>
@@ -2417,11 +2416,20 @@ if (resKeyForBtn) {
                             <button type="button" style="width:100%; background:#f59e0b; color:white; font-size:11.5px; border-radius:6px; margin-top:4px; justify-content:center;" onclick="event.stopPropagation(); window.markSeated('${resKey}')">Mark Seated</button>
                         `;
                     } else if (aStatus === 'seated') {
-                        approvalBtns = `<div style="font-size:12px; color:#1b5e20; font-weight:800; margin-top:8px; text-align:center;">Seated</div>`;
+                        approvalBtns = `<div style="font-size:12px; color:#1b5e20; font-weight:800; margin-top:4px; text-align:center;">🪑 Seated Guest</div>`;
                     } else if (aStatus === 'rejected' || aStatus === 'cancelled') {
                         approvalBtns = `<div style="font-size:12px; color:#991b1b; font-weight:800; margin-top:8px; text-align:center;">${aStatus === 'cancelled' ? 'Cancelled' : 'Rejected'}</div>`;
                     } else if (aStatus === 'completed') {
-                        approvalBtns = `<div style="font-size:12px; color:#16a34a; font-weight:800; margin-top:8px; text-align:center;">Completed</div>`;
+                        approvalBtns = `<div style="font-size:12px; color:#16a34a; font-weight:800; margin-top:8px; text-align:center;">✅ Completed</div>`;
+                    }
+
+                    // 👉 STAFF-ONLY ACTION: Staff waiter marks food as SERVED once cooked by the kitchen!
+                    if (r.kdsStatus === 'ready' && aStatus !== 'rejected' && aStatus !== 'cancelled') {
+                        approvalBtns += `
+                            <button type="button" style="width:100%; background:linear-gradient(135deg, #4338ca, #3730a3); color:white; border:none; padding:7px 4px; font-size:11.5px; font-weight:800; border-radius:6px; margin-top:5px; cursor:pointer; box-shadow:0 2px 6px rgba(67,56,202,0.3); display:flex; align-items:center; justify-content:center; gap:4px;" onclick="event.stopPropagation(); window.markOrderServed('${resKey}')">
+                                🍽️ Mark as Served
+                            </button>
+                        `;
                     }
 
                     const isCancelledOrRejected = aStatus === 'rejected' || aStatus === 'cancelled' || r.kdsStatus === 'cancelled';
@@ -2458,6 +2466,38 @@ if (resKeyForBtn) {
             }
 
             // Global Action Handlers
+
+            // 👉 STAFF EXCLUSIVE: Mark order as Served to Table
+            window.markOrderServed = async function (resNum) {
+                const hist = getReservationHistory();
+                const idx = hist.findIndex(h => h.reservationNumber === resNum);
+                if (idx === -1) return;
+                const r = hist[idx];
+
+                try {
+                    await fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: resNum, kdsStatus: 'served' })
+                    });
+                } catch (e) {}
+
+                r.kdsStatus = 'served';
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
+
+                if (window.showToast) {
+                    window.showToast(`🍽️ Order #${resNum} has been served to ${r.bookedTable || 'table'}!`, 'success', 3500);
+                }
+
+                try {
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'orderServed', resNum });
+                    }
+                } catch(e) {}
+
+                renderDashboard();
+            };
+            
             window.openRefundModal = function(resNum) {
                 const hist = getReservationHistory();
                 const r = hist.find(h => (h.reservationNumber === resNum || h.id === resNum || String(h.id) === String(resNum) || h.resNumber === resNum));
@@ -5086,19 +5126,37 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 }
             };
 
+            window.adminFoodSearchQuery = '';
+
             function renderMenuManagement() {
                 const container = document.getElementById('admin-menu-grid');
                 if (!container) return;
                 
-                // Sync latest food availability from raw ingredients
                 if (window.InventorySystem) window.InventorySystem.syncFoodMenuStockFromIngredients();
 
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
+                const searchQ = (window.adminFoodSearchQuery || '').toLowerCase().trim();
+
+                container.innerHTML = `
+                    <div style="margin-bottom:16px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <div style="font-weight:700; color:#334155; font-size:13px;">🔍 Filter Menu Dishes & Portions:</div>
+                        <div style="flex:1; max-width:320px;">
+                            <input type="text" id="admin-food-search-box" value="${window.adminFoodSearchQuery || ''}" oninput="window.adminFoodSearchQuery = this.value; renderMenuManagement();" 
+                                placeholder="Search dish name (e.g. Ribeye, Burger, Fries)..." 
+                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box; outline:none; background:white;">
+                        </div>
+                    </div>
+                `;
+
                 const fragment = document.createDocumentFragment();
 
                 CATEGORIES.forEach(cat => {
-                    const catItems = items.filter(i => i.category === cat.key);
+                    const catItems = items.filter(i => {
+                        const matchCat = i.category === cat.key;
+                        const matchSearch = !searchQ || (i.title || i.name || '').toLowerCase().includes(searchQ);
+                        return matchCat && matchSearch;
+                    });
                     if (catItems.length === 0) return;
 
                     const catTitle = document.createElement('h3');
@@ -5319,13 +5377,14 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             };
 
             window.adminRawFilter = 'all';
+            window.adminRawSearch = '';
 
             window.setAdminRawFilter = function (filterVal) {
                 window.adminRawFilter = filterVal;
                 renderRawIngredientsContainer();
             };
 
-            // ── RAW INGREDIENTS CONTAINER RENDERER ──
+            // ── RAW INGREDIENTS CONTAINER RENDERER WITH LIVE SEARCH ──
             function renderRawIngredientsContainer() {
                 const container = document.getElementById('admin-raw-ingredients-container');
                 if (!container) return;
@@ -5333,13 +5392,21 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 let rawList = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
                 const healthBannerHtml = renderInventoryHealthBanner();
 
-                // Apply active filter
                 if (window.adminRawFilter === 'low') {
                     rawList = rawList.filter(i => (Number(i.stock) || 0) > 0 && (Number(i.stock) || 0) <= (Number(i.minThreshold) || 10));
                 } else if (window.adminRawFilter === 'out') {
                     rawList = rawList.filter(i => (Number(i.stock) || 0) <= 0);
                 } else if (window.adminRawFilter !== 'all') {
                     rawList = rawList.filter(i => (i.category || '').toLowerCase() === window.adminRawFilter.toLowerCase());
+                }
+
+                if (window.adminRawSearch) {
+                    const q = window.adminRawSearch.toLowerCase().trim();
+                    rawList = rawList.filter(i => 
+                        (i.name || '').toLowerCase().includes(q) || 
+                        (i.id || '').toLowerCase().includes(q) || 
+                        (i.category || '').toLowerCase().includes(q)
+                    );
                 }
 
                 container.innerHTML = `
@@ -5355,14 +5422,20 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         </button>
                     </div>
 
-                    <!-- Filter Chips -->
-                    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter By:</span>
-                        <button onclick="setAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='all'?'#1b5e20':'white'}; color:${window.adminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
-                        <button onclick="setAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.adminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.adminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock Only</button>
-                        <button onclick="setAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.adminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.adminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock Only</button>
-                        <button onclick="setAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🥩 Meat</button>
-                        <button onclick="setAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🍹 Beverages</button>
+                    <!-- Filter Chips & Search Bar Row -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; background:white; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter:</span>
+                            <button onclick="setAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='all'?'#1b5e20':'white'}; color:${window.adminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
+                            <button onclick="setAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.adminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.adminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock</button>
+                            <button onclick="setAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.adminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.adminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock</button>
+                            <button onclick="setAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🥩 Meat</button>
+                            <button onclick="setAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🍹 Beverages</button>
+                        </div>
+                        <div style="flex:1; min-width:240px; max-width:340px;">
+                            <input type="text" id="admin-raw-search-input" value="${window.adminRawSearch || ''}" oninput="window.adminRawSearch = this.value; renderRawIngredientsContainer();" placeholder="🔍 Search raw ingredients..." 
+                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                        </div>
                     </div>
 
                     <div style="overflow-x:auto;">
