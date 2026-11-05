@@ -3769,6 +3769,7 @@ if (window.activeSuperAdminInvSubTab) {
             });
 
             window.superAdminRawFilter = 'all';
+            window.superAdminRawSearch = '';
 
             window.setSuperAdminRawFilter = function (filterVal) {
                 window.superAdminRawFilter = filterVal;
@@ -3790,6 +3791,15 @@ if (window.activeSuperAdminInvSubTab) {
                     rawList = rawList.filter(i => (i.category || '').toLowerCase() === window.superAdminRawFilter.toLowerCase());
                 }
 
+                if (window.superAdminRawSearch) {
+                    const q = window.superAdminRawSearch.toLowerCase().trim();
+                    rawList = rawList.filter(i => 
+                        (i.name || '').toLowerCase().includes(q) || 
+                        (i.id || '').toLowerCase().includes(q) || 
+                        (i.category || '').toLowerCase().includes(q)
+                    );
+                }
+
                 container.innerHTML = `
                     ${healthBannerHtml}
 
@@ -3803,14 +3813,20 @@ if (window.activeSuperAdminInvSubTab) {
                         </button>
                     </div>
 
-                    <!-- Filter Chips -->
-                    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
-                        <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter By:</span>
-                        <button onclick="setSuperAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='all'?'#1b5e20':'white'}; color:${window.superAdminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
-                        <button onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.superAdminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">Low Stock Only</button>
-                        <button onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.superAdminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">Out of Stock Only</button>
-                        <button onclick="setSuperAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Meat</button>
-                        <button onclick="setSuperAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Beverages</button>
+                    <!-- Filter Chips & Search Bar Row -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; background:white; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter:</span>
+                            <button onclick="setSuperAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='all'?'#1b5e20':'white'}; color:${window.superAdminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
+                            <button onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.superAdminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">Low Stock</button>
+                            <button onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.superAdminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">Out of Stock</button>
+                            <button onclick="setSuperAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Meat</button>
+                            <button onclick="setSuperAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Beverages</button>
+                        </div>
+                        <div style="flex:1; min-width:240px; max-width:340px;">
+                            <input type="text" id="super-raw-search-input" value="${window.superAdminRawSearch || ''}" oninput="window.superAdminRawSearch = this.value; renderSuperAdminRawIngredients();" placeholder="🔍 Search ingredients by name..." 
+                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                        </div>
                     </div>
 
                     <div class="card" style="padding:0; overflow:hidden; border:1px solid #e2e8f0; border-radius:12px;">
@@ -4662,85 +4678,87 @@ if (window.activeSuperAdminInvSubTab) {
                 });
             };
 
-            // EXPORT LOGIC WITH AUTOMATIC AUTO-FIT COLUMN WIDTHS & MULTI-SHEET DATA
+            // ── COMPREHENSIVE MULTI-SHEET INVENTORY & ASSET REPORT ──
             window.exportInventoryReport = async function () {
                 const confirm = await superModal({
-                    title: 'Generate Inventory Excel Report? 📊',
-                    message: 'Generate and download the complete Excel inventory report with auto-fitted columns and ingredient catalogs?',
+                    title: 'Generate Detailed Inventory Audit Report? 📊',
+                    message: 'Export comprehensive Excel workbook including Menu Portions, Raw Stock Asset Valuation, Supplier Catalogs, and Safety Reorder Alerts?',
                     type: 'confirm',
-                    confirmText: 'Generate Excel',
+                    confirmText: 'Download Excel Report',
                     cancelText: 'Cancel'
                 });
-
                 if (!confirm) return;
 
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
 
-                // ── SHEET 1: MENU FOOD ITEMS & CALCULATED PORTIONS ──
+                // ── SHEET 1: MENU DISHES & REAL-TIME PORTIONS ──
                 const wsFoodData = [
-                    ["Item Name", "Category", "Price (PHP)", "Calculated Portions Available", "Total Stock", "Added", "Sold", "End of Day", "Recipe Proportions", "Missing Ingredients Alert", "Stock Status"]
+                    ["Item ID", "Dish Title", "Category", "Menu Price (PHP)", "Kitchen Available Portions", "Manual Availability", "Opening Portions", "Added (+)", "Sold (-)", "Net Stock EOD", "Required Raw Ingredients (BOM)", "Stock Bottlenecks / Missing", "Operational Status"]
                 ];
 
                 items.forEach(i => {
-                    let avail = { availablePortions: i.total_stock || 0, isAvailable: (i.total_stock || 0) > 0, status: 'OK', recipe: [], missingIngredients: [] };
+                    let avail = { availablePortions: i.total_stock || 0, isAvailable: true, status: 'Available', recipe: [], missingIngredients: [] };
                     if (window.InventorySystem) {
                         avail = window.InventorySystem.calculateFoodAvailability(i, rawCatalog);
                     }
-
-                    const eod = (i.total_stock || 0) + (i.added_stock || 0) - (i.sold_stock || 0);
-                    const recipeStr = avail.recipe && avail.recipe.length > 0
-                        ? avail.recipe.map(r => `${r.name}: ${r.needed}${r.unit}`).join('; ')
-                        : 'No recipe assigned';
-                    const missingStr = avail.missingIngredients && avail.missingIngredients.length > 0
-                        ? avail.missingIngredients.join('; ')
-                        : 'None';
-
-                    const statusStr = !avail.isAvailable || avail.availablePortions <= 0
-                        ? 'OUT OF STOCK'
-                        : (avail.availablePortions <= 5 ? 'LOW STOCK' : 'AVAILABLE');
+                    const eod = Math.max(0, (i.total_stock || 0) + (i.added_stock || 0) - (i.sold_stock || 0));
+                    const recipeStr = (avail.recipe && avail.recipe.length > 0) ? avail.recipe.map(r => `${r.name}: ${r.needed}${r.unit}`).join('; ') : 'No BOM assigned';
+                    const missingStr = (avail.missingIngredients && avail.missingIngredients.length > 0) ? avail.missingIngredients.join('; ') : 'None (Fully Stocked)';
 
                     wsFoodData.push([
+                        i.id || '',
                         i.title || '',
                         i.category || 'General',
-                        i.price !== undefined && i.price !== null ? i.price : 0,
+                        Number(i.price || 0).toFixed(2),
                         avail.availablePortions,
+                        i.manualUnavailable ? 'BLOCKED (MANUAL OFF)' : 'ACTIVE',
                         i.total_stock || 0,
                         i.added_stock || 0,
                         i.sold_stock || 0,
                         eod,
                         recipeStr,
                         missingStr,
-                        statusStr
+                        avail.status
                     ]);
                 });
 
-                // ── SHEET 2: RAW INGREDIENTS CATALOG ──
+                // ── SHEET 2: DETAILED RAW INGREDIENTS ASSET VALUATION ──
                 const wsRawData = [
-                    ["Ingredient ID", "Ingredient Name", "Category", "Current Stock", "Unit", "Min Threshold", "Stock Status"]
+                    ["Ingredient ID", "Ingredient Name", "Category", "Current Stock", "Unit", "Safety Threshold", "Unit Cost (PHP)", "Total Asset Valuation (PHP)", "Preferred Supplier", "Stock Health", "Reorder Deficit", "Last Restocked"]
                 ];
 
                 rawCatalog.forEach(ing => {
-                    const isCritical = ing.stock <= 0;
-                    const isLow = ing.stock > 0 && ing.stock <= (ing.minThreshold || 100);
-                    const statusText = isCritical ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'OK');
+                    const stock = Number(ing.stock) || 0;
+                    const thresh = Number(ing.minThreshold) || 10;
+                    const unitCost = Number(ing.unitCost) || 0;
+                    const totalVal = stock * unitCost;
+
+                    const isOut = stock <= 0;
+                    const isLow = stock > 0 && stock <= thresh;
+                    const statusText = isOut ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK (REORDER)' : 'OPTIMAL');
+                    const deficit = isOut ? (thresh * 2) : (isLow ? (thresh * 2 - stock) : 0);
 
                     wsRawData.push([
                         ing.id || '',
                         ing.name || '',
                         ing.category || 'General',
-                        ing.stock !== undefined ? ing.stock : 0,
+                        stock,
                         ing.unit || '',
-                        ing.minThreshold !== undefined ? ing.minThreshold : 0,
-                        statusText
+                        thresh,
+                        unitCost.toFixed(2),
+                        totalVal.toFixed(2),
+                        ing.supplier || 'General Supplier',
+                        statusText,
+                        deficit > 0 ? `${deficit} ${ing.unit}` : 'None',
+                        ing.lastRestocked ? new Date(ing.lastRestocked).toLocaleString() : 'N/A'
                     ]);
                 });
 
-                // Helper to compute auto-fitted column widths for XLSX sheets
                 function autoFitColumns(dataArray) {
                     if (!dataArray || dataArray.length === 0) return [];
                     return dataArray[0].map((_, colIdx) => {
-                        let maxLen = 10;
+                        let maxLen = 12;
                         dataArray.forEach(row => {
                             const val = row[colIdx] !== undefined && row[colIdx] !== null ? String(row[colIdx]) : '';
                             if (val.length > maxLen) maxLen = val.length;
@@ -4750,22 +4768,17 @@ if (window.activeSuperAdminInvSubTab) {
                 }
 
                 const wb = XLSX.utils.book_new();
-
                 const wsFood = XLSX.utils.aoa_to_sheet(wsFoodData);
                 wsFood['!cols'] = autoFitColumns(wsFoodData);
-                XLSX.utils.book_append_sheet(wb, wsFood, "Menu Inventory & Portions");
+                XLSX.utils.book_append_sheet(wb, wsFood, "Menu Portions & Inventory");
 
                 const wsRaw = XLSX.utils.aoa_to_sheet(wsRawData);
                 wsRaw['!cols'] = autoFitColumns(wsRawData);
-                XLSX.utils.book_append_sheet(wb, wsRaw, "Raw Ingredients Catalog");
+                XLSX.utils.book_append_sheet(wb, wsRaw, "Raw Ingredients Valuation");
 
                 const dateStr = new Date().toISOString().slice(0, 10);
-                XLSX.writeFile(wb, `Rolands_Inventory_Report_${dateStr}.xlsx`);
-
-                superModal({
-                    title: 'Excel Report Downloaded! 📊',
-                    message: 'Your inventory report with auto-fitted column widths has been downloaded successfully.'
-                });
+                XLSX.writeFile(wb, `Rolands_Enterprise_Inventory_${dateStr}.xlsx`);
+                if (window.showToast) window.showToast('Inventory Report Downloaded! 📊', 'success');
             };
 
             renderInventory();
