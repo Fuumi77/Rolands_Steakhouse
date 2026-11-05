@@ -4908,22 +4908,12 @@ if (window.activeSuperAdminInvSubTab) {
                 document.getElementById('export-csv-modal')?.classList.add('hidden');
             };
 
+            // ── COMPREHENSIVE MULTI-SHEET REVENUE, TRANSACTIONS & SALES PERFORMANCE ──
             window.generateAndDownloadCsvReport = function(forcedTimeframe, forcedFormat) {
                 try {
-                    let selectedTimeframe = forcedTimeframe;
-                    if (!selectedTimeframe || typeof selectedTimeframe !== 'string') {
-                        selectedTimeframe = document.querySelector('input[name="csv-timeframe"]:checked')?.value || 'all';
-                    }
-
-                    let selectedFormat = forcedFormat;
-                    if (!selectedFormat || typeof selectedFormat !== 'string') {
-                        selectedFormat = document.querySelector('input[name="export-format"]:checked')?.value || 'xlsx';
-                    }
-
+                    const selectedTimeframe = forcedTimeframe || document.querySelector('input[name="csv-timeframe"]:checked')?.value || 'all';
+                    const selectedFormat = forcedFormat || document.querySelector('input[name="export-format"]:checked')?.value || 'xlsx';
                     let allRecords = getReservationHistory();
-                    if (!Array.isArray(allRecords) || allRecords.length === 0) {
-                        allRecords = seedSampleReservationHistoryIfEmpty();
-                    }
 
                     const now = new Date();
                     const todayStr = now.toISOString().slice(0, 10);
@@ -4932,149 +4922,146 @@ if (window.activeSuperAdminInvSubTab) {
 
                     const filteredRecords = allRecords.filter(r => {
                         if (selectedTimeframe === 'all') return true;
-
                         const dateObj = parseRecordDate(r);
-                        const recordYear = dateObj.getFullYear();
-                        const recordMonth = dateObj.getMonth();
-                        const recordDateStr = dateObj.toISOString().slice(0, 10);
-
-                        if (selectedTimeframe === 'day' || selectedTimeframe === 'today') {
-                            return recordDateStr === todayStr;
-                        } else if (selectedTimeframe === 'week') {
-                            const weekAgo = new Date();
-                            weekAgo.setDate(now.getDate() - 7);
-                            weekAgo.setHours(0, 0, 0, 0);
+                        if (selectedTimeframe === 'day' || selectedTimeframe === 'today') return dateObj.toISOString().slice(0, 10) === todayStr;
+                        if (selectedTimeframe === 'week') {
+                            const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
                             return dateObj >= weekAgo && dateObj <= now;
-                        } else if (selectedTimeframe === 'month') {
-                            return recordYear === currentYear && recordMonth === currentMonth;
-                        } else if (selectedTimeframe === 'year') {
-                            return recordYear === currentYear;
                         }
+                        if (selectedTimeframe === 'month') return dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonth;
+                        if (selectedTimeframe === 'year') return dateObj.getFullYear() === currentYear;
                         return true;
                     });
 
-                    const recordsToExport = (filteredRecords && filteredRecords.length > 0) ? filteredRecords : allRecords;
-
-                    recordsToExport.sort((a, b) => {
-                        const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
-                        const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
-                        return idB - idA;
-                    });
-
-                    const headers = [
-                        'Order Number',
-                        'Order Type',
-                        'Date/Time of Arrival',
-                        'Customer Name',
-                        'Table',
-                        'Items Ordered',
-                        'Total Paid (PHP)',
-                        'Transaction Completed'
+                    // ── SHEET 1: ITEMIZED ORDERS & TRANSACTIONS ──
+                    const txHeaders = [
+                        'Order #', 'Branch', 'Type', 'Arrival Schedule', 'Customer Name', 'Table',
+                        'Items Ordered', 'Gross Amount (PHP)', '12% VAT Included (PHP)', 'Net of VAT (PHP)',
+                        'Payment Status', 'Payment Method', 'Payment Ref', 'KDS Kitchen Status', 'Refund Status', 'Refund Amount (PHP)', 'Completed Timestamp'
                     ];
 
-                    const rowsData = [headers];
+                    const txRows = [txHeaders];
+                    const itemSalesMap = {}; // name -> { qty, revenue }
+                    let totalGross = 0, totalVat = 0, totalRefunds = 0;
 
-                    recordsToExport.forEach(r => {
-                        let itemsStr = '';
-                        if (Array.isArray(r.foods) && r.foods.length > 0) {
-                            itemsStr = r.foods.join('; ');
-                        } else if (r.orderSummary) {
-                            itemsStr = r.orderSummary;
-                        } else {
-                            itemsStr = 'None';
+                    filteredRecords.forEach(r => {
+                        const amt = Number(r.paymentAmount || 0);
+                        const isPaid = (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in');
+                        const isVipOrder = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-');
+                        const isFixedDeposit = amt === 200 || (isVipOrder && amt === 1000 && (!r.foods || r.foods.length === 0));
+
+                        let vatable = 0, vatAmt = 0;
+                        if (isPaid && !isFixedDeposit) {
+                            vatable = amt / 1.12;
+                            vatAmt = amt - vatable;
+                            totalGross += amt;
+                            totalVat += vatAmt;
+                        } else if (isPaid) {
+                            totalGross += amt;
                         }
 
-                        let arrDate = r.arrivalDateTimeDisplay || (r.arrivalDate ? `${r.arrivalDate} ${r.arrivalTime || ''}` : '');
-                        if (!arrDate || arrDate.trim() === '') arrDate = 'Walk-in / POS';
+                        const refAmt = Number(r.refundAmount || 0);
+                        totalRefunds += refAmt;
 
-                        let compDate = '';
-                        if (r.completedAt) {
-                            try {
-                                const d = new Date(r.completedAt);
-                                compDate = d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
-                            } catch (e) { compDate = String(r.completedAt); }
-                        } else {
-                            compDate = 'Completed';
-                        }
+                        const foods = Array.isArray(r.foods) ? r.foods : [];
+                        foods.forEach(f => {
+                            const match = String(f).match(/^(\d+)x\s*(.*)$/);
+                            const q = match ? parseInt(match[1], 10) : 1;
+                            const name = match ? match[2].trim() : String(f).trim();
+                            if (!itemSalesMap[name]) itemSalesMap[name] = { qty: 0, revenue: 0 };
+                            itemSalesMap[name].qty += q;
+                        });
 
-                        let typeStr = r.reservationType || 'Unknown';
-                        if (typeStr === 'standard' && r.bookedBy === 'staff') typeStr = 'POS Order';
-                        else if (typeStr === 'priority') typeStr = 'Priority Pre-Order';
-                        else if (typeStr === 'standard') typeStr = 'Standard Reservation';
-
-                        rowsData.push([
+                        txRows.push([
                             r.reservationNumber || 'N/A',
-                            typeStr,
-                            arrDate,
-                            r.customerName || 'Walk-in Guest',
-                            r.bookedTable || 'Table N/A',
-                            itemsStr,
-                            Number(r.paymentAmount || 0).toFixed(2),
-                            compDate
+                            r.branch || 'General Santos City',
+                            (r.reservationType || 'standard').toUpperCase(),
+                            r.arrivalDateTimeDisplay || `${r.arrivalDate} ${r.arrivalTime || ''}`,
+                            r.customerName || 'Guest',
+                            r.bookedTable || '—',
+                            foods.join('; ') || 'Reservation Deposit Only',
+                            amt.toFixed(2),
+                            vatAmt.toFixed(2),
+                            vatable.toFixed(2),
+                            (r.paymentStatus || 'unpaid').toUpperCase(),
+                            r.paymentMethod || 'Walk-in / Cash',
+                            r.paymentRef || 'N/A',
+                            (r.kdsStatus || 'pending').toUpperCase(),
+                            (r.refundStatus || 'none').toUpperCase(),
+                            refAmt.toFixed(2),
+                            r.completedAt ? new Date(r.completedAt).toLocaleString() : 'Active / Pending'
                         ]);
                     });
 
-                    if (selectedFormat === 'xlsx' && typeof XLSX !== 'undefined') {
-                        // ── DYNAMIC EXCEL COLUMN AUTO-FIT CALCULATOR ──
-                        function autoFitColumns(dataArray) {
-                            if (!dataArray || dataArray.length === 0) return [];
-                            return dataArray[0].map((_, colIdx) => {
-                                let maxLen = 10;
-                                dataArray.forEach(row => {
-                                    const val = row[colIdx] !== undefined && row[colIdx] !== null ? String(row[colIdx]) : '';
-                                    if (val.length > maxLen) maxLen = val.length;
-                                });
-                                return { wch: Math.min(Math.max(maxLen + 5, 14), 70) };
-                            });
-                        }
+                    // ── SHEET 2: DISH ITEM PERFORMANCE & COGS ──
+                    const itemHeaders = ['Item Dish Name', 'Category', 'Quantity Sold', 'Menu Price (PHP)', 'Gross Sales (PHP)', 'Unit Recipe COGS (PHP)', 'Total COGS (PHP)', 'Net Gross Profit (PHP)', 'Profit Margin %'];
+                    const itemRows = [itemHeaders];
+                    const invList = getInventory();
 
-                        const wb = XLSX.utils.book_new();
-                        const ws = XLSX.utils.aoa_to_sheet(rowsData);
-                        ws['!cols'] = autoFitColumns(rowsData);
-                        XLSX.utils.book_append_sheet(wb, ws, "Sales & Transactions");
+                    Object.keys(itemSalesMap).forEach(dishName => {
+                        const soldData = itemSalesMap[dishName];
+                        const invItem = invList.find(i => (i.title || i.name || '').toLowerCase() === dishName.toLowerCase());
+                        const price = invItem ? Number(invItem.price || 0) : 0;
+                        const cogs = invItem && window.InventorySystem ? window.InventorySystem.calculateDishRecipeCost(invItem.id, invItem) : { totalCost: 0 };
+                        const grossSales = soldData.qty * price;
+                        const totalCogs = soldData.qty * cogs.totalCost;
+                        const profit = grossSales - totalCogs;
+                        const margin = grossSales > 0 ? ((profit / grossSales) * 100).toFixed(1) : '0';
 
-                        const filename = `Rolands-SuperAdmin-Report-${selectedTimeframe}-${todayStr}.xlsx`;
-                        XLSX.writeFile(wb, filename);
-
-                        closeExportCsvModal();
-                        return;
-                    }
-
-                    // ── CSV EXPORT WITH UTF-8 BOM ──
-                    let csvContent = '\uFEFF';
-                    rowsData.forEach(row => {
-                        csvContent += row.map(val => `"${String(val).replaceAll('"', '""')}"`).join(',') + '\n';
+                        itemRows.push([
+                            dishName,
+                            invItem ? invItem.category : 'General',
+                            soldData.qty,
+                            price.toFixed(2),
+                            grossSales.toFixed(2),
+                            cogs.totalCost.toFixed(2),
+                            totalCogs.toFixed(2),
+                            profit.toFixed(2),
+                            `${margin}%`
+                        ]);
                     });
 
-                    const filename = `Rolands-SuperAdmin-Report-${selectedTimeframe}-${todayStr}.csv`;
+                    // ── SHEET 3: EXECUTIVE REVENUE SUMMARY ──
+                    const summaryRows = [
+                        ['EXECUTIVE REVENUE SUMMARY METRIC', 'VALUE (PHP)'],
+                        ['Total Gross Sales', `₱${totalGross.toFixed(2)}`],
+                        ['Total Customer Refunds Processed', `-₱${totalRefunds.toFixed(2)}`],
+                        ['Net Realized Revenue', `₱${(totalGross - totalRefunds).toFixed(2)}`],
+                        ['Estimated 12% VAT Remitted', `₱${totalVat.toFixed(2)}`],
+                        ['Total Completed/Recorded Transactions', filteredRecords.length],
+                        ['Average Transaction Value (AOV)', `₱${filteredRecords.length ? (totalGross / filteredRecords.length).toFixed(2) : '0.00'}`]
+                    ];
 
-                    try {
+                    if (selectedFormat === 'xlsx' && typeof XLSX !== 'undefined') {
+                        const wb = XLSX.utils.book_new();
+
+                        const wsTx = XLSX.utils.aoa_to_sheet(txRows);
+                        wsTx['!cols'] = txHeaders.map(() => ({ wch: 18 }));
+                        XLSX.utils.book_append_sheet(wb, wsTx, "Transactions & Orders");
+
+                        const wsItem = XLSX.utils.aoa_to_sheet(itemRows);
+                        wsItem['!cols'] = itemHeaders.map(() => ({ wch: 18 }));
+                        XLSX.utils.book_append_sheet(wb, wsItem, "Dish Sales & COGS");
+
+                        const wsSum = XLSX.utils.aoa_to_sheet(summaryRows);
+                        wsSum['!cols'] = [{ wch: 38 }, { wch: 22 }];
+                        XLSX.utils.book_append_sheet(wb, wsSum, "Executive Revenue Summary");
+
+                        XLSX.writeFile(wb, `Rolands_Revenue_Report_${selectedTimeframe}_${todayStr}.xlsx`);
+                    } else {
+                        let csvContent = '\uFEFF';
+                        txRows.forEach(row => {
+                            csvContent += row.map(val => `"${String(val).replaceAll('"', '""')}"`).join(',') + '\n';
+                        });
                         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
-                        link.href = url;
-                        link.download = filename;
-                        link.style.display = 'none';
-                        document.body.appendChild(link);
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `Rolands_Sales_Report_${selectedTimeframe}_${todayStr}.csv`;
                         link.click();
-                        setTimeout(() => {
-                            if (link.parentNode) link.parentNode.removeChild(link);
-                            URL.revokeObjectURL(url);
-                        }, 3000);
-                    } catch (e) {
-                        const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
-                        const link = document.createElement('a');
-                        link.href = encodedUri;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        setTimeout(() => { if (link.parentNode) link.parentNode.removeChild(link); }, 3000);
                     }
-
                     closeExportCsvModal();
                 } catch(err) {
-                    console.error('Error exporting report:', err);
-                    alert('Error generating report: ' + err.message);
+                    alert('Error exporting report: ' + err.message);
                 }
             };
 
