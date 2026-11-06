@@ -1863,15 +1863,25 @@ window.readReservationHistory = function () {
             });
         }
         
-async function syncReservations() {
+        async function syncReservations() {
             try {
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                 try {
-                    const floorRes = await fetch(`${API_BASE_URL}/api/memory/table-overrides`);
+                    const [floorRes, cfgRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}&nocache=${Date.now()}`)
+                    ]);
                     if (floorRes.ok) {
                         const cloudFloor = await floorRes.json();
                         localStorage.setItem('tableOverrides', JSON.stringify(cloudFloor));
-                        if (typeof renderFloorPlan === 'function') renderFloorPlan();
                     }
+                    if (cfgRes.ok) {
+                        const cloudCfg = await cfgRes.json();
+                        if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
+                            localStorage.setItem('floorPlanConfig', JSON.stringify(cloudCfg));
+                        }
+                    }
+                    if (typeof renderFloorPlan === 'function') renderFloorPlan();
                 } catch(e) {}
 
                 const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -3021,6 +3031,8 @@ window.rejectReservation = async function (resNum) {
                 canvas.innerHTML = '';
                 canvas.classList.add('floor-editor-grid');
                 canvas.classList.remove('floor-editor-canvas');
+                canvas.style.gridAutoRows = 'minmax(68px, max-content)';
+                canvas.style.alignContent = 'start';
 
                 const makeNode = (t) => {
                     const node = document.createElement('div');
@@ -3225,9 +3237,16 @@ window.rejectReservation = async function (resNum) {
                 } catch (e) { }
 
                 localStorage.setItem('floorPlanConfig', JSON.stringify(currentFloorConfig));
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentFloorConfig)
+                }).catch(() => {});
+
                 document.getElementById('floor-editor-modal').style.display = 'none';
                 renderFloorPlan();
-                if (typeof showNotification === 'function') showNotification('Floor plan updated successfully', 'success', 'Saved');
+                if (typeof showNotification === 'function') showNotification(`Floor plan saved & synced for ${activeBr}!`, 'success', 'Saved');
             };
 
             const cycleStatus = { 'available': 'reserved', 'reserved': 'seated', 'seated': 'cleaning', 'cleaning': 'available' };
@@ -4764,15 +4783,20 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
                         renderFloorPlan();
                     
-                    // 👉 NEW: Download Live Chats from Cloud!
+                    // 👉 Download Live Chats strictly for the active branch!
                     try {
-                        const res = await fetch('https:' + '//rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now());
-                        if (res.ok) {
+                        const pollBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                        const res = await fetch(`${API_BASE_URL}/api/memory/live-chats?branch=${encodeURIComponent(pollBranch)}&nocache=${Date.now()}`);
+                        if (res.ok && pollBranch === (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City')) {
                             const cloudChats = await res.json();
-                            let safe = (cloudChats && typeof cloudChats === 'object') ? cloudChats : {};
-
-                            // 👉 Drop any session deleted in the last 10 seconds, so a stale
-                            //    server response can't bring it back
+                            let safe = {};
+                            if (cloudChats && typeof cloudChats === 'object') {
+                                Object.keys(cloudChats).forEach(sId => {
+                                    const msgs = Array.isArray(cloudChats[sId]) ? cloudChats[sId] : [];
+                                    const belongsToOtherBranch = msgs.some(m => m && m.branch && m.branch !== pollBranch);
+                                    if (!belongsToOtherBranch) safe[sId] = msgs;
+                                });
+                            }
                             if (window.__justDeletedChat && Date.now() - (window.__justDeletedAt || 0) < 10000) {
                                 delete safe[window.__justDeletedChat];
                             }
