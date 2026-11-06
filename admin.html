@@ -3103,7 +3103,77 @@ function renderFloorEditorCanvas() {
                     return node;
                 };
 
-                currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
+currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
+            }
+
+            function renderFloorEditorProps() {
+                const sub = document.getElementById('floor-props-sub');
+                const body = document.getElementById('floor-props-body');
+                if (!body) return;
+
+                const t = getSelectedTable();
+                if (!t) {
+                    if (sub) sub.textContent = 'Select a table';
+                    body.innerHTML = `<div style="color:#94a3b8; font-weight:700; font-size:13px;">Click any table on the canvas.</div>`;
+                    return;
+                }
+
+                if (sub) sub.textContent = t.id;
+                const idx = currentFloorConfig.findIndex(x => x.id === t.id);
+                const imgPreview = t.image
+                    ? `<img src="${t.image}" onclick="window.openImagePreview('${String(t.image).replace(/'/g, "\\'")}')" title="Click to enlarge"
+                        style="width:100%; height:140px; object-fit:cover; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; cursor: zoom-in;">`
+                    : `<div style="width:100%; height:120px; border-radius:10px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-weight:900;">No image</div>`;
+
+                body.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div>${imgPreview}</div>
+                        <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
+                            Name / ID
+                            <input id="fp-prop-name" type="text" value="${(t.name || t.id || '').toString().replace(/"/g, '&quot;')}"
+                                ${t.isVip ? 'readonly' : ''} 
+                                style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
+                        </label>
+                        <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
+                            Seats / Description
+                            <input id="fp-prop-desc" type="text" value="${(t.description || '').toString().replace(/"/g, '&quot;')}"
+                                placeholder="e.g. 4 Seats"
+                                style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
+                        </label>
+                        <label style="display:block; background:#e2e8f0; color:#334155; text-align:center; padding:10px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:900;">
+                            Upload picture
+                            <input type="file" style="display:none;" accept="image/*" onchange="window.handleTableImageUpload(event, ${idx})">
+                        </label>
+                        ${!t.isVip ? `<button type="button" onclick="window.removeTable(${idx})" style="background:#fee2e2; color:#ef4444; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:900;">Delete table</button>` : ''}
+                    </div>
+                `;
+
+                const nameEl = document.getElementById('fp-prop-name');
+                const descEl = document.getElementById('fp-prop-desc');
+
+                if (nameEl && !t.isVip) {
+                    nameEl.addEventListener('change', () => {
+                        const newName = (nameEl.value || '').toString().trim();
+                        if (!newName) {
+                            nameEl.value = t.name || t.id;
+                            return;
+                        }
+                        if (newName !== t.id) {
+                            t._renamedFrom = t._renamedFrom || t.id;
+                            t.id = newName;
+                            t.name = newName;
+                            floorEditorSelectedId = newName;
+                            renderFloorEditorCanvas();
+                            renderFloorEditorProps();
+                        }
+                    });
+                }
+                if (descEl) {
+                    descEl.addEventListener('change', () => {
+                        t.description = (descEl.value || '').toString();
+                        renderFloorEditorCanvas();
+                    });
+                }
             }
 
             window.addNewTable = function () {
@@ -5303,11 +5373,14 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     fragment.appendChild(grid);
                 });
 
-                container.innerHTML = '';
+                // Append the food cards below the Category Quick Jump & Search bar (do NOT clear container.innerHTML!)
                 container.appendChild(fragment);
-                if (document.activeElement && document.activeElement.id !== 'admin-food-search-box' && window.adminFoodSearchQuery) {
+                if (window.adminFoodSearchQuery) {
                     const sb = document.getElementById('admin-food-search-box');
-                    if (sb) { sb.focus(); sb.setSelectionRange(sb.value.length, sb.value.length); }
+                    if (sb && document.activeElement !== sb) {
+                        sb.focus();
+                        sb.setSelectionRange(sb.value.length, sb.value.length);
+                    }
                 }
             }
 
