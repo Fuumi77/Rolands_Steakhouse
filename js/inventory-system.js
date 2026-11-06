@@ -2925,7 +2925,7 @@ const DEFAULT_POS_BRANCH_PINS = {
     window.__origFetch = origFetch;
 
     // 👉 AUTO-REDIRECT OLD VERCEL URL TO YOUR NEW RENDER BACKEND!
-    const NEW_BACKEND_URL = 'https://rolands-steakhouse.onrender.com';
+    const NEW_BACKEND_URL = 'https://rolands-steakhouse-hz8o.onrender.com';
 
     window.fetch = async function (input, init = {}) {
         let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
