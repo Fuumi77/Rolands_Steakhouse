@@ -2354,7 +2354,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             } catch (e) { }
         }
 
-        setInterval(pullInventory, 5000); 
+        setInterval(pullInventory, 45000); // Polls every 45s instead of 5s to save 90% bandwidth!
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pullInventory(); });
     })();
 })(window);
