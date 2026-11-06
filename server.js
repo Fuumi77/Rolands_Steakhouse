@@ -27,6 +27,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
+    // Only disable caching on API routes — let images, fonts, and CSS cache in the browser!
+    if (req.path.startsWith('/api/') || req.path.startsWith('/reservations') || req.path.startsWith('/reserve')) {
+        res.set('Cache-Control', 'no-cache');
+    } else if (/\.(jpg|jpeg|png|gif|webp|svg|ico|woff2?|ttf|css)$/i.test(req.path)) {
+        res.set('Cache-Control', 'public, max-age=604800'); // Cache static assets for 7 days!
+    }
+    global.__activeReqBranch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
+    next();
+});
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
@@ -1009,11 +1018,20 @@ function resolveBranchMemKey(key) {
     return key;
 }
 
+const crypto = require('crypto');
+
+function computeFastHash(obj) {
+    try {
+        const str = typeof obj === 'string' ? obj : JSON.stringify(obj);
+        return crypto.createHash('md5').update(str).digest('hex');
+    } catch (e) { return String(Date.now()); }
+}
+
 async function getSystemMemoryKey(key, fallbackVal) {
     const actualKey = resolveBranchMemKey(key);
-    if (!memoryCache[actualKey]) memoryCache[actualKey] = { data: null, time: 0 };
+    if (!memoryCache[actualKey]) memoryCache[actualKey] = { data: null, hash: '', time: 0 };
     const entry = memoryCache[actualKey];
-    if (entry && entry.data !== null && (Date.now() - entry.time < 45000)) {
+    if (entry && entry.data !== null && (Date.now() - entry.time < 60000)) {
         return entry.data;
     }
     const [rows] = await queryWithRetry("SELECT mem_val FROM system_memory WHERE mem_key = ?", [actualKey]);
@@ -1022,14 +1040,15 @@ async function getSystemMemoryKey(key, fallbackVal) {
         val = typeof rows[0].mem_val === 'string' ? JSON.parse(rows[0].mem_val) : rows[0].mem_val;
     }
     entry.data = val;
+    entry.hash = computeFastHash(val);
     entry.time = Date.now();
     return val;
 }
 
 async function setSystemMemoryKey(key, val) {
     const actualKey = resolveBranchMemKey(key);
-    memoryCache[actualKey] = { data: val, time: Date.now() };
     const jsonStr = JSON.stringify(val);
+    memoryCache[actualKey] = { data: val, hash: computeFastHash(jsonStr), time: Date.now() };
     await queryWithRetry(
         "INSERT INTO system_memory (mem_key, mem_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE mem_val = ?",
         [actualKey, jsonStr, jsonStr]
