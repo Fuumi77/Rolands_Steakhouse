@@ -548,9 +548,20 @@ let resCacheTime = 0;
 app.get('/reservations', async (req, res) => {
     try {
         const reqBranch = (req.query.branch || '').trim();
-        if (! cachedReservations || (Date.now() - resCacheTime >= 5000)) {
+        if (!cachedReservations || (Date.now() - resCacheTime >= 5000)) {
+            // Auto-complete active/seated reservations in MySQL ONLY after 3 hours past their reservation_time
+            await db.query(`
+                UPDATE reservation_log 
+                SET status = 'Completed', kds_status = 'served' 
+                WHERE status IN ('Approved', 'Seated', 'Walk-in') 
+                  AND reservation_time < DATE_SUB(NOW(), INTERVAL 3 HOUR)
+            `).catch(() => {});
+
             const [rows] = await queryWithRetry(`
-                SELECT r.reservation_id, c.name, r.reservation_time, r.table_number, r.status, r.booked_by,
+                SELECT r.reservation_id, c.name,
+                       DATE_FORMAT(r.reservation_time, '%Y-%m-%d') AS ph_date,
+                       DATE_FORMAT(r.reservation_time, '%H:%i') AS ph_time,
+                       r.reservation_time, r.table_number, r.status, r.booked_by,
                        r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
                        r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
                 FROM reservation_log r
@@ -566,12 +577,18 @@ app.get('/reservations', async (req, res) => {
                 let parsedFoods = [];
                 try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
 
+                const tableLabel = (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`;
+                let displayCustomerName = r.name || 'Guest';
+                if (isPos && (!r.name || /^(walk-in guest|walk-in|pos customer|guest)$/i.test(String(r.name).trim()))) {
+                    displayCustomerName = `Dine-In Customer (${tableLabel})`;
+                }
+
                 return {
                     reservationNumber: `${prefix}${r.reservation_id}`,
-                    customerName: r.name,
-                    arrivalDate: d.toISOString().split('T')[0],
-                    arrivalTime: d.toTimeString().substring(0, 5),
-                    bookedTable: (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`,
+                    customerName: displayCustomerName,
+                    arrivalDate: r.ph_date || d.toLocaleDateString('en-CA'),
+                    arrivalTime: r.ph_time || d.toTimeString().substring(0, 5),
+                    bookedTable: tableLabel,
                     status: r.status,
                     bookedBy: r.booked_by,
                     reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
@@ -1003,8 +1020,9 @@ function scopedMemKey(baseKey, req) {
     return `${baseKey}__${branch.replace(/\s+/g, '_')}`;
 }
 
-function resolveBranchMemKey(key) {
-    const branch = global.__activeReqBranch || 'General Santos City';
+function resolveBranchMemKey(key, req) {
+    const reqBranch = req ? (req.query?.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || '') : '';
+    const branch = String(reqBranch || global.__activeReqBranch || 'General Santos City').trim();
     const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog'];
     if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
         return `${key}__${branch.replace(/\s+/g, '_')}`;
@@ -1021,8 +1039,8 @@ function computeFastHash(obj) {
     } catch (e) { return String(Date.now()); }
 }
 
-async function getSystemMemoryKey(key, fallbackVal) {
-    const actualKey = resolveBranchMemKey(key);
+async function getSystemMemoryKey(key, fallbackVal, req) {
+    const actualKey = resolveBranchMemKey(key, req);
     if (!memoryCache[actualKey]) memoryCache[actualKey] = { data: null, hash: '', time: 0 };
     const entry = memoryCache[actualKey];
     if (entry && entry.data !== null && (Date.now() - entry.time < 60000)) {
@@ -1039,8 +1057,8 @@ async function getSystemMemoryKey(key, fallbackVal) {
     return val;
 }
 
-async function setSystemMemoryKey(key, val) {
-    const actualKey = resolveBranchMemKey(key);
+async function setSystemMemoryKey(key, val, req) {
+    const actualKey = resolveBranchMemKey(key, req);
     const jsonStr = JSON.stringify(val);
     memoryCache[actualKey] = { data: val, hash: computeFastHash(jsonStr), time: Date.now() };
     await queryWithRetry(
@@ -1051,67 +1069,70 @@ async function setSystemMemoryKey(key, val) {
 
 app.get('/api/memory/table-overrides', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('tableOverrides', {});
+        const data = await getSystemMemoryKey('tableOverrides', {}, req);
         res.json(data || {});
     } catch (err) {
-        res.json(memoryCache.tableOverrides.data || {});
+        res.json({});
     }
 });
 
 app.post('/api/memory/table-overrides', async (req, res) => {
     try {
-        await setSystemMemoryKey('tableOverrides', req.body || {});
+        const payload = { ...(req.body || {}) };
+        delete payload.branch;
+        await setSystemMemoryKey('tableOverrides', payload, req);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* CLOUD FLOOR PLAN DESCRIPTIONS & PHOTOS SYNC */
+/* CLOUD FLOOR PLAN DESCRIPTIONS & PHOTOS SYNC (PER BRANCH) */
 app.get('/api/memory/floor-plan-config', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('floorPlanConfig', []);
+        const data = await getSystemMemoryKey('floorPlanConfig', [], req);
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.json(memoryCache.floorPlanConfig.data || []);
+        res.json([]);
     }
 });
 
 app.post('/api/memory/floor-plan-config', async (req, res) => {
     try {
-        const config = Array.isArray(req.body) ? req.body : [];
-        await setSystemMemoryKey('floorPlanConfig', config);
+        const config = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.config) ? req.body.config : []);
+        await setSystemMemoryKey('floorPlanConfig', config, req);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/memory/live-chats', async (req, res) => {
     try {
-        await setSystemMemoryKey('liveChats', req.body || {});
+        const payload = { ...(req.body || {}) };
+        delete payload.branch;
+        await setSystemMemoryKey('liveChats', payload, req);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* DELETE ONE CHAT SESSION (server-side, so stale clients can't resurrect it) */
+/* DELETE ONE CHAT SESSION (PER BRANCH) */
 app.post('/api/memory/live-chats/delete', async (req, res) => {
     try {
         const { sessionId } = req.body;
         if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
 
-        let chats = await getSystemMemoryKey('liveChats', {});
+        let chats = await getSystemMemoryKey('liveChats', {}, req);
         if (!chats || typeof chats !== 'object') chats = {};
         delete chats[sessionId];
 
-        await setSystemMemoryKey('liveChats', chats);
+        await setSystemMemoryKey('liveChats', chats, req);
         res.json({ success: true, remaining: Object.keys(chats).length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-
 app.get('/api/memory/live-chats', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('liveChats', {});
+        const data = await getSystemMemoryKey('liveChats', {}, req);
         res.json(data || {});
     } catch (err) {
-        res.json(memoryCache.liveChats ? (memoryCache.liveChats.data || {}) : {});
+        res.json({});
     }
 });
 
@@ -1120,11 +1141,14 @@ app.post('/api/memory/live-chats/message', async (req, res) => {
         const { sessionId, message } = req.body;
         if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message required' });
 
-        const allChats = await getSystemMemoryKey('liveChats', {});
+        const reqBranch = (req.query.branch || req.body.branch || 'General Santos City').trim();
+        message.branch = reqBranch;
+
+        const allChats = await getSystemMemoryKey('liveChats', {}, req);
         if (!allChats[sessionId]) allChats[sessionId] = [];
         allChats[sessionId].push(message);
 
-        await setSystemMemoryKey('liveChats', allChats);
+        await setSystemMemoryKey('liveChats', allChats, req);
         res.json({ success: true, allChats });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
