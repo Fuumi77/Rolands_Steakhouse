@@ -3049,17 +3049,89 @@ window.setPosBranchPin = async function (branchName, newPin) {
         } catch (e) {}
     };
 
+    // 4. Update Customer UI (index.html, payment.html, receipt.html, pos.html, superadmin.html)
+    window.applyCustomerBranchUI = function () {
+        const bName = window.getEffectiveBranch();
+        const branchObj = window.getBranchInfo(bName);
+
+        const heroSub = document.querySelector('#home .hero-content p');
+        if (heroSub) heroSub.textContent = branchObj.tagline;
+
+        const locAddress = document.querySelector('#location p');
+        if (locAddress) locAddress.textContent = branchObj.address;
+        const locIframe = document.querySelector('#location iframe');
+        if (locIframe && locIframe.src !== branchObj.mapEmbed) {
+            locIframe.src = branchObj.mapEmbed;
+        }
+
+        const modalSub = document.querySelector('#reservation-modal-overlay h2 + p');
+        if (modalSub) {
+            modalSub.textContent = `Booking for Roland's Steakhouse — ${branchObj.name} Branch`;
+        }
+    };
+
+    // Sync branch-specific Floor Plan, Table Overrides & Promotions from Cloud across all devices!
+    window.syncBranchFloorPlanFromCloud = async function () {
+        try {
+            const branch = window.getEffectiveBranch();
+            const [cfgRes, ovrRes, promoRes] = await Promise.all([
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
+            ]);
+            let changed = false;
+            if (cfgRes.ok) {
+                const cloudCfg = await cfgRes.json();
+                if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
+                    const prev = localStorage.getItem('floorPlanConfig');
+                    const next = JSON.stringify(cloudCfg);
+                    if (prev !== next) {
+                        localStorage.setItem('floorPlanConfig', next);
+                        changed = true;
+                    }
+                }
+            }
+            if (ovrRes.ok) {
+                const cloudOvr = await ovrRes.json();
+                if (cloudOvr && typeof cloudOvr === 'object') {
+                    const prevOvr = localStorage.getItem('tableOverrides');
+                    const nextOvr = JSON.stringify(cloudOvr);
+                    if (prevOvr !== nextOvr) {
+                        localStorage.setItem('tableOverrides', nextOvr);
+                        changed = true;
+                    }
+                }
+            }
+            if (promoRes.ok) {
+                const cloudPromos = await promoRes.json();
+                if (Array.isArray(cloudPromos)) {
+                    const prevPromos = localStorage.getItem('activePromos');
+                    const nextPromos = JSON.stringify(cloudPromos);
+                    if (prevPromos !== nextPromos) {
+                        localStorage.setItem('activePromos', nextPromos);
+                        if (typeof window.renderPromosAdmin === 'function') window.renderPromosAdmin();
+                        if (typeof window.renderPromotions === 'function') window.renderPromotions();
+                        if (typeof window.loadPromotions === 'function') window.loadPromotions();
+                        window.dispatchEvent(new CustomEvent('promosUpdated', { detail: cloudPromos }));
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
+                if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
+                if (typeof window.renderTables === 'function') window.renderTables();
+                window.dispatchEvent(new Event('storage'));
+            }
+        } catch (e) {}
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
         const currentBranch = window.getCurrentBranch();
         const effectiveInfo = window.getBranchInfo();
 
         window.syncBranchFloorPlanFromCloud();
-
-        if (!isAdminPage && !isSuperAdminPage) {
-            window.applyCustomerBranchUI();
-        }
-        const currentBranch = window.getCurrentBranch();
-        const effectiveInfo = window.getBranchInfo();
+        setInterval(window.syncBranchFloorPlanFromCloud, 15000);
 
         if (!isAdminPage && !isSuperAdminPage) {
             window.applyCustomerBranchUI();
