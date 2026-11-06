@@ -189,35 +189,43 @@ const transporter = nodemailer.createTransport({
 });
 
 app.post('/api/send-receipt', emailLimiter, async (req, res) => {
-    const { email, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary } = req.body;
+    const { email, subject, html, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary } = req.body;
     if (!email) return res.status(200).json({ success: false, message: 'No email provided' });
+
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://rolandssteakhouse.com/receipt.html?res=${reservationNumber || ''}`)}`;
+
+    const finalSubject = subject || `E-Receipt & Confirmation (${reservationNumber}) - Roland's Steakhouse`;
+    const finalHtml = html || `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: #1b5e20; color: white; padding: 20px; text-align: center;">
+                <h2 style="margin: 0;">Roland's Steakhouse</h2>
+                <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Official Reservation E-Receipt</p>
+            </div>
+            <div style="padding: 20px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+                <p>Hi <strong>${escapeHtml(customerName || 'Valued Guest')}</strong>,</p>
+                <p>Your reservation is confirmed! Here are your booking details:</p>
+                <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 16px 0;">
+                    <div><strong>Reservation #:</strong> ${escapeHtml(reservationNumber)}</div>
+                    <div><strong>Table:</strong> ${escapeHtml(table)}</div>
+                    <div><strong>Arrival:</strong> ${escapeHtml(arrivalDateTime)}</div>
+                    <div><strong>Order:</strong> ${escapeHtml(orderSummary)}</div>
+                    <div><strong>Payment Method:</strong> ${escapeHtml(paymentMethod)}</div>
+                    <div style="margin-top: 8px; font-size: 16px; color: #1b5e20;"><strong>Total Paid:</strong> ₱${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div style="text-align: center; margin: 18px 0;">
+                    <img src="${qrUrl}" alt="Receipt QR Code" width="150" height="150" style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px; background: #fff;" />
+                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Scan QR to view Official Digital Receipt</div>
+                </div>
+            </div>
+        </div>
+    `;
 
     try {
         await transporter.sendMail({
             from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: `E-Receipt & Confirmation (${reservationNumber}) - Roland's Steakhouse`,
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                    <div style="background: #1b5e20; color: white; padding: 20px; text-align: center;">
-                        <h2 style="margin: 0;">Roland's Steakhouse</h2>
-                        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Official Reservation E-Receipt</p>
-                    </div>
-                    <div style="padding: 20px; color: #1e293b; font-size: 14px; line-height: 1.6;">
-                        <p>Hi <strong>${escapeHtml(customerName || 'Valued Guest')}</strong>,</p>
-                        <p>Your reservation is confirmed! Here are your booking details:</p>
-                        <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 16px 0;">
-                            <div><strong>Reservation #:</strong> ${escapeHtml(reservationNumber)}</div>
-                            <div><strong>Table:</strong> ${escapeHtml(table)}</div>
-                            <div><strong>Arrival:</strong> ${escapeHtml(arrivalDateTime)}</div>
-                            <div><strong>Order:</strong> ${escapeHtml(orderSummary)}</div>
-                            <div><strong>Payment Method:</strong> ${escapeHtml(paymentMethod)}</div>
-                            <div style="margin-top: 8px; font-size: 16px; color: #1b5e20;"><strong>Total Paid:</strong> ₱${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        </div>
-                        <p style="font-size: 12px; color: #64748b;">Please present your Reservation # or QR Receipt upon arrival.</p>
-                    </div>
-                </div>
-            `
+            subject: finalSubject,
+            html: finalHtml
         });
         res.status(200).json({ success: true });
     } catch (err) {
@@ -1023,7 +1031,7 @@ function scopedMemKey(baseKey, req) {
 function resolveBranchMemKey(key, req) {
     const reqBranch = req ? (req.query?.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || '') : '';
     const branch = String(reqBranch || global.__activeReqBranch || 'General Santos City').trim();
-    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog'];
+    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos'];
     if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
         return `${key}__${branch.replace(/\s+/g, '_')}`;
     }
@@ -1321,6 +1329,22 @@ app.post('/api/memory/raw-ingredients', async (req, res) => {
     try {
         const list = Array.isArray(req.body) ? req.body : (req.body.items || []);
         await setSystemMemoryKey('rawIngredients', list);
+        res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 📢 PROMOTIONS & ADS CLOUD SYNC (SHARED ACROSS ALL DEVICES) */
+app.get('/api/memory/promos', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('activePromos', [], req);
+        res.json(Array.isArray(data) ? data : []);
+    } catch (err) { res.json([]); }
+});
+
+app.post('/api/memory/promos', async (req, res) => {
+    try {
+        const list = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.promos) ? req.body.promos : []);
+        await setSystemMemoryKey('activePromos', list, req);
         res.json({ success: true, count: list.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
