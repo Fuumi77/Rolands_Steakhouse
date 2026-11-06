@@ -323,6 +323,17 @@
         }).catch(e => console.error("MySQL Sync Error:", e));
     }
 
+function normalizeOperatorName(op) {
+        const s = String(op || 'System').trim();
+        if (/^(admin staff|admin|staff|kitchen staff|staff\/manager|admin walk-in)$/i.test(s)) {
+            return 'Staff';
+        }
+        if (/^(super admin|manager)$/i.test(s)) {
+            return 'Manager';
+        }
+        return s;
+    }
+
     function logStockMovement(entry) {
         try {
             if (!entry || typeof entry !== 'object') return null;
@@ -346,7 +357,7 @@
                 changeQty: Number(entry.changeQty) || 0,
                 newStock: finalNewStock,
                 unit: entry.unit || (matchedIng ? matchedIng.unit : ''),
-                operator: entry.operator || 'System',
+                operator: normalizeOperatorName(entry.operator),
                 notes: entry.notes || '',
                 financialValue: Number(entry.financialValue) || 0
             };
@@ -1881,34 +1892,156 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         `;
     }
 
+window.__auditDateFilter = window.__auditDateFilter || 'all';
+    window.__auditActionFilter = window.__auditActionFilter || 'ALL';
+    window.__auditCustomStart = window.__auditCustomStart || '';
+    window.__auditCustomEnd = window.__auditCustomEnd || '';
+
+    window.setAuditLogDateFilter = function (df) {
+        window.__auditDateFilter = df;
+        window.rerenderAllAuditLogContainers();
+    };
+
+    window.applyAuditCustomDate = function (prefix) {
+        const sEl = document.getElementById(prefix + '-audit-start');
+        const eEl = document.getElementById(prefix + '-audit-end');
+        if (!sEl || !eEl || !sEl.value || !eEl.value) {
+            alert('Please select both start and end dates.');
+            return;
+        }
+        window.__auditCustomStart = sEl.value;
+        window.__auditCustomEnd = eEl.value;
+        window.__auditDateFilter = 'custom';
+        window.rerenderAllAuditLogContainers();
+    };
+
+    window.setAuditLogActionFilter = function (af) {
+        window.__auditActionFilter = af;
+        window.rerenderAllAuditLogContainers();
+    };
+
+    window.rerenderAllAuditLogContainers = function () {
+        const saEl = document.getElementById('superadmin-audit-container');
+        if (saEl && !saEl.classList.contains('hidden')) renderAuditLogUI(saEl, 'Manager');
+        const adEl = document.getElementById('admin-audit-container');
+        if (adEl && !adEl.classList.contains('hidden')) renderAuditLogUI(adEl, 'Admin');
+    };
+
     function renderAuditLogUI(containerEl, role = 'Super Admin') {
         if (!containerEl) return;
-        const logs = getAuditLogs().filter(l => {
-    if (l.action !== 'ORDER_REFUND') return true;
-    const qty = Number(l.changeQty) || 0;
-    const unit = String(l.unit || '').toUpperCase();
-    return Math.abs(qty) > 0 && unit !== 'PHP'; // drop cash-only refund rows
-});
+        const prefix = (role === 'Super Admin' || role === 'Manager') ? 'sa' : 'ad';
+        const dateFilter = window.__auditDateFilter || 'all';
+        const actionFilter = window.__auditActionFilter || 'ALL';
 
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+        weekAgo.setHours(0, 0, 0, 0);
+
+        const logs = getAuditLogs().filter(l => {
+            if (!l) return false;
+            if (l.action === 'ORDER_REFUND') {
+                const qty = Number(l.changeQty) || 0;
+                const unit = String(l.unit || '').toUpperCase();
+                if (Math.abs(qty) <= 0 || unit === 'PHP') return false;
+            }
+
+            // 1. Action Type Filter
+            if (actionFilter !== 'ALL' && l.action !== actionFilter) return false;
+
+            // 2. Date Filter
+            if (dateFilter !== 'all') {
+                const logDate = new Date(l.timestamp);
+                if (isNaN(logDate.getTime())) return false;
+
+                if (dateFilter === 'day') {
+                    if (logDate < todayStart) return false;
+                } else if (dateFilter === 'week') {
+                    if (logDate < weekAgo || logDate > now) return false;
+                } else if (dateFilter === 'month') {
+                    if (logDate.getFullYear() !== now.getFullYear() || logDate.getMonth() !== now.getMonth()) return false;
+                } else if (dateFilter === 'year') {
+                    if (logDate.getFullYear() !== now.getFullYear()) return false;
+                } else if (dateFilter === 'custom' && window.__auditCustomStart && window.__auditCustomEnd) {
+                    const startD = new Date(window.__auditCustomStart + 'T00:00:00');
+                    const endD = new Date(window.__auditCustomEnd + 'T23:59:59.999');
+                    if (logDate < startD || logDate > endD) return false;
+                }
+            }
+            return true;
+        });
 
         const svgAudit = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
         const svgDownload = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
 
+        const dateBtns = [
+            { id: 'all', label: 'All Time' },
+            { id: 'day', label: 'Today' },
+            { id: 'week', label: 'This Week' },
+            { id: 'month', label: 'This Month' },
+            { id: 'year', label: 'This Year' },
+            { id: 'custom', label: 'Custom Date' }
+        ];
+
+        const actionOptions = [
+            { id: 'ALL', label: 'All Action Types' },
+            { id: 'RESTOCK', label: '🟢 RESTOCK' },
+            { id: 'ORDER_DEDUCTION', label: '🍽️ ORDER_DEDUCTION' },
+            { id: 'ADJUSTMENT', label: '⚖️ ADJUSTMENT' },
+            { id: 'WASTAGE_SPOILAGE', label: '🗑️ WASTAGE_SPOILAGE' },
+            { id: 'ORDER_REFUND', label: '↩️ ORDER_REFUND' },
+            { id: 'RECIPE_UPDATE', label: '📋 RECIPE_UPDATE' }
+        ];
+
         containerEl.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
                 <div>
                     <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:18px; display:flex; align-items:center;">${svgAudit} Stock Movement Audit Trail</h3>
-                    <span style="font-size:12px; color:#64748b;">Complete append-only audit trail recording restocks, order deductions, refunds, and adjustments</span>
+                    <span style="font-size:12px; color:#64748b;">Complete append-only audit trail recording restocks, order deductions, refunds, and adjustments (${logs.length} records shown)</span>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <button onclick="exportAuditLogsCsv()" style="background:#16a34a; color:white; border:none; padding:9px 16px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.2); display:inline-flex; align-items:center; gap:6px;">
+                    <button type="button" onclick="exportAuditLogsCsv()" style="background:#16a34a; color:white; border:none; padding:9px 16px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.2); display:inline-flex; align-items:center; gap:6px;">
                         ${svgDownload} Export CSV Report
                     </button>
-                    ${role === 'Super Admin' ? `
-                        <button onclick="if(confirm('Clear all audit logs? This cannot be undone.')) { window.InventorySystem.clearAuditLogs(); window.InventorySystem.renderAuditLogUI(document.getElementById('superadmin-audit-container'), 'Super Admin'); }" style="background:#cbd5e1; color:#334155; border:none; padding:9px 14px; border-radius:8px; font-weight:bold; cursor:pointer;">
+                    ${(role === 'Super Admin' || role === 'Manager') ? `
+                        <button type="button" onclick="if(confirm('Clear all audit logs? This cannot be undone.')) { window.InventorySystem.clearAuditLogs(); window.rerenderAllAuditLogContainers(); }" style="background:#cbd5e1; color:#334155; border:none; padding:9px 14px; border-radius:8px; font-weight:bold; cursor:pointer;">
                             Clear Logs
                         </button>
                     ` : ''}
+                </div>
+            </div>
+
+            <!-- FILTER TOOLBAR: DATE (TODAY -> YEAR + CUSTOM) & ACTION TYPE -->
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <!-- Date Filter Pills -->
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-right:4px;">📅 Date:</span>
+                        ${dateBtns.map(b => {
+                            const active = dateFilter === b.id;
+                            return `<button type="button" onclick="window.setAuditLogDateFilter('${b.id}')" style="padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; transition:0.15s;">
+                                ${b.label}
+                            </button>`;
+                        }).join('')}
+                    </div>
+
+                    <!-- Action Type Filter -->
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase;">⚡ Action Type:</span>
+                        <select onchange="window.setAuditLogActionFilter(this.value)" style="padding:7px 12px; border-radius:8px; border:1.5px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:12.5px; font-weight:700; cursor:pointer; outline:none;">
+                            ${actionOptions.map(a => `<option value="${a.id}" ${actionFilter === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Date Range Inputs -->
+                <div style="display:${dateFilter === 'custom' ? 'flex' : 'none'}; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed #e2e8f0;">
+                    <span style="font-size:12px; font-weight:700; color:#475569;">From:</span>
+                    <input type="date" id="${prefix}-audit-start" value="${window.__auditCustomStart}" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                    <span style="font-size:12px; font-weight:700; color:#475569;">To:</span>
+                    <input type="date" id="${prefix}-audit-end" value="${window.__auditCustomEnd}" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                    <button type="button" onclick="window.applyAuditCustomDate('${prefix}')" style="background:#16a34a; color:white; border:none; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">Apply Range</button>
                 </div>
             </div>
 
@@ -1929,7 +2062,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                         ${logs.length === 0 ? `
                             <tr>
                                 <td colspan="7" style="padding:30px; text-align:center; color:#94a3b8; font-style:italic;">
-                                    No stock movement audit records logged yet.
+                                    No stock movement audit records match the selected filters.
                                 </td>
                             </tr>
                         ` : logs.map(l => {
@@ -1938,6 +2071,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                             const isSubtract = l.changeQty < 0;
                             const actionBg = l.action === 'RESTOCK' ? '#f0fdf4' : (l.action === 'ORDER_REFUND' ? '#eff6ff' : (l.action === 'WASTAGE_SPOILAGE' ? '#fef2f2' : '#f8fafc'));
                             const actionColor = l.action === 'RESTOCK' ? '#166534' : (l.action === 'ORDER_REFUND' ? '#1e40af' : (l.action === 'WASTAGE_SPOILAGE' ? '#991b1b' : '#334155'));
+                            const cleanOperator = normalizeOperatorName(l.operator);
 
                             return `
                                 <tr style="border-bottom:1px solid #f1f5f9;">
@@ -1954,7 +2088,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                     <td style="padding:10px 12px; font-weight:600; color:#334155;">
                                         ${l.newStock !== null ? l.newStock + ' ' + l.unit : '—'}
                                     </td>
-                                    <td style="padding:10px 12px; color:#475569; font-weight:600;">${l.operator || 'System'}</td>
+                                    <td style="padding:10px 12px; color:#475569; font-weight:700;">${cleanOperator}</td>
                                     <td style="padding:10px 12px; color:#64748b; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.notes}">
                                         ${l.notes || '—'}
                                     </td>
