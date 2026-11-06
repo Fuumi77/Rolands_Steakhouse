@@ -2117,8 +2117,8 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
 
     function autoResetPastTablesAndReservations() {
         try {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const nowMs = Date.now();
+            const THREE_HOURS_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
 
             let overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
             let history = [];
@@ -2129,49 +2129,52 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             let mutatedOverrides = false;
             let mutatedHistory = false;
 
-            // 1. Auto-complete ONLY genuine past reservations (arrival date before today)
+            // 1. Auto-complete reservations/POS orders ONLY when 3 full hours have passed since reserved/seated time!
             history.forEach(r => {
-                const resDate = parseReservationDateTime(r.arrivalDate, r.arrivalTime);
-                if (resDate) {
-                    if (r.autoExpired && resDate >= todayStart) {
-                        // Restore future reservation that was falsely auto-expired by raw string comparison
+                if (!r) return;
+                const resDate = parseReservationDateTime(r.arrivalDate, r.arrivalTime || '12:00');
+                const seatedMs = r.seatedAt ? new Date(r.seatedAt).getTime() : 0;
+                const createdMs = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+                const anchorMs = Math.max(resDate ? resDate.getTime() : 0, seatedMs, createdMs);
+
+                if (anchorMs > 0) {
+                    const elapsedMs = nowMs - anchorMs;
+                    if (r.autoExpired && elapsedMs < THREE_HOURS_MS) {
+                        // Restore reservation that was prematurely auto-completed before 3 hours
                         delete r.completedAt;
                         delete r.autoExpired;
-                        if (r.approvalStatus === 'completed') r.approvalStatus = 'approved';
+                        if (r.approvalStatus === 'completed') r.approvalStatus = 'seated';
                         mutatedHistory = true;
-                    } else if (!r.completedAt && resDate < todayStart) {
-                        // Genuine past reservation (yesterday or older)
+                    } else if (!r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' && elapsedMs >= THREE_HOURS_MS) {
+                        // 3 hours have passed since reservation/seated time -> Auto-complete!
                         r.completedAt = new Date().toISOString();
-                        r.approvalStatus = 'completed'; // 👉 Force local UI to hide it
+                        r.approvalStatus = 'completed';
+                        r.kdsStatus = 'served';
                         r.autoExpired = true;
                         mutatedHistory = true;
 
-                        // 👉 FIX: Tell MySQL to permanently close this ghost reservation!
-                        fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
+                        fetch('https://rolands-steakhouse-hz8o.onrender.com/api/reservations/update-status', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
-                        }).catch(e => console.warn(e));
+                        }).catch(() => {});
                     }
                 }
             });
 
-            // 2. Clear table overrides for tables with past reservations or stale overrides
+            // 2. Release table overrides ONLY if all bookings on that table are completed (>3 hours old)
             const activeTableBookings = new Set(
                 history.filter(r => {
-                    if (r.completedAt) return false;
-                    const d = parseReservationDateTime(r.arrivalDate, r.arrivalTime);
-                    return d && d >= todayStart && r.bookedTable;
+                    if (!r || r.completedAt || r.approvalStatus === 'completed' || r.approvalStatus === 'rejected' || r.approvalStatus === 'cancelled') return false;
+                    return Boolean(r.bookedTable);
                 }).map(r => r.bookedTable)
             );
 
             for (const [tId, status] of Object.entries(overrides)) {
-                const hasPastBooking = history.some(r => {
-                    const d = parseReservationDateTime(r.arrivalDate, r.arrivalTime);
-                    return d && d < todayStart && r.bookedTable === tId;
-                });
-                if (hasPastBooking && !activeTableBookings.has(tId)) {
-                    delete overrides[tId];
+                if (status === 'unavailable' || status === 'cleaning') continue;
+                const hadExpiredBooking = history.some(r => r && r.bookedTable === tId && r.autoExpired);
+                if (hadExpiredBooking && !activeTableBookings.has(tId)) {
+                    overrides[tId] = 'available';
                     mutatedOverrides = true;
                 }
             }
@@ -2183,6 +2186,11 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
 
             if (mutatedOverrides) {
                 localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                fetch('https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(overrides)
+                }).catch(() => {});
                 try { window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides })); } catch (e) {}
             }
         } catch (e) {
@@ -2630,11 +2638,10 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         return BRANCHES.find(b => b.name === target) || BRANCHES[0];
     };
 
-// Automatically heal bloated non-incognito localStorage on load
-    function healFullLocalStorage() {
+function healFullLocalStorage() {
         try {
-            // Remove any legacy duplicate branch image caches
-            ['Koronadal City__inventoryItems', 'Koronadal City__floorPlanConfig'].forEach(k => rawRem(k));
+            // Never delete Koronadal City__floorPlanConfig so each branch keeps its own tables!
+            ['Koronadal City__inventoryItems'].forEach(k => rawRem(k));
             const histRaw = rawGet('reservationHistory');
             if (histRaw && histRaw.length > 250000) {
                 const list = JSON.parse(histRaw);
@@ -2849,8 +2856,8 @@ window.setPosBranchPin = async function (branchName, newPin) {
             const scopedKey = resolveScopedKey(key);
             let val = rawGet(scopedKey);
 
-            // Return Gensan fallback without duplicating 3MB of base64 images in localStorage!
-            if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients', 'floorPlanConfig'].includes(key)) {
+            // NEVER fallback floorPlanConfig or liveChats to Gensan — each branch has its own independent Floor Plan & Live Chat!
+            if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients'].includes(key)) {
                 return rawGet(key);
             }
             return val;
@@ -3002,7 +3009,55 @@ window.setPosBranchPin = async function (branchName, newPin) {
         }
     };
 
+    // Sync branch-specific Floor Plan Config & Table Overrides from Cloud on every page (including seat-selection.html!)
+    window.syncBranchFloorPlanFromCloud = async function () {
+        try {
+            const branch = window.getEffectiveBranch();
+            const [cfgRes, ovrRes] = await Promise.all([
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
+            ]);
+            let changed = false;
+            if (cfgRes.ok) {
+                const cloudCfg = await cfgRes.json();
+                if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
+                    const prev = localStorage.getItem('floorPlanConfig');
+                    const next = JSON.stringify(cloudCfg);
+                    if (prev !== next) {
+                        localStorage.setItem('floorPlanConfig', next);
+                        changed = true;
+                    }
+                }
+            }
+            if (ovrRes.ok) {
+                const cloudOvr = await ovrRes.json();
+                if (cloudOvr && typeof cloudOvr === 'object') {
+                    const prevOvr = localStorage.getItem('tableOverrides');
+                    const nextOvr = JSON.stringify(cloudOvr);
+                    if (prevOvr !== nextOvr) {
+                        localStorage.setItem('tableOverrides', nextOvr);
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
+                if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
+                if (typeof window.renderTables === 'function') window.renderTables();
+                window.dispatchEvent(new Event('storage'));
+            }
+        } catch (e) {}
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
+        const currentBranch = window.getCurrentBranch();
+        const effectiveInfo = window.getBranchInfo();
+
+        window.syncBranchFloorPlanFromCloud();
+
+        if (!isAdminPage && !isSuperAdminPage) {
+            window.applyCustomerBranchUI();
+        }
         const currentBranch = window.getCurrentBranch();
         const effectiveInfo = window.getBranchInfo();
 
