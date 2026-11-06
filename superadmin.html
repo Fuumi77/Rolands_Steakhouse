@@ -3768,15 +3768,20 @@ if (window.activeSuperAdminInvSubTab) {
                 if (invTab && !invTab.classList.contains('hidden')) refreshActiveSuperAdminInvTab();
             });
 
-            window.superAdminRawFilter = 'all';
+window.superAdminRawFilter = 'all';
             window.superAdminRawSearch = '';
 
             window.setSuperAdminRawFilter = function (filterVal) {
                 window.superAdminRawFilter = filterVal;
-                renderSuperAdminRawIngredients();
+                renderSuperAdminRawIngredients(false);
             };
 
-            function renderSuperAdminRawIngredients() {
+            window.handleSuperAdminRawSearch = function (val) {
+                window.superAdminRawSearch = val || '';
+                renderSuperAdminRawIngredients(true);
+            };
+
+            function renderSuperAdminRawIngredients(keepSearchFocus = false) {
                 const container = document.getElementById('superadmin-raw-ingredients-container');
                 if (!container) return;
 
@@ -3800,6 +3805,19 @@ if (window.activeSuperAdminInvSubTab) {
                     );
                 }
 
+                const rawCatFilters = [
+                    { id: 'all', label: 'All' },
+                    { id: 'Meat', label: '🥩 Meat' },
+                    { id: 'Poultry', label: '🍗 Poultry' },
+                    { id: 'Seafood', label: '🐟 Seafood' },
+                    { id: 'Produce', label: '🥬 Produce' },
+                    { id: 'Dairy', label: '🧈 Dairy' },
+                    { id: 'Sauces & Liquids', label: '🍶 Sauces & Liquids' },
+                    { id: 'Bakery', label: '🍞 Bakery' },
+                    { id: 'Grains', label: '🌾 Grains' },
+                    { id: 'Beverages', label: '🍹 Beverages' }
+                ];
+
                 container.innerHTML = `
                     ${healthBannerHtml}
 
@@ -3813,19 +3831,22 @@ if (window.activeSuperAdminInvSubTab) {
                         </button>
                     </div>
 
-                    <!-- Filter Chips & Search Bar Row -->
+                    <!-- Filter Chips (Categories First, Stock Dangers Last) & Search Bar Row -->
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; background:white; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0;">
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter:</span>
-                            <button onclick="setSuperAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='all'?'#1b5e20':'white'}; color:${window.superAdminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
-                            <button onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.superAdminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">Low Stock</button>
-                            <button onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.superAdminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">Out of Stock</button>
-                            <button onclick="setSuperAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Meat</button>
-                            <button onclick="setSuperAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.superAdminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.superAdminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">Beverages</button>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:2; min-width:280px;">
+                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:2px;">Filter:</span>
+                            ${rawCatFilters.map(f => {
+                                const active = window.superAdminRawFilter === f.id;
+                                return `<button type="button" onclick="setSuperAdminRawFilter('${f.id}')" style="padding:6px 12px; border-radius:20px; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">${f.label}</button>`;
+                            }).join('')}
+                            <span style="color:#cbd5e1; margin:0 2px;">|</span>
+                            <button type="button" onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.superAdminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock</button>
+                            <button type="button" onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.superAdminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock</button>
                         </div>
-                        <div style="flex:1; min-width:240px; max-width:340px;">
-                            <input type="text" id="super-raw-search-input" value="${window.superAdminRawSearch || ''}" oninput="window.superAdminRawSearch = this.value; renderSuperAdminRawIngredients();" placeholder="🔍 Search ingredients by name..." 
-                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                        <div style="position:relative; flex:1; min-width:240px; max-width:340px;">
+                            <input type="text" id="super-raw-search-input" value="${(window.superAdminRawSearch || '').replace(/"/g, '&quot;')}" oninput="window.handleSuperAdminRawSearch(this.value)" placeholder="🔍 Search ingredients by name..." 
+                                style="width:100%; padding:9px 32px 9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                            ${window.superAdminRawSearch ? `<span onclick="window.handleSuperAdminRawSearch('')" title="Clear search" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:14px; line-height:1; user-select:none;">✕</span>` : ''}
                         </div>
                     </div>
 
@@ -3842,7 +3863,9 @@ if (window.activeSuperAdminInvSubTab) {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${rawList.map(ing => {
+                                ${rawList.length === 0 ? `
+                                    <tr><td colspan="6" style="padding:28px; text-align:center; color:#94a3b8; font-style:italic;">No raw ingredients match your filter or search.</td></tr>
+                                ` : rawList.map(ing => {
                                     const isCritical = ing.stock <= 0;
                                     const isLow = ing.stock > 0 && ing.stock <= (ing.minThreshold || 100);
                                     const statusColor = isCritical ? '#ef4444' : (isLow ? '#f59e0b' : '#16a34a');
@@ -3892,6 +3915,15 @@ if (window.activeSuperAdminInvSubTab) {
                         </table>
                     </div>
                 `;
+
+                if (keepSearchFocus) {
+                    const inp = document.getElementById('super-raw-search-input');
+                    if (inp) {
+                        inp.focus();
+                        const len = inp.value.length;
+                        inp.setSelectionRange(len, len);
+                    }
+                }
             }
 
             window.activeSuperRecipeFilterCat = 'All';
@@ -3899,12 +3931,12 @@ if (window.activeSuperAdminInvSubTab) {
 
             window.filterSuperRecipeCategory = function(cat) {
                 window.activeSuperRecipeFilterCat = cat;
-                renderSuperAdminRecipeBuilder();
+                renderSuperAdminRecipeBuilder(false);
             };
 
             window.filterSuperRecipeSearch = function(query) {
-                window.superRecipeSearchQuery = (query || '').toLowerCase().trim();
-                renderSuperAdminRecipeBuilder();
+                window.superRecipeSearchQuery = (query || '');
+                renderSuperAdminRecipeBuilder(true);
             };
 
             window.applyOfficialMasterRecipesWithToast = function() {
@@ -3919,15 +3951,14 @@ if (window.activeSuperAdminInvSubTab) {
             window.resetSingleRecipeToDefault = function(menuId) {
                 if (!window.InventorySystem || !window.InventorySystem.DEFAULT_FOOD_RECIPES[menuId]) return;
                 const def = window.InventorySystem.DEFAULT_FOOD_RECIPES[menuId];
-                window.InventorySystem.saveItemRecipe(menuId, JSON.parse(JSON.stringify(def)), 'Super Admin');
+                window.InventorySystem.saveItemRecipe(menuId, JSON.parse(JSON.stringify(def)), 'Manager');
                 renderSuperAdminRecipeBuilder();
             };
 
-            function renderSuperAdminRecipeBuilder() {
+            function renderSuperAdminRecipeBuilder(keepSearchFocus = false) {
                 const container = document.getElementById('superadmin-recipes-container');
                 if (!container) return;
 
-                // Make sure master recipes are synced
                 if (window.InventorySystem && typeof window.InventorySystem.syncMasterRecipes === 'function') {
                     window.InventorySystem.syncMasterRecipes(false);
                 }
@@ -3935,7 +3966,8 @@ if (window.activeSuperAdminInvSubTab) {
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
                 const currentCat = window.activeSuperRecipeFilterCat || 'All';
-                const searchQ = window.superRecipeSearchQuery || '';
+                const rawSearchVal = window.superRecipeSearchQuery || '';
+                const searchQ = rawSearchVal.toLowerCase().trim();
 
                 const categories = [
                     { id: 'All', label: 'All Items' },
@@ -3993,8 +4025,8 @@ if (window.activeSuperAdminInvSubTab) {
                     <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                             <div style="position:relative; flex:1; min-width:260px;">
-                                <input type="text" id="super-recipe-search-box" value="${searchQ}" oninput="filterSuperRecipeSearch(this.value)" placeholder="🔍 Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;">
-                                ${searchQ ? `<button onclick="filterSuperRecipeSearch('')" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; color:#94a3b8; font-weight:bold;">✕</button>` : ''}
+                                <input type="text" id="super-recipe-search-box" value="${rawSearchVal.replace(/"/g, '&quot;')}" oninput="filterSuperRecipeSearch(this.value)" placeholder="🔍 Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 34px 10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box; outline:none;">
+                                ${rawSearchVal ? `<span onclick="filterSuperRecipeSearch('')" title="Clear search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>` : ''}
                             </div>
                             <div style="font-size:12px; background:#f0fdf4; border:1px solid #bbf7d0; padding:6px 14px; border-radius:20px; color:#166534; font-weight:700;">
                                 Showing ${filteredItems.length} of ${items.length} Menu Items
@@ -4124,6 +4156,15 @@ if (window.activeSuperAdminInvSubTab) {
                         }).join('')}
                     </div>
                 `;
+            }
+            if (keepSearchFocus) {
+                    const rInput = document.getElementById('super-recipe-search-box');
+                    if (rInput) {
+                        rInput.focus();
+                        const len = rInput.value.length;
+                        rInput.setSelectionRange(len, len);
+                    }
+                }
             }
 
             let currentInvCat = 'All';
