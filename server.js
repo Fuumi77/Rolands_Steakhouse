@@ -36,12 +36,6 @@ app.use((req, res, next) => {
     global.__activeReqBranch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
     next();
 });
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    global.__activeReqBranch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
-    next();
-});
 
 const pool = global.__rolandsMysqlPool || (global.__rolandsMysqlPool = mysql.createPool({
     host: process.env.DB_HOST,
