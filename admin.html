@@ -2571,25 +2571,44 @@ if (resKeyForBtn) {
                     if (result && result.success) {
                         if (email) {
                             try {
+                                const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}`;
+                                const qrPayload = `ROLANDS-REFUND|RES:${resNum}|AMT:PHP${amt.toFixed(2)}|METHOD:${method.toUpperCase()}|REF:${ref || 'N/A'}|URL:${receiptUrl}`;
+                                const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrPayload)}`;
+                                const activeBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+
                                 await fetch(`${API_BASE_URL}/api/send-receipt`, { 
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                         email: email,
-                                        subject: `Refund Processed - Roland's Steakhouse (#${resNum})`,
+                                        subject: `💸 Official Refund Confirmation & QR Receipt (#${resNum}) - Roland's Steakhouse`,
                                         html: `
-                                            <div style="font-family: Arial, sans-serif; color: #333;">
-                                                <h2 style="color: #1b5e20;">Refund Processed</h2>
-                                                <p>Hi,</p>
-                                                <p>Your refund for reservation <strong>#${resNum}</strong> has been successfully processed.</p>
-                                                <ul style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-                                                    <li><strong>Amount Refunded:</strong> ₱${amt.toLocaleString()}</li>
-                                                    <li><strong>Method:</strong> ${method}</li>
-                                                    <li><strong>Reference No:</strong> ${ref || 'N/A'}</li>
-                                                    <li><strong>Reason:</strong> ${reason}</li>
-                                                </ul>
-                                                <p>Please allow standard processing time for the funds to reflect in your account.</p>
-                                                <p>Thank you,<br><strong>Roland's Steakhouse</strong></p>
+                                            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
+                                                <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 22px; text-align: center;">
+                                                    <h2 style="margin: 0; font-size: 22px;">💸 Refund Processed</h2>
+                                                    <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Roland's Steakhouse — ${activeBranchName}</p>
+                                                </div>
+                                                <div style="padding: 22px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+                                                    <p>Hi <strong>${result.reservation?.customerName || 'Valued Guest'}</strong>,</p>
+                                                    <p>Your refund for reservation <strong>#${resNum}</strong> has been officially processed. Below are your complete refund details:</p>
+                                                    <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; margin: 16px 0;">
+                                                        <div style="margin-bottom: 6px;"><strong>🔖 Reservation #:</strong> ${resNum}</div>
+                                                        <div style="margin-bottom: 6px;"><strong>📍 Branch:</strong> ${activeBranchName}</div>
+                                                        <div style="margin-bottom: 6px;"><strong>💳 Refund Method:</strong> ${method.toUpperCase()}</div>
+                                                        <div style="margin-bottom: 6px;"><strong>🏦 Reference / Txn #:</strong> ${ref || 'N/A'}</div>
+                                                        <div style="margin-bottom: 6px;"><strong>📝 Refund Reason:</strong> ${reason}</div>
+                                                        <div style="margin-bottom: 6px;"><strong>🕒 Processed At:</strong> ${new Date().toLocaleString()}</div>
+                                                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 17px; color: #2563eb; font-weight: 800;">
+                                                            Total Refunded: ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </div>
+                                                    </div>
+                                                    <div style="text-align: center; margin: 20px 0; background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; padding: 16px;">
+                                                        <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Official Refund Verification QR</div>
+                                                        <img src="${qrImgUrl}" alt="Refund QR Code" width="160" height="160" style="border: 1px solid #bfdbfe; border-radius: 10px; padding: 6px; background: #ffffff; display: inline-block;" />
+                                                        <div style="font-size: 11.5px; color: #475569; margin-top: 8px;">Scan this QR code to verify refund details or <a href="${receiptUrl}" style="color: #2563eb; font-weight: bold;">view digital receipt</a>.</div>
+                                                    </div>
+                                                    <p style="font-size: 12px; color: #64748b; text-align: center;">Thank you for choosing <strong>Roland's Steakhouse</strong>.</p>
+                                                </div>
                                             </div>
                                         `
                                     })
@@ -3024,32 +3043,36 @@ window.rejectReservation = async function (resNum) {
                 renderFloorEditorProps();
             }
 
-            function renderFloorEditorCanvas() {
+function renderFloorEditorCanvas() {
                 const canvas = document.getElementById('floor-editor-canvas');
                 if (!canvas) return;
 
                 canvas.innerHTML = '';
                 canvas.classList.add('floor-editor-grid');
                 canvas.classList.remove('floor-editor-canvas');
-                canvas.style.gridAutoRows = 'minmax(68px, max-content)';
-                canvas.style.alignContent = 'start';
+                // Make the table list smoothly scrollable with roomy, readable cards!
+                canvas.style.cssText = 'flex:1; max-height:56vh; overflow-y:auto; padding:12px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; display:grid; grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:10px; align-content:start; -webkit-overflow-scrolling:touch;';
 
                 const makeNode = (t) => {
                     const node = document.createElement('div');
-                    node.className = 'floor-editor-tile';
-                    if (t.id === floorEditorSelectedId) node.classList.add('selected');
+                    const isSelected = t.id === floorEditorSelectedId;
+                    node.className = 'floor-editor-tile' + (isSelected ? ' selected' : '');
                     node.setAttribute('data-table-id', t.id);
                     node.setAttribute('draggable', 'true');
+                    node.style.cssText = `min-height:66px; padding:10px 12px; border-radius:12px; border:2px solid ${isSelected ? '#16a34a' : '#e2e8f0'}; background:${isSelected ? '#f0fdf4' : '#ffffff'}; display:flex; align-items:center; gap:10px; cursor:pointer; box-sizing:border-box; transition:all 0.15s ease; box-shadow:0 2px 5px rgba(0,0,0,0.03);`;
 
-                    const seatLine = t.description ? `🪑 ${t.description}` : '';
-                    const bg = t.image ? `style="background-image:url('${String(t.image).replace(/'/g, "\\'")}')"` : '';
+                    const seatLine = t.description ? `🪑 ${t.description}` : 'Tap to edit';
+                    const thumbHtml = t.image
+                        ? `<div style="width:42px; height:42px; border-radius:8px; background-image:url('${String(t.image).replace(/'/g, "\\'")}'); background-size:cover; background-position:center; flex-shrink:0; border:1px solid #cbd5e1;"></div>`
+                        : `<div style="width:42px; height:42px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; border:1px solid #e2e8f0;">🪑</div>`;
+
                     node.innerHTML = `
-                        <div class="tile-img" ${bg}></div>
-                        <div class="tile-main">
-                            <div class="tile-title">${(t.name || t.id || '').toString()}</div>
-                            <div class="tile-sub">${seatLine}</div>
+                        ${thumbHtml}
+                        <div style="flex:1; min-width:0; overflow:hidden;">
+                            <div style="font-weight:800; font-size:13.5px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${(t.name || t.id || '').toString()}</div>
+                            <div style="font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${seatLine}</div>
                         </div>
-                        <div class="tile-badge">${t.isVip ? 'VIP' : ''}</div>
+                        ${t.isVip ? '<span style="font-size:9px; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px;">VIP</span>' : ''}
                     `;
 
                     node.addEventListener('click', () => selectFloorTable(t.id));
@@ -3083,93 +3106,62 @@ window.rejectReservation = async function (resNum) {
                 currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
             }
 
-            function renderFloorEditorProps() {
-                const sub = document.getElementById('floor-props-sub');
-                const body = document.getElementById('floor-props-body');
-                if (!body) return;
-
-                const t = getSelectedTable();
-                if (!t) {
-                    if (sub) sub.textContent = 'Select a table';
-                    body.innerHTML = `<div style="color:#94a3b8; font-weight:700; font-size:13px;">Click any table on the canvas.</div>`;
-                    return;
-                }
-
-                if (sub) sub.textContent = t.id;
-                const idx = currentFloorConfig.findIndex(x => x.id === t.id);
-                const imgPreview = t.image
-                    ? `<img src="${t.image}" onclick="window.openImagePreview('${String(t.image).replace(/'/g, "\\'")}')" title="Click to enlarge"
-                        style="width:100%; height:140px; object-fit:cover; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; cursor: zoom-in;">`
-                    : `<div style="width:100%; height:120px; border-radius:10px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-weight:900;">No image</div>`;
-
-                body.innerHTML = `
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <div>${imgPreview}</div>
-                        <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
-                            Name / ID
-                            <input id="fp-prop-name" type="text" value="${(t.name || t.id || '').toString().replace(/"/g, '&quot;')}"
-                                ${t.isVip ? 'readonly' : ''} 
-                                style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
-                        </label>
-                        <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
-                            Seats / Description
-                            <input id="fp-prop-desc" type="text" value="${(t.description || '').toString().replace(/"/g, '&quot;')}"
-                                placeholder="e.g. 4 Seats"
-                                style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
-                        </label>
-                        <label style="display:block; background:#e2e8f0; color:#334155; text-align:center; padding:10px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:900;">
-                            Upload picture
-                            <input type="file" style="display:none;" accept="image/*" onchange="window.handleTableImageUpload(event, ${idx})">
-                        </label>
-                        ${!t.isVip ? `<button type="button" onclick="window.removeTable(${idx})" style="background:#fee2e2; color:#ef4444; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:900;">Delete table</button>` : ''}
-                    </div>
-                `;
-
-                const nameEl = document.getElementById('fp-prop-name');
-                const descEl = document.getElementById('fp-prop-desc');
-
-                if (nameEl && !t.isVip) {
-                    nameEl.addEventListener('change', () => {
-                        const newName = (nameEl.value || '').toString().trim();
-                        if (!newName) {
-                            nameEl.value = t.name || t.id;
-                            return;
-                        }
-                        if (newName !== t.id) {
-                            // Track rename so we can migrate dependent data on save.
-                            t._renamedFrom = t._renamedFrom || t.id;
-                            t.id = newName;
-                            t.name = newName;
-                            floorEditorSelectedId = newName;
-                            renderFloorEditorCanvas();
-                            renderFloorEditorProps();
-                        }
-                    });
-                }
-                if (descEl) {
-                    descEl.addEventListener('change', () => {
-                        t.description = (descEl.value || '').toString();
-                        renderFloorEditorCanvas();
-                    });
-                }
-            }
-
             window.addNewTable = function () {
                 const count = currentFloorConfig.length + 1;
-                const id = `New Table ${count}`;
+                const id = `Table ${count}`;
                 currentFloorConfig.push({ id, name: id, image: '', description: '' });
                 floorEditorSelectedId = id;
                 renderFloorEditorCanvas();
                 renderFloorEditorProps();
+                const canvas = document.getElementById('floor-editor-canvas');
+                if (canvas) canvas.scrollTop = canvas.scrollHeight;
             };
 
-            window.removeTable = function (idx) {
-                if (confirm('Delete this table?')) {
-                    currentFloorConfig.splice(idx, 1);
-                    floorEditorSelectedId = currentFloorConfig[0]?.id || null;
-                    ensureFloorLayoutDefaults();
-                    renderFloorEditorCanvas();
-                    renderFloorEditorProps();
+            window.removeTable = async function (idx) {
+                const target = currentFloorConfig[idx];
+                if (!target) return;
+
+                let confirmed = false;
+                if (typeof window.superModal === 'function') {
+                    confirmed = await window.superModal({
+                        title: '🗑️ Delete Table?',
+                        message: `Are you sure you want to delete <b>${target.name || target.id}</b> from the floor plan?`,
+                        type: 'confirm',
+                        confirmText: 'Delete Table',
+                        cancelText: 'Cancel'
+                    });
+                } else {
+                    confirmed = confirm(`Delete ${target.name || target.id}?`);
+                }
+
+                if (!confirmed) return;
+
+                const removedId = target.id;
+                currentFloorConfig.splice(idx, 1);
+                floorEditorSelectedId = currentFloorConfig[0]?.id || null;
+
+                // Clean up any override on the deleted table
+                try {
+                    const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
+                    delete overrides[removedId];
+                    localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                } catch (e) {}
+
+                // Persist & sync immediately so the deletion takes effect right away!
+                localStorage.setItem('floorPlanConfig', JSON.stringify(currentFloorConfig));
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentFloorConfig)
+                }).catch(() => {});
+
+                renderFloorEditorCanvas();
+                renderFloorEditorProps();
+                renderFloorPlan();
+
+                if (window.showToast) {
+                    window.showToast(`Deleted ${target.name || removedId}`, 'info', 2500);
                 }
             };
 
@@ -4699,7 +4691,18 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 reader.readAsDataURL(file);
             };
 
-            window.addPromo = function () {
+            window.syncPromosToCloud = async function (promosList) {
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                try {
+                    await fetch(`${API_BASE_URL}/api/memory/promos?branch=${encodeURIComponent(activeBr)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(promosList)
+                    });
+                } catch (e) {}
+            };
+
+            window.addPromo = async function () {
                 const title = document.getElementById('promo-title').value.trim();
                 const desc = document.getElementById('promo-desc').value.trim();
 
@@ -4718,6 +4721,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 });
 
                 localStorage.setItem('activePromos', JSON.stringify(promos));
+                await window.syncPromosToCloud(promos);
 
                 // Clear form
                 document.getElementById('promo-title').value = '';
@@ -4727,7 +4731,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 window.promoBase64 = '';
                 document.getElementById('promo-upload-input').value = '';
 
-                showNotification('Your promotion is now live on the homepage!', 'success', 'Promo Published');
+                showNotification('Your promotion is now live & synced across all devices!', 'success', 'Promo Published');
                 renderPromosAdmin();
             };
 
@@ -4736,12 +4740,13 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     title: 'Delete Promotion? 🗑️',
                     message: 'Are you sure you want to remove this promotion?',
                     type: 'confirm'
-                }).then(confirmed => {
+                }).then(async confirmed => {
                     if (confirmed) {
                         let promos = safeJsonParse(localStorage.getItem('activePromos'), []);
                         promos = promos.filter(p => p.id !== id);
                         localStorage.setItem('activePromos', JSON.stringify(promos));
-                        showNotification('Promotion successfully removed.', 'success', 'Promo Deleted');
+                        await window.syncPromosToCloud(promos);
+                        showNotification('Promotion removed across all devices.', 'success', 'Promo Deleted');
                         renderPromosAdmin();
                     }
                 });
@@ -5151,6 +5156,12 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             };
 
             window.adminFoodSearchQuery = '';
+            window.adminFoodSelectedCat = 'All';
+
+            window.setAdminFoodCategory = function (catKey) {
+                window.adminFoodSelectedCat = catKey;
+                renderMenuManagement();
+            };
 
             function renderMenuManagement() {
                 const container = document.getElementById('admin-menu-grid');
@@ -5161,14 +5172,37 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
                 const searchQ = (window.adminFoodSearchQuery || '').toLowerCase().trim();
+                const selectedCat = window.adminFoodSelectedCat || 'All';
+
+                const catPills = [
+                    { key: 'All', label: 'All Categories' },
+                    { key: 'Beef', label: '🥩 Beef Steaks' },
+                    { key: 'T-Bone', label: '🥩 T-Bone' },
+                    { key: 'Sirloin Steak', label: '🥩 Sirloin' },
+                    { key: 'Chicken & Fish', label: '🍗 Chicken & Fish' },
+                    { key: 'Sandwich', label: '🍔 Sandwich' },
+                    { key: 'Side Orders', label: '🍟 Side Orders' },
+                    { key: 'Drinks', label: '🥤 Drinks' },
+                    { key: 'Wines', label: '🍷 Wines' }
+                ];
 
                 container.innerHTML = `
-                    <div style="margin-bottom:16px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <div style="font-weight:700; color:#334155; font-size:13px;">🔍 Filter Menu Dishes & Portions:</div>
-                        <div style="flex:1; max-width:320px;">
-                            <input type="text" id="admin-food-search-box" value="${window.adminFoodSearchQuery || ''}" oninput="window.adminFoodSearchQuery = this.value; renderMenuManagement();" 
-                                placeholder="Search dish name (e.g. Ribeye, Burger, Fries)..." 
-                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box; outline:none; background:white;">
+                    <div style="margin-bottom:16px; background:#ffffff; padding:14px; border-radius:12px; border:1px solid #e2e8f0; display:flex; flex-direction:column; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <div style="font-weight:800; color:#1b5e20; font-size:13.5px;">🍽️ Portion Availability — Category Quick Jump & Search</div>
+                            <div style="flex:1; min-width:240px; max-width:340px;">
+                                <input type="text" id="admin-food-search-box" value="${window.adminFoodSearchQuery || ''}" oninput="window.adminFoodSearchQuery = this.value; renderMenuManagement();" 
+                                    placeholder="🔍 Search dish name (e.g. Ribeye, Burger, Fries)..." 
+                                    style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            ${catPills.map(c => {
+                                const isActive = selectedCat === c.key;
+                                return `<button type="button" onclick="window.setAdminFoodCategory('${c.key}')" style="padding:7px 13px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid ${isActive ? '#1b5e20' : '#cbd5e1'}; background:${isActive ? '#1b5e20' : '#f8fafc'}; color:${isActive ? '#ffffff' : '#475569'}; transition:all 0.15s ease;">
+                                    ${c.label}
+                                </button>`;
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -5176,6 +5210,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const fragment = document.createDocumentFragment();
 
                 CATEGORIES.forEach(cat => {
+                    if (selectedCat !== 'All' && cat.key !== selectedCat) return;
                     const catItems = items.filter(i => {
                         const matchCat = i.category === cat.key;
                         const matchSearch = !searchQ || (i.title || i.name || '').toLowerCase().includes(searchQ);
@@ -5270,6 +5305,10 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
 
                 container.innerHTML = '';
                 container.appendChild(fragment);
+                if (document.activeElement && document.activeElement.id !== 'admin-food-search-box' && window.adminFoodSearchQuery) {
+                    const sb = document.getElementById('admin-food-search-box');
+                    if (sb) { sb.focus(); sb.setSelectionRange(sb.value.length, sb.value.length); }
+                }
             }
 
             // ── SMART OPERATIONAL HEALTH SUMMARY BANNER ──
