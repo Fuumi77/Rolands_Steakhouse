@@ -5276,6 +5276,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         </div>
                     </div>
                 `;
+                
+
 
                 const fragment = document.createDocumentFragment();
 
@@ -5512,7 +5514,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 }
             };
 
-            window.adminRawFilter = 'all';
+window.adminRawFilter = 'all';
             window.adminRawSearch = '';
 
             window.setAdminRawFilter = function (filterVal) {
@@ -5520,8 +5522,13 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 renderRawIngredientsContainer();
             };
 
-            // ── RAW INGREDIENTS CONTAINER RENDERER WITH LIVE SEARCH ──
-            function renderRawIngredientsContainer() {
+            window.handleAdminRawSearch = function (val) {
+                window.adminRawSearch = val || '';
+                renderRawIngredientsContainer(true);
+            };
+
+            // ── RAW INGREDIENTS CONTAINER RENDERER WITH CATEGORIES FIRST & LIVE SEARCH ──
+            function renderRawIngredientsContainer(keepSearchFocus = false) {
                 const container = document.getElementById('admin-raw-ingredients-container');
                 if (!container) return;
                 
@@ -5545,6 +5552,19 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     );
                 }
 
+                const rawCatFilters = [
+                    { id: 'all', label: 'All' },
+                    { id: 'Meat', label: '🥩 Meat' },
+                    { id: 'Poultry', label: '🍗 Poultry' },
+                    { id: 'Seafood', label: '🐟 Seafood' },
+                    { id: 'Produce', label: '🥬 Produce' },
+                    { id: 'Dairy', label: '🧈 Dairy' },
+                    { id: 'Sauces & Liquids', label: '🍶 Sauces & Liquids' },
+                    { id: 'Bakery', label: '🍞 Bakery' },
+                    { id: 'Grains', label: '🌾 Grains' },
+                    { id: 'Beverages', label: '🍹 Beverages' }
+                ];
+
                 container.innerHTML = `
                     ${healthBannerHtml}
 
@@ -5558,19 +5578,22 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         </button>
                     </div>
 
-                    <!-- Filter Chips & Search Bar Row -->
+                    <!-- Filter Chips (Categories First, Stock Dangers Last) & Search Bar Row -->
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; background:white; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0;">
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:4px;">Filter:</span>
-                            <button onclick="setAdminRawFilter('all')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='all'?'#1b5e20':'white'}; color:${window.adminRawFilter==='all'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">All</button>
-                            <button onclick="setAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.adminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.adminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock</button>
-                            <button onclick="setAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.adminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.adminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock</button>
-                            <button onclick="setAdminRawFilter('Meat')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Meat'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Meat'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🥩 Meat</button>
-                            <button onclick="setAdminRawFilter('Beverages')" style="padding:6px 12px; border-radius:20px; border:1px solid #cbd5e1; background:${window.adminRawFilter==='Beverages'?'#2e7d32':'#f8fafc'}; color:${window.adminRawFilter==='Beverages'?'white':'#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">🍹 Beverages</button>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:2; min-width:280px;">
+                            <span style="font-size:12px; font-weight:bold; color:#475569; margin-right:2px;">Filter:</span>
+                            ${rawCatFilters.map(f => {
+                                const active = window.adminRawFilter === f.id;
+                                return `<button type="button" onclick="setAdminRawFilter('${f.id}')" style="padding:6px 12px; border-radius:20px; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">${f.label}</button>`;
+                            }).join('')}
+                            <span style="color:#cbd5e1; margin:0 2px;">|</span>
+                            <button type="button" onclick="setAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.adminRawFilter==='low'?'#f59e0b':'#fffbeb'}; color:${window.adminRawFilter==='low'?'white':'#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock</button>
+                            <button type="button" onclick="setAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.adminRawFilter==='out'?'#ef4444':'#fef2f2'}; color:${window.adminRawFilter==='out'?'white':'#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock</button>
                         </div>
-                        <div style="flex:1; min-width:240px; max-width:340px;">
-                            <input type="text" id="admin-raw-search-input" value="${window.adminRawSearch || ''}" oninput="window.adminRawSearch = this.value; renderRawIngredientsContainer();" placeholder="🔍 Search raw ingredients..." 
-                                style="width:100%; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                        <div style="position:relative; flex:1; min-width:240px; max-width:340px;">
+                            <input type="text" id="admin-raw-search-input" value="${(window.adminRawSearch || '').replace(/"/g, '&quot;')}" oninput="window.handleAdminRawSearch(this.value)" placeholder="🔍 Search raw ingredients..." 
+                                style="width:100%; padding:9px 32px 9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
+                            ${window.adminRawSearch ? `<span onclick="window.handleAdminRawSearch('')" title="Clear search" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:14px; line-height:1; user-select:none;">✕</span>` : ''}
                         </div>
                     </div>
 
@@ -5587,13 +5610,14 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                 </tr>
                             </thead>
                             <tbody>
-                                ${rawList.map(ing => {
+                                ${rawList.length === 0 ? `
+                                    <tr><td colspan="6" style="padding:28px; text-align:center; color:#94a3b8; font-style:italic;">No raw ingredients match your filter or search.</td></tr>
+                                ` : rawList.map(ing => {
                                     const isCritical = ing.stock <= 0;
                                     const isLow = ing.stock > 0 && ing.stock <= (ing.minThreshold || 100);
                                     const statusColor = isCritical ? '#ef4444' : (isLow ? '#f59e0b' : '#16a34a');
                                     const statusText = isCritical ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'OK');
 
-                                    // Quick restock amounts depending on unit
                                     let pill1 = 1000, pill1Label = '+1 kg';
                                     let pill2 = 5000, pill2Label = '+5 kg';
                                     if (ing.unit === 'ml' || ing.unit === 'L') { pill1 = 1000; pill1Label = '+1 L'; pill2 = 5000; pill2Label = '+5 L'; }
@@ -5623,10 +5647,10 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                                     <button onclick="promptRestockRawIngredient('${ing.id}')" style="background:#cbd5e1; color:#334155; border:none; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         + Custom
                                                     </button>
-                                                    <button onclick="window.promptRemoveRawIngredientStock('${ing.id}', 'Admin Staff')" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                    <button onclick="window.promptRemoveRawIngredientStock('${ing.id}', 'Staff')" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         − Remove
                                                     </button>
-                                                    <button onclick="window.confirmDeleteRawIngredient('${ing.id}', 'Admin Staff')" title="Delete Ingredient" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                                    <button onclick="window.confirmDeleteRawIngredient('${ing.id}', 'Staff')" title="Delete Ingredient" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
                                                         🗑️
                                                     </button>
                                                 </div>
@@ -5638,6 +5662,15 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         </table>
                     </div>
                 `;
+
+                if (keepSearchFocus) {
+                    const inp = document.getElementById('admin-raw-search-input');
+                    if (inp) {
+                        inp.focus();
+                        const len = inp.value.length;
+                        inp.setSelectionRange(len, len);
+                    }
+                }
             }
 
             // ── RECIPE BUILDER CONTAINER RENDERER ──
@@ -5646,12 +5679,12 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
 
             window.filterRecipeCategory = function(cat) {
                 window.activeRecipeFilterCat = cat;
-                renderRecipeBuilderContainer();
+                renderRecipeBuilderContainer(false);
             };
 
             window.filterAdminRecipeSearch = function(query) {
-                window.adminRecipeSearchQuery = (query || '').toLowerCase().trim();
-                renderRecipeBuilderContainer();
+                window.adminRecipeSearchQuery = (query || '');
+                renderRecipeBuilderContainer(true);
             };
 
             window.applyOfficialMasterRecipesWithToast = function() {
@@ -5666,11 +5699,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             window.resetSingleRecipeToDefault = function(menuId) {
                 if (!window.InventorySystem || !window.InventorySystem.DEFAULT_FOOD_RECIPES[menuId]) return;
                 const def = window.InventorySystem.DEFAULT_FOOD_RECIPES[menuId];
-                window.InventorySystem.saveItemRecipe(menuId, JSON.parse(JSON.stringify(def)), 'Admin Staff');
+                window.InventorySystem.saveItemRecipe(menuId, JSON.parse(JSON.stringify(def)), 'Staff');
                 renderRecipeBuilderContainer();
             };
 
-            function renderRecipeBuilderContainer() {
+            function renderRecipeBuilderContainer(keepSearchFocus = false) {
                 const container = document.getElementById('admin-recipes-container');
                 if (!container) return;
 
@@ -5681,7 +5714,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
                 const currentCat = window.activeRecipeFilterCat || 'All';
-                const searchQ = window.adminRecipeSearchQuery || '';
+                const rawSearchVal = window.adminRecipeSearchQuery || '';
+                const searchQ = rawSearchVal.toLowerCase().trim();
 
                 const categories = [
                     { id: 'All', label: 'All Items' },
@@ -5736,8 +5770,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                             <div style="position:relative; flex:1; min-width:260px;">
-                                <input type="text" id="admin-recipe-search-box" value="${searchQ}" oninput="filterAdminRecipeSearch(this.value)" placeholder="🔍 Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;">
-                                ${searchQ ? `<button onclick="filterAdminRecipeSearch('')" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; color:#94a3b8; font-weight:bold;">✕</button>` : ''}
+                                <input type="text" id="admin-recipe-search-box" value="${rawSearchVal.replace(/"/g, '&quot;')}" oninput="filterAdminRecipeSearch(this.value)" placeholder="🔍 Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 34px 10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box; outline:none;">
+                                ${rawSearchVal ? `<span onclick="filterAdminRecipeSearch('')" title="Clear search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>` : ''}
                             </div>
                             <div style="font-size:12px; background:#f0fdf4; border:1px solid #bbf7d0; padding:6px 14px; border-radius:20px; color:#166534; font-weight:700;">
                                 Showing ${filteredItems.length} of ${items.length} Menu Items
@@ -5753,9 +5787,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                         ${cat.label}
                                     </button>
                                 `;
+                                
                             }).join('')}
                         </div>
                     </div>
+                    
                     
                     <!-- Recipe List Grid -->
                     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -5866,7 +5902,16 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                             `;
                         }).join('')}
                     </div>
-                `;
+                `;             
+            }
+            if (keepSearchFocus) {
+                    const rInput = document.getElementById('admin-recipe-search-box');
+                    if (rInput) {
+                        rInput.focus();
+                        const len = rInput.value.length;
+                        rInput.setSelectionRange(len, len);
+                    }
+                }
             }
 
             // ── RECIPE EDITOR MODAL CONTROLLERS ──
