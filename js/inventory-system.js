@@ -1809,7 +1809,6 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 row.style.display = (!query || name.includes(query) || cat.includes(query)) ? '' : 'none';
             });
         };
-        `;
     }
 
     function renderWastageLogUI(containerEl, role = 'Admin') {
@@ -2688,12 +2687,12 @@ const DEFAULT_POS_BRANCH_PINS = {
         return map[branchName] || DEFAULT_POS_BRANCH_PINS[branchName] || '1234';
     };
 
-    window.setPosBranchPin = async function (branchName, newPin) {
+window.setPosBranchPin = async function (branchName, newPin) {
         const map = window.getPosBranchPinMap();
         map[branchName] = String(newPin).trim();
         safeRawSet('posBranchSwitchPins', JSON.stringify(map));
         try {
-            await fetch('https://rolands-steakhouse.onrender.com/api/memory/pos-branch-pins', {
+            await fetch('https://rolands-steakhouse-hz8o.onrender.com/api/memory/pos-branch-pins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(map)
@@ -2705,7 +2704,7 @@ const DEFAULT_POS_BRANCH_PINS = {
     // Sync per-branch POS PINs from cloud on startup
     setTimeout(async () => {
         try {
-            const res = await fetch(`https://rolands-steakhouse.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
+            const res = await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
             if (res.ok) {
                 const cloudPins = await res.json();
                 if (cloudPins && typeof cloudPins === 'object' && Object.keys(cloudPins).length > 0) {
@@ -2920,18 +2919,23 @@ const DEFAULT_POS_BRANCH_PINS = {
         return rawRem(key);
     };
 
-// 3. Intercept fetch() so every API call sends & receives the active branch + remembers dbRes.branch!
+    // 3. Intercept fetch() so every API call sends & receives the active branch + remembers dbRes.branch!
     const origFetch = window.fetch.bind(window);
     window.__origFetch = origFetch;
 
-    // 👉 AUTO-REDIRECT OLD VERCEL URL TO YOUR NEW RENDER BACKEND!
+    // 👉 AUTO-REDIRECT OLD VERCEL & OLD RENDER URLS TO YOUR NEW RENDER BACKEND!
     const NEW_BACKEND_URL = 'https://rolands-steakhouse-hz8o.onrender.com';
 
     window.fetch = async function (input, init = {}) {
         let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
-        if (url && url.includes('rolands-steakhouse-vqtr.vercel.app')) {
-            url = url.replace('https://rolands-steakhouse-vqtr.vercel.app', NEW_BACKEND_URL);
-            input = url;
+        if (url) {
+            if (url.includes('rolands-steakhouse-vqtr.vercel.app')) {
+                url = url.replace('https://rolands-steakhouse-vqtr.vercel.app', NEW_BACKEND_URL);
+                input = url;
+            } else if (url.includes('https://rolands-steakhouse.onrender.com')) {
+                url = url.replace('https://rolands-steakhouse.onrender.com', NEW_BACKEND_URL);
+                input = url;
+            }
         }
         const activeBranch = window.getCurrentBranch();
         const effectiveBranch = window.getEffectiveBranch();
