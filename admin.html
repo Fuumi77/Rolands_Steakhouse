@@ -5657,21 +5657,20 @@ window.adminRawFilter = 'all';
                                             </td>
                                         </tr>
                                     `;
-                                    if (keepSearchFocus) {
-                                        const inp = document.getElementById('admin-raw-search-input');
-                                            if (inp) {
-                                                inp.focus();
-                                                const len = inp.value.length;
-                                                inp.setSelectionRange(len, len);
-                                            }
-                                        }
-                                    }
                                 }).join('')}
                             </tbody>
                         </table>
                     </div>
                 `;
-                
+
+                if (keepSearchFocus) {
+                    const inp = document.getElementById('admin-raw-search-input');
+                    if (inp) {
+                        inp.focus();
+                        const len = inp.value.length;
+                        inp.setSelectionRange(len, len);
+                    }
+                }
             }
 
             // ── RECIPE BUILDER CONTAINER RENDERER ──
@@ -5903,9 +5902,9 @@ window.adminRawFilter = 'all';
                             `;
                         }).join('')}
                     </div>
-                `;             
-            }
-            if (keepSearchFocus) {
+                `;
+
+                if (keepSearchFocus) {
                     const rInput = document.getElementById('admin-recipe-search-box');
                     if (rInput) {
                         rInput.focus();
