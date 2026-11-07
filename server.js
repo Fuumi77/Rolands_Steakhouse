@@ -1172,37 +1172,34 @@ app.delete('/api/reservations/all', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 🔄 RESET RESERVATION NUMBERS BACK TO 1 */
+/* 🔄 RESET RESERVATION NUMBERS BACK TO #1 (RENUMBER EXISTING OR RESET COUNTER) */
 app.post('/api/reservations/reset-counter', async (req, res) => {
-    const mode = (req.body && req.body.mode) || 'wipe'; // 'wipe' or 'reindex'
     try {
-        if (mode === 'reindex') {
-            // Keep existing active records but renumber them starting from 1
-            const [rows] = await db.query('SELECT reservation_id FROM reservation_log ORDER BY reservation_id ASC');
-            await db.query('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
-            let nextId = 1;
-            for (const r of rows) {
-                if (r.reservation_id !== nextId) {
-                    await db.query('UPDATE reservation_log SET reservation_id = ? WHERE reservation_id = ?', [nextId, r.reservation_id]);
-                }
-                nextId++;
-            }
-            await db.query(`ALTER TABLE reservation_log AUTO_INCREMENT = ${nextId}`);
-            await db.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
-            cachedReservations = null;
-            resCacheTime = 0;
-            return res.json({ success: true, nextReservationNumber: nextId, mode: 'reindex' });
-        } else {
-            // Clear all records and reset AUTO_INCREMENT strictly to 1
+        const mode = (req.body && req.body.mode) || 'renumber';
+        if (mode === 'wipe') {
             await db.query('DELETE FROM reservation_log');
             await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1');
-            cachedReservations = null;
-            resCacheTime = 0;
-            return res.json({ success: true, nextReservationNumber: 1, mode: 'wipe' });
+        } else {
+            // Re-sequence existing reservations starting at #1 (or reset to 1 if empty)
+            const [rows] = await db.query('SELECT reservation_id FROM reservation_log ORDER BY reservation_id ASC');
+            if (rows.length === 0) {
+                await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1');
+            } else {
+                // Temporarily shift IDs up to avoid primary key collisions, then assign 1..N
+                await db.query('UPDATE reservation_log SET reservation_id = reservation_id + 1000000 ORDER BY reservation_id DESC');
+                const [shifted] = await db.query('SELECT reservation_id FROM reservation_log ORDER BY reservation_id ASC');
+                let nextId = 1;
+                for (const row of shifted) {
+                    await db.query('UPDATE reservation_log SET reservation_id = ? WHERE reservation_id = ?', [nextId, row.reservation_id]);
+                    nextId++;
+                }
+                await db.query(`ALTER TABLE reservation_log AUTO_INCREMENT = ${nextId}`);
+            }
         }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        cachedReservations = null;
+        resCacheTime = 0;
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 /* DELETE SINGLE RECORD ROUTE */
@@ -1211,6 +1208,10 @@ app.delete('/api/reservations/:id', async (req, res) => {
         const numericId = String(req.params.id || '').replace(/[^0-9]/g, '');
         if (numericId) {
             await db.query('DELETE FROM reservation_log WHERE reservation_id = ?', [numericId]);
+            const [cntRows] = await db.query('SELECT COUNT(*) AS cnt FROM reservation_log');
+            if (cntRows && cntRows[0] && Number(cntRows[0].cnt) === 0) {
+                await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1');
+            }
         }
         cachedReservations = null;
         resCacheTime = 0;
