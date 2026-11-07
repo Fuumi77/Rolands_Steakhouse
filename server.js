@@ -1031,7 +1031,7 @@ function scopedMemKey(baseKey, req) {
 function resolveBranchMemKey(key, req) {
     const reqBranch = req ? (req.query?.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || '') : '';
     const branch = String(reqBranch || global.__activeReqBranch || 'General Santos City').trim();
-    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos'];
+    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos', 'phHolidayConfig'];
     if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
         return `${key}__${branch.replace(/\s+/g, '_')}`;
     }
@@ -1172,6 +1172,39 @@ app.delete('/api/reservations/all', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 🔄 RESET RESERVATION NUMBERS BACK TO 1 */
+app.post('/api/reservations/reset-counter', async (req, res) => {
+    const mode = (req.body && req.body.mode) || 'wipe'; // 'wipe' or 'reindex'
+    try {
+        if (mode === 'reindex') {
+            // Keep existing active records but renumber them starting from 1
+            const [rows] = await db.query('SELECT reservation_id FROM reservation_log ORDER BY reservation_id ASC');
+            await db.query('SET FOREIGN_KEY_CHECKS = 0').catch(() => {});
+            let nextId = 1;
+            for (const r of rows) {
+                if (r.reservation_id !== nextId) {
+                    await db.query('UPDATE reservation_log SET reservation_id = ? WHERE reservation_id = ?', [nextId, r.reservation_id]);
+                }
+                nextId++;
+            }
+            await db.query(`ALTER TABLE reservation_log AUTO_INCREMENT = ${nextId}`);
+            await db.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+            cachedReservations = null;
+            resCacheTime = 0;
+            return res.json({ success: true, nextReservationNumber: nextId, mode: 'reindex' });
+        } else {
+            // Clear all records and reset AUTO_INCREMENT strictly to 1
+            await db.query('DELETE FROM reservation_log');
+            await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1');
+            cachedReservations = null;
+            resCacheTime = 0;
+            return res.json({ success: true, nextReservationNumber: 1, mode: 'wipe' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 /* DELETE SINGLE RECORD ROUTE */
 app.delete('/api/reservations/:id', async (req, res) => {
     try {
@@ -1261,10 +1294,10 @@ app.post('/api/memory/inventory-items/item', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 👉 PHILIPPINE HOLIDAYS & CLOSURES — shared across all devices */
+/* 👉 PER-BRANCH PHILIPPINE HOLIDAYS & CLOSURES — independent per branch */
 app.get('/api/memory/holidays', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('phHolidayConfig', null);
+        const data = await getSystemMemoryKey('phHolidayConfig', null, req);
         res.json(data || null);
     } catch (err) {
         res.json(null);
@@ -1275,7 +1308,7 @@ app.post('/api/memory/holidays', async (req, res) => {
     try {
         const list = Array.isArray(req.body) ? req.body : (req.body.list || []);
         if (list.length === 0) return res.json({ success: true, count: 0 });
-        await setSystemMemoryKey('phHolidayConfig', list);
+        await setSystemMemoryKey('phHolidayConfig', list, req);
         res.json({ success: true, count: list.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
