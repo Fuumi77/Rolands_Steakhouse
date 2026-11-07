@@ -2939,7 +2939,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         window.location.reload();
     };
 
-    // 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, and chats per branch!
+    // 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, holidays, and chats per branch!
     const SCOPED_KEYS = new Set([
         'tableOverrides',
         'floorPlanConfig',
@@ -2949,10 +2949,16 @@ window.setPosBranchPin = async function (branchName, newPin) {
         'inventory_wastage_logs',
         'activePromos',
         'liveChats',
-        'store_status'
+        'store_status',
+        'ph_holiday_config'
     ]);
 
     function resolveScopedKey(key) {
+        if (key === 'ph_holiday_config' && isSuperAdminPage && window.__holidayManagerBranch) {
+            return window.__holidayManagerBranch === 'General Santos City'
+                ? key
+                : `${window.__holidayManagerBranch}__${key}`;
+        }
         const activeBranch = window.getCurrentBranch();
         if (SCOPED_KEYS.has(key) && activeBranch !== 'General Santos City' && activeBranch !== 'ALL') {
             return `${activeBranch}__${key}`;
@@ -3079,7 +3085,9 @@ window.setPosBranchPin = async function (branchName, newPin) {
             }
         }
         const activeBranch = window.getCurrentBranch();
-        const effectiveBranch = window.getEffectiveBranch();
+        const effectiveBranch = (url && url.includes('/api/memory/holidays') && isSuperAdminPage && window.__holidayManagerBranch)
+            ? window.__holidayManagerBranch
+            : window.getEffectiveBranch();
 
         if (url && (url.includes('/api/memory/') || url.includes('/api/inventory/') || url.includes('/reservations'))) {
             const skipBranchParam = isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations');
