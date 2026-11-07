@@ -2939,7 +2939,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         window.location.reload();
     };
 
-    // 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, holidays, and chats per branch!
+// 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, holidays, and chats per branch!
     const SCOPED_KEYS = new Set([
         'tableOverrides',
         'floorPlanConfig',
@@ -2954,10 +2954,10 @@ window.setPosBranchPin = async function (branchName, newPin) {
     ]);
 
     function resolveScopedKey(key) {
-        if (key === 'ph_holiday_config' && isSuperAdminPage && window.__holidayManagerBranch) {
-            return window.__holidayManagerBranch === 'General Santos City'
+        if (key === 'ph_holiday_config' && window.__holidayBranchOverride) {
+            return window.__holidayBranchOverride === 'General Santos City'
                 ? key
-                : `${window.__holidayManagerBranch}__${key}`;
+                : `${window.__holidayBranchOverride}__${key}`;
         }
         const activeBranch = window.getCurrentBranch();
         if (SCOPED_KEYS.has(key) && activeBranch !== 'General Santos City' && activeBranch !== 'ALL') {
@@ -3212,14 +3212,16 @@ window.setPosBranchPin = async function (branchName, newPin) {
         }
     };
 
-    // Sync branch-specific Floor Plan, Table Overrides & Promotions from Cloud across all devices!
+    // Sync branch-specific Floor Plan, Table Overrides, Promotions & Holidays from Cloud across all devices!
     window.syncBranchFloorPlanFromCloud = async function () {
         try {
             const branch = window.getEffectiveBranch();
-            const [cfgRes, ovrRes, promoRes] = await Promise.all([
+            const holBranch = window.__holidayBranchOverride || branch;
+            const [cfgRes, ovrRes, promoRes, holRes] = await Promise.all([
                 fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/holidays?branch=${encodeURIComponent(holBranch)}&nocache=${Date.now()}`)
             ]);
             let changed = false;
             if (cfgRes.ok) {
@@ -3256,6 +3258,19 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         if (typeof window.loadPromotions === 'function') window.loadPromotions();
                         window.dispatchEvent(new CustomEvent('promosUpdated', { detail: cloudPromos }));
                         changed = true;
+                    }
+                }
+            }
+            if (holRes.ok) {
+                const cloudHol = await holRes.json();
+                if (Array.isArray(cloudHol) && cloudHol.length > 0) {
+                    const prevHol = localStorage.getItem('ph_holiday_config');
+                    const nextHol = JSON.stringify(cloudHol);
+                    if (prevHol !== nextHol) {
+                        localStorage.setItem('ph_holiday_config', nextHol);
+                        if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+                        if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
+                        window.dispatchEvent(new CustomEvent('holidayConfigUpdated', { detail: cloudHol }));
                     }
                 }
             }
