@@ -374,42 +374,61 @@
             <div id="tab-records" class="superadmin-tab-content">
                 <h2 class="section-title">All Records</h2>
                 
-                <!-- 👉 FIX: Mobile-responsive flex container for search and filters -->
                 <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; width: 100%; box-sizing: border-box;">
                     
                     <!-- Search Bar -->
                     <input id="search-input" type="text" placeholder="Search by name or order #..." style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px;">
 
-                    <!-- Checklist Filters -->
+                    <!-- Checklist & Branch Filters -->
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
-                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 250px; box-sizing: border-box;">
-                            <span style="font-size:11px; font-weight:800; color:#64748b;">TYPE:</span>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="priority" onchange="applySearch()" checked> PRIO</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="standard" onchange="applySearch()" checked> STD</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="vip" onchange="applySearch()" checked> VIP</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="pos" onchange="applySearch()" checked> POS</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="wi" onchange="applySearch()" checked> WI</label>
+                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 230px; box-sizing: border-box;">
+                            <span style="font-size:11px; font-weight:800; color:#64748b;">BRANCH:</span>
+                            <select id="records-branch-filter" onchange="window.applyRecordsSearch()" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; background:white; color:#0f172a; font-size:12px; font-weight:700; cursor:pointer; outline:none; flex:1;">
+                                <option value="ALL">🌐 All Branches</option>
+                                <option value="General Santos City">📍 General Santos City</option>
+                                <option value="Koronadal City">📍 Koronadal City</option>
+                            </select>
                         </div>
-                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 250px; box-sizing: border-box;">
+                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1.2; min-width: 250px; box-sizing: border-box;">
+                            <span style="font-size:11px; font-weight:800; color:#64748b;">TYPE:</span>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="priority" onchange="window.applyRecordsSearch()" checked> PRIO</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="standard" onchange="window.applyRecordsSearch()" checked> STD</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="vip" onchange="window.applyRecordsSearch()" checked> VIP</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="pos" onchange="window.applyRecordsSearch()" checked> POS</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-type-cb" value="wi" onchange="window.applyRecordsSearch()" checked> WI</label>
+                        </div>
+                        <div style="display:flex; flex-wrap: wrap; gap:8px; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex: 1; min-width: 240px; box-sizing: border-box;">
                             <span style="font-size:11px; font-weight:800; color:#64748b;">STATUS:</span>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="pending" onchange="applySearch()" checked> Pending</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="completed" onchange="applySearch()" checked> Completed</label>
-                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="cancelled" onchange="applySearch()" checked> Cancelled</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="pending" onchange="window.applyRecordsSearch()" checked> Pending</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="completed" onchange="window.applyRecordsSearch()" checked> Completed</label>
+                            <label style="font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;"><input type="checkbox" class="filter-status-cb" value="cancelled" onchange="window.applyRecordsSearch()" checked> Cancelled</label>
                         </div>
                     </div>
 
-                    <!-- Action Row: Date Filters & Export -->
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; width: 100%;">
-                        <div class="stat-filter-switch" id="records-date-switch" style="display: flex; flex-wrap: wrap; gap: 4px; margin: 0;">
-                            <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
-                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
-                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('month', this)">This Month</button>
-                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
-                            <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
+                    <!-- Action Row: Date Filters (With Custom Date), Reset # to 1, Wipe & Export -->
+                    <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; width: 100%;">
+                            <div class="stat-filter-switch" id="records-date-switch" style="display: flex; flex-wrap: wrap; gap: 4px; margin: 0;">
+                                <button type="button" class="filter-btn active" onclick="setRecordsDateFilter('all', this)">All Time</button>
+                                <button type="button" class="filter-btn" onclick="setRecordsDateFilter('year', this)">This Year</button>
+                                <button type="button" class="filter-btn" onclick="setRecordsDateFilter('month', this)">This Month</button>
+                                <button type="button" class="filter-btn" onclick="setRecordsDateFilter('week', this)">This Week</button>
+                                <button type="button" class="filter-btn" onclick="setRecordsDateFilter('day', this)">Today</button>
+                                <button type="button" class="filter-btn" id="records-custom-date-btn" onclick="toggleRecordsCustomDatePopup()">Custom Range</button>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <button type="button" onclick="window.resetReservationCounterToOne()" style="margin: 0; white-space: nowrap; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.12);">🔄 Reset Order # to 1</button>
+                                <button type="button" onclick="wipeAllRecords()" style="margin: 0; white-space: nowrap; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.15);">🗑️ Wipe All Records</button>
+                                <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export CSV</button>
+                            </div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button type="button" onclick="wipeAllRecords()" style="margin: 0; white-space: nowrap; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800; border-radius: 8px; padding: 8px 16px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.15);">🗑️ Wipe All Records</button>
-                            <button type="button" id="export-csv-btn" class="secondary" onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export CSV</button>
+
+                        <div id="records-custom-date-container" style="display:none; align-items:center; gap:8px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; align-self:flex-start; flex-wrap:wrap;">
+                            <span style="font-size:12px; font-weight:700; color:#475569;">From:</span>
+                            <input type="date" id="records-start-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <span style="font-size:12px; font-weight:700; color:#475569;">to</span>
+                            <input type="date" id="records-end-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <button type="button" onclick="applyRecordsCustomDateRange()" style="background:#16a34a; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">Apply</button>
                         </div>
                     </div>
                 </div>
@@ -438,7 +457,25 @@
 
             <!-- REVENUE TAB -->
             <div id="tab-revenue" class="superadmin-tab-content">
-                <h2 class="section-title">Revenue Analytics</h2>
+                <div class="stat-filter-row" style="margin-bottom: 20px;">
+                    <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Revenue Analytics</h2>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                        <div class="stat-filter-switch" id="rev-date-switch" style="display:flex; flex-wrap:wrap; gap:4px;">
+                            <button type="button" class="filter-btn active" onclick="window.setRevDateFilter('all', this)">All Time</button>
+                            <button type="button" class="filter-btn" onclick="window.setRevDateFilter('year', this)">This Year</button>
+                            <button type="button" class="filter-btn" onclick="window.setRevDateFilter('month', this)">This Month</button>
+                            <button type="button" class="filter-btn" onclick="window.setRevDateFilter('week', this)">This Week</button>
+                            <button type="button" class="filter-btn" onclick="window.setRevDateFilter('day', this)">Today</button>
+                            <button type="button" class="filter-btn" id="rev-custom-date-btn" onclick="window.toggleRevCustomDatePopup()">Custom Range</button>
+                        </div>
+                        <div id="rev-custom-date-container" style="display:none; align-items:center; gap:8px; margin-top:10px; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; flex-wrap:wrap;">
+                            <input type="date" id="rev-start-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <span style="font-size:12px; font-weight:bold; color:#64748b;">to</span>
+                            <input type="date" id="rev-end-date" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; color:#334155;">
+                            <button type="button" onclick="window.applyRevCustomDateRange()" style="background:#16a34a; color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">Apply</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="grid revenue-grid">
                     <div class="card">
                         <h3>Total Revenue</h3>
@@ -461,10 +498,7 @@
                         <div class="muted">Per transaction</div>
                     </div>
                 </div>
-                <!-- 👉 FIX: Swapped positions & added flex-wrap so the graph never squishes on mobile! -->
                 <div class="graph-container" style="display: flex; flex-wrap: wrap; gap: 20px;">
-                    
-                    <!-- Popular Tables & Items (Moved to be first) -->
                     <div class="revenue-side-stack" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 20px;">
                         <div class="card" style="margin: 0;">
                             <h3 style="margin-top: 0;">Top 5 Selling Items</h3>
@@ -476,9 +510,8 @@
                         </div>
                     </div>
 
-                    <!-- Revenue Graph (Moved to second, automatically drops below the tables on mobile) -->
                     <div class="card revenue-chart-main" style="flex: 2; min-width: 280px; margin: 0; display: flex; flex-direction: column;">
-                        <h3 style="margin-top: 0;">Revenue Over Time (Last 7 Days)</h3>
+                        <h3 style="margin-top: 0;" id="rev-chart-title">Revenue Over Time</h3>
                         <div style="position: relative; flex: 1; min-height: 260px; width: 100%;">
                             <canvas id="revenueChart"></canvas>
                         </div>
@@ -586,9 +619,11 @@
                 <!-- 2. FOOD PORTIONS CONTAINER -->
                 <div id="superadmin-food-container" class="hidden">
                     <div class="inv-top-bar">
-                        <div class="inv-search-wrap">
-                            <input type="text" id="inv-search-input" placeholder="Search inventory items..."
-                                oninput="renderInventory()">
+                        <div class="inv-search-wrap" style="position:relative;">
+                            <input type="text" id="inv-search-input" placeholder="🔍 Search food portion items or category..."
+                                oninput="if(window.renderInventory) window.renderInventory();"
+                                style="padding-right:34px;">
+                            <span id="inv-search-clear-btn" onclick="var el=document.getElementById('inv-search-input'); if(el){el.value=''; if(window.renderInventory) window.renderInventory(); el.focus();}" title="Clear search" style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>
                         </div>
                         <div id="bulk-controls" class="hidden">
                             <button type="button" onclick="saveBulkInventory()"
@@ -1086,12 +1121,21 @@
 
             <!-- HOLIDAYS & CLOSURES CALENDAR TAB -->
             <div id="tab-holidays" class="superadmin-tab-content">
-                <div style="margin-bottom: 24px;">
-                    <div style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1.5px solid #fca5a5; color:#dc2626; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:10px;">
-                        🇵🇭 Philippine Holidays & Restaurant Closures
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; margin-bottom: 24px;">
+                    <div>
+                        <div style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1.5px solid #fca5a5; color:#dc2626; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:10px;">
+                            🇵🇭 Per-Branch Holidays & Restaurant Closures
+                        </div>
+                        <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#1b5e20; margin:0 0 6px 0; font-weight:700;">Holiday & Closure Calendar Guard</h2>
+                        <p style="color:#64748b; font-size:14px; margin:0;">Each branch has its own modifiable holiday & closure calendar. Dates marked closed block bookings for the selected branch.</p>
                     </div>
-                    <h2 style="font-family:'Playfair Display',serif; font-size:26px; color:#1b5e20; margin:0 0 6px 0; font-weight:700;">Holiday & Closure Calendar Guard</h2>
-                    <p style="color:#64748b; font-size:14px; margin:0;">Manage national holidays and custom closed dates. Dates marked closed automatically block customer bookings in real-time.</p>
+                    <div style="background:white; border:2px solid #16a34a; border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 12px rgba(22,163,74,0.1);">
+                        <span style="font-size:12px; font-weight:800; color:#166534; text-transform:uppercase;">🏬 Configure Branch:</span>
+                        <select id="holiday-branch-select" onchange="window.switchHolidayBranch(this.value)" style="padding:6px 12px; border-radius:8px; border:1px solid #bbf7d0; background:#f0fdf4; color:#14532d; font-weight:800; font-size:13.5px; cursor:pointer; outline:none;">
+                            <option value="General Santos City">📍 General Santos City</option>
+                            <option value="Koronadal City">📍 Koronadal City</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Metrics Counters -->
@@ -1514,8 +1558,8 @@
         }
         startClock();
 
-        window.switchTab = function (tabId, btn) {
-            document.querySelectorAll('.tab-link').forEach(b => b.classList.remove('active'));
+            window.switchTab = function (tabId, btn) {
+            document.querySelectorAll('#sa-sidebar .tab-link').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
             document.querySelectorAll('.superadmin-tab-content').forEach(c => c.classList.remove('active'));
             const target = document.getElementById('tab-' + tabId);
@@ -1714,7 +1758,7 @@
             }
         };
 
-// Kitchen Password Logic
+        // Kitchen Password Logic
         window.saveKitchenPassword = async function () {
             const pass = document.getElementById('kitchen-password-input').value.trim();
             if (!pass) {
@@ -1831,6 +1875,41 @@
             }
         };
 
+        // ─── PER-BRANCH HOLIDAY SWITCHER & SYNC ───
+        window.__holidayBranchOverride = (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+
+        window.pushBranchHolidaysToCloud = async function () {
+            const targetBr = window.__holidayBranchOverride || 'General Santos City';
+            try {
+                const list = window.getHolidayList ? window.getHolidayList() : [];
+                await fetch(`${API_BASE_URL}/api/memory/holidays?branch=${encodeURIComponent(targetBr)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branch: targetBr, list })
+                });
+            } catch (e) {}
+        };
+
+        window.switchHolidayBranch = async function (branchName) {
+            window.__holidayBranchOverride = branchName || 'General Santos City';
+            const sel = document.getElementById('holiday-branch-select');
+            if (sel && sel.value !== window.__holidayBranchOverride) sel.value = window.__holidayBranchOverride;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/memory/holidays?branch=${encodeURIComponent(window.__holidayBranchOverride)}&nocache=${Date.now()}`);
+                if (res.ok) {
+                    const cloudHol = await res.json();
+                    if (Array.isArray(cloudHol) && cloudHol.length > 0) {
+                        localStorage.setItem('ph_holiday_config', JSON.stringify(cloudHol));
+                    }
+                }
+            } catch (e) {}
+
+            if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
+            if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
+            if (window.showToast) window.showToast(`Loaded Holidays & Closures for ${window.__holidayBranchOverride}`, 'info');
+        };
+        
         // ─── HOLIDAY & CLOSURE CALENDAR LOGIC ───
         let calCurrentYear = new Date().getFullYear();
         let calCurrentMonth = new Date().getMonth(); // 0-11
@@ -2458,10 +2537,60 @@
                 }
             };
 
-            let currentRecordsDateFilter = 'all';
-            
+            // 🔄 RESET RESERVATION NUMBERS BACK TO #1 (WITH MASTER PIN GUARD)
+            window.resetReservationCounterToOne = async function () {
+                const confirmed = await superModal({
+                    title: '🔄 Reset Order / Reservation # to 1?',
+                    message: 'This will re-sequence existing reservation numbers starting from <b>#1</b> (or reset the counter to <b>#1</b> if records are empty) so new bookings continue cleanly from the lowest number.<br><br>Do you want to proceed?',
+                    type: 'confirm',
+                    confirmText: 'Continue',
+                    cancelText: 'Cancel'
+                });
+                if (!confirmed) return;
+
+                const pin = await superModal({
+                    title: '🔒 Security Authorization',
+                    message: 'Enter Master PIN (789456) to authorize resetting reservation numbers back to #1:',
+                    showInput: true,
+                    placeholder: 'Enter 6-digit pin',
+                    confirmText: 'Authorize Reset'
+                });
+
+                if (pin !== '789456') {
+                    if (pin !== null) await superModal({ title: '❌ Denied', message: 'Incorrect Master PIN. Reset cancelled.', confirmText: 'Close' });
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/reservations/reset-counter`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: 'renumber' })
+                    });
+                    if (!res.ok) throw new Error('Server failed to reset counter.');
+                    localStorage.setItem('reservationHistory', '[]');
+                    await syncReservations();
+                    await superModal({
+                        title: '✅ Order Numbers Reset to #1',
+                        message: 'Reservation and Order numbers have been reset back to #1 successfully!',
+                        confirmText: 'Done'
+                    });
+                    renderDashboard();
+                } catch (e) {
+                    await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
+                }
+            };
+
+            let currentRecordsDateFilter = window.__recordsDateFilter || 'all';
+            let recordsCustomStart = window.__recordsCustomStart || null;
+            let recordsCustomEnd = window.__recordsCustomEnd || null;
+
             window.setRecordsDateFilter = function(filter, btn) {
                 currentRecordsDateFilter = filter;
+                window.__recordsDateFilter = filter;
+                const customBox = document.getElementById('records-custom-date-container');
+                if (filter !== 'custom' && customBox) customBox.style.display = 'none';
+
                 const container = document.getElementById('records-date-switch');
                 if (container) {
                     container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -2470,22 +2599,52 @@
                 applySearch();
             };
 
+            window.toggleRecordsCustomDatePopup = function() {
+                const box = document.getElementById('records-custom-date-container');
+                if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+            };
+
+            window.applyRecordsCustomDateRange = function() {
+                const s = document.getElementById('records-start-date')?.value;
+                const e = document.getElementById('records-end-date')?.value;
+                if (!s || !e) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+                recordsCustomStart = new Date(s + 'T00:00:00');
+                recordsCustomEnd = new Date(e + 'T23:59:59.999');
+                window.__recordsCustomStart = recordsCustomStart;
+                window.__recordsCustomEnd = recordsCustomEnd;
+                currentRecordsDateFilter = 'custom';
+                window.__recordsDateFilter = 'custom';
+
+                const container = document.getElementById('records-date-switch');
+                if (container) container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('records-custom-date-btn')?.classList.add('active');
+                applySearch();
+            };
+
             function applySearch() {
                 const q = (searchInput.value || '').trim().toLowerCase();
+                const branchFilter = document.getElementById('records-branch-filter')?.value || 'ALL';
                 const activeTypes = Array.from(document.querySelectorAll('.filter-type-cb:checked')).map(cb => cb.value);
                 const activeStatuses = Array.from(document.querySelectorAll('.filter-status-cb:checked')).map(cb => cb.value);
                 const dateFilter = currentRecordsDateFilter;
 
                 const now = new Date();
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const weekAgo = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const weekAgo = new Date(now);
                 weekAgo.setDate(now.getDate() - 7);
-                weekAgo.setHours(0,0,0,0);
+                weekAgo.setHours(0, 0, 0, 0);
 
                 let filtered = historyTotal.filter(r => {
                     const matchQ = !q || (r.reservationNumber || '').toLowerCase().includes(q) || (r.customerName || '').toLowerCase().includes(q);
-                    // Check Type Checklist
+
+                    // Branch Filter
+                    const recBranch = r.branch || 'General Santos City';
+                    const matchBranch = (branchFilter === 'ALL') || (recBranch === branchFilter);
+
+                    // Type Checklist
                     let rType = 'standard';
                     const resNumStr = String(r.reservationNumber || '');
                     if (resNumStr.startsWith('WI-')) rType = 'wi';
@@ -2494,7 +2653,7 @@
                     else if (r.reservationType === 'priority') rType = 'priority';
                     const matchType = activeTypes.includes(rType);
 
-                    // Check Status Checklist
+                    // Status Checklist
                     let overallStatus = String(r.approvalStatus || 'pending').toLowerCase();
                     if (r.completedAt) overallStatus = 'completed';
                     if (overallStatus === 'rejected' || r.kdsStatus === 'cancelled') overallStatus = 'cancelled';
@@ -2504,54 +2663,49 @@
                     if (overallStatus === 'cancelled') normalizedStatus = 'cancelled';
                     const matchStatus = activeStatuses.includes(normalizedStatus);
                     
-                    let recTime = 0;
-                    if (r.arrivalDate) {
-                        recTime = new Date(r.arrivalDate).getTime();
-                    } else if (r.completedAt) {
-                        recTime = new Date(r.completedAt).getTime();
-                    }
+                    const recDateObj = parseRecordDate(r);
+                    const recTime = recDateObj ? recDateObj.getTime() : 0;
 
                     let matchDate = true;
                     if (dateFilter === 'day') {
                         if (!recTime) matchDate = false;
                         else {
                             const d = new Date(recTime);
-                            d.setHours(0,0,0,0);
+                            d.setHours(0, 0, 0, 0);
                             matchDate = (d.getTime() === today.getTime());
                         }
                     } else if (dateFilter === 'week') {
-                        if (!recTime) matchDate = false;
-                        else {
-                            matchDate = (recTime >= weekAgo.getTime() && recTime <= now.getTime());
-                        }
-                    } else if (dateFilter === 'year') {
-                        if (!recTime) matchDate = false;
-                        else {
-                            matchDate = (new Date(recTime).getFullYear() === now.getFullYear());
-                        }
+                        matchDate = Boolean(recTime && recTime >= weekAgo.getTime() && recTime <= now.getTime());
                     } else if (dateFilter === 'month') {
                         if (!recTime) matchDate = false;
                         else {
                             const d = new Date(recTime);
                             matchDate = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth());
                         }
+                    } else if (dateFilter === 'year') {
+                        matchDate = Boolean(recTime && new Date(recTime).getFullYear() === now.getFullYear());
+                    } else if (dateFilter === 'custom' && recordsCustomStart && recordsCustomEnd) {
+                        matchDate = Boolean(recTime && recTime >= recordsCustomStart.getTime() && recTime <= recordsCustomEnd.getTime());
                     }
 
-                    return matchQ && matchType && matchStatus && matchDate;
+                    return matchQ && matchBranch && matchType && matchStatus && matchDate;
                 });
                 renderRows(filtered);
                 summaryLine.textContent = `Showing ${filtered.length} of ${historyTotal.length} records.`;
             }
+            window.applyRecordsSearch = applySearch;
+            window.applySearch = applySearch;
 
-            renderRows(historyTotal);
-            summaryLine.textContent = `Showing ${historyTotal.length} of ${historyTotal.length} records.`;
+            applySearch();
             
-            // Lag-free search debounce
             let searchDebounce = null;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchDebounce);
-                searchDebounce = setTimeout(applySearch, 120);
-            });
+            if (!searchInput.dataset.boundSearch) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchDebounce);
+                    searchDebounce = setTimeout(applySearch, 120);
+                });
+                searchInput.dataset.boundSearch = 'true';
+            }
 
             // Staff admin management
             const staffTbody = document.getElementById('staff-list-tbody');
@@ -4334,11 +4488,25 @@ window.superAdminRawFilter = 'all';
                 const tbody = document.getElementById('inventory-tbody');
                 if (!tbody) return;
 
-                const q = (document.getElementById('inv-search-input')?.value || '').trim().toLowerCase();
+                // Ensure the active category button in #inv-category-tabs is always highlighted!
+                const catTabs = document.querySelectorAll('#inv-category-tabs .tab-link');
+                catTabs.forEach(btn => {
+                    const oc = btn.getAttribute('onclick') || '';
+                    btn.classList.toggle('active', oc.includes(`'${currentInvCat}'`));
+                });
+
+                const rawQ = document.getElementById('inv-search-input')?.value || '';
+                const q = rawQ.trim().toLowerCase();
+                const clearBtn = document.getElementById('inv-search-clear-btn');
+                if (clearBtn) clearBtn.style.display = rawQ ? 'inline' : 'none';
+
                 let filtered = currentInvCat === 'All' ? items : items.filter(i => i.category === currentInvCat);
 
                 if (q) {
-                    filtered = filtered.filter(i => i.title.toLowerCase().includes(q));
+                    filtered = filtered.filter(i => 
+                        (i.title || i.name || '').toLowerCase().includes(q) ||
+                        (i.category || '').toLowerCase().includes(q)
+                    );
                 }
 
                 if (filtered.length === 0) {
@@ -4416,6 +4584,8 @@ window.superAdminRawFilter = 'all';
                 tbody.appendChild(fragment);
                 refreshInvStats();
             }
+            
+            window.renderInventory = renderInventory;
 
 
             window.openInventoryModal = function (id = null) {
@@ -5112,27 +5282,83 @@ window.superAdminRawFilter = 'all';
             }
 
 
-            // ── REVENUE TAB ──
+            // ── REVENUE TAB WITH DATE & CUSTOM RANGE FILTERS ──
             let revenueChart = null;
+            window.currentRevDateFilter = window.currentRevDateFilter || 'all';
+            window.revCustomStart = window.revCustomStart || null;
+            window.revCustomEnd = window.revCustomEnd || null;
+
+            window.setRevDateFilter = function (filter, btn) {
+                window.currentRevDateFilter = filter;
+                const customBox = document.getElementById('rev-custom-date-container');
+                if (filter !== 'custom' && customBox) customBox.style.display = 'none';
+
+                const switchEl = document.getElementById('rev-date-switch');
+                if (switchEl) switchEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+                window.renderRevenueTab();
+            };
+
+            window.toggleRevCustomDatePopup = function () {
+                const box = document.getElementById('rev-custom-date-container');
+                if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+            };
+
+            window.applyRevCustomDateRange = function () {
+                const s = document.getElementById('rev-start-date')?.value;
+                const e = document.getElementById('rev-end-date')?.value;
+                if (!s || !e) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+                window.revCustomStart = new Date(s + 'T00:00:00');
+                window.revCustomEnd = new Date(e + 'T23:59:59.999');
+                window.currentRevDateFilter = 'custom';
+
+                const switchEl = document.getElementById('rev-date-switch');
+                if (switchEl) switchEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('rev-custom-date-btn')?.classList.add('active');
+                window.renderRevenueTab();
+            };
+
             window.renderRevenueTab = function () {
-                const hist = getReservationHistory();
-                
-                // 👉 FIX: Reusable function to filter out the ₱200 deposits across the entire Revenue Tab
+                const allHist = getReservationHistory();
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const weekAgo = new Date(now);
+                weekAgo.setDate(now.getDate() - 7);
+                weekAgo.setHours(0, 0, 0, 0);
+                const rf = window.currentRevDateFilter || 'all';
+
+                const hist = allHist.filter(r => {
+                    if (rf === 'all') return true;
+                    const d = parseRecordDate(r);
+                    if (!d || isNaN(d.getTime())) return false;
+                    if (rf === 'day') {
+                        const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                        return dDay.getTime() === todayStart.getTime();
+                    }
+                    if (rf === 'week') return d >= weekAgo && d <= now;
+                    if (rf === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+                    if (rf === 'year') return d.getFullYear() === now.getFullYear();
+                    if (rf === 'custom' && window.revCustomStart && window.revCustomEnd) {
+                        return d >= window.revCustomStart && d <= window.revCustomEnd;
+                    }
+                    return true;
+                });
+
                 const getTrueAmount = (r) => {
                     const s = (r.paymentStatus || '').toLowerCase();
-                    if (s !== 'paid' && s !== 'verified' && s !== 'walk-in') return 0; // Only count verified payments
+                    if (s !== 'paid' && s !== 'verified' && s !== 'walk-in') return 0;
                     let amt = Number(r.paymentAmount || 0);
                     if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) return 0;
                     return amt;
                 };
 
                 const totalRev = hist.reduce((s, r) => s + getTrueAmount(r), 0);
-                
                 const posRev = hist.filter(r => r.bookedBy === 'staff' || r.bookedBy === 'pos' || String(r.reservationNumber).startsWith('POS-') || String(r.reservationNumber).startsWith('WI-')).reduce((s, r) => s + getTrueAmount(r), 0);
-                
                 const priorityRev = hist.filter(r => r.reservationType === 'priority').reduce((s, r) => s + getTrueAmount(r), 0);
 
-                // 👉 FIX: Calculate avg safely without throwing a ReferenceError
                 const validPaidOrders = hist.filter(r => getTrueAmount(r) > 0);
                 const avg = validPaidOrders.length ? (totalRev / validPaidOrders.length) : 0;
 
@@ -5141,38 +5367,43 @@ window.superAdminRawFilter = 'all';
                 document.getElementById('rev-priority').textContent = '₱' + priorityRev.toLocaleString();
                 document.getElementById('rev-avg').textContent = '₱' + Math.round(avg).toLocaleString();
 
-                // Revenue line chart (last 7 days)
+                // Dynamic Revenue Chart based on active filter
                 const dayMap = {};
-                const now = new Date();
-                for (let i = 6; i >= 0; i--) {
-                    const d = new Date(now); d.setDate(now.getDate() - i);
-                    dayMap[d.toISOString().split('T')[0]] = 0;
+                if (rf === 'all' || rf === 'week' || rf === 'day') {
+                    const daysCount = rf === 'day' ? 1 : 7;
+                    for (let i = daysCount - 1; i >= 0; i--) {
+                        const d = new Date(now);
+                        d.setDate(now.getDate() - i);
+                        dayMap[d.toISOString().split('T')[0]] = 0;
+                    }
                 }
                 hist.forEach(r => {
-                    const d = r.arrivalDate || (r.completedAt ? r.completedAt.split('T')[0] : null);
-                    if (d && dayMap[d] !== undefined) {
-                        dayMap[d] += getTrueAmount(r); // 👉 FIX: Uses getTrueAmount so it matches the metric cards
+                    const dObj = parseRecordDate(r);
+                    const key = dObj && !isNaN(dObj.getTime()) ? dObj.toISOString().split('T')[0] : null;
+                    if (key) {
+                        if (dayMap[key] === undefined) dayMap[key] = 0;
+                        dayMap[key] += getTrueAmount(r);
                     }
                 });
-                const labels = Object.keys(dayMap).map(d => { const dt = new Date(d); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); });
-                const vals = Object.values(dayMap);
+
+                const sortedKeys = Object.keys(dayMap).sort();
+                const labels = sortedKeys.map(d => {
+                    const dt = new Date(d + 'T00:00:00');
+                    return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                });
+                const vals = sortedKeys.map(k => dayMap[k]);
 
                 const ctx = document.getElementById('revenueChart');
-                
-                if (ctx) {
-                    if (typeof Chart !== 'undefined') {
-                        if (revenueChart) revenueChart.destroy();
-                        revenueChart = new Chart(ctx.getContext('2d'), {
-                            type: 'bar',
-                            data: { labels, datasets: [{ label: 'Revenue (₱)', data: vals, backgroundColor: 'rgba(46,125,50,0.2)', borderColor: '#2e7d32', borderWidth: 2, borderRadius: 8 }] },
-                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a' } }, y: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a', callback: v => '₱' + v.toLocaleString() }, beginAtZero: true } } }
-                        });
-                    } else {
-                        console.warn('Chart is not defined. Skipping revenueChart rendering.');
-                    }
+                if (ctx && typeof Chart !== 'undefined') {
+                    if (revenueChart) revenueChart.destroy();
+                    revenueChart = new Chart(ctx.getContext('2d'), {
+                        type: 'bar',
+                        data: { labels, datasets: [{ label: 'Revenue (₱)', data: vals, backgroundColor: 'rgba(46,125,50,0.2)', borderColor: '#2e7d32', borderWidth: 2, borderRadius: 8 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a' } }, y: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a', callback: v => '₱' + v.toLocaleString() }, beginAtZero: true } } }
+                    });
                 }
 
-                // Top 5 items with actual order multiplier support
+                // Top 5 Selling Items (Filtered)
                 const itemCount = {};
                 hist.forEach(r => { 
                     (r.foods || []).forEach(f => { 
@@ -5188,15 +5419,14 @@ window.superAdminRawFilter = 'all';
                     const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
                     el.innerHTML = sorted.length ? sorted.map((e, i) =>
                         `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${e[0]}</span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${e[1]}x</span></div>`
-                    ).join('') : '<div class="muted" style="padding:20px; text-align:center;">No item data yet.</div>';
+                    ).join('') : '<div class="muted" style="padding:20px; text-align:center;">No item data for this period.</div>';
                 }
 
-                // Popular tables (by orders with payment + revenue)
+                // Popular Tables (Filtered)
                 const tableAgg = {};
                 hist.forEach(r => {
                     const tbl = (r.bookedTable || '').toString().trim();
                     if (!tbl || tbl.toLowerCase() === 'none') return;
-                    
                     const amt = Number(r.paymentAmount || 0);
                     if (!tableAgg[tbl]) tableAgg[tbl] = { count: 0, revenue: 0 };
                     tableAgg[tbl].count += 1;
@@ -5212,7 +5442,7 @@ window.superAdminRawFilter = 'all';
                         const name = e[0];
                         const { count, revenue } = e[1];
                         return `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${name}<div class="top-item-sub" style="font-size:11px; color:#64748b; font-weight:normal;">₱${Math.round(revenue).toLocaleString()} generated</div></span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${count} orders</span></div>`;
-                    }).join('') : '<div class="muted" style="padding:20px; text-align:center;">No table data yet.</div>';
+                    }).join('') : '<div class="muted" style="padding:20px; text-align:center;">No table data for this period.</div>';
                 }
             };
 
