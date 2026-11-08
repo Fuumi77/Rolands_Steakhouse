@@ -100,6 +100,9 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_ref VARCHAR(100) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refunded_at DATETIME NULL").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN branch VARCHAR(100) DEFAULT 'General Santos City'").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN discount_type VARCHAR(50) DEFAULT 'none'").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN voucher_code VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
@@ -189,36 +192,67 @@ const transporter = nodemailer.createTransport({
 });
 
 app.post('/api/send-receipt', emailLimiter, async (req, res) => {
-    const { email, subject, html, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary } = req.body;
+    const { email, subject, html, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary, branch, discountType, discountAmount } = req.body;
     if (!email) return res.status(200).json({ success: false, message: 'No email provided' });
 
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://rolandssteakhouse.com/receipt.html?res=${reservationNumber || ''}`)}`;
+    const resCode = String(reservationNumber || 'N/A').trim();
+    const receiptVerifyUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resCode)}`;
+    // QR encodes the exact receipt verification URL & reservation ID scanned for payment proof
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(receiptVerifyUrl)}`;
+    const branchLabel = branch || global.__activeReqBranch || 'General Santos City';
+    const discAmt = Number(discountAmount || 0);
+    const discRowHtml = (discountType && discountType !== 'none' && discAmt > 0)
+        ? `<div style="color:#c2410c;"><strong>Discount (${escapeHtml(String(discountType).toUpperCase())}):</strong> -₱${discAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>`
+        : '';
 
-    const finalSubject = subject || `E-Receipt & Confirmation (${reservationNumber}) - Roland's Steakhouse`;
-    const finalHtml = html || `
-        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-            <div style="background: #1b5e20; color: white; padding: 20px; text-align: center;">
-                <h2 style="margin: 0;">Roland's Steakhouse</h2>
-                <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Official Reservation E-Receipt</p>
+    const finalSubject = subject || `Official E-Receipt & QR Payment Proof (${resCode}) - Roland's Steakhouse`;
+    let finalHtml = html || `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
+            <div style="background: linear-gradient(135deg, #1b5e20, #166534); color: white; padding: 22px; text-align: center;">
+                <h2 style="margin: 0; font-size: 22px;">Roland's Steakhouse</h2>
+                <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Official E-Receipt & QR Payment Proof — ${escapeHtml(branchLabel)}</p>
             </div>
-            <div style="padding: 20px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+            <div style="padding: 22px; color: #1e293b; font-size: 14px; line-height: 1.6;">
                 <p>Hi <strong>${escapeHtml(customerName || 'Valued Guest')}</strong>,</p>
-                <p>Your reservation is confirmed! Here are your booking details:</p>
-                <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 16px 0;">
-                    <div><strong>Reservation #:</strong> ${escapeHtml(reservationNumber)}</div>
-                    <div><strong>Table:</strong> ${escapeHtml(table)}</div>
-                    <div><strong>Arrival:</strong> ${escapeHtml(arrivalDateTime)}</div>
-                    <div><strong>Order:</strong> ${escapeHtml(orderSummary)}</div>
-                    <div><strong>Payment Method:</strong> ${escapeHtml(paymentMethod)}</div>
-                    <div style="margin-top: 8px; font-size: 16px; color: #1b5e20;"><strong>Total Paid:</strong> ₱${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <p>Your reservation and payment have been recorded! Present the QR code below upon arrival for instant proof verification:</p>
+                
+                <!-- SCANNABLE QR CODE FOR PAYMENT PROOF -->
+                <div style="text-align: center; margin: 18px 0; background: #f0fdf4; border: 2px dashed #86efac; border-radius: 12px; padding: 18px;">
+                    <div style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Scan QR for Official Payment Proof</div>
+                    <img src="${qrUrl}" alt="Payment Proof QR Code" width="180" height="180" style="border: 1px solid #bbf7d0; border-radius: 10px; padding: 8px; background: #ffffff; display: inline-block;" />
+                    <div style="font-size: 16px; font-weight: 900; color: #15803d; margin-top: 8px; letter-spacing: 1px;">${escapeHtml(resCode)}</div>
+                    <div style="font-size: 11.5px; color: #475569; margin-top: 4px;">
+                        <a href="${receiptVerifyUrl}" style="color: #15803d; font-weight: bold; text-decoration: underline;">Open Digital Receipt & QR Proof in Browser</a>
+                    </div>
                 </div>
-                <div style="text-align: center; margin: 18px 0;">
-                    <img src="${qrUrl}" alt="Receipt QR Code" width="150" height="150" style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px; background: #fff;" />
-                    <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Scan QR to view Official Digital Receipt</div>
+
+                <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; border: 1px solid #cbd5e1; margin: 16px 0;">
+                    <div><strong>Reservation #:</strong> ${escapeHtml(resCode)}</div>
+                    <div><strong>Branch:</strong> ${escapeHtml(branchLabel)}</div>
+                    <div><strong>Table:</strong> ${escapeHtml(table || 'Assigned Table')}</div>
+                    <div><strong>Arrival:</strong> ${escapeHtml(arrivalDateTime || 'Scheduled')}</div>
+                    <div><strong>Order:</strong> ${escapeHtml(orderSummary || 'Table Reservation')}</div>
+                    <div><strong>Payment Method:</strong> ${escapeHtml(paymentMethod || 'Online / Verified')}</div>
+                    ${discRowHtml}
+                    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 17px; color: #1b5e20;">
+                        <strong>Total Paid:</strong> ₱${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
                 </div>
+                <p style="font-size: 12px; color: #64748b; text-align: center;">Thank you for dining with <strong>Roland's Steakhouse</strong>!</p>
             </div>
         </div>
     `;
+
+    // If custom HTML was sent without a QR image, append the QR proof block automatically
+    if (html && !String(html).includes('api.qrserver.com') && resCode !== 'N/A') {
+        finalHtml += `
+            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 12px auto; text-align: center; background: #f0fdf4; border: 2px dashed #86efac; border-radius: 12px; padding: 16px;">
+                <div style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 8px;">Official Payment Proof QR (${escapeHtml(resCode)})</div>
+                <img src="${qrUrl}" alt="Payment Proof QR" width="170" height="170" style="border: 1px solid #bbf7d0; border-radius: 10px; padding: 6px; background: #ffffff; display: inline-block;" />
+                <div style="font-size: 11.5px; margin-top: 6px;"><a href="${receiptVerifyUrl}" style="color: #15803d; font-weight: bold;">View Full Digital Receipt</a></div>
+            </div>
+        `;
+    }
 
     try {
         await transporter.sendMail({
@@ -571,7 +605,8 @@ app.get('/reservations', async (req, res) => {
                        DATE_FORMAT(r.reservation_time, '%H:%i') AS ph_time,
                        r.reservation_time, r.table_number, r.status, r.booked_by,
                        r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
-                       r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at
+                       r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at,
+                       r.discount_type, r.discount_amount, r.voucher_code
                 FROM reservation_log r
                 JOIN customer_credentials c ON r.customer_id = c.customer_id
             `);
@@ -601,6 +636,9 @@ app.get('/reservations', async (req, res) => {
                     bookedBy: r.booked_by,
                     reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
                     paymentAmount: parseFloat(r.payment_amount) || 0,
+                    discountType: r.discount_type || 'none',
+                    discountAmount: parseFloat(r.discount_amount) || 0,
+                    voucherCode: r.voucher_code || '',
                     foods: parsedFoods,
                     kdsStatus: r.kds_status || 'pending',
                     branch: r.branch || 'General Santos City'
@@ -617,7 +655,7 @@ app.get('/reservations', async (req, res) => {
 });
 
 app.post('/reserve', async (req, res) => {
-    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, branch } = req.body;
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, branch, discountType, discountAmount, voucherCode } = req.body;
     const finalBranch = (branch || req.query.branch || 'General Santos City').trim();
     try {
         const cleanName = (name || 'Guest').trim();
@@ -657,13 +695,17 @@ app.post('/reserve', async (req, res) => {
         const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
         const foodsJson = Array.isArray(foods) ? JSON.stringify(foods) : (foods ? JSON.stringify([foods]) : '[]');
 
+        const finalDiscType = String(discountType || 'none').toLowerCase().trim();
+        const finalDiscAmt = Math.max(0, Number(discountAmount) || 0);
+        const finalVoucher = String(voucherCode || '').trim();
+
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch]
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
         );
 
         cachedReservations = null;
-        res.json({ success: true, reservationId: result.insertId, branch: finalBranch }); 
+        res.json({ success: true, reservationId: result.insertId, branch: finalBranch, discountType: finalDiscType, discountAmount: finalDiscAmt, voucherCode: finalVoucher }); 
     } catch (err) {
         console.error('Reserve DB Error:', err);
         res.status(500).json({ error: err.message });
