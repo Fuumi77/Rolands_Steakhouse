@@ -225,8 +225,47 @@
                 </div>
             </div>
             <div class="cart-items-container" id="cart-items"></div>
+
+            <!-- 🎟️ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (DESKTOP) -->
+            <div id="preorder-discount-box-desktop" style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px;">
+                <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">
+                    🏷️ Discount or Promo Voucher
+                </div>
+                <select id="preorder-disc-type" onchange="window.syncPreOrderDiscountUI('desktop')" style="width:100%; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; background:white; font-weight:700; font-size:13px; color:#0f172a; cursor:pointer; box-sizing:border-box;">
+                    <option value="none">No Discount (Regular Price)</option>
+                    <option value="pwd">♿ PWD Discount (20% Off — ID Photo Required)</option>
+                    <option value="senior">👵 Senior Citizen (20% Off — ID Photo Required)</option>
+                    <option value="voucher">🎟️ Promo Voucher (Photo Required)</option>
+                </select>
+
+                <!-- Voucher Selector -->
+                <div id="preorder-voucher-wrap" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">
+                    <select id="preorder-voucher-select" onchange="window.onPreOrderVoucherPick(this.value)" style="width:100%; padding:8px 10px; border:1px solid #86efac; border-radius:8px; background:#f0fdf4; color:#166534; font-weight:800; font-size:12px; cursor:pointer; box-sizing:border-box;">
+                        <option value="">-- Select Available Voucher --</option>
+                    </select>
+                    <input type="text" id="preorder-voucher-code" placeholder="Or type Voucher Code (e.g. STEAK100)" oninput="window.onPreOrderVoucherCodeInput(this.value)" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-weight:800; text-transform:uppercase; box-sizing:border-box;">
+                    <div id="preorder-voucher-msg" style="font-size:11.5px; font-weight:700;"></div>
+                </div>
+
+                <!-- Mandatory Valid Picture Upload for PWD / Senior / Voucher -->
+                <div id="preorder-proof-upload-wrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                    <label style="display:block; font-size:11.5px; font-weight:800; color:#b91c1c; margin-bottom:6px;">
+                        📷 Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
+                    </label>
+                    <input type="file" id="preorder-disc-photo-input" accept="image/jpeg,image/png,image/webp" onchange="window.handlePreOrderDiscountPhoto(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
+                    <div id="preorder-disc-photo-preview-wrap" style="display:none; align-items:center; justify-content:space-between; background:#f0fdf4; border:1px solid #86efac; padding:6px 10px; border-radius:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img id="preorder-disc-photo-img" src="" alt="ID/Voucher Preview" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid #16a34a;">
+                            <span style="font-size:11.5px; font-weight:800; color:#166534;">✅ Valid Photo Attached</span>
+                        </div>
+                        <button type="button" onclick="window.clearPreOrderDiscountPhoto()" style="background:#fee2e2; color:#dc2626; border:none; border-radius:6px; padding:4px 8px; font-size:11px; font-weight:800; cursor:pointer;">Remove</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="cart-total-section">
                 <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal">₱0.00</span></div>
+                <div class="cart-total-row" id="cart-discount-row" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label">Discount</span><span id="cart-discount-val">-₱0.00</span></div>
                 <div class="cart-total-row"><span>VAT (12% incl.)</span><span>Included</span></div>
                 <div class="cart-total"><span>Total</span><span id="cart-total">₱0.00</span></div>
             </div>
@@ -292,8 +331,36 @@
                 </div>
             </div>
             <div class="cart-items-container" id="cart-items-sheet"></div>
+
+            <!-- 🎟️ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (MOBILE SHEET) -->
+            <div id="preorder-discount-box-sheet" style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px;">
+                <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">
+                    🏷️ Discount or Promo Voucher
+                </div>
+                <select id="preorder-disc-type-sheet" onchange="window.syncPreOrderDiscountUI('sheet')" style="width:100%; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; background:white; font-weight:700; font-size:13px; color:#0f172a; cursor:pointer; box-sizing:border-box;">
+                    <option value="none">No Discount (Regular Price)</option>
+                    <option value="pwd">♿ PWD Discount (20% Off — ID Photo Required)</option>
+                    <option value="senior">👵 Senior Citizen (20% Off — ID Photo Required)</option>
+                    <option value="voucher">🎟️ Promo Voucher (Photo Required)</option>
+                </select>
+                <div id="preorder-voucher-wrap-sheet" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">
+                    <select id="preorder-voucher-select-sheet" onchange="window.onPreOrderVoucherPick(this.value)" style="width:100%; padding:8px 10px; border:1px solid #86efac; border-radius:8px; background:#f0fdf4; color:#166534; font-weight:800; font-size:12px; cursor:pointer; box-sizing:border-box;">
+                        <option value="">-- Select Available Voucher --</option>
+                    </select>
+                    <input type="text" id="preorder-voucher-code-sheet" placeholder="Or type Voucher Code" oninput="window.onPreOrderVoucherCodeInput(this.value)" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-weight:800; text-transform:uppercase; box-sizing:border-box;">
+                    <div id="preorder-voucher-msg-sheet" style="font-size:11.5px; font-weight:700;"></div>
+                </div>
+                <div id="preorder-proof-upload-wrap-sheet" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                    <label style="display:block; font-size:11.5px; font-weight:800; color:#b91c1c; margin-bottom:6px;">
+                        📷 Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
+                    </label>
+                    <input type="file" id="preorder-disc-photo-input-sheet" accept="image/jpeg,image/png,image/webp" onchange="window.handlePreOrderDiscountPhoto(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
+                </div>
+            </div>
+
             <div class="cart-total-section">
                 <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal-sheet">₱0.00</span></div>
+                <div class="cart-total-row" id="cart-discount-row-sheet" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label-sheet">Discount</span><span id="cart-discount-val-sheet">-₱0.00</span></div>
                 <div class="cart-total-row"><span>VAT (12% incl.)</span><span>Included</span></div>
                 <div class="cart-total"><span>Total</span><span id="cart-total-sheet">₱0.00</span></div>
             </div>
@@ -739,23 +806,181 @@
             });
         }
 
+        window.preOrderDiscountState = {
+            type: localStorage.getItem('discountType') || 'none',
+            voucherCode: localStorage.getItem('voucherCode') || '',
+            proofImage: localStorage.getItem('discountProofImage') || ''
+        };
+
+        function populatePreOrderVoucherDropdowns() {
+            if (!window.VoucherSystem) return;
+            const list = window.VoucherSystem.getVouchers().filter(v => v.active !== false);
+            const optsHtml = `<option value="">-- Select Available Voucher (${list.length}) --</option>` +
+                list.map(v => {
+                    const dTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `₱${v.value} OFF`;
+                    const rTxt = window.VoucherSystem.formatRequirementSummary(v);
+                    return `<option value="${v.code}">${v.code} — ${dTxt} (${rTxt})</option>`;
+                }).join('');
+
+            ['preorder-voucher-select', 'preorder-voucher-select-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = optsHtml;
+                    if (window.preOrderDiscountState.voucherCode) el.value = window.preOrderDiscountState.voucherCode;
+                }
+            });
+        }
+        window.addEventListener('vouchersUpdated', populatePreOrderVoucherDropdowns);
+        setTimeout(populatePreOrderVoucherDropdowns, 600);
+
+        window.syncPreOrderDiscountUI = function (source) {
+            const deskSel = document.getElementById('preorder-disc-type');
+            const sheetSel = document.getElementById('preorder-disc-type-sheet');
+            const val = source === 'sheet' ? (sheetSel?.value || 'none') : (deskSel?.value || 'none');
+            if (deskSel) deskSel.value = val;
+            if (sheetSel) sheetSel.value = val;
+            window.preOrderDiscountState.type = val;
+
+            const isVoucher = val === 'voucher';
+            const needsPhoto = val !== 'none';
+
+            ['preorder-voucher-wrap', 'preorder-voucher-wrap-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = isVoucher ? 'flex' : 'none';
+            });
+            ['preorder-proof-upload-wrap', 'preorder-proof-upload-wrap-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = needsPhoto ? 'block' : 'none';
+            });
+
+            if (isVoucher) populatePreOrderVoucherDropdowns();
+            renderCart();
+        };
+
+        window.onPreOrderVoucherPick = function (code) {
+            window.preOrderDiscountState.voucherCode = (code || '').toUpperCase();
+            ['preorder-voucher-code', 'preorder-voucher-code-sheet', 'preorder-voucher-select', 'preorder-voucher-select-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = window.preOrderDiscountState.voucherCode;
+            });
+            renderCart();
+        };
+
+        window.onPreOrderVoucherCodeInput = function (val) {
+            window.preOrderDiscountState.voucherCode = (val || '').trim().toUpperCase();
+            ['preorder-voucher-code', 'preorder-voucher-code-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value.toUpperCase() !== window.preOrderDiscountState.voucherCode) {
+                    el.value = window.preOrderDiscountState.voucherCode;
+                }
+            });
+            renderCart();
+        };
+
+        window.handlePreOrderDiscountPhoto = function (input) {
+            const file = input && input.files && input.files[0];
+            if (!file) return;
+            if (!/^image\/(jpeg|png|webp|jpg)$/i.test(file.type)) {
+                superModal({ title: 'Invalid File Format ⚠️', message: 'Please upload a valid image file (JPG, PNG, or WEBP) of your ID or Voucher.' });
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const MAX_W = 700;
+                    let w = img.width, h = img.height;
+                    if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+                    window.preOrderDiscountState.proofImage = dataUrl;
+                    localStorage.setItem('discountProofImage', dataUrl);
+
+                    const prevWrap = document.getElementById('preorder-disc-photo-preview-wrap');
+                    const prevImg = document.getElementById('preorder-disc-photo-img');
+                    if (prevImg) prevImg.src = dataUrl;
+                    if (prevWrap) prevWrap.style.display = 'flex';
+                    if (window.showToast) window.showToast('Valid ID / Voucher photo attached!', 'success');
+                };
+                img.onerror = function () {
+                    superModal({ title: 'Invalid Image ⚠️', message: 'Could not read the image file. Please upload a clear photo.' });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.clearPreOrderDiscountPhoto = function () {
+            window.preOrderDiscountState.proofImage = '';
+            localStorage.removeItem('discountProofImage');
+            ['preorder-disc-photo-input', 'preorder-disc-photo-input-sheet'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const prevWrap = document.getElementById('preorder-disc-photo-preview-wrap');
+            if (prevWrap) prevWrap.style.display = 'none';
+        };
+
+        function evaluatePreOrderDiscount(subtotal) {
+            const type = window.preOrderDiscountState.type || 'none';
+            const msgEls = [document.getElementById('preorder-voucher-msg'), document.getElementById('preorder-voucher-msg-sheet')].filter(Boolean);
+            msgEls.forEach(el => { el.textContent = ''; });
+
+            if (type === 'none' || subtotal <= 0) {
+                return { type: 'none', amount: 0, label: '', valid: true, voucherCode: '' };
+            }
+            if (type === 'pwd' || type === 'senior') {
+                const amt = Math.round(subtotal * 0.20 * 100) / 100;
+                const label = type === 'pwd' ? 'PWD 20% Off' : 'Senior Citizen 20% Off';
+                return { type, amount: amt, label, valid: true, voucherCode: '' };
+            }
+            if (type === 'voucher') {
+                const code = window.preOrderDiscountState.voucherCode || '';
+                const cartArr = Object.keys(cart).map(id => {
+                    const m = menuData.find(i => i.id === id);
+                    return m ? { id: m.id, title: m.title, category: m.category, price: m.price, qty: cart[id].qty } : null;
+                }).filter(Boolean);
+
+                if (!window.VoucherSystem) {
+                    return { type: 'voucher', amount: 0, label: 'Voucher', valid: false, reason: 'Voucher system loading...', voucherCode: code };
+                }
+                const check = window.VoucherSystem.validateVoucher(code, subtotal, cartArr);
+                msgEls.forEach(el => {
+                    el.style.color = check.valid ? '#15803d' : '#dc2626';
+                    el.textContent = check.valid ? `✅ ${check.label} (-₱${check.discountAmount.toLocaleString()})` : `⚠️ ${check.reason}`;
+                });
+                return {
+                    type: 'voucher',
+                    amount: check.valid ? check.discountAmount : 0,
+                    label: check.label || `Voucher (${code})`,
+                    valid: check.valid,
+                    reason: check.reason,
+                    voucherCode: code
+                };
+            }
+            return { type: 'none', amount: 0, label: '', valid: true, voucherCode: '' };
+        }
+
         function renderCart() {
             const subtotal = getTotal();
-            const finalTotal = subtotal;
+            const disc = evaluatePreOrderDiscount(subtotal);
+            const finalTotal = Math.max(0, subtotal - (disc.amount || 0));
 
             const fmtSubtotal  = fmt(subtotal);
             const fmtTotal     = fmt(finalTotal);
             const html         = buildCartItemsHTML();
             const itemCount    = Object.values(cart).reduce((s, v) => s + v.qty, 0);
 
-            // Check for beef items
             const hasBeef = Object.keys(cart).some(id => isBeefItem(menuData.find(i => i.id === id)));
-
-            // 👉 Panels stay visible; only the doneness chips are gated by updateBeefPrefLock()
             if (!hasBeef) {
                 selectedDoneness = '';
                 document.querySelectorAll('.doneness-chip').forEach(c => c.classList.remove('active'));
             }
+
             // Desktop sidebar
             document.getElementById('cart-items').innerHTML      = html;
             document.getElementById('cart-subtotal').textContent  = fmtSubtotal;
@@ -765,6 +990,22 @@
             document.getElementById('cart-items-sheet').innerHTML      = html;
             document.getElementById('cart-subtotal-sheet').textContent  = fmtSubtotal;
             document.getElementById('cart-total-sheet').textContent     = fmtTotal;
+
+            // Discount Row Display
+            [['cart-discount-row', 'cart-discount-label', 'cart-discount-val'],
+             ['cart-discount-row-sheet', 'cart-discount-label-sheet', 'cart-discount-val-sheet']].forEach(([rId, lId, vId]) => {
+                const rEl = document.getElementById(rId);
+                const lEl = document.getElementById(lId);
+                const vEl = document.getElementById(vId);
+                if (!rEl) return;
+                if (disc.amount > 0) {
+                    rEl.style.display = 'flex';
+                    if (lEl) lEl.textContent = `🏷️ ${disc.label}`;
+                    if (vEl) vEl.textContent = `-${fmt(disc.amount)}`;
+                } else {
+                    rEl.style.display = 'none';
+                }
+            });
 
             // Floating btn badge
             const badge = document.getElementById('cart-badge');
@@ -781,10 +1022,17 @@
             if (hasItems) {
                 localStorage.setItem('totalBill', finalTotal);
                 localStorage.setItem('subtotalBill', subtotal);
-                localStorage.removeItem('discountType');
-                localStorage.removeItem('discountAmount');
-                localStorage.removeItem('discountLabel');
-                localStorage.removeItem('discountIdNo');
+                if (disc.type !== 'none' && disc.amount > 0) {
+                    localStorage.setItem('discountType', disc.type);
+                    localStorage.setItem('discountAmount', disc.amount);
+                    localStorage.setItem('discountLabel', disc.label);
+                    localStorage.setItem('voucherCode', disc.voucherCode || '');
+                } else {
+                    localStorage.removeItem('discountType');
+                    localStorage.removeItem('discountAmount');
+                    localStorage.removeItem('discountLabel');
+                    localStorage.removeItem('voucherCode');
+                }
                 localStorage.setItem('orderSummary',
                     Object.keys(cart).map(id => {
                         const item = menuData.find(i => i.id === id);
@@ -800,7 +1048,7 @@
                 localStorage.removeItem('discountType');
                 localStorage.removeItem('discountAmount');
                 localStorage.removeItem('discountLabel');
-                localStorage.removeItem('discountIdNo');
+                localStorage.removeItem('voucherCode');
             }
         }
 
@@ -983,7 +1231,30 @@
         // CHECKOUT
         // ─────────────────────────────────────────────────────────
         window.handleCheckout = function() {
+            // 1. Validate Discount / Voucher Eligibility & Mandatory Photo Proof!
+            const subtotalNow = getTotal();
+            const discCheck = evaluatePreOrderDiscount(subtotalNow);
 
+            if (discCheck.type === 'voucher' && !discCheck.valid) {
+                superModal({
+                    title: 'Voucher Not Eligible 🎟️',
+                    message: discCheck.reason || 'Your cart does not meet the eligibility requirements for this voucher yet.'
+                });
+                return;
+            }
+
+            if (discCheck.type !== 'none') {
+                const uploadedPhoto = window.preOrderDiscountState.proofImage || localStorage.getItem('discountProofImage') || '';
+                if (!uploadedPhoto || !uploadedPhoto.startsWith('data:image/')) {
+                    const idTypeLabel = discCheck.type === 'pwd' ? 'PWD ID Card' : (discCheck.type === 'senior' ? 'Senior Citizen ID Card' : 'Promo Voucher');
+                    superModal({
+                        title: 'Valid Picture Required 📷',
+                        message: `To claim your <b>${idTypeLabel}</b> discount, please upload a clear, valid photo of your <b>${idTypeLabel}</b> in the Discount/Voucher section before proceeding to payment.`
+                    });
+                    return;
+                }
+            }
+            
             // 👉 Required: kitchen timing must be chosen
             const timingEl = document.querySelector('input[name="preorder-kitchen-timing"]:checked')
                           || document.querySelector('input[name="preorder-kitchen-timing-sheet"]:checked');
