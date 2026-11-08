@@ -2953,11 +2953,25 @@ window.setPosBranchPin = async function (branchName, newPin) {
         'ph_holiday_config'
     ]);
 
+    const INV_OVERRIDE_KEYS = new Set(['inventoryItems', 'rawIngredients', 'inventory_audit_logs', 'inventory_wastage_logs']);
+
+    window.getInventoryBranch = function () {
+        if (isSuperAdminPage && window.__invBranchOverride) {
+            return window.__invBranchOverride;
+        }
+        return window.getEffectiveBranch();
+    };
+
     function resolveScopedKey(key) {
         if (key === 'ph_holiday_config' && window.__holidayBranchOverride) {
             return window.__holidayBranchOverride === 'General Santos City'
                 ? key
                 : `${window.__holidayBranchOverride}__${key}`;
+        }
+        if (isSuperAdminPage && window.__invBranchOverride && INV_OVERRIDE_KEYS.has(key)) {
+            return window.__invBranchOverride === 'General Santos City'
+                ? key
+                : `${window.__invBranchOverride}__${key}`;
         }
         const activeBranch = window.getCurrentBranch();
         if (SCOPED_KEYS.has(key) && activeBranch !== 'General Santos City' && activeBranch !== 'ALL') {
