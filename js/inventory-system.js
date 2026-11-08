@@ -2950,7 +2950,8 @@ window.setPosBranchPin = async function (branchName, newPin) {
         'activePromos',
         'liveChats',
         'store_status',
-        'ph_holiday_config'
+        'ph_holiday_config',
+        'vouchers'
     ]);
 
     const INV_OVERRIDE_KEYS = new Set(['inventoryItems', 'rawIngredients', 'inventory_audit_logs', 'inventory_wastage_logs']);
@@ -3592,6 +3593,458 @@ window.setPosBranchPin = async function (branchName, newPin) {
             }
 
             setTimeout(injectPosDiscountControls, 500);
+        }
+    });
+
+    // ============================================================================
+    // 🎟️ ROLAND'S VOUCHER & DISCOUNT ELIGIBILITY ENGINE (POS, PRE-ORDER, ADMIN & MANAGER)
+    // ============================================================================
+    const DEFAULT_VOUCHERS = [
+        {
+            code: 'ROLANDS10',
+            title: '10% Off Dining Promo',
+            discountMode: 'pct', // 'pct' or 'flat'
+            value: 10,
+            minSpend: 1000,
+            minQty: 1,
+            requiredCategory: 'ANY',
+            expiryDate: '',
+            active: true
+        },
+        {
+            code: 'STEAK100',
+            title: '₱100 Off Steak Lover Voucher',
+            discountMode: 'flat',
+            value: 100,
+            minSpend: 700,
+            minQty: 1,
+            requiredCategory: 'Beef',
+            expiryDate: '',
+            active: true
+        },
+        {
+            code: 'VIP500',
+            title: '₱500 Off Family / Feast Voucher',
+            discountMode: 'flat',
+            value: 500,
+            minSpend: 3000,
+            minQty: 3,
+            requiredCategory: 'ANY',
+            expiryDate: '',
+            active: true
+        }
+    ];
+
+    window.VoucherSystem = {
+        getVouchers: function () {
+            try {
+                const raw = localStorage.getItem('vouchers');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch (e) {}
+            localStorage.setItem('vouchers', JSON.stringify(DEFAULT_VOUCHERS));
+            return JSON.parse(JSON.stringify(DEFAULT_VOUCHERS));
+        },
+
+        saveVouchers: async function (list) {
+            const cleanList = Array.isArray(list) ? list : [];
+            localStorage.setItem('vouchers', JSON.stringify(cleanList));
+            window.dispatchEvent(new CustomEvent('vouchersUpdated', { detail: cleanList }));
+            const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+            try {
+                await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branch, vouchers: cleanList })
+                });
+            } catch (e) {}
+            return cleanList;
+        },
+
+        pullFromCloud: async function () {
+            try {
+                const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                const res = await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`);
+                if (res.ok) {
+                    const cloudList = await res.json();
+                    if (Array.isArray(cloudList) && cloudList.length > 0) {
+                        const prev = localStorage.getItem('vouchers');
+                        const next = JSON.stringify(cloudList);
+                        if (prev !== next) {
+                            localStorage.setItem('vouchers', next);
+                            window.dispatchEvent(new CustomEvent('vouchersUpdated', { detail: cloudList }));
+                            if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
+                        }
+                    }
+                }
+            } catch (e) {}
+        },
+
+        // Validates a voucher code against current cart items and subtotal
+        // cartItemsArray: [{ id, title, category, price, qty }]
+        validateVoucher: function (code, subtotal, cartItemsArray) {
+            const cleanCode = String(code || '').trim().toUpperCase();
+            if (!cleanCode) {
+                return { valid: false, discountAmount: 0, reason: 'Please select or enter a voucher code.' };
+            }
+
+            const all = this.getVouchers();
+            const v = all.find(x => String(x.code || '').toUpperCase() === cleanCode);
+            if (!v) {
+                return { valid: false, discountAmount: 0, reason: `Voucher "${cleanCode}" does not exist.` };
+            }
+            if (v.active === false) {
+                return { valid: false, discountAmount: 0, reason: `Voucher "${cleanCode}" is currently inactive.` };
+            }
+
+            // 1. Check Expiry Date
+            if (v.expiryDate) {
+                const exp = new Date(v.expiryDate + 'T23:59:59');
+                if (!isNaN(exp.getTime()) && Date.now() > exp.getTime()) {
+                    return { valid: false, discountAmount: 0, reason: `Voucher "${cleanCode}" expired on ${v.expiryDate}.` };
+                }
+            }
+
+            // 2. Check Minimum Spend
+            const minSpend = Number(v.minSpend) || 0;
+            if (subtotal < minSpend) {
+                const diff = minSpend - subtotal;
+                return {
+                    valid: false,
+                    discountAmount: 0,
+                    reason: `Requires ₱${minSpend.toLocaleString()} minimum order (Add ₱${diff.toLocaleString()} more).`,
+                    voucher: v
+                };
+            }
+
+            // 3. Check Minimum Item Quantity
+            const items = Array.isArray(cartItemsArray) ? cartItemsArray : [];
+            const totalQty = items.reduce((s, i) => s + (Number(i.qty || i.quantity) || 1), 0);
+            const minQty = Number(v.minQty) || 1;
+            if (totalQty < minQty) {
+                return {
+                    valid: false,
+                    discountAmount: 0,
+                    reason: `Requires at least ${minQty} item(s) in your order (Currently ${totalQty}).`,
+                    voucher: v
+                };
+            }
+
+            // 4. Check Required Category
+            const reqCat = String(v.requiredCategory || 'ANY').trim();
+            if (reqCat && reqCat !== 'ANY') {
+                const hasCat = items.some(i => String(i.category || '').toLowerCase() === reqCat.toLowerCase());
+                if (!hasCat) {
+                    return {
+                        valid: false,
+                        discountAmount: 0,
+                        reason: `Requires at least 1 "${reqCat}" item in your cart.`,
+                        voucher: v
+                    };
+                }
+            }
+
+            // Compute discount amount
+            let discAmt = 0;
+            if (v.discountMode === 'pct') {
+                discAmt = subtotal * ((Number(v.value) || 0) / 100);
+            } else {
+                discAmt = Number(v.value) || 0;
+            }
+            discAmt = Math.min(subtotal, Math.round(discAmt * 100) / 100);
+
+            return {
+                valid: true,
+                discountAmount: discAmt,
+                voucher: v,
+                label: `${v.code} (${v.discountMode === 'pct' ? v.value + '% OFF' : '₱' + v.value + ' OFF'})`,
+                reason: 'Eligible! Discount applied.'
+            };
+        },
+
+        formatRequirementSummary: function (v) {
+            if (!v) return '';
+            const parts = [];
+            if (Number(v.minSpend) > 0) parts.push(`Min. spend ₱${Number(v.minSpend).toLocaleString()}`);
+            if (Number(v.minQty) > 1) parts.push(`Min. ${v.minQty} items`);
+            if (v.requiredCategory && v.requiredCategory !== 'ANY') parts.push(`Requires ${v.requiredCategory}`);
+            if (v.expiryDate) parts.push(`Until ${v.expiryDate}`);
+            return parts.length ? parts.join(' • ') : 'No minimum requirements';
+        }
+    };
+
+    // Pull latest vouchers on load & every 20s
+    setTimeout(() => window.VoucherSystem.pullFromCloud(), 700);
+    setInterval(() => window.VoucherSystem.pullFromCloud(), 20000);
+
+    // Inject Modifiable Voucher Manager into Admin (Promotions tab) & SuperAdmin (Branding/Promos or Inventory)
+    window.renderVoucherAdminManager = function () {
+        const targets = [
+            document.getElementById('voucher-manager-mount'),
+            document.getElementById('superadmin-voucher-mount')
+        ].filter(Boolean);
+        if (targets.length === 0) return;
+
+        const vouchers = window.VoucherSystem.getVouchers();
+
+        const html = `
+            <div class="card" style="margin-top:24px; border:1.5px solid #bbf7d0; background:#ffffff; border-radius:14px; padding:22px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+                    <div>
+                        <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">🎟️ Voucher & Eligibility Rules Manager</h3>
+                        <p style="margin:4px 0 0; font-size:12.5px; color:#64748b;">Create and modify promo vouchers with custom eligibility rules for both <b>Customer Pre-Order</b> and <b>POS Terminal</b>.</p>
+                    </div>
+                    <span style="background:#dcfce7; color:#166534; font-weight:800; font-size:11.5px; padding:4px 12px; border-radius:20px;">${vouchers.length} Configured</span>
+                </div>
+
+                <!-- Create / Update Voucher Form -->
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:20px;">
+                    <div style="font-size:12px; font-weight:800; color:#1b5e20; text-transform:uppercase; margin-bottom:10px;" id="vch-form-heading">+ Create or Modify Voucher</div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:12px;">
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">VOUCHER CODE *</label>
+                            <input type="text" id="vch-code" placeholder="e.g. STEAK200" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; font-weight:800; text-transform:uppercase; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">PROMO TITLE *</label>
+                            <input type="text" id="vch-title" placeholder="e.g. ₱200 Off Steak Night" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">DISCOUNT TYPE</label>
+                            <select id="vch-mode" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; background:white; font-weight:700; box-sizing:border-box;">
+                                <option value="flat">Fixed Amount (₱ Off)</option>
+                                <option value="pct">Percentage (% Off)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">DISCOUNT VALUE *</label>
+                            <input type="number" id="vch-val" placeholder="e.g. 200 or 10" min="1" step="any" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:14px;">
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">MIN. SPEND REQUIRED (₱)</label>
+                            <input type="number" id="vch-min-spend" placeholder="0 (No minimum)" min="0" value="0" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">MIN. ITEMS IN CART</label>
+                            <input type="number" id="vch-min-qty" placeholder="1" min="1" value="1" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">REQUIRED FOOD CATEGORY</label>
+                            <select id="vch-req-cat" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; background:white; box-sizing:border-box;">
+                                <option value="ANY">Any Menu Category</option>
+                                <option value="Beef">🥩 Beef Steaks</option>
+                                <option value="T-Bone">🦴 T-Bone</option>
+                                <option value="Sirloin Steak">🥩 Sirloin Steak</option>
+                                <option value="Chicken & Fish">🍗 Chicken & Fish</option>
+                                <option value="Sandwich">🍔 Sandwich</option>
+                                <option value="Side Orders">🍟 Side Orders</option>
+                                <option value="Drinks">🍹 Drinks</option>
+                                <option value="Wines">🍷 Wines</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; font-weight:800; color:#475569; margin-bottom:4px;">EXPIRY DATE (OPTIONAL)</label>
+                            <input type="date" id="vch-expiry" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <button type="button" onclick="window.clearVoucherForm()" style="padding:9px 16px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#475569; font-weight:700; font-size:12.5px; cursor:pointer;">Clear</button>
+                        <button type="button" onclick="window.saveVoucherFromForm()" style="padding:9px 20px; border-radius:8px; border:none; background:#16a34a; color:white; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.25);">💾 Save Voucher & Sync</button>
+                    </div>
+                </div>
+
+                <!-- Active Vouchers Table -->
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                                <th style="padding:10px;">Code</th>
+                                <th style="padding:10px;">Title</th>
+                                <th style="padding:10px;">Discount</th>
+                                <th style="padding:10px;">Eligibility Requirements</th>
+                                <th style="padding:10px;">Status</th>
+                                <th style="padding:10px; text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${vouchers.length === 0 ? `<tr><td colspan="6" style="padding:20px; text-align:center; color:#94a3b8;">No vouchers configured.</td></tr>` : vouchers.map(v => `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:10px;"><span style="background:#f0fdf4; border:1px solid #86efac; color:#166534; font-weight:900; padding:4px 8px; border-radius:6px; font-family:monospace;">${v.code}</span></td>
+                                    <td style="padding:10px; font-weight:700; color:#0f172a;">${v.title || v.code}</td>
+                                    <td style="padding:10px; font-weight:800; color:#15803d;">${v.discountMode === 'pct' ? v.value + '% OFF' : '₱' + Number(v.value).toLocaleString() + ' OFF'}</td>
+                                    <td style="padding:10px; font-size:12px; color:#475569;">${window.VoucherSystem.formatRequirementSummary(v)}</td>
+                                    <td style="padding:10px;">
+                                        <span style="background:${v.active !== false ? '#dcfce7' : '#fee2e2'}; color:${v.active !== false ? '#166534' : '#991b1b'}; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:800;">
+                                            ${v.active !== false ? '🟢 ACTIVE' : '🔴 DISABLED'}
+                                        </span>
+                                    </td>
+                                    <td style="padding:10px; text-align:right;">
+                                        <div style="display:inline-flex; gap:6px;">
+                                            <button type="button" onclick="window.editVoucherInForm('${v.code}')" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer;">✏️ Edit</button>
+                                            <button type="button" onclick="window.toggleVoucherActive('${v.code}')" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">${v.active !== false ? 'Disable' : 'Enable'}</button>
+                                            <button type="button" onclick="window.deleteVoucherByCode('${v.code}')" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 10px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer;">🗑️</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        targets.forEach(t => { t.innerHTML = html; });
+    };
+
+    window.clearVoucherForm = function () {
+        if (document.getElementById('vch-code')) document.getElementById('vch-code').value = '';
+        if (document.getElementById('vch-title')) document.getElementById('vch-title').value = '';
+        if (document.getElementById('vch-mode')) document.getElementById('vch-mode').value = 'flat';
+        if (document.getElementById('vch-val')) document.getElementById('vch-val').value = '';
+        if (document.getElementById('vch-min-spend')) document.getElementById('vch-min-spend').value = '0';
+        if (document.getElementById('vch-min-qty')) document.getElementById('vch-min-qty').value = '1';
+        if (document.getElementById('vch-req-cat')) document.getElementById('vch-req-cat').value = 'ANY';
+        if (document.getElementById('vch-expiry')) document.getElementById('vch-expiry').value = '';
+        if (document.getElementById('vch-form-heading')) document.getElementById('vch-form-heading').textContent = '+ Create or Modify Voucher';
+    };
+
+    window.editVoucherInForm = function (code) {
+        const v = window.VoucherSystem.getVouchers().find(x => x.code === code);
+        if (!v) return;
+        if (document.getElementById('vch-code')) document.getElementById('vch-code').value = v.code;
+        if (document.getElementById('vch-title')) document.getElementById('vch-title').value = v.title || '';
+        if (document.getElementById('vch-mode')) document.getElementById('vch-mode').value = v.discountMode || 'flat';
+        if (document.getElementById('vch-val')) document.getElementById('vch-val').value = v.value || 0;
+        if (document.getElementById('vch-min-spend')) document.getElementById('vch-min-spend').value = v.minSpend || 0;
+        if (document.getElementById('vch-min-qty')) document.getElementById('vch-min-qty').value = v.minQty || 1;
+        if (document.getElementById('vch-req-cat')) document.getElementById('vch-req-cat').value = v.requiredCategory || 'ANY';
+        if (document.getElementById('vch-expiry')) document.getElementById('vch-expiry').value = v.expiryDate || '';
+        if (document.getElementById('vch-form-heading')) document.getElementById('vch-form-heading').textContent = `✏️ Editing Voucher: ${v.code}`;
+    };
+
+    window.saveVoucherFromForm = async function () {
+        const code = (document.getElementById('vch-code')?.value || '').trim().toUpperCase().replace(/\s+/g, '');
+        const title = (document.getElementById('vch-title')?.value || '').trim() || code;
+        const discountMode = document.getElementById('vch-mode')?.value || 'flat';
+        const value = parseFloat(document.getElementById('vch-val')?.value);
+        const minSpend = Math.max(0, parseFloat(document.getElementById('vch-min-spend')?.value) || 0);
+        const minQty = Math.max(1, parseInt(document.getElementById('vch-min-qty')?.value, 10) || 1);
+        const requiredCategory = document.getElementById('vch-req-cat')?.value || 'ANY';
+        const expiryDate = document.getElementById('vch-expiry')?.value || '';
+
+        if (!code || isNaN(value) || value <= 0) {
+            alert('Please enter a valid Voucher Code and a Discount Value greater than 0.');
+            return;
+        }
+        if (discountMode === 'pct' && value > 100) {
+            alert('Percentage discount cannot exceed 100%.');
+            return;
+        }
+
+        const list = window.VoucherSystem.getVouchers();
+        const idx = list.findIndex(x => String(x.code).toUpperCase() === code);
+        const newObj = { code, title, discountMode, value, minSpend, minQty, requiredCategory, expiryDate, active: true };
+
+        if (idx >= 0) list[idx] = { ...list[idx], ...newObj };
+        else list.push(newObj);
+
+        await window.VoucherSystem.saveVouchers(list);
+        window.clearVoucherForm();
+        window.renderVoucherAdminManager();
+        if (window.showToast) window.showToast(`Voucher ${code} saved & synced across all terminals!`, 'success');
+    };
+
+    window.toggleVoucherActive = async function (code) {
+        const list = window.VoucherSystem.getVouchers();
+        const v = list.find(x => x.code === code);
+        if (!v) return;
+        v.active = v.active === false ? true : false;
+        await window.VoucherSystem.saveVouchers(list);
+        window.renderVoucherAdminManager();
+    };
+
+    window.deleteVoucherByCode = async function (code) {
+        if (!confirm(`Delete voucher "${code}" permanently?`)) return;
+        let list = window.VoucherSystem.getVouchers().filter(x => x.code !== code);
+        await window.VoucherSystem.saveVouchers(list);
+        window.renderVoucherAdminManager();
+    };
+
+    // Mount Voucher Manager in Admin (Promotions tab) & SuperAdmin (Branding/Security) + Bridge Pre-Order Discount Proof on payment.html
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Mount in Admin Promotions Tab
+        const adminPromoTab = document.getElementById('tab-promotions');
+        if (adminPromoTab && !document.getElementById('voucher-manager-mount')) {
+            const m = document.createElement('div');
+            m.id = 'voucher-manager-mount';
+            adminPromoTab.appendChild(m);
+            window.renderVoucherAdminManager();
+        }
+
+        // 2. Mount in SuperAdmin Overview/Branding Tab
+        const saBrandingTab = document.getElementById('tab-branding') || document.getElementById('tab-kitchen');
+        if (saBrandingTab && !document.getElementById('superadmin-voucher-mount')) {
+            const m2 = document.createElement('div');
+            m2.id = 'superadmin-voucher-mount';
+            saBrandingTab.appendChild(m2);
+            window.renderVoucherAdminManager();
+        }
+
+        // 3. Bridge Pre-Order Discount & Mandatory ID/Voucher Photo Proof onto payment.html & reservationHistory!
+        if (pagePath.includes('payment')) {
+            const discType = localStorage.getItem('discountType') || 'none';
+            const discAmt = parseFloat(localStorage.getItem('discountAmount') || '0') || 0;
+            const discLabel = localStorage.getItem('discountLabel') || '';
+            const vchCode = localStorage.getItem('voucherCode') || '';
+            const discProof = localStorage.getItem('discountProofImage') || '';
+
+            if (discType !== 'none' && discAmt > 0) {
+                // Show discount row in payment.html summary if present
+                const totalRow = document.getElementById('summary-total')?.parentElement || document.querySelector('.total-row');
+                if (totalRow && !document.getElementById('payment-disc-row')) {
+                    const dRow = document.createElement('div');
+                    dRow.id = 'payment-disc-row';
+                    dRow.className = 'order-row';
+                    dRow.style.cssText = 'display:flex; justify-content:space-between; color:#c2410c; font-weight:800; padding:6px 0;';
+                    dRow.innerHTML = `<span>🏷️ Discount (${discLabel || discType.toUpperCase()})</span><span>-₱${discAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>`;
+                    totalRow.parentElement.insertBefore(dRow, totalRow);
+                }
+
+                // Ensure any reservation saved on payment.html includes the discount & uploaded ID/Voucher photo proof!
+                const attachPreOrderDiscountToHistory = () => {
+                    try {
+                        const rawHist = rawGet('reservationHistory');
+                        if (!rawHist) return;
+                        const list = JSON.parse(rawHist);
+                        if (!Array.isArray(list) || list.length === 0) return;
+                        const newest = list[list.length - 1];
+                        if (newest && newest.createdAt && (Date.now() - new Date(newest.createdAt).getTime() < 30000)) {
+                            let changed = false;
+                            if (!newest.discountType || newest.discountType === 'none') {
+                                newest.discountType = discType;
+                                newest.discountAmount = discAmt;
+                                newest.voucherCode = vchCode;
+                                changed = true;
+                            }
+                            if (discProof && !newest.hasCustomProof) {
+                                newest.paymentProof = discProof;
+                                newest.discountProofImage = discProof;
+                                newest.hasCustomProof = true;
+                                changed = true;
+                            }
+                            if (changed) safeRawSet('reservationHistory', JSON.stringify(list));
+                        }
+                    } catch (e) {}
+                };
+                window.addEventListener('beforeunload', attachPreOrderDiscountToHistory);
+                setInterval(attachPreOrderDiscountToHistory, 1000);
+            }
         }
     });
 })();
