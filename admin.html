@@ -1958,6 +1958,12 @@ window.readReservationHistory = function () {
                             match.paymentAmount = dbRes.paymentAmount || 0; 
                             updated = true; 
                         }
+                        if (dbRes.discountType && match.discountType !== dbRes.discountType) {
+                            match.discountType = dbRes.discountType;
+                            match.discountAmount = dbRes.discountAmount || 0;
+                            match.voucherCode = dbRes.voucherCode || '';
+                            updated = true;
+                        }
                         if (match.reservationType !== dbRes.reservationType) { 
                             match.reservationType = dbRes.reservationType || 'standard'; 
                             updated = true; 
@@ -1967,7 +1973,6 @@ window.readReservationHistory = function () {
                             updated = true;
                         }
                     } else {
-                        // Sync ALL reservations (including completed/cancelled) so every device has the exact same list & revenue!
                         const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
@@ -1985,6 +1990,9 @@ window.readReservationHistory = function () {
                             createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods, 
                             paymentAmount: dbRes.paymentAmount || 0,
+                            discountType: dbRes.discountType || 'none',
+                            discountAmount: dbRes.discountAmount || 0,
+                            voucherCode: dbRes.voucherCode || '',
                             bookedBy: dbRes.bookedBy,
                             branch: recBranch
                         });
@@ -2373,9 +2381,10 @@ window.readReservationHistory = function () {
                     }
 
                     let discountBadge = '';
-                    if (r.discountType && r.discountType !== 'none') {
-                        const typeText = r.discountType === 'pwd' ? 'PWD' : 'SENIOR';
-                        discountBadge = `<div style="font-size:10px; color:#c2410c; font-weight:800; background:#ffedd5; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">${typeText} DISC (-₱${Number(r.discountAmount || 0).toLocaleString()})</div>`;
+                    if ((r.discountType && r.discountType !== 'none') || Number(r.discountAmount) > 0) {
+                        const dType = String(r.discountType || '').toLowerCase();
+                        const typeText = dType === 'pwd' ? 'PWD 20%' : (dType === 'senior' ? 'SENIOR 20%' : `VOUCHER${r.voucherCode ? ' (' + r.voucherCode + ')' : ''}`);
+                        discountBadge = `<div style="font-size:10px; color:#c2410c; font-weight:800; background:#ffedd5; border:1px solid #fed7aa; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">🏷️ DISCOUNTED: ${typeText} (-₱${Number(r.discountAmount || 0).toLocaleString()})</div>`;
                     }
 
                     tdPaid.innerHTML = `<div style="font-weight:800; color:#1e293b; font-size:14px;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>${methodBadge}${statusBadge}${discountBadge}`;
