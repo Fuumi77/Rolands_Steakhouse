@@ -1073,7 +1073,7 @@ function scopedMemKey(baseKey, req) {
 function resolveBranchMemKey(key, req) {
     const reqBranch = req ? (req.query?.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || '') : '';
     const branch = String(reqBranch || global.__activeReqBranch || 'General Santos City').trim();
-    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos', 'phHolidayConfig'];
+    const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos', 'phHolidayConfig', 'vouchers'];
     if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
         return `${key}__${branch.replace(/\s+/g, '_')}`;
     }
@@ -1421,6 +1421,22 @@ app.post('/api/memory/promos', async (req, res) => {
     try {
         const list = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.promos) ? req.body.promos : []);
         await setSystemMemoryKey('activePromos', list, req);
+        res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 🎟️ MODIFIABLE VOUCHERS & ELIGIBILITY RULES SYNC (PER BRANCH) */
+app.get('/api/memory/vouchers', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('vouchers', null, req);
+        res.json(Array.isArray(data) ? data : null);
+    } catch (err) { res.json(null); }
+});
+
+app.post('/api/memory/vouchers', async (req, res) => {
+    try {
+        const list = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.vouchers) ? req.body.vouchers : []);
+        await setSystemMemoryKey('vouchers', list, req);
         res.json({ success: true, count: list.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
