@@ -589,8 +589,18 @@
 
             <!-- INVENTORY TAB -->
             <div id="tab-inventory" class="superadmin-tab-content">
-                <div class="stat-filter-row">
-                    <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Inventory Intelligence</h2>
+                <div class="stat-filter-row" style="gap: 14px;">
+                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                        <h2 class="section-title" style="margin: 0; border: none; padding: 0;">Inventory Intelligence</h2>
+                        <div style="display:inline-flex; align-items:center; gap:8px; background:#f0fdf4; border:2px solid #16a34a; padding:6px 12px; border-radius:12px; box-shadow:0 2px 8px rgba(22,163,74,0.12);">
+                            <span style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.4px;">🏬 Branch Inventory:</span>
+                            <select id="sa-inv-branch-select" onchange="window.switchSuperAdminInventoryBranch(this.value)"
+                                style="background:white; border:1px solid #bbf7d0; color:#14532d; font-weight:800; font-size:13px; padding:4px 10px; border-radius:8px; cursor:pointer; outline:none;">
+                                <option value="General Santos City">📍 General Santos City</option>
+                                <option value="Koronadal City">📍 Koronadal City</option>
+                            </select>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                         <button type="button" class="filter-btn secondary" onclick="exportInventoryReport()"
                             style="border: 1px solid #e2e8f0; background: white;">Export Report</button>
@@ -620,7 +630,7 @@
                 <div id="superadmin-food-container" class="hidden">
                     <div class="inv-top-bar">
                         <div class="inv-search-wrap" style="position:relative;">
-                            <input type="text" id="inv-search-input" placeholder="🔍 Search food portion items or category..."
+                            <input type="text" id="inv-search-input" placeholder="Search food portion items or category..."
                                 oninput="if(window.renderInventory) window.renderInventory();"
                                 style="padding-right:34px;">
                             <span id="inv-search-clear-btn" onclick="var el=document.getElementById('inv-search-input'); if(el){el.value=''; if(window.renderInventory) window.renderInventory(); el.focus();}" title="Clear search" style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>
@@ -1486,6 +1496,12 @@
                             match.paymentAmount = dbRes.paymentAmount || 0; 
                             updated = true; 
                         }
+                        if (dbRes.discountType && match.discountType !== dbRes.discountType) {
+                            match.discountType = dbRes.discountType;
+                            match.discountAmount = dbRes.discountAmount || 0;
+                            match.voucherCode = dbRes.voucherCode || '';
+                            updated = true;
+                        }
                         if (match.reservationType !== dbRes.reservationType) { 
                             match.reservationType = dbRes.reservationType || 'standard'; 
                             updated = true; 
@@ -1495,7 +1511,6 @@
                             updated = true;
                         }
                     } else {
-                        // Sync ALL reservations (including completed/cancelled) so every device matches 100%!
                         const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
@@ -1513,6 +1528,9 @@
                             createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods, 
                             paymentAmount: dbRes.paymentAmount || 0,
+                            discountType: dbRes.discountType || 'none',
+                            discountAmount: dbRes.discountAmount || 0,
+                            voucherCode: dbRes.voucherCode || '',
                             bookedBy: dbRes.bookedBy,
                             branch: recBranch
                         });
@@ -2321,7 +2339,14 @@
                         refundBadge = `<div style="font-size:10px; color:#fbbf24; font-weight:700;">⚠️ REFUND PENDING</div>`;
                     }
 
-                    // 👉 NEW: Payment Verified/Unverified Logic
+                    let discountBadge = '';
+                    if ((r.discountType && r.discountType !== 'none') || Number(r.discountAmount) > 0) {
+                        const dType = String(r.discountType || 'discount').toUpperCase();
+                        const dLabel = dType === 'PWD' ? 'PWD 20%' : (dType === 'SENIOR' ? 'SENIOR 20%' : `VOUCHER${r.voucherCode ? ' (' + r.voucherCode + ')' : ''}`);
+                        const dAmt = Number(r.discountAmount || 0);
+                        discountBadge = `<div style="font-size:10px; color:#c2410c; font-weight:800; background:#ffedd5; border:1px solid #fed7aa; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:3px;">🏷️ DISCOUNTED: ${dLabel}${dAmt > 0 ? ' (-₱' + dAmt.toLocaleString() + ')' : ''}</div>`;
+                    }
+
                     let paymentBadge = '';
                     const isPaidVerified = r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || (r.bookedBy === 'staff' && r.completedAt);
                     if (isPaidVerified) {
@@ -2332,7 +2357,6 @@
                         paymentBadge = `<div style="font-size:10px; font-weight:800; color:#64748b; margin-top:2px;">UNVERIFIED</div>`;
                     }
 
-                    // 👉 NEW: Reservation Status Logic
                     let overallStatus = String(r.approvalStatus || 'pending').toLowerCase();
                     if (r.completedAt) overallStatus = 'completed';
                     if (r.approvalStatus === 'rejected' || r.kdsStatus === 'cancelled' || r.approvalStatus === 'cancelled') overallStatus = 'cancelled';
@@ -2352,11 +2376,10 @@
                         <td style="font-weight:600;">${r.customerName || 'Walk-in Guest'}</td>
                         <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
-                        <!-- 👉 FIX: Locked the width so expanding text forces a new line instead of shifting the whole table! -->
                         <td class="foods-cell" style="max-width: 280px; min-width: 200px;"></td>
                         <td class="payment-cell">
                             <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
-                            ${paymentBadge}${refundBadge}
+                            ${paymentBadge}${discountBadge}${refundBadge}
                             ${r.reservationNumber ? `
                                 <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
                                     ${r.reservationNumber ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>` : ''}
@@ -3210,6 +3233,60 @@ window.changeStaffBranch = async function (username, newBranch) {
                 }
                 return merged;
             }
+            
+            window.__invBranchOverride = window.__invBranchOverride || (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+            const invBrSelect = document.getElementById('sa-inv-branch-select');
+            if (invBrSelect) invBrSelect.value = window.__invBranchOverride;
+
+            window.switchSuperAdminInventoryBranch = async function (branchName) {
+                window.__invBranchOverride = branchName || 'General Santos City';
+                const sel = document.getElementById('sa-inv-branch-select');
+                if (sel && sel.value !== window.__invBranchOverride) sel.value = window.__invBranchOverride;
+
+                if (window.InventorySystem && typeof window.InventorySystem.invalidateInventoryCache === 'function') {
+                    window.InventorySystem.invalidateInventoryCache();
+                }
+
+                try {
+                    const [rawRes, invRes, audRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/inventory/raw?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/inventory/audit-log?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`)
+                    ]);
+                    if (rawRes.ok) {
+                        const dbRaw = await rawRes.json();
+                        if (Array.isArray(dbRaw) && dbRaw.length > 0) {
+                            const existingRaw = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
+                            const mergedRaw = existingRaw.map(loc => {
+                                const found = dbRaw.find(d => d.id === loc.id || d.name === loc.name);
+                                return found ? { ...loc, stock: Number(found.stock) || 0, minThreshold: Number(found.minThreshold) || loc.minThreshold } : loc;
+                            });
+                            localStorage.setItem('rawIngredients', JSON.stringify(mergedRaw));
+                            if (window.InventorySystem) window.InventorySystem.invalidateInventoryCache();
+                        }
+                    }
+                    if (invRes.ok) {
+                        const cloudInv = await invRes.json();
+                        if (Array.isArray(cloudInv) && cloudInv.length > 0) {
+                            localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
+                        }
+                    }
+                    if (audRes.ok) {
+                        const cloudAud = await audRes.json();
+                        if (Array.isArray(cloudAud)) {
+                            localStorage.setItem('inventory_audit_logs', JSON.stringify(cloudAud));
+                        }
+                    }
+                } catch (e) {}
+
+                if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                    window.InventorySystem.syncFoodMenuStockFromIngredients();
+                }
+
+                window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
+                if (window.showToast) window.showToast(`Viewing Inventory for ${window.__invBranchOverride}`, 'info');
+            };
+
             window.activeSuperAdminInvSubTab = 'valuation';
 
             window.switchSuperAdminInvSubTab = function (tabName) {
@@ -5366,6 +5443,15 @@ window.superAdminRawFilter = 'all';
                 document.getElementById('rev-pos').textContent = '₱' + posRev.toLocaleString();
                 document.getElementById('rev-priority').textContent = '₱' + priorityRev.toLocaleString();
                 document.getElementById('rev-avg').textContent = '₱' + Math.round(avg).toLocaleString();
+
+                const discountedOrders = hist.filter(r => (r.discountType && r.discountType !== 'none') || Number(r.discountAmount) > 0);
+                const totalDiscGiven = discountedOrders.reduce((s, r) => s + (Number(r.discountAmount) || 0), 0);
+                const revTrendEl = document.getElementById('rev-trend');
+                if (revTrendEl) {
+                    revTrendEl.innerHTML = discountedOrders.length > 0
+                        ? `<span style="font-size:11px; color:#c2410c; background:#ffedd5; padding:2px 8px; border-radius:10px; font-weight:800;">🏷️ Includes ${discountedOrders.length} Discounted Order(s) (-₱${totalDiscGiven.toLocaleString()})</span>`
+                        : `<span style="font-size:11px; color:#64748b;">Net realized revenue</span>`;
+                }
 
                 // Dynamic Revenue Chart based on active filter
                 const dayMap = {};
