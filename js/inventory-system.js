@@ -3099,9 +3099,10 @@ window.setPosBranchPin = async function (branchName, newPin) {
             }
         }
         const activeBranch = window.getCurrentBranch();
-        const effectiveBranch = (url && url.includes('/api/memory/holidays') && isSuperAdminPage && window.__holidayManagerBranch)
-            ? window.__holidayManagerBranch
-            : window.getEffectiveBranch();
+        const isInvEndpoint = url && (url.includes('/api/inventory/') || url.includes('/api/memory/inventory-items') || url.includes('/api/memory/raw-ingredients'));
+        const effectiveBranch = (url && url.includes('/api/memory/holidays') && isSuperAdminPage && (window.__holidayBranchOverride || window.__holidayManagerBranch))
+            ? (window.__holidayBranchOverride || window.__holidayManagerBranch)
+            : (isInvEndpoint ? window.getInventoryBranch() : window.getEffectiveBranch());
 
         if (url && (url.includes('/api/memory/') || url.includes('/api/inventory/') || url.includes('/reservations'))) {
             const skipBranchParam = isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations');
@@ -3115,8 +3116,18 @@ window.setPosBranchPin = async function (branchName, newPin) {
         if (init && init.body && typeof init.body === 'string' && (url.includes('/reserve') || url.includes('/api/inventory/'))) {
             try {
                 const parsed = JSON.parse(init.body);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && !parsed.branch) {
-                    parsed.branch = effectiveBranch;
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    if (!parsed.branch) parsed.branch = effectiveBranch;
+                    // Attach POS Discount (Senior / PWD / Voucher) if active on POS
+                    if (url.includes('/reserve') && window.__posActiveDiscount && window.__posActiveDiscount.type !== 'none') {
+                        const d = window.__posActiveDiscount;
+                        parsed.discountType = d.type;
+                        parsed.discountAmount = d.discountAmount || 0;
+                        parsed.voucherCode = d.voucherCode || '';
+                        if (d.finalTotal > 0 && parsed.paymentAmount === d.rawSubtotal) {
+                            parsed.paymentAmount = d.finalTotal;
+                        }
+                    }
                     init.body = JSON.stringify(parsed);
                 }
             } catch (e) {}
@@ -3385,6 +3396,202 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 new MutationObserver(tagRowsWithBranch).observe(histTbody, { childList: true });
                 setTimeout(tagRowsWithBranch, 800);
             }
+        }
+
+        // 5. UNIVERSAL HEADER LAYOUT FIX (index.html, admin.html, superadmin.html)
+        const headerFixStyle = document.createElement('style');
+        headerFixStyle.innerHTML = `
+            header {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                flex-wrap: wrap !important;
+                gap: 10px 16px !important;
+                padding: 10px 22px !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+            }
+            header .header-right,
+            header .actions,
+            header nav {
+                display: flex !important;
+                align-items: center !important;
+                flex-wrap: wrap !important;
+                gap: 8px 12px !important;
+            }
+            header #live-clock {
+                white-space: nowrap !important;
+                font-size: 12.5px !important;
+                font-weight: 600 !important;
+                color: rgba(255,255,255,0.92) !important;
+                margin: 0 !important;
+            }
+            body:not(:has(#dashboard-section)) header {
+                padding: 10px 24px !important;
+                gap: 8px 14px !important;
+            }
+            body:not(:has(#dashboard-section)) header nav,
+            body:not(:has(#dashboard-section)) header ul {
+                display: flex !important;
+                align-items: center !important;
+                flex-wrap: wrap !important;
+                gap: 6px 14px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            @media (max-width: 900px) {
+                header {
+                    padding: 10px 14px !important;
+                    gap: 8px !important;
+                }
+                header .header-right,
+                header .actions {
+                    width: 100% !important;
+                    justify-content: space-between !important;
+                    padding-top: 8px !important;
+                    border-top: 1px solid rgba(255,255,255,0.16) !important;
+                }
+                header #live-clock {
+                    font-size: 11px !important;
+                    max-width: none !important;
+                }
+            }
+        `;
+        document.head.appendChild(headerFixStyle);
+
+        // 6. POS TERMINAL DISCOUNT ENGINE (PWD 20%, SENIOR 20%, VOUCHER CODE)
+        if (pagePath.includes('pos')) {
+            window.__posActiveDiscount = { type: 'none', voucherCode: '', customOff: 0, rawSubtotal: 0, discountAmount: 0, finalTotal: 0 };
+
+            const VOUCHER_CATALOG = {
+                'ROLANDS10': { mode: 'pct', val: 10, label: '10% Off Promo' },
+                'ROLANDS20': { mode: 'pct', val: 20, label: '20% Off VIP Promo' },
+                'STEAK100':  { mode: 'flat', val: 100, label: '₱100 Off Steak Voucher' },
+                'STEAK200':  { mode: 'flat', val: 200, label: '₱200 Off Dining Voucher' },
+                'VIP500':    { mode: 'flat', val: 500, label: '₱500 Off VIP Voucher' }
+            };
+
+            function parsePesoText(txt) {
+                const n = parseFloat(String(txt || '').replace(/[^0-9.]/g, ''));
+                return isNaN(n) ? 0 : n;
+            }
+
+            window.recalculatePosDiscount = function () {
+                const typeSel = document.getElementById('rsh-pos-disc-type');
+                const codeWrap = document.getElementById('rsh-pos-voucher-wrap');
+                const codeInput = document.getElementById('rsh-pos-voucher-code');
+                const customInput = document.getElementById('rsh-pos-voucher-amt');
+                const summaryBox = document.getElementById('rsh-pos-disc-summary');
+                if (!typeSel) return;
+
+                const discType = typeSel.value || 'none';
+                if (codeWrap) codeWrap.style.display = discType === 'voucher' ? 'flex' : 'none';
+
+                const subEl = document.getElementById('pos-subtotal') || document.getElementById('cart-subtotal') || document.getElementById('pos-total') || document.getElementById('cart-total') || document.querySelector('.pos-total-amount, .total-amount, #total-amount');
+                let rawSubtotal = 0;
+                if (Array.isArray(window.posCart) && window.posCart.length > 0) {
+                    rawSubtotal = window.posCart.reduce((s, i) => s + (Number(i.price || 0) * Number(i.qty || i.quantity || 1)), 0);
+                } else if (subEl) {
+                    rawSubtotal = parsePesoText(subEl.dataset.rawSubtotal || subEl.textContent);
+                    if (!window.__posDiscountAppliedToDom) subEl.dataset.rawSubtotal = String(rawSubtotal);
+                    else if (subEl.dataset.rawSubtotal) rawSubtotal = Number(subEl.dataset.rawSubtotal);
+                }
+
+                let discountAmt = 0;
+                let voucherCode = '';
+
+                if (discType === 'senior' || discType === 'pwd') {
+                    discountAmt = Math.round(rawSubtotal * 0.20 * 100) / 100;
+                    voucherCode = (codeInput?.value || '').trim();
+                } else if (discType === 'voucher') {
+                    voucherCode = (codeInput?.value || '').trim().toUpperCase();
+                    const customVal = Number(customInput?.value || 0);
+                    if (customVal > 0) {
+                        discountAmt = customVal <= 100 && voucherCode.endsWith('%')
+                            ? (rawSubtotal * (customVal / 100))
+                            : customVal;
+                    } else if (VOUCHER_CATALOG[voucherCode]) {
+                        const v = VOUCHER_CATALOG[voucherCode];
+                        discountAmt = v.mode === 'pct' ? (rawSubtotal * (v.val / 100)) : v.val;
+                    }
+                    discountAmt = Math.min(rawSubtotal, Math.round(discountAmt * 100) / 100);
+                }
+
+                const finalTotal = Math.max(0, Math.round((rawSubtotal - discountAmt) * 100) / 100);
+                window.__posActiveDiscount = {
+                    type: discType,
+                    voucherCode,
+                    rawSubtotal,
+                    discountAmount: discountAmt,
+                    finalTotal
+                };
+
+                window.posDiscountType = discType;
+                window.posDiscountAmount = discountAmt;
+
+                if (summaryBox) {
+                    if (discType === 'none' || discountAmt <= 0) {
+                        summaryBox.style.display = 'none';
+                    } else {
+                        summaryBox.style.display = 'block';
+                        const badgeLabel = discType === 'senior' ? 'SENIOR 20% OFF' : (discType === 'pwd' ? 'PWD 20% OFF' : `VOUCHER (${voucherCode || 'PROMO'})`);
+                        summaryBox.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
+                                <span>Original Subtotal:</span><span>₱${rawSubtotal.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:800; color:#c2410c; margin-top:2px;">
+                                <span>🏷️ ${badgeLabel}:</span><span>-₱${discountAmt.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:900; color:#15803d; margin-top:4px; padding-top:4px; border-top:1px dashed #cbd5e1;">
+                                <span>Discounted Total:</span><span>₱${finalTotal.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                            </div>
+                        `;
+                    }
+                }
+            };
+
+            function injectPosDiscountControls() {
+                if (document.getElementById('rsh-pos-disc-type')) return;
+                const existingSelect = document.querySelector('select[id*="discount"], select[onchange*="Discount"], select[onchange*="discount"]');
+                if (existingSelect) {
+                    if (!Array.from(existingSelect.options).some(o => o.value === 'voucher')) {
+                        const opt = document.createElement('option');
+                        opt.value = 'voucher';
+                        opt.textContent = '🎟️ Promo Voucher Code';
+                        existingSelect.appendChild(opt);
+                    }
+                    return;
+                }
+
+                const targetContainer = document.querySelector('.cart-summary, .pos-summary, .order-summary, .checkout-section, .cart-footer')
+                    || (document.getElementById('pos-total') && document.getElementById('pos-total').parentElement?.parentElement);
+                if (!targetContainer) return;
+
+                const box = document.createElement('div');
+                box.id = 'rsh-pos-discount-box';
+                box.style.cssText = 'background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:10px 12px; margin:10px 0;';
+                box.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+                        <label for="rsh-pos-disc-type" style="font-size:11.5px; font-weight:800; color:#334155; text-transform:uppercase;">🏷️ Discount / Voucher:</label>
+                        <select id="rsh-pos-disc-type" onchange="window.recalculatePosDiscount()" style="flex:1; padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1; background:white; font-weight:700; font-size:12px; color:#0f172a; cursor:pointer;">
+                            <option value="none">No Discount (Regular)</option>
+                            <option value="senior">👵 Senior Citizen (20% Off)</option>
+                            <option value="pwd">♿ PWD Discount (20% Off)</option>
+                            <option value="voucher">🎟️ Promo Voucher</option>
+                        </select>
+                    </div>
+                    <div id="rsh-pos-voucher-wrap" style="display:none; gap:6px; margin-top:6px;">
+                        <input type="text" id="rsh-pos-voucher-code" oninput="window.recalculatePosDiscount()" placeholder="Code (e.g. ROLANDS10, STEAK100)" style="flex:1.3; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; text-transform:uppercase;">
+                        <input type="number" id="rsh-pos-voucher-amt" oninput="window.recalculatePosDiscount()" placeholder="Or ₱ Off" min="0" style="flex:0.8; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                    </div>
+                    <div id="rsh-pos-disc-summary" style="display:none; margin-top:8px; padding-top:6px; border-top:1px solid #e2e8f0;"></div>
+                `;
+                targetContainer.insertBefore(box, targetContainer.firstChild);
+                setInterval(window.recalculatePosDiscount, 800);
+            }
+
+            setTimeout(injectPosDiscountControls, 500);
         }
     });
 })();
