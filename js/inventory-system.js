@@ -4087,5 +4087,54 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 setInterval(attachPreOrderDiscountToHistory, 1000);
             }
         }
+
+        // 7. AUTO-HEAL GHOST RESERVATIONS (Cleans up duplicated local orders caused by ID resets or prefix changes)
+        window.healGhostReservationsFromCloud = async function() {
+            try {
+                // Fetch the definitive source of truth from the database for ALL branches
+                const res = await fetch('https://rolands-steakhouse-hz8o.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
+                if (!res.ok) return;
+                const cloudData = await res.json();
+                
+                const localStr = rawGet('reservationHistory');
+                if (!localStr) return;
+                const localHist = JSON.parse(localStr);
+                
+                const validIds = new Set(cloudData.map(c => c.reservationNumber));
+                const now = Date.now();
+                
+                let hasGhosts = false;
+                const cleanedHist = localHist.filter(r => {
+                    if (!r || !r.reservationNumber) { hasGhosts = true; return false; }
+                    if (validIds.has(r.reservationNumber)) return true; // Exists in cloud!
+                    
+                    // Keep very recent unsynced local orders (under 10 mins old)
+                    if (r.createdAt) {
+                        const age = now - new Date(r.createdAt).getTime();
+                        if (age < 10 * 60 * 1000) return true;
+                    }
+                    hasGhosts = true; // Found an old/duplicate record not in the cloud
+                    return false;
+                });
+                
+                // If ghost duplicates (or old deleted records) were found, purge them!
+                if (hasGhosts) {
+                    safeRawSet('reservationHistory', JSON.stringify(cleanedHist));
+                    console.log(`🧹 Purged ghost reservations from local storage.`);
+                    
+                    // Force UI refresh if on an admin dashboard
+                    if (typeof window.syncReservations === 'function') window.syncReservations();
+                    if (typeof renderDashboard === 'function') setTimeout(renderDashboard, 300);
+                    if (typeof renderRows === 'function' && typeof historyTotal !== 'undefined') {
+                        setTimeout(() => window.location.reload(), 1000); 
+                    }
+                }
+            } catch(e) {}
+        };
+        
+        // Run healer 2 seconds after page load, and every 60 seconds
+        setTimeout(window.healGhostReservationsFromCloud, 2000);
+        setInterval(window.healGhostReservationsFromCloud, 60000);
+
     });
 })();
