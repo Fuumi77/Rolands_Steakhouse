@@ -3325,7 +3325,16 @@ window.setPosBranchPin = async function (branchName, newPin) {
             if (menuRes.ok) {
                 const cloudInv = await menuRes.json();
                 if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                    const nextInv = JSON.stringify(cloudInv);
+                    const existingLocalInv = getInventory();
+                    // Merge cloud stock/prices while preserving local base64 images so pictures never disappear!
+                    const mergedInv = cloudInv.map(cloudItem => {
+                        const localMatch = existingLocalInv.find(l => l.id === cloudItem.id || (l.title && l.title === cloudItem.title));
+                        return {
+                            ...cloudItem,
+                            image: (cloudItem.image && cloudItem.image.length > 100) ? cloudItem.image : (localMatch?.image || '')
+                        };
+                    });
+                    const nextInv = JSON.stringify(mergedInv);
                     if (localStorage.getItem('inventoryItems') !== nextInv) {
                         localStorage.setItem('inventoryItems', nextInv);
                         menuChanged = true;
@@ -4091,7 +4100,6 @@ window.setPosBranchPin = async function (branchName, newPin) {
         // 7. AUTO-HEAL GHOST RESERVATIONS (Cleans up duplicated local orders caused by ID resets or prefix changes)
         window.healGhostReservationsFromCloud = async function() {
             try {
-                // Fetch the definitive source of truth from the database for ALL branches
                 const res = await fetch('https://rolands-steakhouse-hz8o.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
                 if (!res.ok) return;
                 const cloudData = await res.json();
@@ -4100,34 +4108,51 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 if (!localStr) return;
                 const localHist = JSON.parse(localStr);
                 
-                const validIds = new Set(cloudData.map(c => c.reservationNumber));
+                // Build a set of valid numeric DB IDs (e.g., "58", "57") and full numbers ("RES-58")
+                const validSet = new Set();
+                cloudData.forEach(c => {
+                    if (c.reservationNumber) {
+                        validSet.add(String(c.reservationNumber).trim());
+                        const numericOnly = String(c.reservationNumber).replace(/[^0-9]/g, '');
+                        if (numericOnly) validSet.add(numericOnly);
+                    }
+                });
+
                 const now = Date.now();
-                
-                let hasGhosts = false;
+                const seenKeys = new Set();
+                let mutated = false;
+
                 const cleanedHist = localHist.filter(r => {
-                    if (!r || !r.reservationNumber) { hasGhosts = true; return false; }
-                    if (validIds.has(r.reservationNumber)) return true; // Exists in cloud!
-                    
-                    // Keep very recent unsynced local orders (under 10 mins old)
+                    if (!r || !r.reservationNumber) { mutated = true; return false; }
+                    const fullNo = String(r.reservationNumber).trim();
+                    const numNo = fullNo.replace(/[^0-9]/g, '');
+
+                    // Check if it's a duplicate entry we already kept in this loop
+                    const uniqueKey = `${numNo}_${r.customerName || ''}_${r.arrivalDate || ''}`;
+                    if (seenKeys.has(uniqueKey)) {
+                        mutated = true;
+                        return false; // Duplicate row! Drop it.
+                    }
+                    seenKeys.add(uniqueKey);
+
+                    // If it exists in cloud database by full or numeric ID, keep it
+                    if (validSet.has(fullNo) || (numNo && validSet.has(numNo))) return true;
+
+                    // Keep very recent local orders under 10 minutes old
                     if (r.createdAt) {
                         const age = now - new Date(r.createdAt).getTime();
                         if (age < 10 * 60 * 1000) return true;
                     }
-                    hasGhosts = true; // Found an old/duplicate record not in the cloud
+
+                    mutated = true;
                     return false;
                 });
                 
-                // If ghost duplicates (or old deleted records) were found, purge them!
-                if (hasGhosts) {
+                if (mutated) {
                     safeRawSet('reservationHistory', JSON.stringify(cleanedHist));
-                    console.log(`🧹 Purged ghost reservations from local storage.`);
-                    
-                    // Force UI refresh if on an admin dashboard
+                    console.log('🧹 Purged duplicate/ghost reservations.');
                     if (typeof window.syncReservations === 'function') window.syncReservations();
                     if (typeof renderDashboard === 'function') setTimeout(renderDashboard, 300);
-                    if (typeof renderRows === 'function' && typeof historyTotal !== 'undefined') {
-                        setTimeout(() => window.location.reload(), 1000); 
-                    }
                 }
             } catch(e) {}
         };
