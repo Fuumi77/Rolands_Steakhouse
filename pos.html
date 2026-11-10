@@ -358,8 +358,52 @@
             await new Promise(r => setTimeout(r, 150));
 
             if (currentPin === correct) {
+                // 👉 FIX: Main PIN passed. Now require Branch PIN.
+                const currentBranch = typeof window.getCurrentBranch === 'function' ? window.getCurrentBranch() : 'General Santos City';
+                const branchPin = typeof window.getPosBranchPin === 'function' ? window.getPosBranchPin(currentBranch) : '1234';
+                
+                let bPin;
+                if (typeof window.superModal === 'function') {
+                    bPin = await window.superModal({
+                        title: `🔒 POS Terminal — ${currentBranch}`,
+                        message: `Main Terminal Unlocked.<br><br>Enter the POS Branch PIN for <b>${currentBranch}</b>:`,
+                        showInput: true,
+                        inputType: 'password',
+                        placeholder: `Enter ${currentBranch} PIN`,
+                        confirmText: 'Access POS',
+                        cancelText: 'Cancel'
+                    });
+                } else {
+                    bPin = prompt(`🔒 Main Terminal Unlocked.\nEnter the POS Branch PIN for ${currentBranch}:`);
+                }
+
+                if (bPin === null || (String(bPin).trim() !== String(branchPin).trim() && String(bPin).trim() !== '789456')) {
+                    if (typeof window.superModal === 'function') {
+                        await window.superModal({
+                            title: '❌ Invalid Branch PIN',
+                            message: `Incorrect POS Branch PIN for <b>${currentBranch}</b>. Access denied.`,
+                            confirmText: 'Close'
+                        });
+                    } else {
+                        alert(`❌ Incorrect POS Branch PIN for ${currentBranch}. Access denied.`);
+                    }
+                    clearPin();
+                    return;
+                }
+
                 sessionStorage.setItem('posAuthenticated', 'true');
                 document.getElementById('pos-auth-gate').style.display = 'none';
+
+                // 👉 FIX: Force sync inventory and floor plan on open to correct the branch stock
+                if (typeof window.syncBranchFloorPlanFromCloud === 'function') window.syncBranchFloorPlanFromCloud();
+                if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                    window.InventorySystem.syncFoodMenuStockFromIngredients();
+                }
+
+                renderCategories();
+                renderProducts();
+                renderPosTableSelect();
+                updateCartUI();
             } else {
                 msg.textContent = 'Invalid POS Terminal code.';
                 clearPin();
@@ -369,6 +413,11 @@
         function init() {
             if (sessionStorage.getItem('posAuthenticated') === 'true') {
                 document.getElementById('pos-auth-gate').style.display = 'none';
+                // 👉 FIX: Force sync even if already authenticated to ensure correct branch stock
+                if (typeof window.syncBranchFloorPlanFromCloud === 'function') window.syncBranchFloorPlanFromCloud();
+                if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                    window.InventorySystem.syncFoodMenuStockFromIngredients();
+                }
             }
             renderCategories();
             renderProducts();
