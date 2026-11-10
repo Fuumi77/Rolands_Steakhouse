@@ -3238,18 +3238,25 @@ window.setPosBranchPin = async function (branchName, newPin) {
         }
     };
 
-    // Sync branch-specific Floor Plan, Table Overrides, Promotions & Holidays from Cloud across all devices!
+    // Sync branch-specific Floor Plan, Table Overrides, Promotions, Holidays, AND INVENTORY from Cloud across all devices!
     window.syncBranchFloorPlanFromCloud = async function () {
         try {
             const branch = window.getEffectiveBranch();
             const holBranch = window.__holidayBranchOverride || branch;
-            const [cfgRes, ovrRes, promoRes, holRes] = await Promise.all([
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/holidays?branch=${encodeURIComponent(holBranch)}&nocache=${Date.now()}`)
+            const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : branch;
+            const baseUrl = 'https://rolands-steakhouse-hz8o.onrender.com';
+
+            const [cfgRes, ovrRes, promoRes, holRes, rawRes, menuRes] = await Promise.all([
+                fetch(`${baseUrl}/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/holidays?branch=${encodeURIComponent(holBranch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/inventory/raw?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`)
             ]);
             let changed = false;
+            let menuChanged = false;
+
             if (cfgRes.ok) {
                 const cloudCfg = await cfgRes.json();
                 if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
@@ -3300,6 +3307,40 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     }
                 }
             }
+            if (rawRes.ok) {
+                const dbRaw = await rawRes.json();
+                if (Array.isArray(dbRaw) && dbRaw.length > 0) {
+                    const existingRaw = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
+                    const mergedRaw = existingRaw.map(loc => {
+                        const found = dbRaw.find(d => d.id === loc.id || d.name === loc.name);
+                        return found ? { ...loc, stock: Number(found.stock) || 0, minThreshold: Number(found.minThreshold) || loc.minThreshold } : loc;
+                    });
+                    const nextRaw = JSON.stringify(mergedRaw);
+                    if (localStorage.getItem('rawIngredients') !== nextRaw) {
+                        localStorage.setItem('rawIngredients', nextRaw);
+                        menuChanged = true;
+                    }
+                }
+            }
+            if (menuRes.ok) {
+                const cloudInv = await menuRes.json();
+                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
+                    const nextInv = JSON.stringify(cloudInv);
+                    if (localStorage.getItem('inventoryItems') !== nextInv) {
+                        localStorage.setItem('inventoryItems', nextInv);
+                        menuChanged = true;
+                    }
+                }
+            }
+
+            if (menuChanged) {
+                if (window.InventorySystem && typeof window.InventorySystem.invalidateInventoryCache === 'function') window.InventorySystem.invalidateInventoryCache();
+                if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') window.InventorySystem.syncFoodMenuStockFromIngredients();
+                if (typeof window.renderMenu === 'function') window.renderMenu();
+                if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                changed = true;
+            }
+
             if (changed) {
                 if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
                 if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
