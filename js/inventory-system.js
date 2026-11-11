@@ -2287,7 +2287,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                         r.autoExpired = true;
                         mutatedHistory = true;
 
-                        fetch('https://rolands-steakhouse-hz8o.onrender.com/api/reservations/update-status', {
+                        fetch('https://rolands-steakhouse-jsoo.onrender.com/api/reservations/update-status', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
@@ -2320,7 +2320,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
 
             if (mutatedOverrides) {
                 localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                fetch('https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides', {
+                fetch('https://rolands-steakhouse-jsoo.onrender.com/api/memory/table-overrides', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(overrides)
@@ -2772,10 +2772,8 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
         return BRANCHES.find(b => b.name === target) || BRANCHES[0];
     };
 
-function healFullLocalStorage() {
+    function healFullLocalStorage() {
         try {
-            // Never delete Koronadal City__floorPlanConfig so each branch keeps its own tables!
-            ['Koronadal City__inventoryItems'].forEach(k => rawRem(k));
             const histRaw = rawGet('reservationHistory');
             if (histRaw && histRaw.length > 250000) {
                 const list = JSON.parse(histRaw);
@@ -2786,7 +2784,6 @@ function healFullLocalStorage() {
             }
         } catch (e) {}
     }
-    healFullLocalStorage();
 
     function safeRawSet(k, v) {
         try {
@@ -2794,15 +2791,9 @@ function healFullLocalStorage() {
         } catch (quotaErr) {
             try {
                 healFullLocalStorage();
-                // Strip heavy base64 images if still exceeding 5MB quota
-                const invRaw = rawGet('inventoryItems');
-                if (invRaw && invRaw.length > 500000) {
-                    const items = JSON.parse(invRaw);
-                    if (Array.isArray(items)) {
-                        items.forEach(i => { if (i && i.image && i.image.length > 1000) delete i.image; });
-                        rawSet('inventoryItems', JSON.stringify(items));
-                    }
-                }
+                // 👉 FIX: NEVER delete food pictures! If storage is completely full, delete heavy audit logs instead.
+                const logsRaw = rawGet('inventory_audit_logs');
+                if (logsRaw && logsRaw.length > 100000) rawSet('inventory_audit_logs', '[]');
                 rawSet(k, v);
             } catch (e2) {
                 console.warn('Storage quota full, skipped write for:', k);
@@ -2833,7 +2824,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         map[branchName] = String(newPin).trim();
         safeRawSet('posBranchSwitchPins', JSON.stringify(map));
         try {
-            await fetch('https://rolands-steakhouse-hz8o.onrender.com/api/memory/pos-branch-pins', {
+            await fetch('https://rolands-steakhouse-jsoo.onrender.com/api/memory/pos-branch-pins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(map)
@@ -2845,7 +2836,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
     // Sync per-branch POS PINs from cloud on startup
     setTimeout(async () => {
         try {
-            const res = await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
+            const res = await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
             if (res.ok) {
                 const cloudPins = await res.json();
                 if (cloudPins && typeof cloudPins === 'object' && Object.keys(cloudPins).length > 0) {
@@ -3086,7 +3077,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
     window.__origFetch = origFetch;
 
     // 👉 AUTO-REDIRECT OLD VERCEL & OLD RENDER URLS TO YOUR NEW RENDER BACKEND!
-    const NEW_BACKEND_URL = 'https://rolands-steakhouse-hz8o.onrender.com';
+    const NEW_BACKEND_URL = 'https://rolands-steakhouse-jsoo.onrender.com';
 
     window.fetch = async function (input, init = {}) {
         let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
@@ -3182,8 +3173,8 @@ window.setPosBranchPin = async function (branchName, newPin) {
         try {
             const branch = window.getEffectiveBranch();
             const [cfgRes, ovrRes] = await Promise.all([
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
+                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
+                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
             ]);
             let changed = false;
             if (cfgRes.ok) {
@@ -3244,7 +3235,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
             const branch = window.getEffectiveBranch();
             const holBranch = window.__holidayBranchOverride || branch;
             const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : branch;
-            const baseUrl = 'https://rolands-steakhouse-hz8o.onrender.com';
+            const baseUrl = 'https://rolands-steakhouse-jsoo.onrender.com';
 
             const [cfgRes, ovrRes, promoRes, holRes, rawRes, menuRes] = await Promise.all([
                 fetch(`${baseUrl}/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
@@ -3704,7 +3695,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
             window.dispatchEvent(new CustomEvent('vouchersUpdated', { detail: cleanList }));
             const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
             try {
-                await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}`, {
+                await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ branch, vouchers: cleanList })
@@ -3716,7 +3707,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         pullFromCloud: async function () {
             try {
                 const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-                const res = await fetch(`https://rolands-steakhouse-hz8o.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`);
+                const res = await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`);
                 if (res.ok) {
                     const cloudList = await res.json();
                     if (Array.isArray(cloudList) && cloudList.length > 0) {
@@ -4100,7 +4091,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         // 7. AUTO-HEAL GHOST RESERVATIONS (Cleans up duplicated local orders caused by ID resets or prefix changes)
         window.healGhostReservationsFromCloud = async function() {
             try {
-                const res = await fetch('https://rolands-steakhouse-hz8o.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
+                const res = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
                 if (!res.ok) return;
                 const cloudData = await res.json();
                 
