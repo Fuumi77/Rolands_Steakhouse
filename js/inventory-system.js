@@ -4088,10 +4088,10 @@ window.setPosBranchPin = async function (branchName, newPin) {
             }
         }
 
-        // 7. AUTO-HEAL GHOST RESERVATIONS (Cleans up duplicated local orders caused by ID resets or prefix changes)
+// 7. AUTO-HEAL GHOST & TRIPLICATED RESERVATIONS
         window.healGhostReservationsFromCloud = async function() {
             try {
-                const res = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
+                const res = await fetch('https://rolands-steakhouse-hz8o.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
                 if (!res.ok) return;
                 const cloudData = await res.json();
                 
@@ -4099,7 +4099,6 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 if (!localStr) return;
                 const localHist = JSON.parse(localStr);
                 
-                // Build a set of valid numeric DB IDs (e.g., "58", "57") and full numbers ("RES-58")
                 const validSet = new Set();
                 cloudData.forEach(c => {
                     if (c.reservationNumber) {
@@ -4110,36 +4109,35 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 });
 
                 const now = Date.now();
-                const seenKeys = new Set();
+                const uniqueMap = new Map();
                 let mutated = false;
 
-                const cleanedHist = localHist.filter(r => {
-                    if (!r || !r.reservationNumber) { mutated = true; return false; }
+                localHist.forEach(r => {
+                    if (!r || !r.reservationNumber) { mutated = true; return; }
                     const fullNo = String(r.reservationNumber).trim();
                     const numNo = fullNo.replace(/[^0-9]/g, '');
 
-                    // Check if it's a duplicate entry we already kept in this loop
-                    const uniqueKey = `${numNo}_${r.customerName || ''}_${r.arrivalDate || ''}`;
-                    if (seenKeys.has(uniqueKey)) {
+                    let keep = false;
+                    if (validSet.has(fullNo) || (numNo && validSet.has(numNo))) {
+                        keep = true;
+                    } else if (r.createdAt && (now - new Date(r.createdAt).getTime() < 10 * 60 * 1000)) {
+                        keep = true;
+                    } else {
                         mutated = true;
-                        return false; // Duplicate row! Drop it.
-                    }
-                    seenKeys.add(uniqueKey);
-
-                    // If it exists in cloud database by full or numeric ID, keep it
-                    if (validSet.has(fullNo) || (numNo && validSet.has(numNo))) return true;
-
-                    // Keep very recent local orders under 10 minutes old
-                    if (r.createdAt) {
-                        const age = now - new Date(r.createdAt).getTime();
-                        if (age < 10 * 60 * 1000) return true;
                     }
 
-                    mutated = true;
-                    return false;
+                    // 👉 STRICT DEDUPLICATION: Only 1 record per reservation number allowed!
+                    if (keep) {
+                        if (!uniqueMap.has(fullNo)) {
+                            uniqueMap.set(fullNo, r);
+                        } else {
+                            mutated = true; // Drop duplicate
+                        }
+                    }
                 });
                 
                 if (mutated) {
+                    const cleanedHist = Array.from(uniqueMap.values());
                     safeRawSet('reservationHistory', JSON.stringify(cleanedHist));
                     console.log('🧹 Purged duplicate/ghost reservations.');
                     if (typeof window.syncReservations === 'function') window.syncReservations();
@@ -4148,8 +4146,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
             } catch(e) {}
         };
         
-        // Run healer 2 seconds after page load, and every 60 seconds
-        setTimeout(window.healGhostReservationsFromCloud, 2000);
+        setTimeout(window.healGhostReservationsFromCloud, 1000);
         setInterval(window.healGhostReservationsFromCloud, 60000);
 
     });
