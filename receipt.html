@@ -55,6 +55,11 @@
 
             <div class="divider"></div>
 
+            <div class="info-row discount-row" id="receipt-discount-row" style="display: none; color: #c2410c; font-weight: 800; margin-bottom: 10px;">
+                <span id="receipt-discount-label">🏷️ DISCOUNT</span>
+                <span>-PHP <span id="receipt-discount-val">0.00</span></span>
+            </div>
+
             <div class="info-row" style="font-size: 12px; color: #475569; margin-bottom: 4px;">
                 <span>VATABLE SALES</span>
                 <span>PHP <span id="vatable-sales">0.00</span></span>
@@ -152,7 +157,7 @@
         function updateReceiptTotalsUI(amountVal, ordersText, resRecord) {
             const cleanTotal = parseFloat(String(amountVal || '0').replace(/[^0-9.]/g, '')) || 0;
             const checkOrders = String(ordersText !== undefined ? ordersText : orders || '').toLowerCase();
-            const rec = resRecord || matchedResRecord;
+            let rec = resRecord || matchedResRecord;
             const hasNoFoods = !rec || !Array.isArray(rec.foods) || rec.foods.length === 0;
             const isVipRec = (rec && (String(rec.reservationType || '').toLowerCase() === 'vip' || String(rec.reservationNumber || '').startsWith('VIP-'))) ||
                              String(reservationNumber || '').startsWith('VIP-') ||
@@ -161,6 +166,24 @@
                                        checkOrders.includes('standard reservation') ||
                                        checkOrders.includes('vip room down payment') ||
                                        (rec && (String(rec.reservationType || '').toLowerCase() === 'standard' || isVipRec) && hasNoFoods);
+
+            if (!rec) {
+                const dT = localStorage.getItem('discountType');
+                if (dT && dT !== 'none') {
+                    rec = { discountType: dT, discountAmount: localStorage.getItem('discountAmount'), voucherCode: localStorage.getItem('voucherCode') };
+                }
+            }
+
+            if (rec && rec.discountType && rec.discountType !== 'none') {
+                const dRow = document.getElementById('receipt-discount-row');
+                if (dRow) {
+                    dRow.style.display = 'flex';
+                    const dType = String(rec.discountType).toLowerCase();
+                    let dLabelTxt = dType === 'pwd' ? 'PWD 20%' : (dType === 'senior' ? 'SENIOR 20%' : `VOUCHER (${rec.voucherCode || ''})`);
+                    document.getElementById('receipt-discount-label').textContent = `🏷️ DISCOUNT (${dLabelTxt})`;
+                    document.getElementById('receipt-discount-val').textContent = parseFloat(rec.discountAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                }
+            }
 
             const vatableEl = document.getElementById('vatable-sales');
             const vatEl = document.getElementById('vat-amount');
@@ -302,12 +325,12 @@
 
             try {
                 await Promise.all([
-                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
+                    fetch('https://rolands-steakhouse-jsoo.onrender.com/api/reservations/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: resNum, status: 'Cancelled' })
                     }),
-                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds', {
+                    fetch('https://rolands-steakhouse-jsoo.onrender.com/api/reservations/update-kds', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: resNum, kdsStatus: 'cancelled' })
@@ -330,7 +353,7 @@
             const existsLocally = localHist.some(r => r.reservationNumber === urlRes);
             if (!existsLocally) {
                 try {
-                    const r = await fetch('https://rolands-steakhouse-vqtr.vercel.app/reservations?nocache=' + Date.now());
+                    const r = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
                     if (!r.ok) return;
                     const dbList = await r.json();
                     const found = Array.isArray(dbList) ? dbList.find(x => x.reservationNumber === urlRes) : null;
