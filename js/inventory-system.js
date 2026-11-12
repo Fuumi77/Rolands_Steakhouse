@@ -792,33 +792,47 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         }
     }
 
-// ── DYNAMIC FOOD AVAILABILITY CALCULATION ──
+// ── DYNAMIC FOOD AVAILABILITY CALCULATION (SYNCED WITH END OF DAY STOCK / PORTIONS) ──
     function calculateFoodAvailability(menuItem, ingredientsCatalog) {
         const catalog = ingredientsCatalog || getRawIngredients();
         const rawMap = {};
         catalog.forEach(ing => { rawMap[ing.id] = ing; });
 
-        // Check if item is manually toggled Unavailable by Staff or Manager
-        let isManualUnavailable = Boolean(menuItem && menuItem.manualUnavailable);
+        // Look up stored item in inventoryItems to get latest manualUnavailable, added_stock, sold_stock, and threshold
+        let storedItem = null;
         try {
-            if (!isManualUnavailable && menuItem && menuItem.id) {
+            if (menuItem) {
                 const storedInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-                const found = storedInv.find(i => i && i.id === menuItem.id);
-                if (found && found.manualUnavailable) isManualUnavailable = true;
+                const normTitle = String(menuItem.title || menuItem.name || '').trim().toLowerCase();
+                storedItem = storedInv.find(i => i && (
+                    (menuItem.id && i.id === menuItem.id) ||
+                    (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
+                )) || null;
             }
         } catch (e) {}
+
+        // Check if item is manually toggled Unavailable by Staff or Manager
+        const isManualUnavailable = Boolean((menuItem && menuItem.manualUnavailable) || (storedItem && storedItem.manualUnavailable));
+        const addedStock = parseInt(menuItem?.added_stock !== undefined ? menuItem.added_stock : (storedItem?.added_stock || 0), 10) || 0;
+        const soldStock = parseInt(menuItem?.sold_stock !== undefined ? menuItem.sold_stock : (storedItem?.sold_stock || 0), 10) || 0;
+        const threshold = Number(menuItem?.threshold !== undefined ? menuItem.threshold : (storedItem?.threshold ?? 5));
 
         const recipe = getItemRecipe(menuItem.id, menuItem);
 
         if (!recipe || recipe.length === 0) {
-            const legacyStock = isManualUnavailable ? 0 : ((menuItem.total_stock !== undefined) ? menuItem.total_stock : (menuItem.stock || 0));
+            const baseTotal = Number((menuItem?.total_stock !== undefined) ? menuItem.total_stock : (storedItem?.total_stock !== undefined ? storedItem.total_stock : (menuItem?.stock || 0))) || 0;
+            const eodLegacy = isManualUnavailable ? 0 : Math.max(0, baseTotal + addedStock - soldStock);
             return {
-                availablePortions: Math.max(0, legacyStock),
-                isAvailable: !isManualUnavailable && legacyStock > 0,
+                availablePortions: eodLegacy,
+                rawPortions: Math.max(0, baseTotal),
+                addedStock: addedStock,
+                soldStock: soldStock,
+                eodPortions: eodLegacy,
+                isAvailable: !isManualUnavailable && eodLegacy > 0,
                 isManualUnavailable: isManualUnavailable,
-                status: isManualUnavailable ? 'Unavailable (Manual)' : (legacyStock <= 0 ? 'Out of Stock' : (legacyStock <= (menuItem.threshold || 5) ? 'Low Stock' : 'Available')),
+                status: isManualUnavailable ? 'Unavailable (Manual)' : (eodLegacy <= 0 ? 'Out of Stock' : (eodLegacy <= threshold ? 'Low Stock' : 'Available')),
                 recipe: [],
-                missingIngredients: isManualUnavailable ? ['Manually marked Unavailable'] : (legacyStock <= 0 ? ['Legacy Direct Stock depleted'] : [])
+                missingIngredients: isManualUnavailable ? ['Manually marked Unavailable'] : (eodLegacy <= 0 ? ['End of Day Stock depleted'] : [])
             };
         }
 
@@ -859,10 +873,16 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
 
         if (minPossiblePortions === Infinity) minPossiblePortions = 0;
 
+        // Sync available portions with End of Day (EOD) stock: Total Stock + Added - Sold
+        const eodPortions = Math.max(0, minPossiblePortions + addedStock - soldStock);
+
         if (isManualUnavailable) {
             return {
                 availablePortions: 0,
                 rawPortions: minPossiblePortions,
+                addedStock: addedStock,
+                soldStock: soldStock,
+                eodPortions: 0,
                 isAvailable: false,
                 isManualUnavailable: true,
                 status: 'Unavailable (Manual)',
@@ -871,16 +891,20 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             };
         }
 
-        const isAvailable = minPossiblePortions > 0;
+        const isAvailable = eodPortions > 0;
         let status = 'Available';
-        if (minPossiblePortions <= 0) {
+        if (eodPortions <= 0) {
             status = 'Out of Stock';
-        } else if (minPossiblePortions <= 5) {
+        } else if (eodPortions <= threshold) {
             status = 'Low Stock';
         }
 
         return {
-            availablePortions: minPossiblePortions,
+            availablePortions: eodPortions,
+            rawPortions: minPossiblePortions,
+            addedStock: addedStock,
+            soldStock: soldStock,
+            eodPortions: eodPortions,
             isAvailable: isAvailable,
             isManualUnavailable: false,
             status: status,
@@ -1079,18 +1103,19 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             items.forEach(item => {
                 const avail = calculateFoodAvailability(item, rawList);
                 const prevPortions = item.stock !== undefined ? Number(item.stock) : Number(item.total_stock || 0);
-                const newPortions = Number(avail.availablePortions);
+                const newEodPortions = Number(avail.availablePortions);
+                const newRawPortions = Number(avail.rawPortions !== undefined ? avail.rawPortions : avail.availablePortions);
 
-                if (prevPortions !== newPortions || item.total_stock !== newPortions) {
-                    if (!isNaN(prevPortions) && prevPortions !== newPortions) {
+                if (prevPortions !== newEodPortions || item.total_stock !== newRawPortions) {
+                    if (!isNaN(prevPortions) && prevPortions !== newEodPortions) {
                         menuStockChanges.push({
                             itemName: item.title || item.name || item.id,
                             previousStock: prevPortions,
-                            newStock: newPortions
+                            newStock: newEodPortions
                         });
                     }
-                    item.stock = newPortions;
-                    item.total_stock = newPortions;
+                    item.stock = newEodPortions;
+                    item.total_stock = newRawPortions;
                     item.computedStatus = avail.status;
                     item.missingIngredients = avail.missingIngredients;
                     mutated = true;
@@ -2598,6 +2623,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
 (function menuCloudSync() {
     const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
     const isAdminPage = /admin/i.test(location.pathname);
+    let initialPullDone = false;
     const strip = arr => JSON.stringify((arr || []).map(i => {
         const c = { ...i };
         delete c.stock; delete c.total_stock; delete c.computedStatus; delete c.missingIngredients;
@@ -2605,30 +2631,41 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
     }));
 
     async function pull() {
-        if (Date.now() - (window.__lastMenuPush || 0) < 10000) return;
+        if (Date.now() - (window.__lastMenuPush || 0) < 8000) return;
         try {
             const r = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`);
-            if (!r.ok) return;
+            if (!r.ok) { initialPullDone = true; return; }
             const cloud = await r.json();
-            if (!Array.isArray(cloud) || cloud.length === 0) return;
+            if (!Array.isArray(cloud) || cloud.length === 0) { initialPullDone = true; return; }
             const local = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-            if (strip(local) === strip(cloud)) return;
-            localStorage.setItem('inventoryItems', JSON.stringify(cloud));
+            const merged = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                ? window.mergeInventoryWithSharedPhotos(cloud, local)
+                : cloud;
+            initialPullDone = true;
+            if (strip(local) === strip(merged)) return;
+            localStorage.setItem('inventoryItems', JSON.stringify(merged));
             window.InventorySystem?.syncFoodMenuStockFromIngredients?.();
-            window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloud }));
-        } catch (e) {}
+            window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: merged }));
+            if (typeof window.renderInventory === 'function') window.renderInventory();
+            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+            if (typeof window.renderProducts === 'function') window.renderProducts();
+            if (typeof window.renderMenu === 'function') window.renderMenu();
+        } catch (e) {
+            initialPullDone = true;
+        }
     }
-    setTimeout(pull, 500);
-    if (!/\/admin\.html/i.test(location.pathname) && !/\/superadmin\.html/i.test(location.pathname)) setInterval(pull, 15000);
+    setTimeout(pull, 400);
+    setInterval(pull, 15000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 
     // 👉 Push immediately whenever the menu changes from an admin page.
-    //    Runs every 5s and only uploads when something actually differs,
-    //    so it always beats the 15s pull that would otherwise overwrite it.
+    //    Waits for initialPullDone so fresh/Incognito tabs never overwrite cloud photos with empty defaults.
     if (isAdminPage || /\/superadmin\.html/i.test(location.pathname)) {
         let lastPushed = '';
         setInterval(() => {
+            if (!initialPullDone) return;
             const local = localStorage.getItem('inventoryItems') || '[]';
+            if (!lastPushed) { lastPushed = local; return; }
             if (local === lastPushed) return;
             lastPushed = local;
             window.__lastMenuPush = Date.now();
@@ -3380,19 +3417,46 @@ window.setPosBranchPin = async function (branchName, newPin) {
             if (menuRes.ok) {
                 const cloudInv = await menuRes.json();
                 if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                    const existingLocalInv = getInventory();
-                    // Merge cloud stock/prices while preserving local base64 images so pictures never disappear!
-                    const mergedInv = cloudInv.map(cloudItem => {
-                        const localMatch = existingLocalInv.find(l => l.id === cloudItem.id || (l.title && l.title === cloudItem.title));
-                        return {
-                            ...cloudItem,
-                            image: (cloudItem.image && cloudItem.image.length > 100) ? cloudItem.image : (localMatch?.image || '')
-                        };
-                    });
+                    let existingLocalInv = [];
+                    try {
+                        existingLocalInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                    } catch (e) {}
+
+                    // Also harvest custom photos from other branches in cloud so cross-branch photos stay synced on Incognito/other devices
+                    const allBranches = (window.ROLANDS_BRANCHES || []).map(b => b.name).filter(Boolean);
+                    const otherBranches = allBranches.filter(b => b !== invBranch);
+                    const otherCloudArrays = [];
+                    try {
+                        const otherResList = await Promise.all(
+                            otherBranches.map(b => fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(b)}&nocache=${Date.now()}`).catch(() => null))
+                        );
+                        for (const r of otherResList) {
+                            if (r && r.ok) {
+                                const arr = await r.json().catch(() => null);
+                                if (Array.isArray(arr) && arr.length > 0) otherCloudArrays.push(arr);
+                            }
+                        }
+                    } catch (e) {}
+
+                    const mergedInv = window.mergeInventoryWithSharedPhotos(cloudInv, existingLocalInv, otherCloudArrays);
                     const nextInv = JSON.stringify(mergedInv);
                     if (localStorage.getItem('inventoryItems') !== nextInv) {
                         localStorage.setItem('inventoryItems', nextInv);
                         menuChanged = true;
+                    }
+
+                    // If mergedInv healed a missing photo that cloudInv didn't have, push the healed list back to cloud for this branch
+                    const cloudHadMissingPhoto = mergedInv.some((m, idx) => {
+                        const c = cloudInv[idx];
+                        return m && m.image && m.image.length > 50 && (!c || !c.image || c.image !== m.image);
+                    });
+                    if (cloudHadMissingPhoto && (Date.now() - (window.__lastMenuPush || 0) > 5000)) {
+                        window.__lastMenuPush = Date.now();
+                        fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: nextInv
+                        }).catch(() => {});
                     }
                 }
             }
@@ -3402,6 +3466,8 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') window.InventorySystem.syncFoodMenuStockFromIngredients();
                 if (typeof window.renderMenu === 'function') window.renderMenu();
                 if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                if (typeof window.renderInventory === 'function') window.renderInventory();
+                if (typeof window.renderProducts === 'function') window.renderProducts();
                 changed = true;
             }
 
@@ -3412,6 +3478,258 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 window.dispatchEvent(new Event('storage'));
             }
         } catch (e) {}
+    };
+
+    // ============================================================================
+    // 📸 CROSS-BRANCH MENU PHOTO SYNC ENGINE (Syncs pictures across branches by ID or Title)
+    // ============================================================================
+    function normMenuKey(val) {
+        return String(val || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function isValidCustomPhoto(img) {
+        return Boolean(img && typeof img === 'string' && img.length > 50 && !img.includes('placehold.co'));
+    }
+
+    function getSharedPhotoRegistry() {
+        try {
+            const raw = rawGet('__sharedMenuPhotos');
+            return raw ? (JSON.parse(raw) || {}) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveSharedPhotoRegistry(reg) {
+        try {
+            safeRawSet('__sharedMenuPhotos', JSON.stringify(reg || {}));
+        } catch (e) {}
+    }
+
+    // Merges cloud inventory items with local & cross-branch shared photos (when syncPhotoBranches !== false)
+    window.mergeInventoryWithSharedPhotos = function (primaryItems, fallbackLocalItems = [], extraBranchArrays = []) {
+        if (!Array.isArray(primaryItems)) return [];
+        const reg = getSharedPhotoRegistry();
+        let regMutated = false;
+
+        // Gather all local branch arrays to harvest any existing custom photos
+        const branchNames = (window.ROLANDS_BRANCHES || [{ name: 'General Santos City' }, { name: 'Koronadal City' }]).map(b => b.name);
+        const allLocalBranchArrays = [];
+        branchNames.forEach(bName => {
+            try {
+                const key = bName === 'General Santos City' ? 'inventoryItems' : `${bName}__inventoryItems`;
+                const str = rawGet(key);
+                if (str) {
+                    const parsed = JSON.parse(str);
+                    if (Array.isArray(parsed)) allLocalBranchArrays.push(parsed);
+                }
+            } catch (e) {}
+        });
+
+        const harvestSources = [
+            ...(Array.isArray(fallbackLocalItems) ? [fallbackLocalItems] : []),
+            ...allLocalBranchArrays,
+            ...(Array.isArray(extraBranchArrays) ? extraBranchArrays : []),
+            primaryItems
+        ];
+
+        harvestSources.forEach(arr => {
+            if (!Array.isArray(arr)) return;
+            arr.forEach(item => {
+                if (!item || item.syncPhotoBranches === false) return;
+                const idKey = item.id ? `id:${normMenuKey(item.id)}` : '';
+                const titleKey = (item.title || item.name) ? `title:${normMenuKey(item.title || item.name)}` : '';
+                const itemUpd = Number(item.imageUpdatedAt) || 1;
+                const itemRem = Number(item.imageRemovedAt) || 0;
+
+                if (itemRem > 0 && !isValidCustomPhoto(item.image)) {
+                    [idKey, titleKey].filter(Boolean).forEach(k => {
+                        const cur = reg[k];
+                        if (!cur || itemRem >= (Number(cur.updatedAt) || 0)) {
+                            reg[k] = { image: '', updatedAt: itemRem, removedAt: itemRem };
+                            regMutated = true;
+                        }
+                    });
+                } else if (isValidCustomPhoto(item.image)) {
+                    [idKey, titleKey].filter(Boolean).forEach(k => {
+                        const cur = reg[k];
+                        const curUpd = Number(cur?.updatedAt) || 0;
+                        const curRem = Number(cur?.removedAt) || 0;
+                        if (itemUpd >= curUpd && itemUpd > curRem && (!cur || cur.image !== item.image)) {
+                            reg[k] = { image: item.image, updatedAt: itemUpd, removedAt: 0 };
+                            regMutated = true;
+                        }
+                    });
+                }
+            });
+        });
+
+        if (regMutated) saveSharedPhotoRegistry(reg);
+
+        return primaryItems.map(cloudItem => {
+            if (!cloudItem) return cloudItem;
+            const normTitle = normMenuKey(cloudItem.title || cloudItem.name);
+            const localMatch = Array.isArray(fallbackLocalItems)
+                ? fallbackLocalItems.find(l => l && ((cloudItem.id && l.id === cloudItem.id) || (normTitle && normMenuKey(l.title || l.name) === normTitle)))
+                : null;
+
+            const syncEnabled = (cloudItem.syncPhotoBranches !== undefined)
+                ? (cloudItem.syncPhotoBranches !== false)
+                : (localMatch && localMatch.syncPhotoBranches !== undefined ? localMatch.syncPhotoBranches !== false : true);
+
+            let resolvedImage = isValidCustomPhoto(cloudItem.image)
+                ? cloudItem.image
+                : (isValidCustomPhoto(localMatch?.image) ? localMatch.image : '');
+
+            const itemRemAt = Math.max(Number(cloudItem.imageRemovedAt) || 0, Number(localMatch?.imageRemovedAt) || 0);
+            const itemUpdAt = Math.max(Number(cloudItem.imageUpdatedAt) || 0, Number(localMatch?.imageUpdatedAt) || 0);
+
+            if (syncEnabled) {
+                const idEntry = cloudItem.id ? reg[`id:${normMenuKey(cloudItem.id)}`] : null;
+                const titleEntry = normTitle ? reg[`title:${normTitle}`] : null;
+                const sharedEntry = (idEntry && titleEntry)
+                    ? ((Number(idEntry.updatedAt) || 0) >= (Number(titleEntry.updatedAt) || 0) ? idEntry : titleEntry)
+                    : (idEntry || titleEntry);
+
+                if (sharedEntry) {
+                    if ((Number(sharedEntry.removedAt) || 0) >= (Number(sharedEntry.updatedAt) || 0) && (Number(sharedEntry.removedAt) || 0) >= itemUpdAt) {
+                        resolvedImage = '';
+                    } else if (isValidCustomPhoto(sharedEntry.image) && ((Number(sharedEntry.updatedAt) || 0) >= itemRemAt)) {
+                        if (!resolvedImage || (Number(sharedEntry.updatedAt) || 0) >= itemUpdAt) {
+                            resolvedImage = sharedEntry.image;
+                        }
+                    }
+                }
+            } else if (itemRemAt > itemUpdAt) {
+                resolvedImage = '';
+            }
+
+            return {
+                ...cloudItem,
+                image: resolvedImage,
+                syncPhotoBranches: syncEnabled
+            };
+        });
+    };
+
+    // Syncs a menu item's picture across all branches (or only the current branch when syncAllBranches === false)
+    window.syncMenuItemPhotoAcrossBranches = async function ({ id, title, image, syncAllBranches = true }) {
+        const now = Date.now();
+        const cleanImg = isValidCustomPhoto(image) ? image : '';
+        const normId = id ? normMenuKey(id) : '';
+        const normTitle = normMenuKey(title);
+        const activeInvBranch = window.getInventoryBranch ? window.getInventoryBranch() : window.getEffectiveBranch();
+        const baseUrl = 'https://rolands-steakhouse-jsoo.onrender.com';
+
+        const matchesTarget = (item) => {
+            if (!item) return false;
+            if (normId && normMenuKey(item.id) === normId) return true;
+            if (normTitle && normMenuKey(item.title || item.name) === normTitle) return true;
+            return false;
+        };
+
+        if (syncAllBranches) {
+            const reg = getSharedPhotoRegistry();
+            const entry = cleanImg
+                ? { image: cleanImg, updatedAt: now, removedAt: 0 }
+                : { image: '', updatedAt: now, removedAt: now };
+            if (normId) reg[`id:${normId}`] = entry;
+            if (normTitle) reg[`title:${normTitle}`] = entry;
+            saveSharedPhotoRegistry(reg);
+
+            const branchNames = Array.from(new Set([
+                'General Santos City',
+                'Koronadal City',
+                ...((window.ROLANDS_BRANCHES || []).map(b => b.name).filter(Boolean))
+            ]));
+
+            // 1. Update all branch localStorage keys immediately
+            let templateItems = [];
+            try {
+                templateItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            } catch (e) {}
+
+            branchNames.forEach(bName => {
+                try {
+                    const key = bName === 'General Santos City' ? 'inventoryItems' : `${bName}__inventoryItems`;
+                    const rawStr = rawGet(key);
+                    let list = rawStr ? JSON.parse(rawStr) : (templateItems.length ? JSON.parse(JSON.stringify(templateItems)) : []);
+                    if (Array.isArray(list) && list.length > 0) {
+                        let changed = false;
+                        list.forEach(item => {
+                            if (matchesTarget(item)) {
+                                item.image = cleanImg;
+                                item.syncPhotoBranches = true;
+                                item.imageUpdatedAt = now;
+                                item.imageRemovedAt = cleanImg ? 0 : now;
+                                changed = true;
+                            }
+                        });
+                        if (changed) safeRawSet(key, JSON.stringify(list));
+                    }
+                } catch (e) {}
+            });
+
+            // 2. Push to cloud for every branch
+            window.__lastMenuPush = Date.now();
+            await Promise.all(branchNames.map(async (bName) => {
+                try {
+                    let branchList = [];
+                    if (bName === activeInvBranch && templateItems.length > 0) {
+                        branchList = JSON.parse(JSON.stringify(templateItems));
+                    } else {
+                        const r = await fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(bName)}&nocache=${now}`);
+                        if (r.ok) {
+                            const cloudArr = await r.json();
+                            if (Array.isArray(cloudArr) && cloudArr.length > 0) branchList = cloudArr;
+                        }
+                        if (branchList.length === 0 && templateItems.length > 0) {
+                            branchList = JSON.parse(JSON.stringify(templateItems));
+                        }
+                    }
+                    if (branchList.length > 0) {
+                        branchList.forEach(item => {
+                            if (matchesTarget(item)) {
+                                item.image = cleanImg;
+                                item.syncPhotoBranches = true;
+                                item.imageUpdatedAt = now;
+                                item.imageRemovedAt = cleanImg ? 0 : now;
+                            }
+                        });
+                        await fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(bName)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(branchList)
+                        });
+                    }
+                } catch (e) {}
+            }));
+        } else {
+            // Only update active inventory branch
+            try {
+                const list = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                list.forEach(item => {
+                    if (matchesTarget(item)) {
+                        item.image = cleanImg;
+                        item.syncPhotoBranches = false;
+                        item.imageUpdatedAt = now;
+                        item.imageRemovedAt = cleanImg ? 0 : now;
+                    }
+                });
+                localStorage.setItem('inventoryItems', JSON.stringify(list));
+                window.__lastMenuPush = Date.now();
+                await fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(activeInvBranch)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(list)
+                });
+            } catch (e) {}
+        }
+
+        if (window.InventorySystem && typeof window.InventorySystem.invalidateInventoryCache === 'function') {
+            window.InventorySystem.invalidateInventoryCache();
+        }
+        window.dispatchEvent(new CustomEvent('inventoryUpdated'));
     };
 
     document.addEventListener('DOMContentLoaded', () => {
