@@ -1897,17 +1897,26 @@ window.readReservationHistory = function () {
                         fetch(`${API_BASE_URL}/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}&nocache=${Date.now()}`),
                         fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}&nocache=${Date.now()}`)
                     ]);
+                    let floorChanged = false;
                     if (floorRes.ok) {
                         const cloudFloor = await floorRes.json();
-                        localStorage.setItem('tableOverrides', JSON.stringify(cloudFloor));
+                        const nextFloorStr = JSON.stringify(cloudFloor);
+                        if (localStorage.getItem('tableOverrides') !== nextFloorStr) {
+                            localStorage.setItem('tableOverrides', nextFloorStr);
+                            floorChanged = true;
+                        }
                     }
                     if (cfgRes.ok) {
                         const cloudCfg = await cfgRes.json();
                         if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
-                            localStorage.setItem('floorPlanConfig', JSON.stringify(cloudCfg));
+                            const nextCfgStr = JSON.stringify(cloudCfg);
+                            if (localStorage.getItem('floorPlanConfig') !== nextCfgStr) {
+                                localStorage.setItem('floorPlanConfig', nextCfgStr);
+                                floorChanged = true;
+                            }
                         }
                     }
-                    if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                    if (floorChanged && typeof renderFloorPlan === 'function') renderFloorPlan(true);
                 } catch(e) {}
 
                 const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -1977,8 +1986,21 @@ window.readReservationHistory = function () {
                         }
 
                         // Ensure verified payment status for approved, seated, or completed orders
-                        if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
+                        if (dbRes.paymentStatus === 'refunded' || dbRes.refundStatus === 'refunded' || Number(dbRes.refundAmount) > 0) {
+                            if (match.paymentStatus !== 'refunded' || match.refundStatus !== 'refunded' || match.refundAmount !== dbRes.refundAmount) {
+                                match.paymentStatus = 'refunded';
+                                match.refundStatus = 'refunded';
+                                match.refundAmount = dbRes.refundAmount || match.paymentAmount || 0;
+                                match.refundMethod = dbRes.refundMethod || match.refundMethod || '';
+                                match.refundRef = dbRes.refundRef || match.refundRef || '';
+                                updated = true;
+                            }
+                        } else if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
                             match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+                        if (dbRes.email && match.email !== dbRes.email) {
+                            match.email = dbRes.email;
                             updated = true;
                         }
 
@@ -2010,17 +2032,24 @@ window.readReservationHistory = function () {
                             updated = true;
                         }
                     } else {
-                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbStatus.includes('walk-in') || dbRes.bookedBy === 'pos');
+                        const isRefunded = dbRes.paymentStatus === 'refunded' || dbRes.refundStatus === 'refunded' || Number(dbRes.refundAmount) > 0;
+                        const isVerified = !isRefunded && (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbStatus.includes('walk-in') || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
                             customerName: dbRes.customerName,
+                            email: dbRes.email || '',
+                            contactNumber: dbRes.phone || '',
                             bookedTable: dbRes.bookedTable,
                             arrivalDate: dbRes.arrivalDate,
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending'),
+                            paymentStatus: isRefunded ? 'refunded' : (isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending')),
+                            refundStatus: isRefunded ? 'refunded' : '',
+                            refundAmount: dbRes.refundAmount || 0,
+                            refundMethod: dbRes.refundMethod || '',
+                            refundRef: dbRes.refundRef || '',
                             paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
                             kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
@@ -2186,19 +2215,25 @@ window.readReservationHistory = function () {
                     : { foods: Array.isArray(r.foods) ? r.foods : [], beefNote: String(r.beefNote || r.notes || '') };
                 const foods = unpacked.foods;
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isStandardNoFood = String(r.reservationType || '').toLowerCase() === 'standard' && !foods.length;
 
                 // 👉 Strip the machine tag out of what staff reads & support Walk-in kitchenTiming/doneness
                 const rawNote = String(unpacked.beefNote || '');
                 const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
                 const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
-                const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
+                const timingLabel = isStandardNoFood ? '' : (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
 
                 let cleanNote = rawNote
                     .replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '')
                     .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
                     .trim();
 
-                if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
+                if (isStandardNoFood) {
+                    cleanNote = cleanNote
+                        .replace(/(?:^|\|\s*)Doneness:\s*[^|]+/gi, '')
+                        .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                        .trim();
+                } else if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
                     cleanNote = cleanNote ? `Doneness: ${r.beefDoneness} | ${cleanNote}` : `Doneness: ${r.beefDoneness}`;
                 }
 
@@ -2288,8 +2323,38 @@ window.readReservationHistory = function () {
             }
 
             function renderRows(rows) {
-                historyTbody.innerHTML = '';
                 const arrivingSoon = getArrivingSoonIds();
+                const rowsSig = JSON.stringify({
+                    arrivingSoon: Array.from(arrivingSoon),
+                    rows: rows.map(r => [
+                        r.reservationNumber,
+                        r.customerName,
+                        r.bookedTable,
+                        r.arrivalDate,
+                        r.arrivalTime,
+                        r.reservationType,
+                        r.approvalStatus,
+                        r.paymentStatus,
+                        r.refundStatus,
+                        r.refundAmount,
+                        r.kdsStatus,
+                        r.paymentAmount,
+                        r.discountType,
+                        r.discountAmount,
+                        r.voucherCode,
+                        r.completedAt,
+                        r.cancelledBy,
+                        r.cancellationReason,
+                        foodText(r),
+                        Boolean(r.createdAt && (Date.now() - new Date(r.createdAt).getTime() < 10000))
+                    ])
+                });
+                if (window.__lastAdminRowsSig === rowsSig && historyTbody.children.length > 0) {
+                    return;
+                }
+                window.__lastAdminRowsSig = rowsSig;
+
+                historyTbody.innerHTML = '';
                 if (!rows.length) {
                     const tr = document.createElement('tr');
                     const td = document.createElement('td');
@@ -2345,9 +2410,8 @@ window.readReservationHistory = function () {
                     const tdType = document.createElement('td');
                     tdType.appendChild(createTypePill(r));
 
-                    // 👉 NEW: Smooth & Clean "See More" inline logic (Fixed Borders & Shadows)
+                    // 👉 NEW: Smooth & Clean "See More" inline logic (Fixed Borders, Shadows & Persistent Memory)
                     const tdFoods = document.createElement('td');
-                    // Removed the 250px maxWidth that was breaking the mobile border!
 
                     const foodWrapper = document.createElement('div');
                     foodWrapper.style.cssText = 'white-space: normal; line-height: 1.5; color: #334155; font-size: 13px;';
@@ -2356,21 +2420,23 @@ window.readReservationHistory = function () {
                         const shortText = foods.substring(0, 65) + '...';
                         
                         const textSpan = document.createElement('span');
-                        textSpan.textContent = shortText;
-                        
                         const seeMoreBtn = document.createElement('span');
-                        seeMoreBtn.textContent = ' See more';
-                        // Using a simple span styled like a link entirely avoids the weird global button shadows!
                         seeMoreBtn.style.cssText = 'color: #0284c7; font-weight: 800; cursor: pointer; text-decoration: none; padding-left: 4px; display: inline-block;';
                         
-                        let isExpanded = false;
+                        window.expandedFoodRows = window.expandedFoodRows || new Set();
+                        let isExpanded = window.expandedFoodRows.has(r.reservationNumber);
+                        textSpan.textContent = isExpanded ? foods : shortText;
+                        seeMoreBtn.textContent = isExpanded ? ' See less' : ' See more';
+
                         seeMoreBtn.onclick = (e) => {
                             e.stopPropagation(); 
                             isExpanded = !isExpanded;
                             if (isExpanded) {
+                                window.expandedFoodRows.add(r.reservationNumber);
                                 textSpan.textContent = foods;
                                 seeMoreBtn.textContent = ' See less';
                             } else {
+                                window.expandedFoodRows.delete(r.reservationNumber);
                                 textSpan.textContent = shortText;
                                 seeMoreBtn.textContent = ' See more';
                             }
@@ -2619,6 +2685,13 @@ if (resKeyForBtn) {
                     return;
                 }
 
+                const confirmBtn = document.querySelector('#refund-modal button[onclick="submitRefundModal()"]');
+                const origBtnHtml = confirmBtn ? confirmBtn.innerHTML : 'Confirm Refund';
+                if (confirmBtn) {
+                    confirmBtn.innerHTML = '⏳ Processing...';
+                    confirmBtn.disabled = true;
+                }
+
                 if (window.InventorySystem && typeof window.InventorySystem.processReservationRefund === 'function') {
                     const result = window.InventorySystem.processReservationRefund({
                         reservationNumber: resNum,
@@ -2626,10 +2699,13 @@ if (resKeyForBtn) {
                         method: method,
                         refNumber: ref,
                         reason: reason,
+                        email: email,
                         operator: 'Admin'
                     });
 
                     if (result && result.success) {
+                        let emailSent = false;
+                        let emailWarning = '';
                         if (email) {
                             try {
                                 const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}`;
@@ -2637,7 +2713,7 @@ if (resKeyForBtn) {
                                 const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrPayload)}`;
                                 const activeBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
 
-                                await fetch(`${API_BASE_URL}/api/send-receipt`, { 
+                                const emailRes = await fetch(`${API_BASE_URL}/api/send-receipt`, { 
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
@@ -2674,20 +2750,61 @@ if (resKeyForBtn) {
                                         `
                                     })
                                 });
+                                const emailData = await emailRes.json().catch(() => ({}));
+                                emailSent = Boolean(emailRes.ok && emailData && emailData.emailSent === true);
+                                emailWarning = emailData?.warning || '';
                             } catch (emailError) {
                                 console.error('Could not send refund email:', emailError);
+                                emailWarning = emailError.message || 'Network error';
                             }
                         }
 
-                        window.closeRefundModal();
-                        if (window.showToast) {
-                            window.showToast(`Refund of ₱${amt.toLocaleString()} processed for #${resNum}`, 'success', 4000);
+                        if (confirmBtn) {
+                            confirmBtn.innerHTML = origBtnHtml;
+                            confirmBtn.disabled = false;
                         }
+                        window.closeRefundModal();
+                        window.__lastAdminRowsSig = '';
                         renderDashboard();
+
+                        let emailStatusHtml = '';
+                        if (email) {
+                            if (emailSent) {
+                                emailStatusHtml = `<div style="margin-top:10px; padding:10px 12px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; color:#166534; font-size:12.5px; text-align:left;">📧 <strong>Email Receipt Sent:</strong> Successfully sent to <b>${email}</b></div>`;
+                            } else {
+                                emailStatusHtml = `<div style="margin-top:10px; padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; color:#92400e; font-size:12.5px; text-align:left;">⚠️ <strong>Email Receipt Pending:</strong> Refund was recorded, but the email to <b>${email}</b> could not be sent (${emailWarning || 'Set EMAIL_USER and EMAIL_PASS in Render Environment Variables'}).</div>`;
+                            }
+                        }
+
+                        if (typeof superModal === 'function') {
+                            await superModal({
+                                title: 'Refund Processed Successfully! 💸',
+                                message: `
+                                    <div style="text-align:left; font-size:14px; background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #cbd5e1; margin-top:8px;">
+                                        <div style="margin-bottom:6px;"><strong>🔖 Reservation #:</strong> ${resNum}</div>
+                                        <div style="margin-bottom:6px;"><strong>👤 Customer:</strong> ${result.reservation?.customerName || 'Guest'}</div>
+                                        <div style="margin-bottom:6px;"><strong>💰 Refund Amount:</strong> <span style="color:#2563eb; font-weight:800;">₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                        <div style="margin-bottom:6px;"><strong>💳 Method:</strong> ${method.toUpperCase()}</div>
+                                        <div style="margin-bottom:6px;"><strong>🏦 Reference #:</strong> ${ref || 'N/A'}</div>
+                                        <div><strong>📝 Reason:</strong> ${reason}</div>
+                                    </div>
+                                    ${emailStatusHtml}
+                                `,
+                                confirmText: 'Done'
+                            });
+                        }
                     } else {
+                        if (confirmBtn) {
+                            confirmBtn.innerHTML = origBtnHtml;
+                            confirmBtn.disabled = false;
+                        }
                         alert('Could not process refund: ' + (result?.error || 'Unknown error'));
                     }
                 } else {
+                    if (confirmBtn) {
+                        confirmBtn.innerHTML = origBtnHtml;
+                        confirmBtn.disabled = false;
+                    }
                     alert('Inventory system offline.');
                 }
             };
@@ -3424,13 +3541,23 @@ window.resetFloor = async function () {
     }
 };
 
-            function renderFloorPlan() {
+            function renderFloorPlan(force = false) {
                 const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
                 const hist = getReservationHistory();
                 const fp = document.getElementById('hostess-grid');
                 if (!fp) return;
-                fp.innerHTML = '';
                 const floorConfig = getFloorPlanConfig();
+
+                const activeTableResSig = hist
+                    .filter(r => !r.completedAt && r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled')
+                    .map(r => [r.reservationNumber, r.bookedTable, r.approvalStatus, r.arrivalDate, r.arrivalTime]);
+                const fpSig = JSON.stringify({ overrides, floorConfig, activeTableResSig });
+                if (!force && window.__lastFloorPlanSig === fpSig && fp.children.length > 0) {
+                    return;
+                }
+                window.__lastFloorPlanSig = fpSig;
+
+                fp.innerHTML = '';
                 
                 fp.style.position = '';
                 fp.style.minHeight = '';
@@ -3478,7 +3605,7 @@ window.resetFloor = async function () {
                         config[draggedIdx] = config[targetIdx];
                         config[targetIdx] = temp;
                         localStorage.setItem('floorPlanConfig', JSON.stringify(config));
-                        renderFloorPlan();
+                        renderFloorPlan(true);
                     });
 
                     card.innerHTML = `
@@ -4921,9 +5048,7 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             if (!window.isPollingActive) {
                 setInterval(async () => {
                     await syncReservations();
-                        if (typeof applySearch === 'function') applySearch();
-                        if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
-                        renderFloorPlan();
+                    if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
                     
                     // 👉 Download Live Chats strictly for the active branch!
                     try {
@@ -4942,13 +5067,13 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                             if (window.__justDeletedChat && Date.now() - (window.__justDeletedAt || 0) < 10000) {
                                 delete safe[window.__justDeletedChat];
                             }
-                            localStorage.setItem('liveChats', JSON.stringify(safe));
+                            const nextChatsStr = JSON.stringify(safe);
+                            if (localStorage.getItem('liveChats') !== nextChatsStr) {
+                                localStorage.setItem('liveChats', nextChatsStr);
+                                renderAdminChats();
+                            }
                         }
                     } catch(e){}
-                    renderAdminChats();
-                    
-                    renderPayments();
-                    renderPromosAdmin();
                 }, 5000); // 👉 Dropped to 5s so chats feel highly responsive!
                 window.isPollingActive = true;
                 
@@ -6781,10 +6906,20 @@ window.adminRawFilter = 'all';
                 pBtn.style.cssText = 'flex:1; padding:12px; border-radius:8px; border:2px solid #1b5e20; background:#1b5e20; color:white; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;';
                 sBtn.style.cssText = 'flex:1; padding:12px; border-radius:8px; border:2px solid #cbd5e1; background:white; color:#64748b; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;';
                 pFields.style.display = 'block';
+                if (typeof window.syncWalkinBeefPrefVisibility === 'function') window.syncWalkinBeefPrefVisibility();
             } else {
                 sBtn.style.cssText = 'flex:1; padding:12px; border-radius:8px; border:2px solid #1b5e20; background:#1b5e20; color:white; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;';
                 pBtn.style.cssText = 'flex:1; padding:12px; border-radius:8px; border:2px solid #cbd5e1; background:white; color:#64748b; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;';
                 pFields.style.display = 'none';
+                // Clear priority-only food, beef doneness, and kitchen timing when switching to Standard
+                currentSelection = {};
+                tempWalkinOrder = {};
+                if (typeof window.setWalkinDoneness === 'function') window.setWalkinDoneness('');
+                const beefBox = document.getElementById('walkin-beef-pref-container');
+                if (beefBox) beefBox.style.display = 'none';
+                document.querySelectorAll('input[name="walkin-kitchen-timing"]').forEach(r => { r.checked = false; });
+                const summaryEl = document.getElementById('walkin-order-summary');
+                if (summaryEl) summaryEl.innerHTML = 'No items selected yet.';
             }
         };
 
@@ -6969,7 +7104,7 @@ window.adminRawFilter = 'all';
     const payment = parseFloat(document.getElementById('walkin-payment').value) || 0;
     const notes = (document.getElementById('walkin-notes').value || '').trim();
     const timingEl = document.querySelector('input[name="walkin-kitchen-timing"]:checked');
-    const kitchenTiming = timingEl ? timingEl.value : '';
+    const kitchenTiming = (walkinType === 'priority' && timingEl) ? timingEl.value : '';
     const hasBeefOrdered = walkinType === 'priority' && hasBeefInWalkinSelection();
     const donenessVal = hasBeefOrdered ? walkinSelectedDoneness : '';
 
@@ -7018,26 +7153,23 @@ window.adminRawFilter = 'all';
     const invItems = getInventory();
     const foodArray = [];
     let orderSummary = "";
-
-    for (const id in currentSelection) {
-        const item = invItems.find(i => i.id === id);
-        if (item) {
-            const qty = currentSelection[id];
-            foodArray.push(`${qty}x ${item.title}`);
-        }
-    }
-    orderSummary = foodArray.join(', ');
-
     const structuredCart = [];
-    for (const id in currentSelection) {
-        if (currentSelection[id] > 0) {
-            structuredCart.push({ id: id, quantity: currentSelection[id] });
+
+    if (walkinType === 'priority') {
+        for (const id in currentSelection) {
+            const item = invItems.find(i => i.id === id);
+            if (item && currentSelection[id] > 0) {
+                const qty = currentSelection[id];
+                foodArray.push(`${qty}x ${item.title}`);
+                structuredCart.push({ id: id, quantity: qty });
+            }
         }
+        orderSummary = foodArray.join(', ');
     }
 
-    // Combine Doneness + Notes + Kitchen Timing just like Online Pre-Order
+    // Combine Doneness + Notes + Kitchen Timing for Priority; plain notes only for Standard
     const noteParts = [];
-    if (donenessVal) noteParts.push(`Doneness: ${donenessVal}`);
+    if (walkinType === 'priority' && donenessVal) noteParts.push(`Doneness: ${donenessVal}`);
     if (notes) noteParts.push(notes);
     if (walkinType === 'priority' && kitchenTiming) noteParts.push(`[[KITCHEN_TIMING: ${kitchenTiming}]]`);
     const combinedWalkinNote = noteParts.join(' | ');
