@@ -1933,6 +1933,12 @@ window.readReservationHistory = function () {
                             if (Array.isArray(parsed)) cloudFoods = parsed.map(i => `${i.quantity}x ${i.name || i.title}`);
                         } catch(e) {}
                     }
+                    let cloudNote = dbRes.beefNote || dbRes.notes || '';
+                    if (typeof window.unpackCloudFoodsAndNote === 'function') {
+                        const unpacked = window.unpackCloudFoodsAndNote(cloudFoods, cloudNote);
+                        cloudFoods = unpacked.foods;
+                        cloudNote = unpacked.beefNote;
+                    }
 
                     const recBranch = dbRes.branch || window.getEffectiveBranch?.() || 'General Santos City';
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
@@ -1998,7 +2004,6 @@ window.readReservationHistory = function () {
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
-                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         if (cloudNote && match.beefNote !== cloudNote) {
                             match.beefNote = cloudNote;
                             match.notes = cloudNote;
@@ -2006,7 +2011,6 @@ window.readReservationHistory = function () {
                         }
                     } else {
                         const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbStatus.includes('walk-in') || dbRes.bookedBy === 'pos');
-                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -2177,11 +2181,14 @@ window.readReservationHistory = function () {
             const summaryLine = document.getElementById('summary-line');
 
             function foodText(r) {
-                const foods = Array.isArray(r.foods) ? r.foods : [];
+                const unpacked = typeof window.unpackCloudFoodsAndNote === 'function'
+                    ? window.unpackCloudFoodsAndNote(Array.isArray(r.foods) ? r.foods : [], r.beefNote || r.notes || '')
+                    : { foods: Array.isArray(r.foods) ? r.foods : [], beefNote: String(r.beefNote || r.notes || '') };
+                const foods = unpacked.foods;
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
 
                 // 👉 Strip the machine tag out of what staff reads & support Walk-in kitchenTiming/doneness
-                const rawNote = String(r.beefNote || r.notes || '');
+                const rawNote = String(unpacked.beefNote || '');
                 const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
                 const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
                 const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
@@ -3029,6 +3036,7 @@ window.rejectReservation = async function (resNum) {
                                 arrivalTime: hist[idx].arrivalTime,
                                 paymentAmount: hist[idx].paymentAmount,
                                 foods: hist[idx].foods,
+                                beefNote: hist[idx].beefNote || '',
                                 status: hist[idx].status || hist[idx].approvalStatus,
                                 kdsStatus: hist[idx].kdsStatus
                             })
