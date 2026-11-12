@@ -3105,7 +3105,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
             }
         }
 
-        if (init && init.body && typeof init.body === 'string' && (url.includes('/reserve') || url.includes('/api/inventory/'))) {
+        if (init && init.body && typeof init.body === 'string' && (url.includes('/reserve') || url.includes('/api/reservations/update-order') || url.includes('/api/inventory/'))) {
             try {
                 const parsed = JSON.parse(init.body);
                 if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -3130,6 +3130,27 @@ window.setPosBranchPin = async function (branchName, newPin) {
                             parsed.voucherCode = preVoucher;
                         }
                     }
+
+                    // Embed Doneness, Kitchen Timing, and Notes into `foods` as [[ORDER_NOTE: ...]] for cross-device / Incognito sync
+                    if (url.includes('/reserve') || url.includes('/api/reservations/update-order')) {
+                        let noteStr = String(parsed.beefNote || parsed.notes || '').trim();
+                        if (!noteStr && url.includes('/reserve')) {
+                            const d = localStorage.getItem('beefDoneness') || '';
+                            const n = localStorage.getItem('beefNote') || '';
+                            const kt = parsed.kitchenTiming || localStorage.getItem('kitchenTiming') || '';
+                            noteStr = [d ? `Doneness: ${d}` : '', n, kt ? `[[KITCHEN_TIMING: ${kt}]]` : ''].filter(Boolean).join(' | ');
+                        } else if (parsed.kitchenTiming && !/KITCHEN_TIMING/i.test(noteStr)) {
+                            noteStr = noteStr ? `${noteStr} | [[KITCHEN_TIMING: ${parsed.kitchenTiming}]]` : `[[KITCHEN_TIMING: ${parsed.kitchenTiming}]]`;
+                        }
+                        if (Array.isArray(parsed.foods)) {
+                            parsed.foods = parsed.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()));
+                            if (noteStr) {
+                                parsed.foods.push(`[[ORDER_NOTE: ${noteStr}]]`);
+                                parsed.beefNote = noteStr;
+                            }
+                        }
+                    }
+
                     init.body = JSON.stringify(parsed);
                 }
             } catch (e) {}
@@ -3137,24 +3158,57 @@ window.setPosBranchPin = async function (branchName, newPin) {
 
         const response = await origFetch(input, init);
 
-        // Automatically capture each reservation's branch from /reservations so syncReservations() never loses it!
+        // Automatically capture each reservation's branch and unpack [[ORDER_NOTE: ...]] from /reservations
         if (url && url.includes('/reservations') && response.ok) {
             try {
-                const clone = response.clone();
-                clone.json().then(arr => {
+                const origJson = response.json.bind(response);
+                response.json = async function () {
+                    const arr = await origJson();
                     if (Array.isArray(arr)) {
                         arr.forEach(r => {
-                            if (r && r.reservationNumber && r.branch) {
+                            if (!r || typeof r !== 'object') return;
+                            if (r.reservationNumber && r.branch) {
                                 cloudBranchMap[r.reservationNumber] = r.branch;
+                            }
+                            if (Array.isArray(r.foods) && typeof window.unpackCloudFoodsAndNote === 'function') {
+                                const unpacked = window.unpackCloudFoodsAndNote(r.foods, r.beefNote || r.notes);
+                                r.foods = unpacked.foods;
+                                if (unpacked.beefNote) {
+                                    r.beefNote = unpacked.beefNote;
+                                    r.notes = unpacked.beefNote;
+                                }
                             }
                         });
                         safeRawSet('__cloudBranchMap', JSON.stringify(cloudBranchMap));
                     }
-                }).catch(() => {});
+                    return arr;
+                };
             } catch (e) {}
         }
 
         return response;
+    };
+
+    // Helper to pack/unpack order notes (Doneness, Kitchen Timing, Special Requests) inside the cloud `foods` array
+    // so notes carry over across all devices & Incognito windows without requiring SQL schema changes on live servers.
+    window.unpackCloudFoodsAndNote = function (rawFoods, existingNote) {
+        let extractedNote = '';
+        const cleanFoods = [];
+        if (Array.isArray(rawFoods)) {
+            rawFoods.forEach(item => {
+                const str = String(item || '').trim();
+                const m = str.match(/^\[\[ORDER_NOTE:\s*([\s\S]*?)\]\]$/i);
+                if (m) {
+                    if (m[1] && m[1].trim()) extractedNote = m[1].trim();
+                } else if (str) {
+                    cleanFoods.push(item);
+                }
+            });
+        }
+        return {
+            foods: cleanFoods,
+            beefNote: extractedNote || String(existingNote || '').trim()
+        };
     };
 
     // 4. Update Customer UI (index.html, payment.html, receipt.html, pos.html, superadmin.html)
