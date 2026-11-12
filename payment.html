@@ -390,6 +390,7 @@
                 } catch (e) {}
 
                 // 2. Store booking draft in sessionStorage ONLY (Do NOT save to MySQL yet so no premature receipt is created!)
+                const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                 const pendingPayload = {
                     name: cName,
                     email: cEmail || `customer-${Date.now()}@temp.com`,
@@ -403,7 +404,12 @@
                     paymentAmount: payAmt,
                     orderSummary: localStorage.getItem('orderSummary') || '',
                     beefNote: buildKitchenNote(),
-                    foods: foodArray
+                    foods: foodArray,
+                    branch: activeBranch,
+                    discountType: localStorage.getItem('discountType') || 'none',
+                    discountAmount: parseFloat(localStorage.getItem('discountAmount') || '0') || 0,
+                    voucherCode: localStorage.getItem('voucherCode') || '',
+                    discountProofImage: localStorage.getItem('discountProofImage') || ''
                 };
                 sessionStorage.setItem('pendingPaymongoOrder', JSON.stringify(pendingPayload));
 
@@ -502,10 +508,16 @@
             const payAmt = typeof finalAmount !== 'undefined' ? finalAmount : (typeof totalBill !== 'undefined' ? totalBill : Number(localStorage.getItem('totalBill') || 0));
             const cName  = localStorage.getItem('customerName') || localStorage.getItem('loggedInUserName') || 'Guest';
             const cEmail = localStorage.getItem('customerEmail') || localStorage.getItem('loggedInUserEmail') || '';
+            const cPhone = localStorage.getItem('customerPhone') || localStorage.getItem('loggedInUserPhone') || '';
             const aDate  = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
             const aTime  = localStorage.getItem('arrivalTime') || '12:00';
             const bTable = localStorage.getItem('bookedTable') || 'Table 1';
             const disp   = localStorage.getItem('arrivalDateTimeDisplay') || `${aDate} ${aTime}`;
+            const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+            const discType = localStorage.getItem('discountType') || 'none';
+            const discAmt  = parseFloat(localStorage.getItem('discountAmount') || '0') || 0;
+            const vchCode  = localStorage.getItem('voucherCode') || '';
+            const discProof = localStorage.getItem('discountProofImage') || '';
 
             try {
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
@@ -514,6 +526,7 @@
                     body: JSON.stringify({
                         name: cName,
                         email: cEmail || `customer-${Date.now()}@temp.com`,
+                        phone: cPhone,
                         date: aDate,
                         time: aTime,
                         table: bTable,
@@ -521,16 +534,24 @@
                         status: 'Pending',
                         reservationType: 'priority',
                         paymentAmount: payAmt,
+                        discountType: discType,
+                        discountAmount: discAmt,
+                        voucherCode: vchCode,
+                        discountProofImage: discProof,
+                        paymentProof: localStorage.getItem('tempPaymentUpload') || '',
+                        paymentRef: ref,
                         beefNote: buildKitchenNote(),
                         notes: [localStorage.getItem('beefNote') || '', localStorage.getItem('beefDoneness') ? `Doneness: ${localStorage.getItem('beefDoneness')}` : ''].filter(Boolean).join(' | '),
                         kitchenTiming: localStorage.getItem('kitchenTiming') || '',
-                        foods: foodArray
+                        foods: foodArray,
+                        branch: activeBranch
                     })
                 });
                 const dbData = await dbRes.json();
                 if (!dbRes.ok || !dbData.reservationId) throw new Error('Database save failed');
 
                 const resNo = 'RES-' + dbData.reservationId;
+                const manualProofImg = localStorage.getItem('tempPaymentUpload') || '';
 
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 hist.push({
@@ -541,6 +562,7 @@
                     arrivalTime:            aTime,
                     arrivalDateTimeDisplay: disp,
                     customerName:           cName,
+                    contactNumber:          cPhone,
                     bookedTable:            bTable,
                     orderSummary:           localStorage.getItem('orderSummary') || '',
                     foods:                  foodArray,
@@ -549,13 +571,24 @@
                     notes:                  buildKitchenNote(),
                     paymentAmount:          payAmt,
                     paymentRef:             ref,
-                    paymentProof:           localStorage.getItem('tempPaymentUpload') || '',
+                    paymentProof:           manualProofImg,
+                    hasCustomProof:         Boolean(manualProofImg),
+                    discountType:           discType,
+                    discountAmount:         discAmt,
+                    voucherCode:            vchCode,
+                    discountProofImage:     discProof,
                     paymentStatus:          'pending',
                     approvalStatus:         'pending',
                     paymentMethod:          'manual',
+                    branch:                 activeBranch,
                     createdAt:              new Date().toISOString()
                 });
                 localStorage.removeItem('tempPaymentUpload');
+                localStorage.removeItem('discountProofImage');
+                localStorage.removeItem('discountType');
+                localStorage.removeItem('discountAmount');
+                localStorage.removeItem('discountLabel');
+                localStorage.removeItem('voucherCode');
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 localStorage.setItem('reservationNumber', resNo);
                 window.onbeforeunload = null;
