@@ -5306,7 +5306,10 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 
                 if (window.InventorySystem) window.InventorySystem.syncFoodMenuStockFromIngredients();
 
-                const items = getInventory();
+                const rawItems = getInventory();
+                const items = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(rawItems, rawItems)
+                    : rawItems;
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
                 const searchQ = (window.adminFoodSearchQuery || '').toLowerCase().trim();
                 const selectedCat = window.adminFoodSelectedCat || 'All';
@@ -5421,18 +5424,22 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                             </div>
                             
                             <div style="margin-top:12px; display:flex; flex-direction:column; gap:6px;">
-                                <div style="font-size: 14px; font-weight: 800; margin-bottom: 4px; color:#0f172a;">
+                                <div style="font-size: 14px; font-weight: 800; margin-bottom: 2px; color:#0f172a;">
                                     Portions: <span style="color: ${statusColor}; font-size:16px;">${avail.availablePortions}</span>
                                 </div>
+                                ${(avail.addedStock || avail.soldStock) ? `<div style="font-size:10.5px; color:#64748b; font-weight:700; margin-bottom:2px;">Total: ${avail.rawPortions ?? avail.availablePortions} | +${avail.addedStock || 0} | -${avail.soldStock || 0} (EOD)</div>` : ''}
                                 <button type="button" onclick="window.toggleItemManualAvailability('${item.id}', 'Admin Staff')" style="width:100%; padding:7px; border-radius:6px; border:1px solid ${item.manualUnavailable ? '#86efac' : '#fca5a5'}; background:${item.manualUnavailable ? '#f0fdf4' : '#fef2f2'}; color:${item.manualUnavailable ? '#166534' : '#dc2626'}; font-size:11.5px; font-weight:800; cursor:pointer;">
                                     ${item.manualUnavailable ? '🟢 Set Available' : '🚫 Set Unavailable'}
                                 </button>
                                 <div style="display:flex; gap:6px;">
-                                    <button type="button" onclick="window.promptRemoveMenuPortions('${item.id}', 'Admin Staff')" style="flex:1; padding:7px 6px; border-radius:6px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:11px; font-weight:800; cursor:pointer;">
+                                    <button type="button" onclick="window.promptRemoveMenuPortions('${item.id}', 'Admin Staff')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:10.5px; font-weight:800; cursor:pointer;">
                                         ➖ Portions
                                     </button>
-                                    <button type="button" onclick="openRecipeEditorModal('${item.id}')" style="flex:1; padding:7px 6px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:11px; font-weight:700; cursor:pointer;">
+                                    <button type="button" onclick="openRecipeEditorModal('${item.id}')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:10.5px; font-weight:700; cursor:pointer;">
                                         ✏️ Recipe
+                                    </button>
+                                    <button type="button" onclick="window.openAdminPhotoEditModal('${item.id}')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; font-size:10.5px; font-weight:800; cursor:pointer;">
+                                        📷 Photo
                                     </button>
                                 </div>
                             </div>
@@ -5452,6 +5459,119 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                     }
                 }
             }
+            window.renderMenuManagement = renderMenuManagement;
+
+            window.openAdminPhotoEditModal = function (itemId) {
+                const rawItems = getInventory();
+                const mergedItems = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(rawItems, rawItems)
+                    : rawItems;
+                const item = mergedItems.find(i => i.id === itemId) || rawItems.find(i => i.id === itemId);
+                if (!item) return;
+
+                let modal = document.getElementById('admin-photo-edit-modal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'admin-photo-edit-modal';
+                    modal.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;';
+                    document.body.appendChild(modal);
+                }
+                const currentImg = item.image || '';
+                const syncChecked = item.syncPhotoBranches !== false;
+
+                modal.innerHTML = `
+                    <div style="background:#ffffff; border-radius:14px; max-width:420px; width:100%; padding:22px; box-shadow:0 20px 40px rgba(0,0,0,0.2); border:1px solid #e2e8f0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h3 style="margin:0; font-size:17px; color:#1b5e20; font-family:'Playfair Display',serif;">📷 Edit Item Picture — ${item.title}</h3>
+                            <button type="button" onclick="document.getElementById('admin-photo-edit-modal').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+                            <div style="width:100%; height:170px; border-radius:10px; border:2px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                                <img id="admin-photo-modal-preview" src="${currentImg}" style="width:100%; height:100%; object-fit:cover; display:${currentImg ? 'block' : 'none'};">
+                                <span id="admin-photo-modal-empty" style="color:#94a3b8; font-size:13px; font-weight:700; display:${currentImg ? 'none' : 'block'};">No Custom Photo Uploaded</span>
+                            </div>
+                            <input type="file" id="admin-photo-modal-file" accept="image/*" style="display:none;">
+                            <div style="display:flex; gap:8px; width:100%;">
+                                <button type="button" onclick="document.getElementById('admin-photo-modal-file').click()" style="flex:1; padding:9px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:700; font-size:12px; cursor:pointer; color:#1e293b;">📁 Upload / Change Photo</button>
+                                <button type="button" id="admin-photo-modal-remove" style="padding:9px 14px; border-radius:8px; border:1px solid #fca5a5; background:#fef2f2; color:#dc2626; font-weight:800; font-size:12px; cursor:pointer; display:${currentImg ? 'inline-block' : 'none'};">Remove</button>
+                            </div>
+                            <label for="admin-photo-sync-toggle" style="width:100%; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:10px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700; color:#166534;">
+                                <input type="checkbox" id="admin-photo-sync-toggle" ${syncChecked ? 'checked' : ''} style="width:16px; height:16px; accent-color:#16a34a; cursor:pointer;">
+                                <span>🔄 Sync picture with other branches (if same item / ID)</span>
+                            </label>
+                            <div style="display:flex; gap:8px; width:100%; justify-content:flex-end; margin-top:6px;">
+                                <button type="button" onclick="document.getElementById('admin-photo-edit-modal').style.display='none'" style="padding:9px 16px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#475569; font-weight:700; font-size:12.5px; cursor:pointer;">Cancel</button>
+                                <button type="button" id="admin-photo-modal-save" style="padding:9px 18px; border-radius:8px; border:none; background:#16a34a; color:white; font-weight:800; font-size:12.5px; cursor:pointer;">💾 Save Picture</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                modal.style.display = 'flex';
+
+                const fileInput = document.getElementById('admin-photo-modal-file');
+                const previewEl = document.getElementById('admin-photo-modal-preview');
+                const emptyEl = document.getElementById('admin-photo-modal-empty');
+                const removeBtn = document.getElementById('admin-photo-modal-remove');
+                const saveBtn = document.getElementById('admin-photo-modal-save');
+
+                fileInput.onchange = function () {
+                    if (!fileInput.files || !fileInput.files[0]) return;
+                    const reader = new FileReader();
+                    reader.onload = function (ev) {
+                        const img = new Image();
+                        img.onload = function () {
+                            const MAX_WIDTH = 300;
+                            const scale = MAX_WIDTH / img.width;
+                            const canvas = document.createElement('canvas');
+                            canvas.width = MAX_WIDTH;
+                            canvas.height = img.height * scale;
+                            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                            previewEl.src = canvas.toDataURL('image/jpeg', 0.7);
+                            previewEl.style.display = 'block';
+                            emptyEl.style.display = 'none';
+                            removeBtn.style.display = 'inline-block';
+                            fileInput.value = '';
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(fileInput.files[0]);
+                };
+
+                removeBtn.onclick = function () {
+                    previewEl.src = '';
+                    previewEl.style.display = 'none';
+                    emptyEl.style.display = 'block';
+                    removeBtn.style.display = 'none';
+                };
+
+                saveBtn.onclick = async function () {
+                    const finalImg = previewEl.style.display === 'block' ? previewEl.src : '';
+                    const syncAll = document.getElementById('admin-photo-sync-toggle')?.checked ?? true;
+                    const nowMs = Date.now();
+                    const list = getInventory();
+                    const idx = list.findIndex(i => i.id === item.id);
+                    if (idx > -1) {
+                        list[idx].image = finalImg;
+                        list[idx].syncPhotoBranches = syncAll;
+                        list[idx].imageUpdatedAt = nowMs;
+                        list[idx].imageRemovedAt = finalImg ? 0 : nowMs;
+                        localStorage.setItem('inventoryItems', JSON.stringify(list));
+                    }
+                    if (typeof window.syncMenuItemPhotoAcrossBranches === 'function') {
+                        await window.syncMenuItemPhotoAcrossBranches({
+                            id: item.id,
+                            title: item.title,
+                            image: finalImg,
+                            syncAllBranches: syncAll
+                        });
+                    }
+                    modal.style.display = 'none';
+                    renderMenuManagement();
+                    if (window.showToast) {
+                        window.showToast(`${item.title} photo updated${syncAll ? ' & synced across branches!' : '!'}`, 'success');
+                    }
+                };
+            };
 
             // ── SMART OPERATIONAL HEALTH SUMMARY BANNER ──
             function renderInventoryHealthBanner() {
