@@ -289,12 +289,19 @@
                     const pending = JSON.parse(pendingJson);
                     sessionStorage.removeItem('pendingPaymongoOrder');
 
+                    const discType = pending.discountType || localStorage.getItem('discountType') || 'none';
+                    const discAmt = Number(pending.discountAmount ?? localStorage.getItem('discountAmount') ?? 0) || 0;
+                    const vchCode = pending.voucherCode || localStorage.getItem('voucherCode') || '';
+                    const discProof = pending.discountProofImage || localStorage.getItem('discountProofImage') || '';
+                    const activeBranch = pending.branch || (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+
                     const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             name: pending.name,
                             email: pending.email,
+                            phone: pending.phone || '',
                             date: pending.date,
                             time: pending.time,
                             table: pending.table,
@@ -302,7 +309,12 @@
                             status: 'Pending',
                             reservationType: pending.reservationType,
                             paymentAmount: pending.paymentAmount,
-                            foods: pending.foods || []
+                            discountType: discType,
+                            discountAmount: discAmt,
+                            voucherCode: vchCode,
+                            discountProofImage: discProof,
+                            foods: pending.foods || [],
+                            branch: activeBranch
                         })
                     });
                     const dbData = await dbRes.json();
@@ -329,11 +341,21 @@
                         beefNote: pending.beefNote || '',
                         paymentAmount: pending.paymentAmount,
                         paymentRef: 'E-RECEIPT-' + newResNo,
+                        discountType: discType,
+                        discountAmount: discAmt,
+                        voucherCode: vchCode,
+                        discountProofImage: discProof,
                         paymentStatus: 'pending',
                         approvalStatus: 'pending',
                         paymentMethod: 'paymongo',
+                        branch: activeBranch,
                         createdAt: new Date().toISOString()
                     });
+                    localStorage.removeItem('discountProofImage');
+                    localStorage.removeItem('discountType');
+                    localStorage.removeItem('discountAmount');
+                    localStorage.removeItem('discountLabel');
+                    localStorage.removeItem('voucherCode');
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
                     localStorage.setItem('reservationNumber', newResNo);
                     localStorage.setItem('activeCustomerReservation', newResNo);
