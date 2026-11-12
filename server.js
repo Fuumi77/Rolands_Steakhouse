@@ -103,7 +103,6 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_type VARCHAR(50) DEFAULT 'none'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN voucher_code VARCHAR(50) DEFAULT ''").catch(()=>{});
-    await db.query("ALTER TABLE reservation_log ADD COLUMN beef_note TEXT").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
@@ -605,7 +604,7 @@ app.get('/reservations', async (req, res) => {
                        DATE_FORMAT(r.reservation_time, '%Y-%m-%d') AS ph_date,
                        DATE_FORMAT(r.reservation_time, '%H:%i') AS ph_time,
                        r.reservation_time, r.table_number, r.status, r.booked_by,
-                       r.reservation_type, r.payment_amount, r.foods, r.beef_note, r.kds_status, r.branch,
+                       r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
                        r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at,
                        r.discount_type, r.discount_amount, r.voucher_code
                 FROM reservation_log r
@@ -618,8 +617,21 @@ app.get('/reservations', async (req, res) => {
                 const isPos = r.booked_by === 'pos';
                 const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
                 const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
+                let rawFoods = [];
+                try { rawFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
                 let parsedFoods = [];
-                try { parsedFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
+                let extractedNote = '';
+                if (Array.isArray(rawFoods)) {
+                    rawFoods.forEach(item => {
+                        const str = String(item || '').trim();
+                        const m = str.match(/^\[\[ORDER_NOTE:\s*([\s\S]*?)\]\]$/i);
+                        if (m) {
+                            if (m[1] && m[1].trim()) extractedNote = m[1].trim();
+                        } else if (str) {
+                            parsedFoods.push(item);
+                        }
+                    });
+                }
 
                 const tableLabel = (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`;
                 let displayCustomerName = r.name || 'Guest';
@@ -641,8 +653,8 @@ app.get('/reservations', async (req, res) => {
                     discountAmount: parseFloat(r.discount_amount) || 0,
                     voucherCode: r.voucher_code || '',
                     foods: parsedFoods,
-                    beefNote: r.beef_note || '',
-                    notes: r.beef_note || '',
+                    beefNote: extractedNote,
+                    notes: extractedNote,
                     kdsStatus: r.kds_status || 'pending',
                     branch: r.branch || 'General Santos City'
                 };
@@ -696,19 +708,22 @@ app.post('/reserve', async (req, res) => {
         const isWalkin = cleanEmail.includes('walkin-');
         const isPos = cleanEmail.includes('pos-'); 
         const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
-        const foodsJson = Array.isArray(foods) ? JSON.stringify(foods) : (foods ? JSON.stringify([foods]) : '[]');
         let finalBeefNote = String(beefNote || notes || '').trim();
         if (kitchenTiming && !/KITCHEN_TIMING/i.test(finalBeefNote)) {
             finalBeefNote = finalBeefNote ? `${finalBeefNote} | [[KITCHEN_TIMING: ${kitchenTiming}]]` : `[[KITCHEN_TIMING: ${kitchenTiming}]]`;
         }
+        const foodsArr = Array.isArray(foods) ? [...foods] : (foods ? [foods] : []);
+        const cleanFoodsArr = foodsArr.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()));
+        if (finalBeefNote) cleanFoodsArr.push(`[[ORDER_NOTE: ${finalBeefNote}]]`);
+        const foodsJson = JSON.stringify(cleanFoodsArr);
 
         const finalDiscType = String(discountType || 'none').toLowerCase().trim();
         const finalDiscAmt = Math.max(0, Number(discountAmount) || 0);
         const finalVoucher = String(voucherCode || '').trim();
 
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, beef_note, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBeefNote, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
+            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
         );
 
         // Save uploaded payment screenshot & discount ID/voucher photo in cloud memory for cross-device Proof Viewer
@@ -1294,10 +1309,14 @@ app.delete('/api/reservations/:id', async (req, res) => {
 
 /* UPDATE ENTIRE ORDER DETAILS */
 app.post('/api/reservations/update-order', async (req, res) => {
-    const { id, customerName, bookedTable, arrivalDate, arrivalTime, paymentAmount, foods, status, kdsStatus } = req.body;
+    const { id, customerName, bookedTable, arrivalDate, arrivalTime, paymentAmount, foods, beefNote, notes, status, kdsStatus } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
-        const foodsJson = foods ? JSON.stringify(foods) : '[]';
+        const foodsArr = Array.isArray(foods) ? [...foods] : (foods ? [foods] : []);
+        const cleanFoodsArr = foodsArr.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()));
+        const finalNote = String(beefNote || notes || '').trim();
+        if (finalNote) cleanFoodsArr.push(`[[ORDER_NOTE: ${finalNote}]]`);
+        const foodsJson = JSON.stringify(cleanFoodsArr);
         if (numericId) {
             if (customerName && String(customerName).trim() !== '') {
                 const [rows] = await db.query('SELECT customer_id FROM reservation_log WHERE reservation_id = ?', [numericId]);
