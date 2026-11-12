@@ -546,9 +546,13 @@
                     return i;
                 }
 
+                const syncedInvItems = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(invItems, invItems)
+                    : invItems;
+
                 // Build a map of IDs present in the admin inventory
                 const invMap = {};
-                invItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem(i); });
+                syncedInvItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem(i); });
 
                 // Merge property by property to ensure image is kept
                 const merged = defaultMenuData.map(def => {
@@ -559,13 +563,15 @@
                 });
 
                 // Append any inventory-only items that don't exist in the defaults (custom items)
-                invItems.forEach(i => {
+                syncedInvItems.forEach(i => {
                     if (i.id && !merged.find(m => m.id === i.id)) {
                         merged.push(normalizeItem(i));
                     }
                 });
 
-                return merged;
+                return typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(merged, syncedInvItems)
+                    : merged;
 
             } catch (err) {
                 console.error("Critical Pre-Order Menu Crash:", err);
