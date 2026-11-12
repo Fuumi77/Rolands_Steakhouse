@@ -1353,17 +1353,17 @@ app.post('/api/reservations/update-order', async (req, res) => {
 /* CLOUD MENU & PRODUCT PHOTO SYNC ROUTES */
 app.get('/api/memory/inventory-items', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('inventoryItems', []);
+        const data = await getSystemMemoryKey('inventoryItems', [], req);
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.json(memoryCache.inventoryItems.data || []);
+        res.json(memoryCache.inventoryItems?.data || []);
     }
 });
 
 app.post('/api/memory/inventory-items', async (req, res) => {
     try {
         const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
-        await setSystemMemoryKey('inventoryItems', items);
+        await setSystemMemoryKey('inventoryItems', items, req);
         res.json({ success: true, count: items.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1371,7 +1371,7 @@ app.post('/api/memory/inventory-items', async (req, res) => {
 app.post('/api/memory/inventory-items/item', async (req, res) => {
     try {
         const { item, deleteId } = req.body;
-        let items = await getSystemMemoryKey('inventoryItems', []);
+        let items = await getSystemMemoryKey('inventoryItems', [], req);
         if (!Array.isArray(items)) items = [];
 
         if (deleteId) {
@@ -1382,7 +1382,7 @@ app.post('/api/memory/inventory-items/item', async (req, res) => {
             else items.push(item);
         }
 
-        await setSystemMemoryKey('inventoryItems', items);
+        await setSystemMemoryKey('inventoryItems', items, req);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
