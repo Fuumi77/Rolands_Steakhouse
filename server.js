@@ -655,7 +655,7 @@ app.get('/reservations', async (req, res) => {
 });
 
 app.post('/reserve', async (req, res) => {
-    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, branch, discountType, discountAmount, voucherCode } = req.body;
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, branch, discountType, discountAmount, voucherCode, paymentProof, discountProofImage, paymentRef } = req.body;
     const finalBranch = (branch || req.query.branch || 'General Santos City').trim();
     try {
         const cleanName = (name || 'Guest').trim();
@@ -703,6 +703,30 @@ app.post('/reserve', async (req, res) => {
             'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
         );
+
+        // Save uploaded payment screenshot & discount ID/voucher photo in cloud memory for cross-device Proof Viewer
+        if (paymentProof || discountProofImage || paymentRef) {
+            try {
+                const prefix = isPos ? 'POS-' : (isWalkin ? 'WI-' : (isVipBooking ? 'VIP-' : 'RES-'));
+                const fullResNum = `${prefix}${result.insertId}`;
+                let proofsMap = await getSystemMemoryKey('orderProofs', {});
+                if (!proofsMap || typeof proofsMap !== 'object' || Array.isArray(proofsMap)) proofsMap = {};
+                proofsMap[fullResNum] = {
+                    paymentProof: paymentProof || '',
+                    discountProofImage: discountProofImage || '',
+                    paymentRef: paymentRef || '',
+                    updatedAt: Date.now()
+                };
+                // Keep most recent 60 proof records so storage stays fast and compact
+                const keys = Object.keys(proofsMap);
+                if (keys.length > 60) {
+                    keys.sort((a, b) => (proofsMap[b]?.updatedAt || 0) - (proofsMap[a]?.updatedAt || 0))
+                        .slice(60)
+                        .forEach(k => delete proofsMap[k]);
+                }
+                await setSystemMemoryKey('orderProofs', proofsMap);
+            } catch (e) {}
+        }
 
         cachedReservations = null;
         res.json({ success: true, reservationId: result.insertId, branch: finalBranch, discountType: finalDiscType, discountAmount: finalDiscAmt, voucherCode: finalVoucher }); 
@@ -1438,6 +1462,36 @@ app.post('/api/memory/vouchers', async (req, res) => {
         const list = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.vouchers) ? req.body.vouchers : []);
         await setSystemMemoryKey('vouchers', list, req);
         res.json({ success: true, count: list.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/* 🧾 CROSS-DEVICE PAYMENT & DISCOUNT ID PROOF SYNC */
+app.get('/api/memory/order-proofs', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('orderProofs', {});
+        const resNum = (req.query.res || '').trim();
+        if (resNum && data && typeof data === 'object') {
+            return res.json(data[resNum] || null);
+        }
+        res.json((data && typeof data === 'object' && !Array.isArray(data)) ? data : {});
+    } catch (err) { res.json({}); }
+});
+
+app.post('/api/memory/order-proofs', async (req, res) => {
+    try {
+        const { reservationNumber, paymentProof, discountProofImage, paymentRef } = req.body || {};
+        if (!reservationNumber) return res.json({ success: false });
+        let proofsMap = await getSystemMemoryKey('orderProofs', {});
+        if (!proofsMap || typeof proofsMap !== 'object' || Array.isArray(proofsMap)) proofsMap = {};
+        const existing = proofsMap[reservationNumber] || {};
+        proofsMap[reservationNumber] = {
+            paymentProof: paymentProof !== undefined ? paymentProof : (existing.paymentProof || ''),
+            discountProofImage: discountProofImage !== undefined ? discountProofImage : (existing.discountProofImage || ''),
+            paymentRef: paymentRef !== undefined ? paymentRef : (existing.paymentRef || ''),
+            updatedAt: Date.now()
+        };
+        await setSystemMemoryKey('orderProofs', proofsMap);
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
