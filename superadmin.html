@@ -1846,8 +1846,15 @@
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
+                        if (cloudNote && match.beefNote !== cloudNote) {
+                            match.beefNote = cloudNote;
+                            match.notes = cloudNote;
+                            updated = true;
+                        }
                     } else {
                         const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -1863,6 +1870,8 @@
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
                             createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods,
+                            beefNote: cloudNote,
+                            notes: cloudNote,
                             paymentAmount: dbRes.paymentAmount || 0,
                             discountType: dbRes.discountType || 'none',
                             discountAmount: dbRes.discountAmount || 0,
@@ -2585,8 +2594,30 @@
             function foodText(r) {
                 const foods = Array.isArray(r.foods) ? r.foods : [];
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
-                if (!foods.length) return isVip ? '👑 VIP Room Down Payment' : (r.reservationType === 'standard' ? 'Standard deposit' : 'None');
-                return foods.join(', ');
+
+                const rawNote = String(r.beefNote || r.notes || '');
+                const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
+
+                let cleanNote = rawNote
+                    .replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '')
+                    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                    .trim();
+
+                if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
+                    cleanNote = cleanNote ? `Doneness: ${r.beefDoneness} | ${cleanNote}` : `Doneness: ${r.beefDoneness}`;
+                }
+
+                let text = '';
+                if (!foods.length) {
+                    text = isVip ? '👑 VIP Room Down Payment' : (r.reservationType === 'standard' ? 'Standard deposit' : 'None');
+                } else {
+                    text = foods.join(', ');
+                }
+                if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
+                if (timingLabel) text += `${text ? ' | • ' : ''}⏱️ ${timingLabel}`;
+                return text;
             }
 
             function createTypePill(type) {
