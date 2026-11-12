@@ -745,6 +745,32 @@
                             </div>
                         </div>
 
+                        <!-- Beef Preference (Appears automatically when any beef/steak cut is selected) -->
+                        <div id="walkin-beef-pref-wrap" style="display:none; margin-bottom:14px; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px;">
+                            <label style="display:block; margin-bottom:8px; font-weight:700; font-size:13px; color:#1b5e20;">
+                                🥩 Beef Preference (Doneness) <span style="color:#ef4444;">*</span>
+                            </label>
+                            <div id="walkin-doneness-chips" style="display:flex; flex-wrap:wrap; gap:8px;">
+                                <button type="button" class="walkin-doneness-chip" data-val="Rare" onclick="setWalkinDoneness('Rare')"
+                                    style="flex:1; min-width:100px; padding:9px 12px; border-radius:20px; border:1.5px solid #cbd5e1; background:white; color:#334155; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;">
+                                    Rare
+                                </button>
+                                <button type="button" class="walkin-doneness-chip" data-val="Medium Rare" onclick="setWalkinDoneness('Medium Rare')"
+                                    style="flex:1; min-width:100px; padding:9px 12px; border-radius:20px; border:1.5px solid #cbd5e1; background:white; color:#334155; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;">
+                                    Medium Rare
+                                </button>
+                                <button type="button" class="walkin-doneness-chip" data-val="Medium" onclick="setWalkinDoneness('Medium')"
+                                    style="flex:1; min-width:100px; padding:9px 12px; border-radius:20px; border:1.5px solid #cbd5e1; background:white; color:#334155; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;">
+                                    Medium
+                                </button>
+                                <button type="button" class="walkin-doneness-chip" data-val="Well Done" onclick="setWalkinDoneness('Well Done')"
+                                    style="flex:1; min-width:100px; padding:9px 12px; border-radius:20px; border:1.5px solid #cbd5e1; background:white; color:#334155; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;">
+                                    Well Done
+                                </button>
+                            </div>
+                            <div style="font-size:11.5px; color:#64748b; margin-top:6px;">Required when ordering beef/steak items.</div>
+                        </div>
+
                         <div style="margin-bottom:14px;">
                             <label style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">
                                 Kitchen Timing <span style="color:#ef4444;">*</span></label>
@@ -1972,8 +1998,15 @@ window.readReservationHistory = function () {
                             match.kdsStatus = dbRes.kdsStatus;
                             updated = true;
                         }
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
+                        if (cloudNote && match.beefNote !== cloudNote) {
+                            match.beefNote = cloudNote;
+                            match.notes = cloudNote;
+                            updated = true;
+                        }
                     } else {
-                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
+                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbStatus.includes('walk-in') || dbRes.bookedBy === 'pos');
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -1989,6 +2022,8 @@ window.readReservationHistory = function () {
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
                             createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
                             foods: cloudFoods, 
+                            beefNote: cloudNote,
+                            notes: cloudNote,
                             paymentAmount: dbRes.paymentAmount || 0,
                             discountType: dbRes.discountType || 'none',
                             discountAmount: dbRes.discountAmount || 0,
@@ -2145,10 +2180,20 @@ window.readReservationHistory = function () {
                 const foods = Array.isArray(r.foods) ? r.foods : [];
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
 
-                // 👉 Strip the machine tag out of what staff reads
-                const rawNote = String(r.notes || r.beefNote || '');
-                const timingLabel = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
-                const cleanNote = rawNote.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
+                // 👉 Strip the machine tag out of what staff reads & support Walk-in kitchenTiming/doneness
+                const rawNote = String(r.beefNote || r.notes || '');
+                const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
+
+                let cleanNote = rawNote
+                    .replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '')
+                    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                    .trim();
+
+                if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
+                    cleanNote = cleanNote ? `Doneness: ${r.beefDoneness} | ${cleanNote}` : `Doneness: ${r.beefDoneness}`;
+                }
 
                 let text = '';
                 if (!foods.length) {
@@ -2159,7 +2204,7 @@ window.readReservationHistory = function () {
                     text = foods.join(', ');
                 }
                 if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
-                if (timingLabel) text += `${text ? ' • ' : ''}⏱️ ${timingLabel}`;
+                if (timingLabel) text += `${text ? ' | • ' : ''}⏱️ ${timingLabel}`;
                 return text;
             }
 
@@ -6703,6 +6748,52 @@ window.adminRawFilter = 'all';
             document.getElementById('walkin-modal-total').textContent = total.toLocaleString();
         }
 
+        let walkinSelectedDoneness = '';
+        const WALKIN_BEEF_WORDS = [
+            'fillet mignon', 'tenderloin', 'rib eye', 'ribeye',
+            't-bone', 'tbone', 'sirloin', 'new york strip', 'porterhouse', 'porter house', 'hamburger steak'
+        ];
+
+        function isWalkinBeefItem(item) {
+            if (!item) return false;
+            const cat = String(item.category || '').toLowerCase();
+            if (cat === 'beef' || cat === 't-bone' || cat === 'sirloin steak') return true;
+            const hay = ((item.title || '') + ' ' + (item.name || '')).toLowerCase();
+            return WALKIN_BEEF_WORDS.some(w => hay.includes(w));
+        }
+
+        function hasBeefInWalkinSelection() {
+            const items = getInventory();
+            for (const id in currentSelection) {
+                if (currentSelection[id] > 0) {
+                    const item = items.find(i => i.id === id);
+                    if (isWalkinBeefItem(item)) return true;
+                }
+            }
+            return false;
+        }
+
+        window.setWalkinDoneness = function (val) {
+            walkinSelectedDoneness = (walkinSelectedDoneness === val) ? '' : val;
+            document.querySelectorAll('.walkin-doneness-chip').forEach(btn => {
+                const isSelected = btn.getAttribute('data-val') === walkinSelectedDoneness;
+                btn.style.background = isSelected ? '#1b5e20' : 'white';
+                btn.style.color = isSelected ? '#ffffff' : '#334155';
+                btn.style.borderColor = isSelected ? '#1b5e20' : '#cbd5e1';
+                btn.style.boxShadow = isSelected ? '0 4px 10px rgba(27, 94, 32, 0.25)' : 'none';
+            });
+        };
+
+        function updateWalkinBeefPrefVisibility() {
+            const wrap = document.getElementById('walkin-beef-pref-wrap');
+            if (!wrap) return;
+            const hasBeef = hasBeefInWalkinSelection();
+            wrap.style.display = hasBeef ? 'block' : 'none';
+            if (!hasBeef && walkinSelectedDoneness) {
+                window.setWalkinDoneness('');
+            }
+        }
+
         window.confirmWalkinFoodSelection = function () {
             currentSelection = JSON.parse(JSON.stringify(tempWalkinOrder));
             const items = getInventory();
@@ -6729,6 +6820,7 @@ window.adminRawFilter = 'all';
                 paymentInput.value = "";
             }
 
+            updateWalkinBeefPrefVisibility();
             closeWalkinFoodPicker();
         };
 
@@ -6750,9 +6842,16 @@ window.adminRawFilter = 'all';
     const notes = (document.getElementById('walkin-notes').value || '').trim();
     const timingEl = document.querySelector('input[name="walkin-kitchen-timing"]:checked');
     const kitchenTiming = timingEl ? timingEl.value : '';
+    const hasBeefOrdered = walkinType === 'priority' && hasBeefInWalkinSelection();
+    const donenessVal = hasBeefOrdered ? walkinSelectedDoneness : '';
 
     if (!name) { errorEl.textContent = 'Customer name is required.'; errorEl.style.display = 'block'; return; }
-    if (!kitchenTiming) { errorEl.textContent = 'Please choose Serve Upon Arrival or Cook Upon Arrival.'; errorEl.style.display = 'block'; return; }
+    if (hasBeefOrdered && !donenessVal) {
+        errorEl.textContent = 'Please select a Beef Preference (Rare, Medium Rare, Medium, or Well Done).';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (walkinType === 'priority' && !kitchenTiming) { errorEl.textContent = 'Please choose Serve Upon Arrival or Cook Upon Arrival.'; errorEl.style.display = 'block'; return; }
     
     // 👉 FIX: Force exactly 11 digits for the Contact Number
     if (!contact || contact.length !== 11) { 
@@ -6808,6 +6907,13 @@ window.adminRawFilter = 'all';
         }
     }
 
+    // Combine Doneness + Notes + Kitchen Timing just like Online Pre-Order
+    const noteParts = [];
+    if (donenessVal) noteParts.push(`Doneness: ${donenessVal}`);
+    if (notes) noteParts.push(notes);
+    if (walkinType === 'priority' && kitchenTiming) noteParts.push(`[[KITCHEN_TIMING: ${kitchenTiming}]]`);
+    const combinedWalkinNote = noteParts.join(' | ');
+
     // 👉 FIX: Restored the ₱200 reservation fee for Standard Walk-ins!
     const finalPaymentAmount = walkinType === 'priority' ? payment : 200;
 
@@ -6819,6 +6925,9 @@ window.adminRawFilter = 'all';
             <div style="margin-bottom: 8px;"><strong>Type:</strong> ${walkinType === 'priority' ? '⭐ Priority' : '🪑 Standard'}</div>
             <div style="margin-bottom: 8px;"><strong>Guests:</strong> ${guests || 'N/A'}</div>
             ${orderSummary ? `<div style="margin-bottom: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Food Order:</strong><br>${orderSummary}</div>` : ''}
+            ${donenessVal ? `<div style="margin-bottom: 8px;"><strong>Beef Preference:</strong> 🥩 ${donenessVal}</div>` : ''}
+            ${walkinType === 'priority' && kitchenTiming ? `<div style="margin-bottom: 8px;"><strong>Kitchen Timing:</strong> ⏱️ ${kitchenTiming}</div>` : ''}
+            ${notes ? `<div style="margin-bottom: 8px;"><strong>Notes:</strong> ${notes}</div>` : ''}
             <div style="margin-top: 12px; font-size: 16px; color: #1b5e20; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Total Payment:</strong> ₱${finalPaymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
         <p style="margin-top: 15px; font-size: 13px; color: #64748b;">Please verify these details before saving the reservation.</p>
@@ -6872,10 +6981,13 @@ window.adminRawFilter = 'all';
                 table: table,
                 cartItems: structuredCart,
                 status: 'Pending',
-                // 👉 FIX: Send the foods, money, and active branch to the cloud!
+                // 👉 FIX: Send the foods, notes/doneness/timing, money, and active branch to the cloud!
                 reservationType: walkinType,
                 paymentAmount: finalPaymentAmount,
                 foods: foodArray,
+                beefNote: combinedWalkinNote,
+                notes: combinedWalkinNote,
+                kitchenTiming: kitchenTiming,
                 branch: activeBranch
             })
         });
@@ -6911,10 +7023,12 @@ window.adminRawFilter = 'all';
             guestCount: guests,
             foods: foodArray,
             orderSummary: orderSummary,
-            beefNote: notes,
+            beefNote: combinedWalkinNote,
+            notes: combinedWalkinNote,
+            beefDoneness: donenessVal,
             // 👉 Unique, machine-readable kitchen timing tag
             kitchenTiming: kitchenTiming,
-            kitchenTimingTag: `[[KITCHEN_TIMING: ${kitchenTiming}]]`,
+            kitchenTimingTag: kitchenTiming ? `[[KITCHEN_TIMING: ${kitchenTiming}]]` : '',
             paymentAmount: finalPaymentAmount,
             paymentStatus: 'pending',
             createdAt: new Date().toISOString(),
@@ -6962,6 +7076,8 @@ window.adminRawFilter = 'all';
         document.getElementById('walkin-order-summary').innerHTML = "No items selected yet.";
         currentSelection = {};
         tempWalkinOrder = {};
+        window.setWalkinDoneness('');
+        updateWalkinBeefPrefVisibility();
 
         renderRecentWalkins();
 
@@ -6987,7 +7103,22 @@ window.adminRawFilter = 'all';
                 return;
             }
 
-            container.innerHTML = walkins.map(r => `
+            container.innerHTML = walkins.map(r => {
+                const rawNote = String(r.beefNote || r.notes || '');
+                const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
+                const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
+                let cleanNote = rawNote.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim();
+                if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
+                    cleanNote = cleanNote ? `Doneness: ${r.beefDoneness} | ${cleanNote}` : `Doneness: ${r.beefDoneness}`;
+                }
+                const foodLineParts = [];
+                if (r.foods && r.foods.length) foodLineParts.push(r.foods.join(', '));
+                if (cleanNote) foodLineParts.push(cleanNote);
+                let foodLine = foodLineParts.join(' | ');
+                if (timingLabel) foodLine += `${foodLine ? ' | • ' : ''}⏱️ ${timingLabel}`;
+
+                return `
                 <div class="card" style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:14px 18px;">
                     <div>
                         <div style="font-weight:700; font-size:15px; color:#1e293b;">
@@ -6999,11 +7130,12 @@ window.adminRawFilter = 'all';
                             </span>
                         </div>
                         <div class="muted" style="margin-top:4px; font-size:13px;">${r.bookedTable} &nbsp;·&nbsp; ${r.arrivalDateTimeDisplay}</div>
-                        ${r.foods && r.foods.length ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">🍽️ ${r.foods.join(', ')}</div>` : ''}
+                        ${foodLine ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">🍽️ ${foodLine}</div>` : ''}
                     </div>
                     <div style="font-weight:800; font-size:16px; color:#1b5e20;">₱${Number(r.paymentAmount).toLocaleString()}</div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // --- BRANDING LOGIC ---
