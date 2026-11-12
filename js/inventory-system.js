@@ -3119,6 +3119,16 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         if (d.finalTotal > 0 && parsed.paymentAmount === d.rawSubtotal) {
                             parsed.paymentAmount = d.finalTotal;
                         }
+                    } else if (url.includes('/reserve') && (!parsed.discountType || parsed.discountType === 'none')) {
+                        // Attach Online Pre-Order Discount (PWD / Senior / Voucher) if active on payment.html / payment-success.html
+                        const preDiscType = localStorage.getItem('discountType') || 'none';
+                        const preDiscAmt = parseFloat(localStorage.getItem('discountAmount') || '0') || 0;
+                        const preVoucher = localStorage.getItem('voucherCode') || '';
+                        if (preDiscType !== 'none' && preDiscAmt > 0) {
+                            parsed.discountType = preDiscType;
+                            parsed.discountAmount = preDiscAmt;
+                            parsed.voucherCode = preVoucher;
+                        }
                     }
                     init.body = JSON.stringify(parsed);
                 }
@@ -4073,10 +4083,8 @@ window.setPosBranchPin = async function (branchName, newPin) {
                                 newest.voucherCode = vchCode;
                                 changed = true;
                             }
-                            if (discProof && !newest.hasCustomProof) {
-                                newest.paymentProof = discProof;
+                            if (discProof && !newest.discountProofImage) {
                                 newest.discountProofImage = discProof;
-                                newest.hasCustomProof = true;
                                 changed = true;
                             }
                             if (changed) safeRawSet('reservationHistory', JSON.stringify(list));
