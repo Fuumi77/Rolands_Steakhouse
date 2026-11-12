@@ -1218,6 +1218,7 @@
                 let resNo = isEdit ? editingTransactionId : '';
 
                 if (!isEdit) {
+                    const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                     const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1234,7 +1235,8 @@
                             discountType: disc.amount > 0 ? disc.type : 'none',
                             discountAmount: disc.amount || 0,
                             voucherCode: disc.voucherCode || discountIdNo || '',
-                            foods: orderList
+                            foods: orderList,
+                            branch: activeBranch
                         })
                     });
                     
