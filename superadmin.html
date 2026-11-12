@@ -1760,8 +1760,11 @@
                     const floorRes = await fetch(`${API_BASE_URL}/api/memory/table-overrides`);
                     if (floorRes.ok) {
                         const cloudFloor = await floorRes.json();
-                        localStorage.setItem('tableOverrides', JSON.stringify(cloudFloor));
-                        if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                        const nextFloorStr = JSON.stringify(cloudFloor);
+                        if (localStorage.getItem('tableOverrides') !== nextFloorStr) {
+                            localStorage.setItem('tableOverrides', nextFloorStr);
+                            if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                        }
                     }
                 } catch (e) { }
 
@@ -1831,8 +1834,21 @@
                             updated = true;
                         }
 
-                        if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
+                        if (dbRes.paymentStatus === 'refunded' || dbRes.refundStatus === 'refunded' || Number(dbRes.refundAmount) > 0) {
+                            if (match.paymentStatus !== 'refunded' || match.refundStatus !== 'refunded' || match.refundAmount !== dbRes.refundAmount) {
+                                match.paymentStatus = 'refunded';
+                                match.refundStatus = 'refunded';
+                                match.refundAmount = dbRes.refundAmount || match.paymentAmount || 0;
+                                match.refundMethod = dbRes.refundMethod || match.refundMethod || '';
+                                match.refundRef = dbRes.refundRef || match.refundRef || '';
+                                updated = true;
+                            }
+                        } else if ((dbStatus === 'approved' || dbStatus === 'seated' || dbStatus === 'completed') && match.paymentStatus !== 'verified' && match.paymentStatus !== 'paid' && match.paymentStatus !== 'refunded') {
                             match.paymentStatus = 'verified';
+                            updated = true;
+                        }
+                        if (dbRes.email && match.email !== dbRes.email) {
+                            match.email = dbRes.email;
                             updated = true;
                         }
 
@@ -1864,17 +1880,24 @@
                             updated = true;
                         }
                     } else {
-                        const isVerified = (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
+                        const isRefunded = dbRes.paymentStatus === 'refunded' || dbRes.refundStatus === 'refunded' || Number(dbRes.refundAmount) > 0;
+                        const isVerified = !isRefunded && (dbStatus === 'completed' || dbStatus === 'approved' || dbStatus === 'seated' || dbRes.bookedBy === 'pos');
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
                             customerName: dbRes.customerName,
+                            email: dbRes.email || '',
+                            contactNumber: dbRes.phone || '',
                             bookedTable: dbRes.bookedTable,
                             arrivalDate: dbRes.arrivalDate,
                             arrivalTime: dbRes.arrivalTime,
                             arrivalDateTimeDisplay: `${dbRes.arrivalDate} ${dbRes.arrivalTime}`,
                             approvalStatus: dbStatus,
-                            paymentStatus: isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending'),
+                            paymentStatus: isRefunded ? 'refunded' : (isVerified ? 'verified' : (dbStatus === 'cancelled' || dbStatus === 'rejected' ? 'rejected' : 'pending')),
+                            refundStatus: isRefunded ? 'refunded' : '',
+                            refundAmount: dbRes.refundAmount || 0,
+                            refundMethod: dbRes.refundMethod || '',
+                            refundRef: dbRes.refundRef || '',
                             paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
                             kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
@@ -2607,18 +2630,24 @@
                     : { foods: Array.isArray(r.foods) ? r.foods : [], beefNote: String(r.beefNote || r.notes || '') };
                 const foods = unpacked.foods;
                 const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isStandardNoFood = String(r.reservationType || '').toLowerCase() === 'standard' && !foods.length;
 
                 const rawNote = String(unpacked.beefNote || '');
                 const timingFromNote = (rawNote.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
                 const timingFromTag = (String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i) || [])[1] || '';
-                const timingLabel = (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
+                const timingLabel = isStandardNoFood ? '' : (timingFromNote || timingFromTag || r.kitchenTiming || '').trim();
 
                 let cleanNote = rawNote
                     .replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '')
                     .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
                     .trim();
 
-                if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
+                if (isStandardNoFood) {
+                    cleanNote = cleanNote
+                        .replace(/(?:^|\|\s*)Doneness:\s*[^|]+/gi, '')
+                        .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                        .trim();
+                } else if (r.beefDoneness && !/doneness:/i.test(cleanNote)) {
                     cleanNote = cleanNote ? `Doneness: ${r.beefDoneness} | ${cleanNote}` : `Doneness: ${r.beefDoneness}`;
                 }
 
@@ -2649,6 +2678,31 @@
             }
 
             function renderRows(rows) {
+                const rowsSig = JSON.stringify(rows.map(r => [
+                    r.reservationNumber,
+                    r.customerName,
+                    r.bookedTable,
+                    r.arrivalDate,
+                    r.arrivalTime,
+                    r.reservationType,
+                    r.approvalStatus,
+                    r.paymentStatus,
+                    r.refundStatus,
+                    r.refundAmount,
+                    r.kdsStatus,
+                    r.paymentAmount,
+                    r.discountType,
+                    r.discountAmount,
+                    r.voucherCode,
+                    r.completedAt,
+                    foodText(r),
+                    Boolean(r.completedAt && (Date.now() - new Date(r.completedAt).getTime() < 60000))
+                ]));
+                if (window.__lastSuperAdminRowsSig === rowsSig && historyTbody.children.length > 0) {
+                    return;
+                }
+                window.__lastSuperAdminRowsSig = rowsSig;
+
                 historyTbody.innerHTML = '';
                 if (!rows.length) {
                     historyTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--sa-muted);">No records found.</td></tr>`;
