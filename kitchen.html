@@ -431,6 +431,12 @@
                             if (Array.isArray(parsed)) cloudFoods = parsed.map(i => `${i.quantity}x ${i.name || i.title}`);
                         } catch(e) {}
                     }
+                    let cloudNote = dbRes.beefNote || dbRes.notes || '';
+                    if (typeof window.unpackCloudFoodsAndNote === 'function') {
+                        const unpacked = window.unpackCloudFoodsAndNote(cloudFoods, cloudNote);
+                        cloudFoods = unpacked.foods;
+                        cloudNote = unpacked.beefNote;
+                    }
 
                     let match = localHistory.find(local => local.reservationNumber === dbRes.reservationNumber);
 
@@ -506,7 +512,6 @@
                             match.paymentStatus = 'verified';
                             updated = true;
                         }
-                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         if (cloudNote && match.beefNote !== cloudNote) {
                             match.beefNote = cloudNote;
                             updated = true;
@@ -516,7 +521,6 @@
                         if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
                         if (cloudKds === 'served' || cloudKds === 'cancelled') return;
 
-                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -569,7 +573,10 @@
             const t = document.createElement('div');
             t.className = `ticket status-${status}${timing.isFutureScheduled && status === 'pending' ? ' is-future-scheduled' : ''}`;
             
-            const foodsHtml = (r.foods || []).map(f => {
+            const unpackedTicket = typeof window.unpackCloudFoodsAndNote === 'function'
+                ? window.unpackCloudFoodsAndNote(Array.isArray(r.foods) ? r.foods : [], r.beefNote || r.notes || '')
+                : { foods: Array.isArray(r.foods) ? r.foods : [], beefNote: String(r.beefNote || r.notes || '') };
+            const foodsHtml = (unpackedTicket.foods || []).map(f => {
                 const match = String(f).match(/^(\d+x)\s+(.*)/);
                 if (match) {
                     return `<li><span class="qty-tag">${escapeHtml(match[1])}</span> <span>${escapeHtml(match[2])}</span></li>`;
@@ -578,7 +585,7 @@
             }).join('');
             
             let donenessHtml = '';
-            const rawNoteSource = String(r.beefNote || r.notes || '');
+            const rawNoteSource = String(unpackedTicket.beefNote || '');
             if (rawNoteSource || r.kitchenTiming || r.beefDoneness) {
                 // Split the combined note into readable parts
                 const timingMatch = rawNoteSource.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i)
