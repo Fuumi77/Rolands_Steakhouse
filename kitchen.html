@@ -506,11 +506,17 @@
                             match.paymentStatus = 'verified';
                             updated = true;
                         }
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
+                        if (cloudNote && match.beefNote !== cloudNote) {
+                            match.beefNote = cloudNote;
+                            updated = true;
+                        }
 
                     } else {
                         if (dbStatus === 'completed' || dbStatus === 'cancelled' || dbStatus === 'rejected') return;
                         if (cloudKds === 'served' || cloudKds === 'cancelled') return;
 
+                        const cloudNote = dbRes.beefNote || dbRes.notes || '';
                         localHistory.push({
                             reservationNumber: dbRes.reservationNumber,
                             reservationType: dbRes.reservationType || 'standard',
@@ -525,6 +531,7 @@
                             completedAt: dbStatus === 'completed' ? new Date().toISOString() : null,
                             createdAt: new Date().toISOString(),
                             foods: cloudFoods, 
+                            beefNote: cloudNote,
                             paymentAmount: dbRes.paymentAmount || 0,
                             bookedBy: dbRes.bookedBy 
                         });
@@ -571,28 +578,29 @@
             }).join('');
             
             let donenessHtml = '';
-            if (r.beefNote && r.beefNote.trim() !== '[[KITCHEN_TIMING: SERVE UPON ARRIVAL]]') {
+            const rawNoteSource = String(r.beefNote || r.notes || '');
+            if (rawNoteSource || r.kitchenTiming || r.beefDoneness) {
                 // Split the combined note into readable parts
-                const raw = String(r.beefNote);
-                const timingMatch = raw.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i);
-                const timing = timingMatch ? timingMatch[1].trim() : '';
-                const withoutTiming = raw.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
+                const timingMatch = rawNoteSource.match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i)
+                    || String(r.kitchenTimingTag || '').match(/\[\[KITCHEN_TIMING:\s*([^\]]+)\]\]/i);
+                const timingVal = timingMatch ? timingMatch[1].trim() : (r.kitchenTiming || '').trim();
+                const withoutTiming = rawNoteSource.replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '').trim();
                 const parts = withoutTiming.split('|').map(p => p.trim()).filter(Boolean);
 
                 const donenessPart = parts.find(p => /^doneness:/i.test(p));
                 const otherParts = parts.filter(p => !/^doneness:/i.test(p));
-                const doneness = donenessPart ? donenessPart.replace(/^doneness:\s*/i, '').trim() : '';
+                const doneness = donenessPart ? donenessPart.replace(/^doneness:\s*/i, '').trim() : (r.beefDoneness || '').trim();
 
                 let badge = '';
                 if (doneness) badge += `🔥 DONENESS: ${escapeHtml(doneness.toUpperCase())}`;
-                if (timing) badge += `${badge ? '<br>' : ''}⏱️ KITCHEN TIMING: ${escapeHtml(timing.toUpperCase())}`;
+                if (timingVal) badge += `${badge ? '<br>' : ''}⏱️ KITCHEN TIMING: ${escapeHtml(timingVal.toUpperCase())}`;
                 if (otherParts.length) badge += `${badge ? '<br>' : ''}📝 ${escapeHtml(otherParts.join(' · ').toUpperCase())}`;
 
                 if (badge) donenessHtml = `<div class="doneness-badge">${badge}</div>`;
             }
             
             let detailHtml = '';
-            if (r.notes) {
+            if (r.notes && r.notes !== r.beefNote) {
                 detailHtml += `<div class="ticket-notes">📝 <strong>Note:</strong> ${escapeHtml(r.notes)}</div>`;
             }
             
