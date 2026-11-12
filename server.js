@@ -98,6 +98,7 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_method VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refund_ref VARCHAR(100) DEFAULT ''").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN refunded_by VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN refunded_at DATETIME NULL").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN branch VARCHAR(100) DEFAULT 'General Santos City'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_type VARCHAR(50) DEFAULT 'none'").catch(()=>{});
@@ -255,16 +256,25 @@ app.post('/api/send-receipt', emailLimiter, async (req, res) => {
     }
 
     try {
+        const emailUser = (process.env.EMAIL_USER || '').trim();
+        const emailPass = (process.env.EMAIL_PASS || '').trim();
+        if (!emailUser || !emailPass || emailUser === 'your.restaurant.email@gmail.com' || emailPass === 'your-app-password') {
+            return res.status(200).json({
+                success: true,
+                emailSent: false,
+                warning: 'EMAIL_USER and EMAIL_PASS environment variables are not configured on the server.'
+            });
+        }
         await transporter.sendMail({
-            from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+            from: `"Roland's Steakhouse" <${emailUser}>`,
             to: email,
             subject: finalSubject,
             html: finalHtml
         });
-        res.status(200).json({ success: true });
+        res.status(200).json({ success: true, emailSent: true });
     } catch (err) {
         console.log('[DEV MODE] Receipt email skipped:', err.message);
-        res.status(200).json({ success: true, warning: 'Email not configured' });
+        res.status(200).json({ success: true, emailSent: false, warning: err.message || 'Email not configured' });
     }
 });
 
@@ -600,7 +610,7 @@ app.get('/reservations', async (req, res) => {
             `).catch(() => {});
 
             const [rows] = await queryWithRetry(`
-                SELECT r.reservation_id, c.name,
+                SELECT r.reservation_id, c.name, c.email, c.phone,
                        DATE_FORMAT(r.reservation_time, '%Y-%m-%d') AS ph_date,
                        DATE_FORMAT(r.reservation_time, '%H:%i') AS ph_time,
                        r.reservation_time, r.table_number, r.status, r.booked_by,
@@ -639,9 +649,14 @@ app.get('/reservations', async (req, res) => {
                     displayCustomerName = `Dine-In Customer (${tableLabel})`;
                 }
 
+                const isRefunded = r.payment_status === 'refunded' || parseFloat(r.refund_amount) > 0;
+                const cleanEmail = (r.email && !/@(temp\.com|rolands\.local)$/i.test(String(r.email).trim())) ? String(r.email).trim() : '';
+
                 return {
                     reservationNumber: `${prefix}${r.reservation_id}`,
                     customerName: displayCustomerName,
+                    email: cleanEmail,
+                    phone: r.phone || '',
                     arrivalDate: r.ph_date || d.toLocaleDateString('en-CA'),
                     arrivalTime: r.ph_time || d.toTimeString().substring(0, 5),
                     bookedTable: tableLabel,
@@ -649,6 +664,12 @@ app.get('/reservations', async (req, res) => {
                     bookedBy: r.booked_by,
                     reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
                     paymentAmount: parseFloat(r.payment_amount) || 0,
+                    paymentStatus: isRefunded ? 'refunded' : (r.payment_status || 'unpaid'),
+                    refundStatus: isRefunded ? 'refunded' : '',
+                    refundAmount: parseFloat(r.refund_amount) || 0,
+                    refundMethod: r.refund_method || '',
+                    refundRef: r.refund_ref || '',
+                    refundedAt: r.refunded_at || null,
                     discountType: r.discount_type || 'none',
                     discountAmount: parseFloat(r.discount_amount) || 0,
                     voucherCode: r.voucher_code || '',
@@ -1069,7 +1090,7 @@ app.post('/api/reservations/update-status', async (req, res) => {
 });
 
 app.post('/api/reservations/refund', async (req, res) => {
-    const { id, refundAmount, refundMethod, refundRef, operator } = req.body;
+    const { id, refundAmount, refundMethod, refundRef, operator, email } = req.body;
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         if (numericId) {
@@ -1083,7 +1104,27 @@ app.post('/api/reservations/refund', async (req, res) => {
                      refunded_at = NOW()
                  WHERE reservation_id = ?`,
                 [refundAmount || 0, refundMethod || '', refundRef || '', operator || 'Admin', numericId]
-            );
+            ).catch(async () => {
+                await db.query(
+                    `UPDATE reservation_log
+                     SET payment_status = 'refunded',
+                         refund_amount = ?,
+                         refund_method = ?,
+                         refund_ref = ?,
+                         refunded_at = NOW()
+                     WHERE reservation_id = ?`,
+                    [refundAmount || 0, refundMethod || '', refundRef || '', numericId]
+                );
+            });
+            if (email && String(email).includes('@')) {
+                await db.query(
+                    `UPDATE customer_credentials c
+                     JOIN reservation_log r ON r.customer_id = c.customer_id
+                     SET c.email = ?
+                     WHERE r.reservation_id = ?`,
+                    [String(email).trim(), numericId]
+                ).catch(() => {});
+            }
         }
         cachedReservations = null;
         resCacheTime = 0;
