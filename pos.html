@@ -425,9 +425,15 @@
             updateCartUI();
 
             window.addEventListener('storage', function (e) {
-                if (e.key === 'reservationHistory' || e.key === 'floorPlanConfig' || e.key === 'tableOverrides') {
+                if (!e.key || e.key === 'reservationHistory' || e.key === 'floorPlanConfig' || e.key === 'tableOverrides') {
                     renderPosTableSelect();
                 }
+                if (!e.key || e.key === 'inventoryItems' || e.key === 'rawIngredients') {
+                    renderProducts();
+                }
+            });
+            window.addEventListener('inventoryUpdated', function () {
+                renderProducts();
             });
             window.addEventListener('tableOverridesUpdated', function () {
                 renderPosTableSelect();
@@ -435,7 +441,10 @@
             try {
                 if (typeof BroadcastChannel !== 'undefined') {
                     const syncChannel = new BroadcastChannel('inventory_sync_channel');
-                    syncChannel.onmessage = function () { renderPosTableSelect(); };
+                    syncChannel.onmessage = function () {
+                        renderPosTableSelect();
+                        renderProducts();
+                    };
                 }
             } catch (e) {}
         }
@@ -587,17 +596,26 @@
                     // Keep Wine separate from generic drinks
                     if (i.category === 'Drinks' && name.match(/wine|carlo rossi|adega/)) i.category = 'Wines';
 
-                    // Support both stock schemas
-                    i.stock_val = (i.total_stock !== undefined)
-                        ? (i.total_stock || 0) + (i.added_stock || 0) - (i.sold_stock || 0)
-                        : (i.stock || 0);
+                    // Support both stock schemas & sync with End of Day portions
+                    if (window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function') {
+                        const avail = window.InventorySystem.calculateFoodAvailability(i);
+                        i.stock_val = avail.availablePortions;
+                    } else {
+                        i.stock_val = (i.total_stock !== undefined)
+                            ? (i.total_stock || 0) + (i.added_stock || 0) - (i.sold_stock || 0)
+                            : (i.stock || 0);
+                    }
                     if (i.stock_val < 0) i.stock_val = 0;
                     return i;
                 }
 
+                const syncedInvItems = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(invItems, invItems)
+                    : invItems;
+
                 // Build a map of inventory items keyed by ID
                 const invMap = {};
-                invItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem(i); });
+                syncedInvItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem(i); });
 
                 // Merge: defaults as base, inventory values override matching IDs property-by-property
                 const merged = defaultItems.map(def => {
@@ -607,13 +625,15 @@
                 });
 
                 // Append any inventory-only items that aren't in the defaults (custom items)
-                invItems.forEach(i => {
+                syncedInvItems.forEach(i => {
                     if (i.id && !merged.find(m => m.id === i.id)) {
                         merged.push(normalizeItem(i));
                     }
                 });
 
-                return merged;
+                return typeof window.mergeInventoryWithSharedPhotos === 'function'
+                    ? window.mergeInventoryWithSharedPhotos(merged, syncedInvItems)
+                    : merged;
 
             } catch (err) {
                 console.error("Critical POS Inventory Crash:", err);
@@ -669,6 +689,7 @@
                 `;
             }).join('');
         }
+        window.renderProducts = renderProducts;
 
         /* --- CART LOGIC --- */
         function addToCart(id) {
@@ -946,6 +967,7 @@
                 `;
             }).join('');
         }
+        window.renderProducts = renderProducts;
 
         /* ── Discount & Voucher Eligibility Helpers ── */
         function populatePosVoucherDropdown() {
