@@ -1522,6 +1522,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             method = 'gcash',
             refNumber = '',
             reason = 'Customer requested refund',
+            email = '',
             operator = 'Admin'
         } = params || {};
 
@@ -1549,6 +1550,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         targetRes.refundMethod = method;
         targetRes.refundRef = refNumber;
         targetRes.refundReason = reason;
+        if (email) targetRes.email = email;
         targetRes.refundedAt = new Date().toISOString();
         targetRes.refundedBy = operator;
 
@@ -1581,6 +1583,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             broadcastSync('reservationRefunded', payload);
             broadcastSync('reservationHistoryUpdated', hist);
             fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/reservations/refund)', {
+            fetch('https://rolands-steakhouse-jsoo.onrender.com/api/reservations/refund', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1588,6 +1591,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     refundAmount: refundAmt,
                     refundMethod: method,
                     refundRef: refNumber,
+                    email: email || targetRes.email || '',
                     operator: operator
                 })
             }).catch(() => {});
@@ -3170,17 +3174,30 @@ window.setPosBranchPin = async function (branchName, newPin) {
 
                     // Embed Doneness, Kitchen Timing, and Notes into `foods` as [[ORDER_NOTE: ...]] for cross-device / Incognito sync
                     if (url.includes('/reserve') || url.includes('/api/reservations/update-order')) {
+                        const cleanFoodItems = Array.isArray(parsed.foods) ? parsed.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim())) : [];
+                        const isStandardNoFood = String(parsed.reservationType || '').toLowerCase() === 'standard' && cleanFoodItems.length === 0;
+                        const isCustomerCheckoutPage = !isAdminPage && !isSuperAdminPage && !pagePath.includes('pos') && !pagePath.includes('kitchen');
                         let noteStr = String(parsed.beefNote || parsed.notes || '').trim();
                         if (!noteStr && url.includes('/reserve')) {
+                        if (!noteStr && url.includes('/reserve') && isCustomerCheckoutPage && !isStandardNoFood) {
                             const d = localStorage.getItem('beefDoneness') || '';
                             const n = localStorage.getItem('beefNote') || '';
                             const kt = parsed.kitchenTiming || localStorage.getItem('kitchenTiming') || '';
                             noteStr = [d ? `Doneness: ${d}` : '', n, kt ? `[[KITCHEN_TIMING: ${kt}]]` : ''].filter(Boolean).join(' | ');
                         } else if (parsed.kitchenTiming && !/KITCHEN_TIMING/i.test(noteStr)) {
+                        } else if (!isStandardNoFood && parsed.kitchenTiming && !/KITCHEN_TIMING/i.test(noteStr)) {
                             noteStr = noteStr ? `${noteStr} | [[KITCHEN_TIMING: ${parsed.kitchenTiming}]]` : `[[KITCHEN_TIMING: ${parsed.kitchenTiming}]]`;
+                        }
+                        if (isStandardNoFood && noteStr) {
+                            noteStr = noteStr
+                                .replace(/\[\[KITCHEN_TIMING:[^\]]+\]\]/gi, '')
+                                .replace(/(?:^|\|\s*)Doneness:\s*[^|]+/gi, '')
+                                .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+                                .trim();
                         }
                         if (Array.isArray(parsed.foods)) {
                             parsed.foods = parsed.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()));
+                            parsed.foods = cleanFoodItems;
                             if (noteStr) {
                                 parsed.foods.push(`[[ORDER_NOTE: ${noteStr}]]`);
                                 parsed.beefNote = noteStr;
