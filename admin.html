@@ -2402,7 +2402,7 @@ if (resKeyForBtn) {
     proofBtn.type = 'button';
     proofBtn.textContent = '🧾 View Proof';
     proofBtn.style.cssText = 'flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;';
-    proofBtn.onclick = (ev) => { ev.stopPropagation(); window.openProofModal(r); };
+    proofBtn.onclick = (ev) => { ev.stopPropagation(); window.openProofByResNum(resKeyForBtn); };
 
     const receiptLink = document.createElement('a');
     receiptLink.href = `receipt.html?res=${encodeURIComponent(resKeyForBtn)}`;
@@ -4517,6 +4517,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                             hist[idx].paymentProof = dataUrl;
                             hist[idx].hasCustomProof = true;
                             localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                            fetch(`${API_BASE_URL}/api/memory/order-proofs`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reservationNumber: resNum, paymentProof: dataUrl })
+                            }).catch(() => {});
                             
                             if (window.showToast) {
                                 window.showToast('Payment proof uploaded successfully!', 'success', 3000);
@@ -6578,6 +6583,14 @@ window.adminRawFilter = 'all';
             });
         }
 
+        // 👉 ENHANCED PROOF VIEWER ALIASES (Shows both Payment Picture & Discount ID/Voucher Picture side-by-side)
+        window.viewProof = function (resNum) {
+            if (typeof window.openProofByResNum === 'function') {
+                return window.openProofByResNum(resNum);
+            }
+        };
+        window.viewPaymentProof = window.viewProof;
+
         initAuth();
 
         /* ────────────────────────────────────
@@ -6846,21 +6859,24 @@ window.adminRawFilter = 'all';
 
     try {
         // 👉 4. Save to MySQL FIRST to get official sequential ID
+        const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
         const res = await fetch(`${API_BASE_URL}/reserve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: name,
                 email: `walkin-${Date.now()}@temp.com`,
+                phone: contact,
                 date: date,
                 time: time,
                 table: table,
                 cartItems: structuredCart,
                 status: 'Pending',
-                // 👉 FIX: Send the foods and money to the cloud!
+                // 👉 FIX: Send the foods, money, and active branch to the cloud!
                 reservationType: walkinType,
                 paymentAmount: finalPaymentAmount,
-                foods: foodArray
+                foods: foodArray,
+                branch: activeBranch
             })
         });
 
@@ -6906,7 +6922,8 @@ window.adminRawFilter = 'all';
             bookedBy: 'staff',
             completedAt: null, 
             cartItems: structuredCart,
-            stockDeducted: true
+            stockDeducted: true,
+            branch: activeBranch
         };
 
         const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
@@ -7680,6 +7697,11 @@ window.adminRawFilter = 'all';
             window.ensureOrderProofUpToDate = function (r) {
                 if (!r) return r;
                 const sig = computeOrderSignature(r);
+                // If an earlier fallback copied discountProofImage into paymentProof, restore the E-Receipt so both proofs display side-by-side!
+                if (r.discountProofImage && r.paymentProof === r.discountProofImage) {
+                    r.hasCustomProof = false;
+                    r.paymentProof = '';
+                }
                 if (!r.hasCustomProof && (!r.paymentProof || r._proofSig !== sig)) {
                     r.paymentProof = window.generateAdminEReceiptProof(r);
                     r._proofSig = sig;
@@ -7715,36 +7737,64 @@ window.adminRawFilter = 'all';
                 const vatable = totalAmt / 1.12;
                 const vat = totalAmt - vatable;
 
+                const pProof = r.paymentProof || r.proof || '';
+                const dProof = r.discountProofImage || '';
+                const dType = String(r.discountType || 'none').toLowerCase();
+                const dAmt = Number(r.discountAmount || 0);
+                const dLabel = dType === 'pwd' ? 'PWD ID (20% Off)' : (dType === 'senior' ? 'Senior Citizen ID (20% Off)' : `Voucher/Promo${r.voucherCode ? ' (' + r.voucherCode + ')' : ''}`);
+                const hasBothProofs = Boolean(pProof && dProof);
+
+                const discountRowHtml = ((dType && dType !== 'none') || dAmt > 0 || dProof)
+                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#c2410c; font-weight:700;">🏷️ Discount Applied</td><td style="font-weight:800; color:#c2410c;">${dLabel}${dAmt > 0 ? ' (-₱' + dAmt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + ')' : ''}</td></tr>`
+                    : '';
+
                 const taxRowsHtml = isStandardFixedFee
                     ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📌 Fee Type</td><td style="font-weight:700; color:#475569;">Fixed Reservation Fee (No VAT)</td></tr>`
                     : `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📊 Vatable Sales</td><td style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🏛️ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>`;
 
+                let proofsGridHtml = '';
+                if (pProof || dProof) {
+                    proofsGridHtml = `
+                        <div style="display:grid; grid-template-columns:${hasBothProofs ? 'repeat(auto-fit, minmax(230px, 1fr))' : '1fr'}; gap:14px; align-items:start;">
+                            ${pProof ? `
+                                <div style="background:#f0fdf4; padding:10px; border-radius:14px; border:1px solid #bbf7d0;">
+                                    <div style="color:#16a34a; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">💳 Payment Proof / E-Receipt:</div>
+                                    <img src="${pProof}" alt="Proof of Payment" onclick="window.open(this.src, '_blank')" title="Click to view full size" style="width:100%; max-height:330px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto; cursor:zoom-in;">
+                                </div>
+                            ` : ''}
+                            ${dProof ? `
+                                <div style="background:#fff7ed; padding:10px; border-radius:14px; border:1px solid #fed7aa;">
+                                    <div style="color:#c2410c; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">🏷️ ${dType === 'pwd' ? 'PWD ID' : (dType === 'senior' ? 'Senior ID' : 'Voucher/Promo')} Proof:</div>
+                                    <img src="${dProof}" alt="Discount ID / Voucher Proof" onclick="window.open(this.src, '_blank')" title="Click to view full size" style="width:100%; max-height:330px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto; cursor:zoom-in;">
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    proofsGridHtml = `<div style="color:#94a3b8; font-style:italic; text-align:center; padding:20px;">No payment or discount proof uploaded.</div>`;
+                }
+
                 modal.innerHTML = `
-                    <div class="rsh-manager-proof-box" onclick="event.stopPropagation()">
+                    <div class="rsh-manager-proof-box" style="${hasBothProofs ? 'max-width: 760px !important;' : ''}" onclick="event.stopPropagation()">
                         <div class="rsh-proof-header">
-                            <h3>🧾 Payment Proof Attachment</h3>
+                            <h3>🧾 Proof Viewer: ${resNum}</h3>
                             <button type="button" class="rsh-proof-close" onclick="window.closeProofModal()" title="Close (ESC)">&times;</button>
                         </div>
 
                         <div style="padding:18px 22px; overflow-y:auto; flex:1; background:#ffffff;">
                             <div style="margin-bottom:14px; font-size:13px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
                                 <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:130px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:145px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
+                                    ${discountRowHtml}
                                     ${taxRowsHtml}
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a; font-size:14.5px;">₱${totalAmt.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td></tr>
                                     <tr><td style="padding:6px 0; color:#64748b;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
                                 </table>
                             </div>
 
-                            ${r.paymentProof ? `
-                                <div style="background:#f0fdf4; padding:10px; border-radius:14px; border:1px solid #bbf7d0;">
-                                    <img src="${r.paymentProof}" alt="Proof of Payment" style="width:100%; max-height:340px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto;">
-                                </div>
-                            ` : `
-                                <div style="color:#94a3b8; font-style:italic; text-align:center; padding:20px;">No screenshot uploaded.</div>
-                            `}
+                            ${proofsGridHtml}
                         </div>
 
                         <div style="padding:12px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-shrink:0;">
@@ -7773,14 +7823,40 @@ window.adminRawFilter = 'all';
                 window.openProofModal = unifiedOpenProofModal;
             }
 
-            window.openProofByResNum = function (resNum) {
+            window.openProofByResNum = async function (resNum) {
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-                const idx = hist.findIndex(h => h && h.reservationNumber === resNum);
+                const key = String(resNum || '').trim().toLowerCase();
+                const idx = hist.findIndex(h => {
+                    if (!h) return false;
+                    const candidates = [h.reservationNumber, h.id, h.resNumber].filter(Boolean).map(v => String(v).trim().toLowerCase());
+                    return candidates.includes(key);
+                });
                 if (idx === -1) return;
-                window.ensureOrderProofUpToDate(hist[idx]);
+                const rec = hist[idx];
+                if (!rec.discountProofImage || !rec.hasCustomProof) {
+                    try {
+                        const cRes = await fetch(`${API_BASE_URL}/api/memory/order-proofs?res=${encodeURIComponent(rec.reservationNumber || resNum)}&nocache=${Date.now()}`);
+                        if (cRes.ok) {
+                            const cData = await cRes.json();
+                            if (cData && typeof cData === 'object') {
+                                if (cData.discountProofImage && !rec.discountProofImage) rec.discountProofImage = cData.discountProofImage;
+                                if (cData.paymentProof && !rec.hasCustomProof) {
+                                    rec.paymentProof = cData.paymentProof;
+                                    rec.hasCustomProof = true;
+                                }
+                                if (cData.paymentRef && (!rec.paymentRef || rec.paymentRef.startsWith('E-RECEIPT-'))) {
+                                    rec.paymentRef = cData.paymentRef;
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+                window.ensureOrderProofUpToDate(rec);
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
-                unifiedOpenProofModal(hist[idx]);
+                unifiedOpenProofModal(rec);
             };
+            window.viewProof = window.openProofByResNum;
+            window.viewPaymentProof = window.openProofByResNum;
 
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') window.closeProofModal();
