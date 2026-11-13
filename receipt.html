@@ -174,14 +174,16 @@
                 }
             }
 
-            if (rec && rec.discountType && rec.discountType !== 'none') {
-                const dRow = document.getElementById('receipt-discount-row');
-                if (dRow) {
+            const dRow = document.getElementById('receipt-discount-row');
+            if (dRow) {
+                if (rec && rec.discountType && rec.discountType !== 'none') {
                     dRow.style.display = 'flex';
                     const dType = String(rec.discountType).toLowerCase();
                     let dLabelTxt = dType === 'pwd' ? 'PWD 20%' : (dType === 'senior' ? 'SENIOR 20%' : `VOUCHER (${rec.voucherCode || ''})`);
                     document.getElementById('receipt-discount-label').textContent = `🏷️ DISCOUNT (${dLabelTxt})`;
                     document.getElementById('receipt-discount-val').textContent = parseFloat(rec.discountAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                } else {
+                    dRow.style.display = 'none';
                 }
             }
 
@@ -260,48 +262,90 @@
             }
         }
 
-        // Check if reservation is cancelled or completed
-        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-        const currentRes = hist.find(r => r.reservationNumber === reservationNumber);
-        const cancelBtn = document.getElementById('btn-cancel-reservation-receipt');
-
-        const isCancelled = currentRes && (currentRes.approvalStatus === 'rejected' || currentRes.approvalStatus === 'cancelled' || currentRes.kdsStatus === 'cancelled' || currentRes.status === 'cancelled' || currentRes.isCancelled === true || Boolean(currentRes.cancelledAt));
-        const isCompleted = currentRes && (Boolean(currentRes.completedAt) || currentRes.approvalStatus === 'completed' || currentRes.kdsStatus === 'served');
-
-        if (isCancelled || isCompleted) {
-            if (cancelBtn) cancelBtn.style.display = 'none';
+        function escapeReceiptHtml(str) {
+            if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
-        if (isCancelled) {
-            const paper = document.getElementById('receipt-capture-area');
-            if (paper) {
-                const isRefunded = currentRes.refundStatus === 'refunded' || currentRes.paymentStatus === 'refunded';
-                const isRefundPending = currentRes.refundStatus === 'pending_refund';
-                const refundAmt = Number(currentRes.refundAmount || currentRes.paymentAmount || 0);
+        function applyCancellationAndRefundUI(rec) {
+            const cancelBtn = document.getElementById('btn-cancel-reservation-receipt');
+            const oldStamp = document.getElementById('receipt-status-stamp');
+            if (oldStamp) oldStamp.remove();
+            const oldRefCard = document.getElementById('receipt-refund-card');
+            if (oldRefCard) oldRefCard.remove();
 
-                const stamp = document.createElement('div');
-                stamp.style.cssText = `border:3px solid ${isRefunded ? '#2563eb' : '#dc2626'}; color:${isRefunded ? '#2563eb' : '#dc2626'}; font-size:22px; font-weight:900; text-transform:uppercase; letter-spacing:2px; padding:8px 16px; border-radius:8px; text-align:center; margin:16px auto; width:fit-content; transform:rotate(-5deg);`;
-                stamp.textContent = isRefunded ? 'CANCELLED - REFUNDED' : (isRefundPending ? 'CANCELLED - REFUND PENDING' : 'CANCELLED - INVALID');
-                paper.insertBefore(stamp, paper.firstChild);
+            if (!rec || typeof rec !== 'object') {
+                if (cancelBtn) cancelBtn.style.display = '';
+                return;
+            }
 
-                if (isRefunded) {
-                    const refCard = document.createElement('div');
-                    refCard.style.cssText = 'background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin:12px 0; font-size:12px; color:#1e40af; line-height:1.4;';
-                    refCard.innerHTML = `
-                        <strong>💸 Refund Processed:</strong> ₱${refundAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })} via ${(currentRes.refundMethod || 'GCash').toUpperCase()}
-                        ${currentRes.refundRef ? `<br><span>Ref: ${currentRes.refundRef}</span>` : ''}
-                    `;
-                    paper.insertBefore(refCard, paper.children[1] || null);
-                } else if (isRefundPending) {
-                    const refCard = document.createElement('div');
-                    refCard.style.cssText = 'background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin:12px 0; font-size:12px; color:#92400e; line-height:1.4;';
-                    refCard.innerHTML = `
-                        <strong>⚠️ Refund Status:</strong> Your cancellation was recorded. Our staff is processing your refund of ₱${refundAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}.
-                    `;
-                    paper.insertBefore(refCard, paper.children[1] || null);
+            const aStatus = String(rec.approvalStatus || '').toLowerCase().trim();
+            const rawStatus = String(rec.status || '').toLowerCase().trim();
+            const kds = String(rec.kdsStatus || '').toLowerCase().trim();
+            const payStatus = String(rec.paymentStatus || '').toLowerCase().trim();
+            const refStatus = String(rec.refundStatus || '').toLowerCase().trim();
+
+            const isRefunded = refStatus === 'refunded' || payStatus === 'refunded' || Number(rec.refundAmount) > 0;
+            const isRefundPending = !isRefunded && refStatus === 'pending_refund';
+            const isCancelled = (
+                aStatus === 'rejected' || aStatus === 'cancelled' ||
+                rawStatus === 'rejected' || rawStatus === 'cancelled' ||
+                kds === 'cancelled' ||
+                rec.isCancelled === true || Boolean(rec.cancelledAt) ||
+                isRefunded || isRefundPending
+            );
+            const isCompleted = (
+                Boolean(rec.completedAt) ||
+                aStatus === 'completed' || rawStatus === 'completed' ||
+                kds === 'served'
+            );
+
+            if (cancelBtn) {
+                cancelBtn.style.display = (isCancelled || isCompleted) ? 'none' : '';
+            }
+
+            if (isCancelled) {
+                const paper = document.getElementById('receipt-capture-area');
+                if (paper) {
+                    const refundAmt = Number(rec.refundAmount || rec.paymentAmount || 0);
+
+                    const stamp = document.createElement('div');
+                    stamp.id = 'receipt-status-stamp';
+                    stamp.style.cssText = `border:3px solid ${isRefunded ? '#2563eb' : '#dc2626'}; color:${isRefunded ? '#2563eb' : '#dc2626'}; font-size:22px; font-weight:900; text-transform:uppercase; letter-spacing:2px; padding:8px 16px; border-radius:8px; text-align:center; margin:16px auto; width:fit-content; transform:rotate(-5deg);`;
+                    stamp.textContent = isRefunded ? 'CANCELLED - REFUNDED' : (isRefundPending ? 'CANCELLED - REFUND PENDING' : 'CANCELLED - INVALID');
+                    paper.insertBefore(stamp, paper.firstChild);
+
+                    if (isRefunded) {
+                        const refCard = document.createElement('div');
+                        refCard.id = 'receipt-refund-card';
+                        refCard.style.cssText = 'background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin:12px 0; font-size:12px; color:#1e40af; line-height:1.4;';
+                        refCard.innerHTML = `
+                            <strong>💸 Refund Processed:</strong> ₱${refundAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })} via ${escapeReceiptHtml((rec.refundMethod || 'GCash').toUpperCase())}
+                            ${rec.refundRef ? `<br><span>Ref: ${escapeReceiptHtml(rec.refundRef)}</span>` : ''}
+                        `;
+                        paper.insertBefore(refCard, paper.children[1] || null);
+                    } else if (isRefundPending) {
+                        const refCard = document.createElement('div');
+                        refCard.id = 'receipt-refund-card';
+                        refCard.style.cssText = 'background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin:12px 0; font-size:12px; color:#92400e; line-height:1.4;';
+                        refCard.innerHTML = `
+                            <strong>⚠️ Refund Status:</strong> Your cancellation was recorded. Our staff is processing your refund of ₱${refundAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}.
+                        `;
+                        paper.insertBefore(refCard, paper.children[1] || null);
+                    }
                 }
             }
         }
+
+        // Initial render from local storage (will immediately refresh from cloud below if ?res= is present)
+        const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        const currentRes = hist.find(r => r.reservationNumber === reservationNumber);
+        applyCancellationAndRefundUI(currentRes);
 
         async function cancelReceiptReservation() {
             const resNum = reservationNumber;
@@ -315,12 +359,15 @@
 
             let res = { success: true };
             if (window.InventorySystem && typeof window.InventorySystem.cancelReservationWithFood === 'function') {
-                res = window.InventorySystem.cancelReservationWithFood({
-                    reservationNumber: resNum,
-                    reason: reason,
-                    cancelledBy: 'customer',
-                    operator: 'Customer Receipt Portal'
-                });
+                const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                if (localHist.some(r => r && r.reservationNumber === resNum)) {
+                    res = window.InventorySystem.cancelReservationWithFood({
+                        reservationNumber: resNum,
+                        reason: reason,
+                        cancelledBy: 'customer',
+                        operator: 'Customer Receipt Portal'
+                    });
+                }
             }
 
             try {
@@ -346,28 +393,55 @@
             }
         }
 
-        // Auto-fetch from MySQL if this QR receipt is scanned on a different device
+        // Always sync live reservation status, refund badge, and details from MySQL (cross-device / email links / stale cache)
         (async function ensureCloudReceiptData() {
-            if (!urlRes) return;
-            const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const existsLocally = localHist.some(r => r.reservationNumber === urlRes);
-            if (!existsLocally) {
-                try {
-                    const r = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
-                    if (!r.ok) return;
-                    const dbList = await r.json();
-                    const found = Array.isArray(dbList) ? dbList.find(x => x.reservationNumber === urlRes) : null;
-                    if (found) {
-                        if (document.getElementById('order-num')) document.getElementById('order-num').textContent = found.reservationNumber;
-                        if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = found.customerName || 'Valued Guest';
-                        if (document.getElementById('table-id')) document.getElementById('table-id').textContent = found.bookedTable || 'TBD';
-                        if (document.getElementById('date-now')) document.getElementById('date-now').textContent = `${found.arrivalDate || ''} ${found.arrivalTime || ''}`.trim();
-                        const items = (Array.isArray(found.foods) && found.foods.length) ? found.foods : ['Standard Reservation Deposit'];
-                        renderOrderItemsList(items);
-                        updateReceiptTotalsUI(found.paymentAmount, items.join(', '), found);
+            const targetResNum = urlRes || (reservationNumber && reservationNumber !== 'TBD' ? reservationNumber : '');
+            if (!targetResNum) return;
+            const lookupKey = String(targetResNum).trim().toLowerCase();
+            try {
+                const r = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
+                if (!r.ok) return;
+                const dbList = await r.json();
+                const found = Array.isArray(dbList)
+                    ? dbList.find(x => x && x.reservationNumber && String(x.reservationNumber).trim().toLowerCase() === lookupKey)
+                    : null;
+                if (!found) return;
+
+                matchedResRecord = found;
+
+                if (document.getElementById('order-num')) document.getElementById('order-num').textContent = found.reservationNumber;
+                if (document.getElementById('customer-name')) document.getElementById('customer-name').textContent = found.customerName || 'Valued Guest';
+                if (document.getElementById('table-id')) document.getElementById('table-id').textContent = found.bookedTable || 'TBD';
+                if (document.getElementById('date-now')) {
+                    const dispDt = (found.arrivalDate && found.arrivalTime)
+                        ? `${found.arrivalDate} ${found.arrivalTime}`
+                        : (found.arrivalDate || found.arrivalTime || arrivalDisplay);
+                    document.getElementById('date-now').textContent = dispDt;
+                }
+
+                // Update branch label & header address for multi-branch receipts
+                if (found.branch && typeof window.getBranchInfo === 'function') {
+                    const bInfo = window.getBranchInfo(found.branch);
+                    const bEl = document.getElementById('receipt-branch-id');
+                    if (bEl) bEl.textContent = bInfo.name;
+                    const centerPs = document.querySelectorAll('#receipt-capture-area .center p');
+                    if (centerPs.length >= 2) {
+                        centerPs[1].innerHTML = `${bInfo.address}<br>Tel: ${bInfo.tel}`;
                     }
-                } catch (e) {}
-            }
+                }
+
+                const cleanFoods = Array.isArray(found.foods)
+                    ? found.foods.filter(f => f && !/^\[\[ORDER_NOTE:/i.test(String(f).trim()))
+                    : [];
+                const defaultLabel = String(found.reservationType || '').toLowerCase() === 'vip'
+                    ? 'VIP Room Down Payment'
+                    : 'Standard Reservation Deposit';
+                const items = cleanFoods.length ? cleanFoods : [defaultLabel];
+
+                renderOrderItemsList(items);
+                updateReceiptTotalsUI(found.paymentAmount, items.join(', '), found);
+                applyCancellationAndRefundUI(found);
+            } catch (e) {}
         })();
     </script>
 </body>
