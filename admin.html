@@ -1296,7 +1296,7 @@
                         <div style="display:flex; gap: 10px; margin-top:20px;">
                             <button type="button" class="secondary" onclick="window.closeRefundModal()"
                                 style="flex:1; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">Cancel</button>
-                            <button type="button" onclick="window.submitRefundModal()"
+                            <button type="button" id="refund-confirm-btn" onclick="window.submitRefundModal()"
                                 style="flex:1; padding:10px; background:#2563eb; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 4px 10px rgba(37,99,235,0.3);">Confirm Refund</button>
                         </div>
                     </div>
@@ -1728,34 +1728,54 @@ window.readReservationHistory = function () {
             return `plain:${str}`;
         }
 
-                // 👉 Reservations arriving within 2 hours that haven't been served yet
+        function parseReservationArrivalDateTime(r) {
+            if (!r || !r.arrivalTime) return null;
+            const timeRaw = String(r.arrivalTime).trim();
+            const ampmMatch = timeRaw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+            if (!ampmMatch) return null;
+            let h = parseInt(ampmMatch[1], 10);
+            const m = parseInt(ampmMatch[2], 10);
+            const mer = (ampmMatch[3] || '').toUpperCase();
+            if (isNaN(h) || isNaN(m)) return null;
+            if (mer === 'PM' && h < 12) h += 12;
+            if (mer === 'AM' && h === 12) h = 0;
+
+            const rawDate = String(r.arrivalDate || '').trim();
+            if (!rawDate) return null;
+
+            const ymd = rawDate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (ymd) {
+                return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), h, m, 0, 0);
+            }
+            const parsedDate = new Date(rawDate);
+            if (isNaN(parsedDate.getTime())) return null;
+            return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), h, m, 0, 0);
+        }
+
+        // 👉 Reservations arriving within 2 hours TODAY that haven't arrived/been served yet
         function getArrivingSoonIds() {
             const now = new Date();
             const soon = new Set();
+            const activeBranch = (typeof window.getEffectiveBranch === 'function') ? window.getEffectiveBranch() : '';
 
             const hist = window.readReservationHistory();
             hist.forEach(r => {
                 if (!r) return;
+                if (activeBranch && r.branch && r.branch !== activeBranch) return;
 
-                // skip anything already finished or cancelled
+                // skip anything already seated, finished, or cancelled
                 const aStatus = String(r.approvalStatus || '').toLowerCase();
                 const kds = String(r.kdsStatus || '').toLowerCase();
-                if (['completed', 'cancelled', 'rejected'].includes(aStatus)) return;
+                if (['seated', 'completed', 'cancelled', 'rejected'].includes(aStatus)) return;
                 if (kds === 'served' || kds === 'cancelled') return;
                 if (String(r.paymentStatus || '').toLowerCase() === 'refunded') return;
 
-                // must be a confirmed booking
-                const isConfirmed = aStatus === 'approved' || aStatus === 'seated' ||
-                                    String(r.status || '').toLowerCase() === 'approved';
+                // must be a confirmed booking waiting for arrival
+                const isConfirmed = aStatus === 'approved' || (!aStatus && String(r.status || '').toLowerCase() === 'approved');
                 if (!isConfirmed) return;
 
-                // must have a real arrival time today
-                if (!r.arrivalTime) return;
-                const [h, m] = String(r.arrivalTime).split(':').map(Number);
-                if (isNaN(h)) return;
-
-                const arrival = new Date();
-                arrival.setHours(h, m || 0, 0, 0);
+                const arrival = parseReservationArrivalDateTime(r);
+                if (!arrival) return;
 
                 const diffMins = (arrival - now) / 60000;
                 if (diffMins > 0 && diffMins <= 120) {
@@ -2324,6 +2344,7 @@ window.readReservationHistory = function () {
 
             function renderRows(rows) {
                 const arrivingSoon = getArrivingSoonIds();
+                if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
                 const rowsSig = JSON.stringify({
                     arrivingSoon: Array.from(arrivingSoon),
                     rows: rows.map(r => [
@@ -2659,8 +2680,9 @@ if (resKeyForBtn) {
 
                 const modal = document.getElementById('refund-modal');
                 if (modal) {
+                    if (modal.parentElement !== document.body) document.body.appendChild(modal);
                     modal.classList.remove('hidden');
-                    modal.style.display = 'flex';
+                    modal.style.setProperty('display', 'flex', 'important');
                 }
             };
 
@@ -2668,7 +2690,7 @@ if (resKeyForBtn) {
                 const modal = document.getElementById('refund-modal');
                 if (modal) {
                     modal.classList.add('hidden');
-                    modal.style.display = 'none';
+                    modal.style.setProperty('display', 'none', 'important');
                 }
             };
 
@@ -2685,7 +2707,8 @@ if (resKeyForBtn) {
                     return;
                 }
 
-                const confirmBtn = document.querySelector('#refund-modal button[onclick="submitRefundModal()"]');
+                const confirmBtn = document.getElementById('refund-confirm-btn')
+                    || document.querySelector('#refund-modal button[onclick*="submitRefundModal"]');
                 const origBtnHtml = confirmBtn ? confirmBtn.innerHTML : 'Confirm Refund';
                 if (confirmBtn) {
                     confirmBtn.innerHTML = '⏳ Processing...';
@@ -2703,90 +2726,130 @@ if (resKeyForBtn) {
                         operator: 'Admin'
                     });
 
+                    if (confirmBtn) {
+                        confirmBtn.innerHTML = origBtnHtml;
+                        confirmBtn.disabled = false;
+                    }
+
                     if (result && result.success) {
-                        let emailSent = false;
-                        let emailWarning = '';
-                        if (email) {
-                            try {
-                                const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}`;
-                                const qrPayload = `ROLANDS-REFUND|RES:${resNum}|AMT:PHP${amt.toFixed(2)}|METHOD:${method.toUpperCase()}|REF:${ref || 'N/A'}|URL:${receiptUrl}`;
-                                const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrPayload)}`;
-                                const activeBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-
-                                const emailRes = await fetch(`${API_BASE_URL}/api/send-receipt`, { 
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        email: email,
-                                        subject: `💸 Official Refund Confirmation & QR Receipt (#${resNum}) - Roland's Steakhouse`,
-                                        html: `
-                                            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
-                                                <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 22px; text-align: center;">
-                                                    <h2 style="margin: 0; font-size: 22px;">💸 Refund Processed</h2>
-                                                    <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Roland's Steakhouse — ${activeBranchName}</p>
-                                                </div>
-                                                <div style="padding: 22px; color: #1e293b; font-size: 14px; line-height: 1.6;">
-                                                    <p>Hi <strong>${result.reservation?.customerName || 'Valued Guest'}</strong>,</p>
-                                                    <p>Your refund for reservation <strong>#${resNum}</strong> has been officially processed. Below are your complete refund details:</p>
-                                                    <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; margin: 16px 0;">
-                                                        <div style="margin-bottom: 6px;"><strong>🔖 Reservation #:</strong> ${resNum}</div>
-                                                        <div style="margin-bottom: 6px;"><strong>📍 Branch:</strong> ${activeBranchName}</div>
-                                                        <div style="margin-bottom: 6px;"><strong>💳 Refund Method:</strong> ${method.toUpperCase()}</div>
-                                                        <div style="margin-bottom: 6px;"><strong>🏦 Reference / Txn #:</strong> ${ref || 'N/A'}</div>
-                                                        <div style="margin-bottom: 6px;"><strong>📝 Refund Reason:</strong> ${reason}</div>
-                                                        <div style="margin-bottom: 6px;"><strong>🕒 Processed At:</strong> ${new Date().toLocaleString()}</div>
-                                                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 17px; color: #2563eb; font-weight: 800;">
-                                                            Total Refunded: ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </div>
-                                                    </div>
-                                                    <div style="text-align: center; margin: 20px 0; background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; padding: 16px;">
-                                                        <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Official Refund Verification QR</div>
-                                                        <img src="${qrImgUrl}" alt="Refund QR Code" width="160" height="160" style="border: 1px solid #bfdbfe; border-radius: 10px; padding: 6px; background: #ffffff; display: inline-block;" />
-                                                        <div style="font-size: 11.5px; color: #475569; margin-top: 8px;">Scan this QR code to verify refund details or <a href="${receiptUrl}" style="color: #2563eb; font-weight: bold;">view digital receipt</a>.</div>
-                                                    </div>
-                                                    <p style="font-size: 12px; color: #64748b; text-align: center;">Thank you for choosing <strong>Roland's Steakhouse</strong>.</p>
-                                                </div>
-                                            </div>
-                                        `
-                                    })
-                                });
-                                const emailData = await emailRes.json().catch(() => ({}));
-                                emailSent = Boolean(emailRes.ok && emailData && emailData.emailSent === true);
-                                emailWarning = emailData?.warning || '';
-                            } catch (emailError) {
-                                console.error('Could not send refund email:', emailError);
-                                emailWarning = emailError.message || 'Network error';
-                            }
-                        }
-
-                        if (confirmBtn) {
-                            confirmBtn.innerHTML = origBtnHtml;
-                            confirmBtn.disabled = false;
-                        }
+                        // Close refund form immediately and refresh dashboard right away
                         window.closeRefundModal();
                         window.__lastAdminRowsSig = '';
                         renderDashboard();
+                        if (typeof renderPayments === 'function') renderPayments();
 
-                        let emailStatusHtml = '';
+                        const safeEmail = (typeof window.escapeHtml === 'function') ? window.escapeHtml(email) : email;
+                        const safeName = (typeof window.escapeHtml === 'function') ? window.escapeHtml(result.reservation?.customerName || 'Guest') : (result.reservation?.customerName || 'Guest');
+                        const safeResNum = (typeof window.escapeHtml === 'function') ? window.escapeHtml(resNum) : resNum;
+                        const safeRef = (typeof window.escapeHtml === 'function') ? window.escapeHtml(ref || 'N/A') : (ref || 'N/A');
+                        const safeReason = (typeof window.escapeHtml === 'function') ? window.escapeHtml(reason) : reason;
+                        const emailStatusId = `refund-email-status-${Date.now()}`;
+
+                        // Kick off email sending in background so popup & closing never stall
                         if (email) {
-                            if (emailSent) {
-                                emailStatusHtml = `<div style="margin-top:10px; padding:10px 12px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; color:#166534; font-size:12.5px; text-align:left;">📧 <strong>Email Receipt Sent:</strong> Successfully sent to <b>${email}</b></div>`;
-                            } else {
-                                emailStatusHtml = `<div style="margin-top:10px; padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; color:#92400e; font-size:12.5px; text-align:left;">⚠️ <strong>Email Receipt Pending:</strong> Refund was recorded, but the email to <b>${email}</b> could not be sent (${emailWarning || 'Set EMAIL_USER and EMAIL_PASS in Render Environment Variables'}).</div>`;
-                            }
+                            const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}`;
+                            const qrPayload = `ROLANDS-REFUND|RES:${resNum}|AMT:PHP${amt.toFixed(2)}|METHOD:${method.toUpperCase()}|REF:${ref || 'N/A'}|URL:${receiptUrl}`;
+                            const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrPayload)}`;
+                            const activeBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                            const safeBranch = (typeof window.escapeHtml === 'function') ? window.escapeHtml(activeBranchName) : activeBranchName;
+
+                            (async () => {
+                                let emailSent = false;
+                                let emailWarning = '';
+                                const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                                const timer = ctrl ? setTimeout(() => ctrl.abort(), 12000) : null;
+                                try {
+                                    const emailRes = await fetch(`${API_BASE_URL}/api/send-receipt`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        signal: ctrl ? ctrl.signal : undefined,
+                                        body: JSON.stringify({
+                                            email: email,
+                                            subject: `💸 Official Refund Confirmation & QR Receipt (#${resNum}) - Roland's Steakhouse`,
+                                            html: `
+                                                <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
+                                                    <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 22px; text-align: center;">
+                                                        <h2 style="margin: 0; font-size: 22px;">💸 Refund Processed</h2>
+                                                        <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Roland's Steakhouse — ${safeBranch}</p>
+                                                    </div>
+                                                    <div style="padding: 22px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+                                                        <p>Hi <strong>${safeName}</strong>,</p>
+                                                        <p>Your refund for reservation <strong>#${safeResNum}</strong> has been officially processed. Below are your complete refund details:</p>
+                                                        <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; margin: 16px 0;">
+                                                            <div style="margin-bottom: 6px;"><strong>🔖 Reservation #:</strong> ${safeResNum}</div>
+                                                            <div style="margin-bottom: 6px;"><strong>📍 Branch:</strong> ${safeBranch}</div>
+                                                            <div style="margin-bottom: 6px;"><strong>💳 Refund Method:</strong> ${method.toUpperCase()}</div>
+                                                            <div style="margin-bottom: 6px;"><strong>🏦 Reference / Txn #:</strong> ${safeRef}</div>
+                                                            <div style="margin-bottom: 6px;"><strong>📝 Refund Reason:</strong> ${safeReason}</div>
+                                                            <div style="margin-bottom: 6px;"><strong>🕒 Processed At:</strong> ${new Date().toLocaleString()}</div>
+                                                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 17px; color: #2563eb; font-weight: 800;">
+                                                                Total Refunded: ₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </div>
+                                                        </div>
+                                                        <div style="text-align: center; margin: 20px 0; background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; padding: 16px;">
+                                                            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Official Refund Verification QR</div>
+                                                            <img src="${qrImgUrl}" alt="Refund QR Code" width="160" height="160" style="border: 1px solid #bfdbfe; border-radius: 10px; padding: 6px; background: #ffffff; display: inline-block;" />
+                                                            <div style="font-size: 11.5px; color: #475569; margin-top: 8px;">Scan this QR code to verify refund details or <a href="${receiptUrl}" style="color: #2563eb; font-weight: bold;">view digital receipt</a>.</div>
+                                                        </div>
+                                                        <p style="font-size: 12px; color: #64748b; text-align: center;">Thank you for choosing <strong>Roland's Steakhouse</strong>.</p>
+                                                    </div>
+                                                </div>
+                                            `
+                                        })
+                                    });
+                                    const emailData = await emailRes.json().catch(() => ({}));
+                                    emailSent = Boolean(emailRes.ok && emailData && emailData.emailSent === true);
+                                    emailWarning = emailData?.warning || '';
+                                } catch (emailError) {
+                                    console.error('Could not send refund email:', emailError);
+                                    emailWarning = (emailError && emailError.name === 'AbortError')
+                                        ? 'Email server timed out (Render Free tier blocks Gmail SMTP ports 465/587).'
+                                        : (emailError?.message || 'Network error');
+                                } finally {
+                                    if (timer) clearTimeout(timer);
+                                }
+
+                                const statusEl = document.getElementById(emailStatusId);
+                                if (emailSent) {
+                                    if (statusEl) {
+                                        statusEl.style.background = '#f0fdf4';
+                                        statusEl.style.borderColor = '#86efac';
+                                        statusEl.style.color = '#166534';
+                                        statusEl.innerHTML = `📧 <strong>Email Receipt Sent:</strong> Successfully sent to <b>${safeEmail}</b>`;
+                                    } else if (window.showToast) {
+                                        window.showToast(`📧 Refund email sent to ${email}`, 'success', 4000);
+                                    }
+                                } else {
+                                    const safeWarn = (typeof window.escapeHtml === 'function')
+                                        ? window.escapeHtml(emailWarning || 'Email relay not configured.')
+                                        : (emailWarning || 'Email relay not configured.');
+                                    if (statusEl) {
+                                        statusEl.style.background = '#fffbeb';
+                                        statusEl.style.borderColor = '#fde68a';
+                                        statusEl.style.color = '#92400e';
+                                        statusEl.innerHTML = `⚠️ <strong>Email Receipt Pending:</strong> Refund was recorded, but the email to <b>${safeEmail}</b> could not be sent (${safeWarn}).`;
+                                    } else if (window.showToast) {
+                                        window.showToast(`⚠️ Refund saved, but email failed: ${emailWarning || 'SMTP blocked'}`, 'warning', 5000);
+                                    }
+                                }
+                            })();
                         }
+
+                        const emailStatusHtml = email
+                            ? `<div id="${emailStatusId}" style="margin-top:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:12.5px; text-align:left;">⏳ <strong>Sending Email Receipt:</strong> Sending refund confirmation to <b>${safeEmail}</b>...</div>`
+                            : '';
 
                         if (typeof superModal === 'function') {
                             await superModal({
                                 title: 'Refund Processed Successfully! 💸',
                                 message: `
                                     <div style="text-align:left; font-size:14px; background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #cbd5e1; margin-top:8px;">
-                                        <div style="margin-bottom:6px;"><strong>🔖 Reservation #:</strong> ${resNum}</div>
-                                        <div style="margin-bottom:6px;"><strong>👤 Customer:</strong> ${result.reservation?.customerName || 'Guest'}</div>
+                                        <div style="margin-bottom:6px;"><strong>🔖 Reservation #:</strong> ${safeResNum}</div>
+                                        <div style="margin-bottom:6px;"><strong>👤 Customer:</strong> ${safeName}</div>
                                         <div style="margin-bottom:6px;"><strong>💰 Refund Amount:</strong> <span style="color:#2563eb; font-weight:800;">₱${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                         <div style="margin-bottom:6px;"><strong>💳 Method:</strong> ${method.toUpperCase()}</div>
-                                        <div style="margin-bottom:6px;"><strong>🏦 Reference #:</strong> ${ref || 'N/A'}</div>
-                                        <div><strong>📝 Reason:</strong> ${reason}</div>
+                                        <div style="margin-bottom:6px;"><strong>🏦 Reference #:</strong> ${safeRef}</div>
+                                        <div><strong>📝 Reason:</strong> ${safeReason}</div>
                                     </div>
                                     ${emailStatusHtml}
                                 `,
@@ -2794,10 +2857,6 @@ if (resKeyForBtn) {
                             });
                         }
                     } else {
-                        if (confirmBtn) {
-                            confirmBtn.innerHTML = origBtnHtml;
-                            confirmBtn.disabled = false;
-                        }
                         alert('Could not process refund: ' + (result?.error || 'Unknown error'));
                     }
                 } else {
@@ -4173,8 +4232,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         if (!res) return;
 
                         const minsLeft = (() => {
-                            const [h, m] = String(res.arrivalTime).split(':').map(Number);
-                            const arr = new Date(); arr.setHours(h, m || 0, 0, 0);
+                            const arr = parseReservationArrivalDateTime(res);
+                            if (!arr) return 0;
                             return Math.max(0, Math.round((arr - new Date()) / 60000));
                         })();
 
