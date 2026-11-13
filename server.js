@@ -184,13 +184,137 @@ const authLimiter = createRateLimiter(10, 60000);
 const emailLimiter = createRateLimiter(5, 60000);  
 
 const nodemailer = require('nodemailer');
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'your.restaurant.email@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your-app-password'
+
+function getConfiguredTransporter() {
+    const emailUser = (process.env.EMAIL_USER || '').trim();
+    const emailPass = (process.env.EMAIL_PASS || '').trim();
+    if (!emailUser || !emailPass || emailUser === 'your.restaurant.email@gmail.com' || emailPass === 'your-app-password') {
+        return null;
     }
-});
+    return {
+        emailUser,
+        transporter: nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: Number(process.env.SMTP_PORT || 465),
+            secure: String(process.env.SMTP_PORT || '465') === '465',
+            connectionTimeout: 6000,
+            greetingTimeout: 6000,
+            socketTimeout: 8000,
+            auth: { user: emailUser, pass: emailPass }
+        })
+    };
+}
+
+// Unified email sender: prefers HTTPS port-443 relays (Render Free Tier blocks SMTP ports 25/465/587)
+async function sendRestaurantEmail({ to, subject, html, text }) {
+    const cleanTo = String(to || '').trim();
+    if (!cleanTo) return { sent: false, warning: 'No recipient email provided.' };
+
+    const senderEmail = (process.env.EMAIL_FROM || process.env.EMAIL_USER || 'rolandssteakhouse1994@gmail.com').trim();
+    const senderName = "Roland's Steakhouse";
+
+    // 1. Google Apps Script or custom HTTPS Email Webhook (Free, sends via Gmail over Port 443)
+    const webhookUrl = (process.env.EMAIL_WEBHOOK_URL || '').trim();
+    if (webhookUrl) {
+        const resp = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow',
+            body: JSON.stringify({
+                to: cleanTo,
+                subject,
+                html,
+                text: text || '',
+                fromName: senderName,
+                replyTo: senderEmail,
+                secret: (process.env.EMAIL_WEBHOOK_SECRET || '').trim()
+            })
+        });
+        const rawText = await resp.text().catch(() => '');
+        if (!resp.ok) throw new Error(`Webhook HTTP ${resp.status}`);
+        try {
+            const parsed = JSON.parse(rawText);
+            if (parsed && parsed.success === false) throw new Error(parsed.error || 'Email webhook rejected request');
+        } catch (e) {
+            if (e && e.message && !/JSON/i.test(e.message)) throw e;
+        }
+        return { sent: true, via: 'webhook' };
+    }
+
+    // 2. Brevo HTTP API (Port 443, allows single-sender Gmail without domain DNS changes)
+    const brevoKey = (process.env.BREVO_API_KEY || '').trim();
+    if (brevoKey) {
+        const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': brevoKey,
+                'accept': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { name: senderName, email: senderEmail },
+                to: [{ email: cleanTo }],
+                subject,
+                htmlContent: html
+            })
+        });
+        if (!resp.ok) {
+            const errBody = await resp.json().catch(() => ({}));
+            throw new Error(errBody.message || `Brevo API HTTP ${resp.status}`);
+        }
+        return { sent: true, via: 'brevo' };
+    }
+
+    // 3. Resend HTTP API (Port 443)
+    const resendKey = (process.env.RESEND_API_KEY || '').trim();
+    if (resendKey) {
+        const resendFrom = (process.env.RESEND_FROM || `${senderName} <onboarding@resend.dev>`).trim();
+        const resp = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${resendKey}`
+            },
+            body: JSON.stringify({
+                from: resendFrom,
+                to: [cleanTo],
+                reply_to: senderEmail,
+                subject,
+                html
+            })
+        });
+        if (!resp.ok) {
+            const errBody = await resp.json().catch(() => ({}));
+            throw new Error(errBody.message || `Resend API HTTP ${resp.status}`);
+        }
+        return { sent: true, via: 'resend' };
+    }
+
+    // 4. Direct SMTP fallback (works locally or on paid hosts; Render Free tier blocks ports 25/465/587)
+    const smtpCfg = getConfiguredTransporter();
+    if (!smtpCfg) {
+        return {
+            sent: false,
+            warning: 'No email transport configured (set EMAIL_WEBHOOK_URL, BREVO_API_KEY, RESEND_API_KEY, or EMAIL_USER/EMAIL_PASS).'
+        };
+    }
+
+    try {
+        await smtpCfg.transporter.sendMail({
+            from: `"${senderName}" <${smtpCfg.emailUser}>`,
+            to: cleanTo,
+            subject,
+            html
+        });
+        return { sent: true, via: 'smtp' };
+    } catch (smtpErr) {
+        const msg = String(smtpErr && smtpErr.message || 'SMTP error');
+        if (/timeout|ETIMEDOUT|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH/i.test(msg)) {
+            throw new Error('Render Free tier blocks outbound Gmail SMTP (Connection timeout). Add EMAIL_WEBHOOK_URL (free Google Apps Script) or BREVO_API_KEY in Render Environment Variables to send over HTTPS.');
+        }
+        throw smtpErr;
+    }
+}
 
 app.post('/api/send-receipt', emailLimiter, async (req, res) => {
     const { email, subject, html, customerName, amount, reservationNumber, paymentMethod, arrivalDateTime, table, orderSummary, branch, discountType, discountAmount } = req.body;
@@ -256,22 +380,15 @@ app.post('/api/send-receipt', emailLimiter, async (req, res) => {
     }
 
     try {
-        const emailUser = (process.env.EMAIL_USER || '').trim();
-        const emailPass = (process.env.EMAIL_PASS || '').trim();
-        if (!emailUser || !emailPass || emailUser === 'your.restaurant.email@gmail.com' || emailPass === 'your-app-password') {
-            return res.status(200).json({
-                success: true,
-                emailSent: false,
-                warning: 'EMAIL_USER and EMAIL_PASS environment variables are not configured on the server.'
-            });
-        }
-        await transporter.sendMail({
-            from: `"Roland's Steakhouse" <${emailUser}>`,
+        const result = await sendRestaurantEmail({
             to: email,
             subject: finalSubject,
             html: finalHtml
         });
-        res.status(200).json({ success: true, emailSent: true });
+        if (!result.sent) {
+            return res.status(200).json({ success: true, emailSent: false, warning: result.warning || 'Email not configured.' });
+        }
+        res.status(200).json({ success: true, emailSent: true, via: result.via });
     } catch (err) {
         console.log('[DEV MODE] Receipt email skipped:', err.message);
         res.status(200).json({ success: true, emailSent: false, warning: err.message || 'Email not configured' });
@@ -375,16 +492,18 @@ app.post('/api/auth/send-signup-code', emailLimiter, async (req, res) => {
         tempCodes[email] = { code, expires: Date.now() + 10 * 60 * 1000 }; // 10 minute expiry
 
         try {
-            await transporter.sendMail({
-                from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+            const mailRes = await sendRestaurantEmail({
                 to: email,
-                subject: 'Your Roland\'s Steakhouse Verification Code',
+                subject: "Your Roland's Steakhouse Verification Code",
                 html: `<h2>Welcome to Roland's!</h2><p>Your verification code is: <strong style="font-size:24px; color:#1b5e20;">${code}</strong></p><p>This code expires in 10 minutes.</p>`
             });
+            if (!mailRes.sent) {
+                return res.json({ success: true, warning: mailRes.warning || 'Email not configured.' });
+            }
             res.json({ success: true });
         } catch (error) {
-            console.log(`[DEV MODE] Email failed to send. The code for ${email} is: ${code}`);
-            res.json({ success: true, warning: 'Check Vercel Logs for the code if email is not configured.' });
+            console.log(`[DEV MODE] Email failed to send. The code for ${email} is: ${code} (${error.message})`);
+            res.json({ success: true, warning: error.message || 'Email delivery failed.' });
         }
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
@@ -430,16 +549,18 @@ app.post('/api/auth/send-code', emailLimiter, async (req, res) => {
         tempCodes[email] = { code, expires: Date.now() + 10 * 60 * 1000 };
 
         try {
-            await transporter.sendMail({
-                from: `"Roland's Steakhouse" <${process.env.EMAIL_USER}>`,
+            const mailRes = await sendRestaurantEmail({
                 to: email,
-                subject: 'Password Reset Code - Roland\'s Steakhouse',
+                subject: "Password Reset Code - Roland's Steakhouse",
                 html: `<h2>Password Reset</h2><p>Your password reset code is: <strong style="font-size:24px; color:#1b5e20;">${code}</strong></p><p>This code expires in 10 minutes.</p>`
             });
+            if (!mailRes.sent) {
+                return res.json({ success: true, warning: mailRes.warning || 'Email not configured.' });
+            }
             res.json({ success: true });
         } catch (error) {
-            console.log(`[DEV MODE] Email failed to send. The reset code for ${email} is: ${code}`);
-            res.json({ success: true, warning: 'Check Vercel Logs for the code if email is not configured.' });
+            console.log(`[DEV MODE] Email failed to send. The reset code for ${email} is: ${code} (${error.message})`);
+            res.json({ success: true, warning: error.message || 'Email delivery failed.' });
         }
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
