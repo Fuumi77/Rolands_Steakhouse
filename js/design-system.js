@@ -1,6 +1,6 @@
 /* 👉 GLOBAL RENDER BACKEND REDIRECT (Catches login.html, receipt.html, payment-success.html, etc.) */
 (function redirectVercelToRender() {
-    const RENDER_URL = 'https://rolands-steakhouse-hz8o.onrender.com';
+    const RENDER_URL = 'https://rolands-steakhouse-jsoo.onrender.com';
     const nativeFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
         if (typeof input === 'string' && input.includes('rolands-steakhouse-vqtr.vercel.app')) {
