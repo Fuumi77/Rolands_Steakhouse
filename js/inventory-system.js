@@ -15,12 +15,12 @@
         { id: 'ING-BEEF-TBONE', name: 'T-Bone Steak Cut', category: 'Meat', stock: 20000, unit: 'g', minThreshold: 3000, unitCost: 0.95, supplier: 'Batangas Meat Corp', lastRestocked: new Date().toISOString() },
         { id: 'ING-BEEF-SIRLOIN', name: 'Sirloin Beef Cut', category: 'Meat', stock: 16000, unit: 'g', minThreshold: 2500, unitCost: 0.85, supplier: 'Batangas Meat Corp', lastRestocked: new Date().toISOString() },
         { id: 'ING-BEEF-PATTY', name: 'Ground Beef Patty', category: 'Meat', stock: 120, unit: 'pcs', minThreshold: 20, unitCost: 45.00, supplier: 'Roland Kitchen Prep', lastRestocked: new Date().toISOString() },
-        
+
         // Poultry & Seafood
         { id: 'ING-CHICKEN-WHOLE', name: 'Whole Fresh Chicken', category: 'Poultry', stock: 45, unit: 'pcs', minThreshold: 10, unitCost: 220.00, supplier: 'Magnolia Poultry', lastRestocked: new Date().toISOString() },
         { id: 'ING-FISH-TANIGUE', name: 'Tanigue Fish Fillet', category: 'Seafood', stock: 12000, unit: 'g', minThreshold: 2000, unitCost: 0.75, supplier: 'Navotas Fresh Seafood', lastRestocked: new Date().toISOString() },
         { id: 'ING-FISH-BANGUS', name: 'Bangus (Milkfish)', category: 'Seafood', stock: 50, unit: 'pcs', minThreshold: 10, unitCost: 120.00, supplier: 'Dagupan Fishery', lastRestocked: new Date().toISOString() },
-        
+
         // Seasonings, Sauces, Dairy & Bakery
         { id: 'ING-SALT-PEPPER', name: 'Salt & Pepper Seasoning', category: 'Produce', stock: 5000, unit: 'g', minThreshold: 500, unitCost: 0.05, supplier: 'Local Spices Co', lastRestocked: new Date().toISOString() },
         { id: 'ING-MARGARINE', name: 'Margarine', category: 'Dairy', stock: 8000, unit: 'g', minThreshold: 1000, unitCost: 0.18, supplier: 'Magnolia Dairy', lastRestocked: new Date().toISOString() },
@@ -29,7 +29,7 @@
         { id: 'ING-BUTTER', name: 'Cooking Butter', category: 'Dairy', stock: 5000, unit: 'g', minThreshold: 800, unitCost: 0.50, supplier: 'Anchor Dairy', lastRestocked: new Date().toISOString() },
         { id: 'ING-TOYO', name: 'Toyo (Soy Sauce)', category: 'Sauces & Liquids', stock: 10000, unit: 'ml', minThreshold: 1500, unitCost: 0.08, supplier: 'Silver Swan', lastRestocked: new Date().toISOString() },
         { id: 'ING-KALAMANSI', name: 'Kalamansi', category: 'Produce', stock: 5000, unit: 'ml', minThreshold: 800, unitCost: 0.10, supplier: 'Local Citrus Farms', lastRestocked: new Date().toISOString() },
-        
+
         { id: 'ING-BURGER-BUN', name: 'Sesame Burger Buns', category: 'Bakery', stock: 150, unit: 'pcs', minThreshold: 25, unitCost: 12.00, supplier: 'Goldilocks Bakery', lastRestocked: new Date().toISOString() },
         { id: 'ING-BREAD-GARLIC', name: 'Garlic Bread Loaf Slices', category: 'Bakery', stock: 120, unit: 'pcs', minThreshold: 20, unitCost: 8.00, supplier: 'In-House Bakery', lastRestocked: new Date().toISOString() },
         { id: 'ING-POTATO', name: 'Fresh Potatoes', category: 'Produce', stock: 35000, unit: 'g', minThreshold: 5000, unitCost: 0.14, supplier: 'Benguet Produce', lastRestocked: new Date().toISOString() },
@@ -37,7 +37,7 @@
         { id: 'ING-MUSHROOM-SAUCE', name: 'Signature Mushroom Sauce', category: 'Sauces & Liquids', stock: 8000, unit: 'ml', minThreshold: 1500, unitCost: 0.35, supplier: 'Roland Secret Prep', lastRestocked: new Date().toISOString() },
         { id: 'ING-CHICKEN-SOUP-BASE', name: 'Chicken Soup Broth Base', category: 'Sauces & Liquids', stock: 6000, unit: 'ml', minThreshold: 1000, unitCost: 0.18, supplier: 'Roland Secret Prep', lastRestocked: new Date().toISOString() },
         { id: 'ING-GARLIC', name: 'Minced Garlic', category: 'Produce', stock: 3000, unit: 'g', minThreshold: 500, unitCost: 0.22, supplier: 'Benguet Produce', lastRestocked: new Date().toISOString() },
-        
+
         // Beverages & Wines
         { id: 'ING-WINE-CARLO-RED', name: 'Carlo Rossi Red Wine Bottle', category: 'Beverages', stock: 36, unit: 'pcs', minThreshold: 6, unitCost: 450.00, supplier: 'Premier Wines Ph', lastRestocked: new Date().toISOString() },
         { id: 'ING-WINE-CARLO-WHITE', name: 'Carlo Rossi White Wine Bottle', category: 'Beverages', stock: 36, unit: 'pcs', minThreshold: 6, unitCost: 450.00, supplier: 'Premier Wines Ph', lastRestocked: new Date().toISOString() },
@@ -252,7 +252,7 @@
         if (invBroadcastChannel) {
             try {
                 invBroadcastChannel.postMessage({ action: action, payload: payload, timestamp: Date.now() });
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -323,7 +323,7 @@
         }).catch(e => console.error("MySQL Sync Error:", e));
     }
 
-function normalizeOperatorName(op) {
+    function normalizeOperatorName(op) {
         const s = String(op || 'System').trim();
         if (/^(admin staff|admin|staff|kitchen staff|staff\/manager|admin walk-in)$/i.test(s)) {
             return 'Staff';
@@ -337,7 +337,7 @@ function normalizeOperatorName(op) {
     function logStockMovement(entry) {
         try {
             if (!entry || typeof entry !== 'object') return null;
-            const logs = getAuditLogs();           
+            const logs = getAuditLogs();
             let finalNewStock = entry.newStock !== undefined ? Number(entry.newStock) : null;
             const rawList = getRawIngredients();
             const matchedIng = (entry.ingredientId && entry.ingredientId !== 'FINANCIAL')
@@ -361,7 +361,7 @@ function normalizeOperatorName(op) {
                 notes: entry.notes || '',
                 financialValue: Number(entry.financialValue) || 0
             };
-            
+
             logs.unshift(newEntry);
             if (logs.length > 500) logs.pop();
             localStorage.setItem('inventory_audit_logs', JSON.stringify(logs));
@@ -447,7 +447,7 @@ function normalizeOperatorName(op) {
             wasteLogs.unshift(wasteEntry);
             if (wasteLogs.length > 300) wasteLogs.pop();
             localStorage.setItem('inventory_wastage_logs', JSON.stringify(wasteLogs));
-        } catch (e) {}
+        } catch (e) { }
 
         logStockMovement({
             action: 'WASTAGE_SPOILAGE',
@@ -464,7 +464,7 @@ function normalizeOperatorName(op) {
         return wasteEntry;
     }
 
-// ── RAW INGREDIENTS STORAGE HELPERS ──
+    // ── RAW INGREDIENTS STORAGE HELPERS ──
     function getRawIngredients() {
         if (_cachedRawIngredients) return _cachedRawIngredients;
         try {
@@ -507,7 +507,7 @@ function normalizeOperatorName(op) {
         return _cachedRawIngredients;
     }
 
-function saveRawIngredients(list) {
+    function saveRawIngredients(list) {
         try {
             _cachedRawIngredients = list;
             localStorage.setItem('rawIngredients', JSON.stringify(list));
@@ -520,7 +520,7 @@ function saveRawIngredients(list) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(list)
-            }).catch(() => {});
+            }).catch(() => { });
         } catch (e) {
             console.error('Error saving raw ingredients:', e);
         }
@@ -630,7 +630,7 @@ function saveRawIngredients(list) {
         return null;
     }
 
-function deleteRawIngredient(id, operator = 'Super Admin') {
+    function deleteRawIngredient(id, operator = 'Super Admin') {
         const list = getRawIngredients();
         const idx = list.findIndex(i => i.id === id);
         if (idx !== -1) {
@@ -641,13 +641,13 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     delIds.push(id);
                     localStorage.setItem('deletedRawIngredientIds', JSON.stringify(delIds));
                 }
-            } catch (e) {}
+            } catch (e) { }
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients();
 
             fetch(`https://rolands-steakhouse.onrender.com/api/inventory/raw/${encodeURIComponent(id)}`, {
                 method: 'DELETE'
-            }).catch(() => {});
+            }).catch(() => { });
 
             logStockMovement({
                 action: 'ADJUSTMENT',
@@ -688,7 +688,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 const items = JSON.parse(invStr);
                 const targetStr = String(menuId || (menuItemObj && (menuItemObj.id || menuItemObj.title || menuItemObj.name)) || '').toLowerCase().trim();
                 if (targetStr) {
-                    const matched = items.find(i => 
+                    const matched = items.find(i =>
                         (i.id && i.id.toLowerCase() === targetStr) ||
                         (i.title && i.title.toLowerCase() === targetStr) ||
                         (i.name && i.name.toLowerCase() === targetStr)
@@ -706,7 +706,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
 
         return [];
     }
@@ -722,11 +722,11 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     items.forEach(item => {
                         if (DEFAULT_FOOD_RECIPES[item.id]) {
                             const def = DEFAULT_FOOD_RECIPES[item.id];
-                            
+
                             // Check if current item still has old legacy recipe
                             const hasOldSteak = (item.category === 'Beef' || item.category === 'T-Bone' || item.category === 'Sirloin Steak') &&
                                 item.recipe && item.recipe.some(r => r.ingredientId === 'ING-MUSHROOM-SAUCE' || (r.ingredientId === 'ING-BUTTER' && !item.recipe.some(x => x.ingredientId === 'ING-MARGARINE')));
-                            
+
                             const isOldChicken = (item.category === 'Chicken & Fish' && (item.title || '').toLowerCase().includes('chicken')) &&
                                 (!item.recipe || !item.recipe.some(r => r.ingredientId === 'ING-KETCHUP'));
 
@@ -762,19 +762,19 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 items[idx].recipe = recipeArray;
                 items[idx].isCustomRecipe = true;
             } else {
-                    items.push({ id: menuId, recipe: recipeArray, isCustomRecipe: true });
-                }
-                localStorage.setItem('inventoryItems', JSON.stringify(items));
+                items.push({ id: menuId, recipe: recipeArray, isCustomRecipe: true });
+            }
+            localStorage.setItem('inventoryItems', JSON.stringify(items));
 
-                // 👉 FIX: PUSH RECIPE UPDATES TO CLOUD SO OTHER DEVICES SEE IT
-                window.__inventoryHoldUntil = Date.now() + 8000;
-                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(items)
-                }).catch(() => {});
+            // 👉 FIX: PUSH RECIPE UPDATES TO CLOUD SO OTHER DEVICES SEE IT
+            window.__inventoryHoldUntil = Date.now() + 8000;
+            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(items)
+            }).catch(() => { });
 
-                syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients();
 
             logStockMovement({
                 action: 'RECIPE_UPDATE',
@@ -792,7 +792,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         }
     }
 
-// ── DYNAMIC FOOD AVAILABILITY CALCULATION (SYNCED WITH END OF DAY STOCK / PORTIONS) ──
+    // ── DYNAMIC FOOD AVAILABILITY CALCULATION (SYNCED WITH END OF DAY STOCK / PORTIONS) ──
     function calculateFoodAvailability(menuItem, ingredientsCatalog) {
         const catalog = ingredientsCatalog || getRawIngredients();
         const rawMap = {};
@@ -809,7 +809,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
                 )) || null;
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Check if item is manually toggled Unavailable by Staff or Manager
         const isManualUnavailable = Boolean((menuItem && menuItem.manualUnavailable) || (storedItem && storedItem.manualUnavailable));
@@ -932,7 +932,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(items)
-            }).catch(() => {});
+            }).catch(() => { });
 
             syncFoodMenuStockFromIngredients();
 
@@ -1133,7 +1133,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(items)
-                }).catch(() => {});
+                }).catch(() => { });
 
                 // Push menu portion changes to MySQL menu_stock_change_log!
                 if (menuStockChanges.length > 0) {
@@ -1141,7 +1141,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ changes: menuStockChanges, updatedBy: 1, timestamp: new Date().toISOString() })
-                    }).catch(() => {});
+                    }).catch(() => { });
                 }
             }
         } catch (e) {
@@ -1200,7 +1200,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         try {
             const invStr = localStorage.getItem('inventoryItems');
             if (invStr) invItems = JSON.parse(invStr);
-        } catch (e) {}
+        } catch (e) { }
 
         normalized.forEach(cartItem => {
             const itemId = cartItem.id;
@@ -1317,7 +1317,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                 }
             });
             if (invMutated) localStorage.setItem('inventoryItems', JSON.stringify(invItems));
-        } catch (e) {}
+        } catch (e) { }
         if (updatedAny) {
             saveRawIngredients(Object.values(rawMap));
             syncFoodMenuStockFromIngredients();
@@ -1456,11 +1456,11 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
         const tableId = targetRes.bookedTable;
         let tableReleased = false;
         if (tableId) {
-            const activeRemaining = hist.filter(r => 
-                r.bookedTable === tableId && 
-                r !== targetRes && 
-                !r.completedAt && 
-                r.approvalStatus !== 'rejected' && 
+            const activeRemaining = hist.filter(r =>
+                r.bookedTable === tableId &&
+                r !== targetRes &&
+                !r.completedAt &&
+                r.approvalStatus !== 'rejected' &&
                 r.approvalStatus !== 'cancelled'
             );
             if (activeRemaining.length === 0) {
@@ -1469,14 +1469,14 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     overrides[tableId] = 'available';
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
                     tableReleased = true;
-                } catch (e) {}
+                } catch (e) { }
             }
         }
 
         // 4. Save and Broadcast across tabs (Admin, Superadmin, Kitchen, POS)
         try {
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
-            
+
             const payload = {
                 reservationNumber: reservationNumber,
                 customerName: targetRes.customerName || 'Guest',
@@ -1582,7 +1582,6 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
             window.dispatchEvent(new CustomEvent('reservationRefunded', { detail: payload }));
             broadcastSync('reservationRefunded', payload);
             broadcastSync('reservationHistoryUpdated', hist);
-            fetch('[rolands-steakhouse-vqtr.vercel.app](https://rolands-steakhouse-vqtr.vercel.app/api/reservations/refund)', {
             fetch('https://rolands-steakhouse-jsoo.onrender.com/api/reservations/refund', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1594,7 +1593,7 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                     email: email || targetRes.email || '',
                     operator: operator
                 })
-            }).catch(() => {});
+            }).catch(() => { });
             return { success: true, reservation: targetRes };
         } catch (err) {
             console.error('Error processing refund:', err);
@@ -1815,16 +1814,16 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                         </thead>
                         <tbody id="valuation-tbody">
                             ${items.map(item => {
-                                const cogs = calculateDishRecipeCost(item.id, item);
-                                const marginPctNum = parseFloat(cogs.marginPct) || 0;
-                                const badgeBg = marginPctNum >= 60 ? '#f0fdf4' : (marginPctNum >= 40 ? '#fffbeb' : '#fef2f2');
-                                const badgeColor = marginPctNum >= 60 ? '#15803d' : (marginPctNum >= 40 ? '#b45309' : '#b91c1c');
+            const cogs = calculateDishRecipeCost(item.id, item);
+            const marginPctNum = parseFloat(cogs.marginPct) || 0;
+            const badgeBg = marginPctNum >= 60 ? '#f0fdf4' : (marginPctNum >= 40 ? '#fffbeb' : '#fef2f2');
+            const badgeColor = marginPctNum >= 60 ? '#15803d' : (marginPctNum >= 40 ? '#b45309' : '#b91c1c');
 
-                                return `
+            return `
                                     <tr class="val-dish-row" data-name="${(item.title || item.name || '').toLowerCase()}" data-cat="${(item.category || '').toLowerCase()}" style="border-bottom:1px solid #f1f5f9;">
                                         <td style="padding:12px; font-weight:bold; color:#0f172a;">${item.title || item.name}</td>
                                         <td style="padding:12px; color:#64748b;">${item.category || 'General'}</td>
-                                        <td style="padding:12px; font-weight:bold;">₱${(Number(item.price)||0).toFixed(2)}</td>
+                                        <td style="padding:12px; font-weight:bold;">₱${(Number(item.price) || 0).toFixed(2)}</td>
                                         <td style="padding:12px; color:#0369a1; font-weight:bold;">₱${cogs.totalCost.toFixed(2)}</td>
                                         <td style="padding:12px; color:#15803d; font-weight:bold;">₱${cogs.profitMargin.toFixed(2)}</td>
                                         <td style="padding:12px;">
@@ -1834,14 +1833,14 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                         </td>
                                     </tr>
                                 `;
-                            }).join('')}
+        }).join('')}
                         </tbody>
                     </table>
                 </div>
             </div>
         `;
 
-        window.filterValuationTable = function(q) {
+        window.filterValuationTable = function (q) {
             const query = (q || '').toLowerCase().trim();
             document.querySelectorAll('#valuation-tbody .val-dish-row').forEach(row => {
                 const name = row.getAttribute('data-name') || '';
@@ -1897,14 +1896,14 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                 </td>
                             </tr>
                         ` : wasteLogs.map(w => {
-                            const dt = new Date(w.timestamp).toLocaleString();
-                            return `
+            const dt = new Date(w.timestamp).toLocaleString();
+            return `
                                 <tr style="border-bottom:1px solid #f1f5f9;">
                                     <td style="padding:12px; color:#64748b; font-size:12px;">${dt}</td>
                                     <td style="padding:12px; font-weight:bold; color:#0f172a;">${w.ingredientName}</td>
                                     <td style="padding:12px; font-weight:bold; color:#b91c1c;">-${w.qty} ${w.unit}</td>
-                                    <td style="padding:12px; color:#64748b;">₱${(Number(w.unitCost)||0).toFixed(2)}</td>
-                                    <td style="padding:12px; font-weight:bold; color:#dc2626;">₱${(Number(w.totalLoss)||0).toFixed(2)}</td>
+                                    <td style="padding:12px; color:#64748b;">₱${(Number(w.unitCost) || 0).toFixed(2)}</td>
+                                    <td style="padding:12px; font-weight:bold; color:#dc2626;">₱${(Number(w.totalLoss) || 0).toFixed(2)}</td>
                                     <td style="padding:12px;">
                                         <span style="background:#fee2e2; color:#991b1b; padding:4px 8px; border-radius:10px; font-size:11px; font-weight:bold;">
                                             ${w.reason}
@@ -1914,14 +1913,14 @@ function deleteRawIngredient(id, operator = 'Super Admin') {
                                     <td style="padding:12px; color:#64748b; font-style:italic;">${w.notes || '—'}</td>
                                 </tr>
                             `;
-                        }).join('')}
+        }).join('')}
                     </tbody>
                 </table>
             </div>
         `;
     }
 
-window.__auditDateFilter = window.__auditDateFilter || 'all';
+    window.__auditDateFilter = window.__auditDateFilter || 'all';
     window.__auditActionFilter = window.__auditActionFilter || 'ALL';
     window.__auditCustomStart = window.__auditCustomStart || '';
     window.__auditCustomEnd = window.__auditCustomEnd || '';
@@ -2048,11 +2047,11 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                         <span style="font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-right:4px;">📅 Date:</span>
                         ${dateBtns.map(b => {
-                            const active = dateFilter === b.id;
-                            return `<button type="button" onclick="window.setAuditLogDateFilter('${b.id}')" style="padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; transition:0.15s;">
+            const active = dateFilter === b.id;
+            return `<button type="button" onclick="window.setAuditLogDateFilter('${b.id}')" style="padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; transition:0.15s;">
                                 ${b.label}
                             </button>`;
-                        }).join('')}
+        }).join('')}
                     </div>
 
                     <!-- Action Type Filter -->
@@ -2095,14 +2094,14 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                                 </td>
                             </tr>
                         ` : logs.map(l => {
-                            const dt = new Date(l.timestamp).toLocaleString();
-                            const isAdd = l.changeQty > 0;
-                            const isSubtract = l.changeQty < 0;
-                            const actionBg = l.action === 'RESTOCK' ? '#f0fdf4' : (l.action === 'ORDER_REFUND' ? '#eff6ff' : (l.action === 'WASTAGE_SPOILAGE' ? '#fef2f2' : '#f8fafc'));
-                            const actionColor = l.action === 'RESTOCK' ? '#166534' : (l.action === 'ORDER_REFUND' ? '#1e40af' : (l.action === 'WASTAGE_SPOILAGE' ? '#991b1b' : '#334155'));
-                            const cleanOperator = normalizeOperatorName(l.operator);
+            const dt = new Date(l.timestamp).toLocaleString();
+            const isAdd = l.changeQty > 0;
+            const isSubtract = l.changeQty < 0;
+            const actionBg = l.action === 'RESTOCK' ? '#f0fdf4' : (l.action === 'ORDER_REFUND' ? '#eff6ff' : (l.action === 'WASTAGE_SPOILAGE' ? '#fef2f2' : '#f8fafc'));
+            const actionColor = l.action === 'RESTOCK' ? '#166534' : (l.action === 'ORDER_REFUND' ? '#1e40af' : (l.action === 'WASTAGE_SPOILAGE' ? '#991b1b' : '#334155'));
+            const cleanOperator = normalizeOperatorName(l.operator);
 
-                            return `
+            return `
                                 <tr style="border-bottom:1px solid #f1f5f9;">
                                     <td style="padding:10px 12px; color:#64748b; font-size:11.5px;">${dt}</td>
                                     <td style="padding:10px 12px;">
@@ -2123,7 +2122,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                                     </td>
                                 </tr>
                             `;
-                        }).join('')}
+        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -2320,7 +2319,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ id: r.reservationNumber, status: 'Completed' })
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
             });
@@ -2344,7 +2343,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
 
             if (mutatedHistory) {
                 localStorage.setItem('reservationHistory', JSON.stringify(history));
-                try { window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: history })); } catch (e) {}
+                try { window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: history })); } catch (e) { }
             }
 
             if (mutatedOverrides) {
@@ -2353,8 +2352,8 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(overrides)
-                }).catch(() => {});
-                try { window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides })); } catch (e) {}
+                }).catch(() => { });
+                try { window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides })); } catch (e) { }
             }
         } catch (e) {
             console.warn('Auto table reset failed:', e);
@@ -2386,7 +2385,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     bc.postMessage({ action: 'tableOverridesUpdated', payload: overrides });
                     bc.postMessage({ action: 'reservationHistoryUpdated', payload: history });
                 }
-            } catch (e) {}
+            } catch (e) { }
 
             if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
             if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
@@ -2466,18 +2465,18 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
             syncFoodMenuStockFromIngredients();
             autoResetPastTablesAndReservations();
         }, 100);
-    } catch (e) {}
+    } catch (e) { }
 
-// ── 👉 UPGRADED: LIVE CLOUD INVENTORY SYNC (ANTI-REVERT & CACHE BUSTED) ──
+    // ── 👉 UPGRADED: LIVE CLOUD INVENTORY SYNC (ANTI-REVERT & CACHE BUSTED) ──
     (function startInventoryCloudSync() {
         const API = 'https://rolands-steakhouse-vqtr.vercel.app';
-        
+
         async function pullInventory() {
             // Pause polling for 8 seconds after you make a local change to prevent overriding your typing
             if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
             // Do not update UI if the manager is currently typing in an input box
             if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-            
+
             const fetchOpts = {
                 headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
             };
@@ -2489,11 +2488,11 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     const cloudRaw = await rawRes.json();
                     const localRawStr = localStorage.getItem('rawIngredients');
                     const localRaw = localRawStr ? JSON.parse(localRawStr) : [];
-                    
+
                     if (Array.isArray(cloudRaw)) {
                         // Vercel Sleep Protection: If cloud is empty/reset, push local back to cloud instead of wiping local
                         if (cloudRaw.length < localRaw.length - 2) {
-                            fetch(`${API}/api/memory/raw-ingredients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localRawStr }).catch(()=>{});
+                            fetch(`${API}/api/memory/raw-ingredients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localRawStr }).catch(() => { });
                         } else if (JSON.stringify(cloudRaw) !== localRawStr) {
                             if (typeof _cachedRawIngredients !== 'undefined') _cachedRawIngredients = cloudRaw;
                             localStorage.setItem('rawIngredients', JSON.stringify(cloudRaw));
@@ -2513,7 +2512,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     if (Array.isArray(cloudInv)) {
                         // Vercel Sleep Protection: Re-hydrate cloud if it lost data
                         if (cloudInv.length > 0 && cloudInv.length < localInv.length - 2) {
-                            fetch(`${API}/api/memory/inventory-items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localInvStr }).catch(()=>{});
+                            fetch(`${API}/api/memory/inventory-items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localInvStr }).catch(() => { });
                         } else if (cloudInv.length > 0 && JSON.stringify(cloudInv) !== localInvStr) {
                             localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
                             window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
@@ -2609,14 +2608,14 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ movements: pushToCloudBatch })
-                }).catch(() => {});
+                }).catch(() => { });
             }
 
             if (updatedLocal) {
                 window.InventorySystem.saveRawIngredients(rawList);
                 window.InventorySystem.syncFoodMenuStockFromIngredients();
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     setTimeout(syncRawIngredientsFromMySQL, 800);
@@ -2677,7 +2676,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: local
-            }).catch(() => {});
+            }).catch(() => { });
         }, 5000);
     }
 })();
@@ -2721,7 +2720,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
             localStorage.setItem(KEY, JSON.stringify(merged));
             rerender();
             if (localOnly.length > 0) push(); // this device had entries the cloud didn't
-        } catch (e) {}
+        } catch (e) { }
     }
 
     async function push() {
@@ -2734,10 +2733,10 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ logs })
             });
-        } catch (e) {} finally { pushing = false; }
+        } catch (e) { } finally { pushing = false; }
     }
 
-        let lastPushed = '';
+    let lastPushed = '';
     setInterval(() => {
         const s = sig(read());
         if (s !== lastPushed) { lastPushed = s; push(); }
@@ -2777,7 +2776,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
 
     const pagePath = window.location.pathname.toLowerCase();
     const isSuperAdminPage = pagePath.includes('superadmin');
-    const isAdminPage      = !isSuperAdminPage && (pagePath.includes('admin') || pagePath.includes('kitchen') || pagePath.includes('pos'));
+    const isAdminPage = !isSuperAdminPage && (pagePath.includes('admin') || pagePath.includes('kitchen') || pagePath.includes('pos'));
 
     window.ROLANDS_BRANCHES = BRANCHES;
 
@@ -2788,7 +2787,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
     window.__rawGetStorage = rawGet;
     window.__rawSetStorage = rawSet;
 
-// Persistent map of reservationNumber -> branch from the cloud database
+    // Persistent map of reservationNumber -> branch from the cloud database
     let cloudBranchMap = {};
     try { cloudBranchMap = JSON.parse(rawGet('__cloudBranchMap') || '{}') || {}; } catch (e) { cloudBranchMap = {}; }
 
@@ -2823,7 +2822,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
                     rawSet('reservationHistory', JSON.stringify(list));
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     function safeRawSet(k, v) {
@@ -2842,7 +2841,7 @@ window.__auditDateFilter = window.__auditDateFilter || 'all';
         }
     }
 
-const DEFAULT_POS_BRANCH_PINS = {
+    const DEFAULT_POS_BRANCH_PINS = {
         'General Santos City': '1111',
         'Koronadal City': '2222'
     };
@@ -2860,7 +2859,7 @@ const DEFAULT_POS_BRANCH_PINS = {
         return map[branchName] || DEFAULT_POS_BRANCH_PINS[branchName] || '1234';
     };
 
-window.setPosBranchPin = async function (branchName, newPin) {
+    window.setPosBranchPin = async function (branchName, newPin) {
         const map = window.getPosBranchPinMap();
         map[branchName] = String(newPin).trim();
         safeRawSet('posBranchSwitchPins', JSON.stringify(map));
@@ -2870,7 +2869,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(map)
             });
-        } catch (e) {}
+        } catch (e) { }
         return map;
     };
 
@@ -2886,7 +2885,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     if (typeof window.loadPosBranchPinInput === 'function') window.loadPosBranchPinInput();
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
     }, 600);
 
     function resetBranchDropdownsToCurrent() {
@@ -2971,7 +2970,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
         window.location.reload();
     };
 
-// 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, holidays, and chats per branch!
+    // 2. Smart LocalStorage Proxy — Automatically separates inventory, floorplan, promos, holidays, and chats per branch!
     const SCOPED_KEYS = new Set([
         'tableOverrides',
         'floorPlanConfig',
@@ -3098,7 +3097,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         }
                         return safeRawSet('reservationHistory', JSON.stringify(incoming));
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
 
             return safeRawSet(resolveScopedKey(key), value);
@@ -3128,6 +3127,9 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 input = url;
             } else if (url.includes('https://rolands-steakhouse.onrender.com')) {
                 url = url.replace('https://rolands-steakhouse.onrender.com', NEW_BACKEND_URL);
+                input = url;
+            } else if (url.includes('https://rolands-steakhouse-hz8o.onrender.com')) {
+                url = url.replace('https://rolands-steakhouse-hz8o.onrender.com', NEW_BACKEND_URL);
                 input = url;
             }
         }
@@ -3178,13 +3180,11 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         const isStandardNoFood = String(parsed.reservationType || '').toLowerCase() === 'standard' && cleanFoodItems.length === 0;
                         const isCustomerCheckoutPage = !isAdminPage && !isSuperAdminPage && !pagePath.includes('pos') && !pagePath.includes('kitchen');
                         let noteStr = String(parsed.beefNote || parsed.notes || '').trim();
-                        if (!noteStr && url.includes('/reserve')) {
                         if (!noteStr && url.includes('/reserve') && isCustomerCheckoutPage && !isStandardNoFood) {
                             const d = localStorage.getItem('beefDoneness') || '';
                             const n = localStorage.getItem('beefNote') || '';
                             const kt = parsed.kitchenTiming || localStorage.getItem('kitchenTiming') || '';
                             noteStr = [d ? `Doneness: ${d}` : '', n, kt ? `[[KITCHEN_TIMING: ${kt}]]` : ''].filter(Boolean).join(' | ');
-                        } else if (parsed.kitchenTiming && !/KITCHEN_TIMING/i.test(noteStr)) {
                         } else if (!isStandardNoFood && parsed.kitchenTiming && !/KITCHEN_TIMING/i.test(noteStr)) {
                             noteStr = noteStr ? `${noteStr} | [[KITCHEN_TIMING: ${parsed.kitchenTiming}]]` : `[[KITCHEN_TIMING: ${parsed.kitchenTiming}]]`;
                         }
@@ -3196,7 +3196,6 @@ window.setPosBranchPin = async function (branchName, newPin) {
                                 .trim();
                         }
                         if (Array.isArray(parsed.foods)) {
-                            parsed.foods = parsed.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()));
                             parsed.foods = cleanFoodItems;
                             if (noteStr) {
                                 parsed.foods.push(`[[ORDER_NOTE: ${noteStr}]]`);
@@ -3207,7 +3206,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
 
                     init.body = JSON.stringify(parsed);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         const response = await origFetch(input, init);
@@ -3237,7 +3236,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     }
                     return arr;
                 };
-            } catch (e) {}
+            } catch (e) { }
         }
 
         return response;
@@ -3323,7 +3322,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 if (typeof window.renderTables === 'function') window.renderTables();
                 window.dispatchEvent(new Event('storage'));
             }
-        } catch (e) {}
+        } catch (e) { }
     };
 
     // 4. Update Customer UI (index.html, payment.html, receipt.html, pos.html, superadmin.html)
@@ -3437,7 +3436,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     let existingLocalInv = [];
                     try {
                         existingLocalInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-                    } catch (e) {}
+                    } catch (e) { }
 
                     // Also harvest custom photos from other branches in cloud so cross-branch photos stay synced on Incognito/other devices
                     const allBranches = (window.ROLANDS_BRANCHES || []).map(b => b.name).filter(Boolean);
@@ -3453,7 +3452,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                                 if (Array.isArray(arr) && arr.length > 0) otherCloudArrays.push(arr);
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) { }
 
                     const mergedInv = window.mergeInventoryWithSharedPhotos(cloudInv, existingLocalInv, otherCloudArrays);
                     const nextInv = JSON.stringify(mergedInv);
@@ -3473,7 +3472,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: nextInv
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
             }
@@ -3494,7 +3493,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                 if (typeof window.renderTables === 'function') window.renderTables();
                 window.dispatchEvent(new Event('storage'));
             }
-        } catch (e) {}
+        } catch (e) { }
     };
 
     // ============================================================================
@@ -3520,7 +3519,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
     function saveSharedPhotoRegistry(reg) {
         try {
             safeRawSet('__sharedMenuPhotos', JSON.stringify(reg || {}));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // Merges cloud inventory items with local & cross-branch shared photos (when syncPhotoBranches !== false)
@@ -3540,7 +3539,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     const parsed = JSON.parse(str);
                     if (Array.isArray(parsed)) allLocalBranchArrays.push(parsed);
                 }
-            } catch (e) {}
+            } catch (e) { }
         });
 
         const harvestSources = [
@@ -3664,7 +3663,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
             let templateItems = [];
             try {
                 templateItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-            } catch (e) {}
+            } catch (e) { }
 
             branchNames.forEach(bName => {
                 try {
@@ -3684,7 +3683,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         });
                         if (changed) safeRawSet(key, JSON.stringify(list));
                     }
-                } catch (e) {}
+                } catch (e) { }
             });
 
             // 2. Push to cloud for every branch
@@ -3719,7 +3718,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                             body: JSON.stringify(branchList)
                         });
                     }
-                } catch (e) {}
+                } catch (e) { }
             }));
         } else {
             // Only update active inventory branch
@@ -3740,7 +3739,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(list)
                 });
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (window.InventorySystem && typeof window.InventorySystem.invalidateInventoryCache === 'function') {
@@ -3797,7 +3796,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     const allHist = JSON.parse(rawGet('reservationHistory') || '[]');
                     const found = allHist.find(r => r && r.reservationNumber === urlRes);
                     if (found && found.branch) resBranch = found.branch;
-                } catch (e) {}
+                } catch (e) { }
             }
             const bInfo = window.getBranchInfo(resBranch);
             const tableRow = receiptTableEl.parentElement;
@@ -3908,9 +3907,9 @@ window.setPosBranchPin = async function (branchName, newPin) {
             const VOUCHER_CATALOG = {
                 'ROLANDS10': { mode: 'pct', val: 10, label: '10% Off Promo' },
                 'ROLANDS20': { mode: 'pct', val: 20, label: '20% Off VIP Promo' },
-                'STEAK100':  { mode: 'flat', val: 100, label: '₱100 Off Steak Voucher' },
-                'STEAK200':  { mode: 'flat', val: 200, label: '₱200 Off Dining Voucher' },
-                'VIP500':    { mode: 'flat', val: 500, label: '₱500 Off VIP Voucher' }
+                'STEAK100': { mode: 'flat', val: 100, label: '₱100 Off Steak Voucher' },
+                'STEAK200': { mode: 'flat', val: 200, label: '₱200 Off Dining Voucher' },
+                'VIP500': { mode: 'flat', val: 500, label: '₱500 Off VIP Voucher' }
             };
 
             function parsePesoText(txt) {
@@ -3979,13 +3978,13 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         const badgeLabel = discType === 'senior' ? 'SENIOR 20% OFF' : (discType === 'pwd' ? 'PWD 20% OFF' : `VOUCHER (${voucherCode || 'PROMO'})`);
                         summaryBox.innerHTML = `
                             <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
-                                <span>Original Subtotal:</span><span>₱${rawSubtotal.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                                <span>Original Subtotal:</span><span>₱${rawSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:800; color:#c2410c; margin-top:2px;">
-                                <span>🏷️ ${badgeLabel}:</span><span>-₱${discountAmt.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                                <span>🏷️ ${badgeLabel}:</span><span>-₱${discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:900; color:#15803d; margin-top:4px; padding-top:4px; border-top:1px dashed #cbd5e1;">
-                                <span>Discounted Total:</span><span>₱${finalTotal.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                                <span>Discounted Total:</span><span>₱${finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                         `;
                     }
@@ -4083,7 +4082,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     const parsed = JSON.parse(raw);
                     if (Array.isArray(parsed)) return parsed;
                 }
-            } catch (e) {}
+            } catch (e) { }
             localStorage.setItem('vouchers', JSON.stringify(DEFAULT_VOUCHERS));
             return JSON.parse(JSON.stringify(DEFAULT_VOUCHERS));
         },
@@ -4099,7 +4098,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ branch, vouchers: cleanList })
                 });
-            } catch (e) {}
+            } catch (e) { }
             return cleanList;
         },
 
@@ -4119,7 +4118,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         }
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         },
 
         // Validates a voucher code against current cart items and subtotal
@@ -4478,24 +4477,24 @@ window.setPosBranchPin = async function (branchName, newPin) {
                             }
                             if (changed) safeRawSet('reservationHistory', JSON.stringify(list));
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 };
                 window.addEventListener('beforeunload', attachPreOrderDiscountToHistory);
                 setInterval(attachPreOrderDiscountToHistory, 1000);
             }
         }
 
-// 7. AUTO-HEAL GHOST & TRIPLICATED RESERVATIONS
-        window.healGhostReservationsFromCloud = async function() {
+        // 7. AUTO-HEAL GHOST & TRIPLICATED RESERVATIONS
+        window.healGhostReservationsFromCloud = async function () {
             try {
-                const res = await fetch('https://rolands-steakhouse-hz8o.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
+                const res = await fetch('https://rolands-steakhouse-jsoo.onrender.com/reservations?branch=ALL&nocache=' + Date.now());
                 if (!res.ok) return;
                 const cloudData = await res.json();
-                
+
                 const localStr = rawGet('reservationHistory');
                 if (!localStr) return;
                 const localHist = JSON.parse(localStr);
-                
+
                 const validSet = new Set();
                 cloudData.forEach(c => {
                     if (c.reservationNumber) {
@@ -4532,7 +4531,7 @@ window.setPosBranchPin = async function (branchName, newPin) {
                         }
                     }
                 });
-                
+
                 if (mutated) {
                     const cleanedHist = Array.from(uniqueMap.values());
                     safeRawSet('reservationHistory', JSON.stringify(cleanedHist));
@@ -4540,9 +4539,9 @@ window.setPosBranchPin = async function (branchName, newPin) {
                     if (typeof window.syncReservations === 'function') window.syncReservations();
                     if (typeof renderDashboard === 'function') setTimeout(renderDashboard, 300);
                 }
-            } catch(e) {}
+            } catch (e) { }
         };
-        
+
         setTimeout(window.healGhostReservationsFromCloud, 1000);
         setInterval(window.healGhostReservationsFromCloud, 60000);
 
