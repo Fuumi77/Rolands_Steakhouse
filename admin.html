@@ -4575,15 +4575,36 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 listEl.innerHTML = html;
             }
 
-            window.openProofByResNum = function (resNum) {
+            window.openProofByResNum = async function (resNum) {
+                if (typeof window.__unifiedOpenProofByResNum === 'function') {
+                    return window.__unifiedOpenProofByResNum(resNum);
+                }
                 const hist = getReservationHistory();
                 const r = hist.find(h => h.reservationNumber === resNum);
                 if (!r) return;
+                if (!r.discountProofImage || !r.hasCustomProof) {
+                    try {
+                        const cRes = await fetch(`${API_BASE_URL}/api/memory/order-proofs?res=${encodeURIComponent(r.reservationNumber || resNum)}&nocache=${Date.now()}`);
+                        if (cRes.ok) {
+                            const cData = await cRes.json();
+                            if (cData && typeof cData === 'object') {
+                                if (cData.discountProofImage && !r.discountProofImage) r.discountProofImage = cData.discountProofImage;
+                                if (cData.paymentProof && !r.hasCustomProof) {
+                                    r.paymentProof = cData.paymentProof;
+                                    r.hasCustomProof = true;
+                                }
+                                if (cData.paymentRef && (!r.paymentRef || r.paymentRef.startsWith('E-RECEIPT-'))) {
+                                    r.paymentRef = cData.paymentRef;
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
                 if (!r.paymentProof && typeof window.generateAdminEReceiptProof === 'function') {
                     r.paymentProof = window.generateAdminEReceiptProof(r);
                     r.paymentRef = r.paymentRef || (`E-RECEIPT-${r.reservationNumber}`);
-                    localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 }
+                localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 window.openProofModal(r);
             };
 
@@ -7252,7 +7273,14 @@ window.adminRawFilter = 'all';
             })
         });
 
-        if (!res.ok) throw new Error('Save rejected');
+        if (!res.ok) {
+            let errMsg = `Save rejected (HTTP ${res.status})`;
+            try {
+                const errJson = await res.json();
+                if (errJson && errJson.error) errMsg = errJson.error;
+            } catch (e) {}
+            throw new Error(errMsg);
+        }
         const dbData = await res.json();
         
         // Apply official DB ID
@@ -7332,8 +7360,10 @@ window.adminRawFilter = 'all';
             const lbl = el.closest('label');
             if (lbl) { lbl.style.borderColor = '#d1d5db'; lbl.style.background = 'white'; lbl.style.color = '#475569'; }
         });
-        document.getElementById('walkin-food-search').value = '';
-        document.getElementById('walkin-order-summary').innerHTML = "No items selected yet.";
+        const walkinFoodSearchEl = document.getElementById('walkin-food-search');
+        if (walkinFoodSearchEl) walkinFoodSearchEl.value = '';
+        const walkinOrderSummaryEl = document.getElementById('walkin-order-summary');
+        if (walkinOrderSummaryEl) walkinOrderSummaryEl.innerHTML = "No items selected yet.";
         currentSelection = {};
         tempWalkinOrder = {};
         window.setWalkinDoneness('');
@@ -7343,7 +7373,8 @@ window.adminRawFilter = 'all';
 
     } catch (err) {
         console.error("Failed to save:", err);
-        errorEl.textContent = 'Failed to connect to live.';
+        const msg = err && err.message ? err.message : '';
+        errorEl.textContent = (!msg || /Failed to fetch|NetworkError/i.test(msg)) ? 'Failed to connect to live.' : `Failed to save: ${msg}`;
         errorEl.style.display = 'block';
     } finally {
         submitBtn.innerHTML = originalBtnHtml;
@@ -8247,6 +8278,7 @@ window.adminRawFilter = 'all';
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
                 unifiedOpenProofModal(rec);
             };
+            window.__unifiedOpenProofByResNum = window.openProofByResNum;
             window.viewProof = window.openProofByResNum;
             window.viewPaymentProof = window.openProofByResNum;
 
