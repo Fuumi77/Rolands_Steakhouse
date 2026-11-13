@@ -752,23 +752,17 @@ app.post('/reserve', async (req, res) => {
             try {
                 const prefix = isPos ? 'POS-' : (isWalkin ? 'WI-' : (isVipBooking ? 'VIP-' : 'RES-'));
                 const fullResNum = `${prefix}${result.insertId}`;
-                let proofsMap = await getSystemMemoryKey('orderProofs', {});
-                if (!proofsMap || typeof proofsMap !== 'object' || Array.isArray(proofsMap)) proofsMap = {};
-                proofsMap[fullResNum] = {
+                const proofPayload = {
                     paymentProof: paymentProof || '',
                     discountProofImage: discountProofImage || '',
                     paymentRef: paymentRef || '',
                     updatedAt: Date.now()
                 };
-                // Keep most recent 60 proof records so storage stays fast and compact
-                const keys = Object.keys(proofsMap);
-                if (keys.length > 60) {
-                    keys.sort((a, b) => (proofsMap[b]?.updatedAt || 0) - (proofsMap[a]?.updatedAt || 0))
-                        .slice(60)
-                        .forEach(k => delete proofsMap[k]);
-                }
-                await setSystemMemoryKey('orderProofs', proofsMap);
-            } catch (e) {}
+                // Store per-order key so large base64 IDs/receipts never bloat or overflow a shared row
+                await setSystemMemoryKey(`orderProof_${fullResNum}`, proofPayload);
+            } catch (e) {
+                console.error('Failed to save orderProof:', e);
+            }
         }
 
         cachedReservations = null;
@@ -1535,11 +1529,19 @@ app.post('/api/memory/vouchers', async (req, res) => {
 /* 🧾 CROSS-DEVICE PAYMENT & DISCOUNT ID PROOF SYNC */
 app.get('/api/memory/order-proofs', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('orderProofs', {});
         const resNum = (req.query.res || '').trim();
-        if (resNum && data && typeof data === 'object') {
-            return res.json(data[resNum] || null);
+        if (resNum) {
+            const perOrder = await getSystemMemoryKey(`orderProof_${resNum}`, null);
+            if (perOrder && typeof perOrder === 'object') {
+                return res.json(perOrder);
+            }
+            const legacyMap = await getSystemMemoryKey('orderProofs', {});
+            if (legacyMap && typeof legacyMap === 'object' && legacyMap[resNum]) {
+                return res.json(legacyMap[resNum]);
+            }
+            return res.json(null);
         }
+        const data = await getSystemMemoryKey('orderProofs', {});
         res.json((data && typeof data === 'object' && !Array.isArray(data)) ? data : {});
     } catch (err) { res.json({}); }
 });
@@ -1548,16 +1550,18 @@ app.post('/api/memory/order-proofs', async (req, res) => {
     try {
         const { reservationNumber, paymentProof, discountProofImage, paymentRef } = req.body || {};
         if (!reservationNumber) return res.json({ success: false });
-        let proofsMap = await getSystemMemoryKey('orderProofs', {});
-        if (!proofsMap || typeof proofsMap !== 'object' || Array.isArray(proofsMap)) proofsMap = {};
-        const existing = proofsMap[reservationNumber] || {};
-        proofsMap[reservationNumber] = {
+        const key = `orderProof_${String(reservationNumber).trim()}`;
+        let existing = await getSystemMemoryKey(key, null);
+        if (!existing || typeof existing !== 'object') {
+            const legacyMap = await getSystemMemoryKey('orderProofs', {});
+            existing = (legacyMap && typeof legacyMap === 'object' && legacyMap[reservationNumber]) || {};
+        }
+        await setSystemMemoryKey(key, {
             paymentProof: paymentProof !== undefined ? paymentProof : (existing.paymentProof || ''),
             discountProofImage: discountProofImage !== undefined ? discountProofImage : (existing.discountProofImage || ''),
             paymentRef: paymentRef !== undefined ? paymentRef : (existing.paymentRef || ''),
             updatedAt: Date.now()
-        };
-        await setSystemMemoryKey('orderProofs', proofsMap);
+        });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
