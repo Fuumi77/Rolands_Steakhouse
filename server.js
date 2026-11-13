@@ -232,11 +232,17 @@ async function sendRestaurantEmail({ to, subject, html, text }) {
         });
         const rawText = await resp.text().catch(() => '');
         if (!resp.ok) throw new Error(`Webhook HTTP ${resp.status}`);
+        let parsed = null;
         try {
-            const parsed = JSON.parse(rawText);
-            if (parsed && parsed.success === false) throw new Error(parsed.error || 'Email webhook rejected request');
+            parsed = JSON.parse(rawText);
         } catch (e) {
-            if (e && e.message && !/JSON/i.test(e.message)) throw e;
+            if (/<html|accounts\.google\.com|Sign in/i.test(rawText)) {
+                throw new Error('Google Apps Script denied access — redeploy the Web App with "Who has access: Anyone".');
+            }
+            throw new Error('Email webhook returned an invalid response (expected JSON {success:true}).');
+        }
+        if (!parsed || parsed.success !== true) {
+            throw new Error((parsed && parsed.error) || 'Email webhook rejected request.');
         }
         return { sent: true, via: 'webhook' };
     }
