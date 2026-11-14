@@ -197,7 +197,10 @@ body.vip-mode .rsh-floating-summary-card {
         function getFloorPlanConfig() {
             try {
                 const saved = localStorage.getItem('floorPlanConfig');
-                if (saved) return JSON.parse(saved);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
             } catch(e) {}
             return [
                 { id: "Table 1", name: "Table 1", image: "images/T1.jpg" },
@@ -215,15 +218,6 @@ body.vip-mode .rsh-floating-summary-card {
         }
 
         const floorPlanContainer = document.getElementById('dynamic-floor-plan');
-        getFloorPlanConfig().forEach(t => {
-            if (t.isVip) return; // VIP Room is handled in its own section
-            const img = t.image || 'images/T1.jpg'; // fallback
-            const div = document.createElement('div');
-            div.className = 'table-seat available';
-            div.setAttribute('data-id', t.id);
-            div.innerHTML = `<img src="${img}" alt="${t.name}" data-label="${t.name}"><div class="table-label">${t.name}</div>${t.description ? `<div style="font-size:11px; color:#475569; margin-top:2px; text-align:center;">🪑 ${t.description}</div>` : ''}`;
-            floorPlanContainer.appendChild(div);
-        });
 
         // ──────────────────────────────────────────────────────────
         // LIGHTBOX
@@ -241,12 +235,15 @@ body.vip-mode .rsh-floating-summary-card {
         });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
-        document.querySelectorAll('.table-seat img').forEach(img => {
-            img.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openLightbox(this.src, this.getAttribute('data-label'));
+        if (floorPlanContainer) {
+            floorPlanContainer.addEventListener('click', function(e) {
+                const imgEl = e.target.closest('.table-seat img');
+                if (imgEl) {
+                    e.stopPropagation();
+                    openLightbox(imgEl.src, imgEl.getAttribute('data-label') || '');
+                }
             });
-        });
+        }
 
         // ──────────────────────────────────────────────────────────
         // VIP FULLSCREEN SLIDESHOW
@@ -398,126 +395,166 @@ body.vip-mode .rsh-floating-summary-card {
             }
         }
 
-        const overrides  = JSON.parse(localStorage.getItem('tableOverrides')     || '{}');
-        const history    = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+        function escapeSeatHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
 
-        document.querySelectorAll('.table-seat').forEach(table => {
-            const tId    = table.getAttribute('data-id');
-            const locked = overrides[tId] === 'unavailable';
+        window.renderTables = function () {
+            if (!floorPlanContainer) return;
+
+            const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+            const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const activeDate = localStorage.getItem('arrivalDate') || chosenDate || '';
+            const activeTime = localStorage.getItem('arrivalTime') || chosenTime || '';
+            const floorTables = getFloorPlanConfig().filter(t => t && !t.isVip);
 
             function parseTimeMins(t) {
                 if (!t) return -9999;
-                const [h, m] = t.split(':').map(Number);
+                const [h, m] = String(t).split(':').map(Number);
                 return (h * 60) + (m || 0);
             }
 
-            const chosenMins = parseTimeMins(chosenTime);
+            const chosenMins = parseTimeMins(activeTime);
+            let chosenStillValid = false;
 
-            const bookings = history.filter(r => {
-                const isMatchingTable = r.bookedTable === tId && r.arrivalDate === chosenDate;
-                if (!isMatchingTable) return false;
+            floorPlanContainer.innerHTML = '';
 
-                // 👉 FIX: Completely ignore Completed reservations so the table frees up instantly.
-                if (r.completedAt) return false;
+            floorTables.forEach(t => {
+                const tId = String(t.id || t.name || '').trim();
+                const tName = String(t.name || tId).trim();
+                if (!tId) return;
 
-                const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
-                
-                // 👉 FIX: ONLY show the table as taken if it is strictly 'approved' or 'seated'.
-                // (Pending reservations won't lock the table visually until you confirm them!)
-                if (aStatus !== 'approved' && aStatus !== 'seated') return false;
-                
-                return true;
-            });
-            
-            // 👉 FIX: 2.5 hours (150 minutes) gap check before and after!
-            const timeTaken  = bookings.some(r => {
-                const bMins = parseTimeMins(r.arrivalTime);
-                return Math.abs(bMins - chosenMins) < 150; 
-            });
+                const img = t.image || 'images/T1.jpg';
+                const table = document.createElement('div');
+                table.className = 'table-seat available';
+                table.setAttribute('data-id', tId);
+                table.innerHTML = `<img src="${escapeSeatHtml(img)}" alt="${escapeSeatHtml(tName)}" data-label="${escapeSeatHtml(tName)}"><div class="table-label">${escapeSeatHtml(tName)}</div>${t.description ? `<div style="font-size:11px; color:#475569; margin-top:2px; text-align:center;">🪑 ${escapeSeatHtml(t.description)}</div>` : ''}`;
 
-             // ── AVAILABILITY TIMELINE BADGES ──
-            const OPEN_MIN = 10 * 60 + 30, CLOSE_MIN = 21 * 60, STAY_MIN = 180; // 3h per booking
-            const fmt = m => {
-                let h = Math.floor(m / 60), mm = m % 60;
-                const ap = h >= 12 ? 'PM' : 'AM';
-                h = h % 12 || 12;
-                return `${h}:${String(mm).padStart(2, '0')} ${ap}`;
-            };
+                const locked = overrides[tId] === 'unavailable';
 
-            // Merge booked blocks
-            let busy = bookings
-                .map(b => { const s = parseTimeMins(b.arrivalTime); return [s, s + STAY_MIN]; })
-                .sort((a, b) => a[0] - b[0]);
-            const merged = [];
-            busy.forEach(iv => {
-                const last = merged[merged.length - 1];
-                if (last && iv[0] <= last[1]) last[1] = Math.max(last[1], iv[1]);
-                else merged.push([...iv]);
-            });
+                const bookings = history.filter(r => {
+                    const isMatchingTable = r.bookedTable === tId && r.arrivalDate === activeDate;
+                    if (!isMatchingTable) return false;
 
-            // Build ordered badges: free / reserved / free ...
-            const badges = [];
-            let cursor = OPEN_MIN;
-            merged.forEach(([s, e]) => {
-                if (s > cursor) badges.push({ free: true, text: `${fmt(cursor)} – ${fmt(s)}` });
-                badges.push({ free: false, text: `${fmt(s)} – ${fmt(e)}` });
-                cursor = Math.max(cursor, e);
-            });
-            if (cursor <= CLOSE_MIN) {
-                 badges.push({ free: true, text: cursor === OPEN_MIN ? '| Open all day' : `${fmt(cursor)} onwards` });
-            }
+                    // 👉 FIX: Completely ignore Completed reservations so the table frees up instantly.
+                    if (r.completedAt) return false;
 
-            const row = document.createElement('div');
-            row.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:3px;width:100%;align-items:center;';
-            badges.forEach(b => {
-                const tag = document.createElement('span');
-                tag.className = 'rsh-time-badge';
-                tag.textContent = (b.free ? '🟢 Available ' : '🔴 Reserved ') + b.text;
-                tag.style.cssText = `display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;
-                    border-radius:20px;white-space:nowrap;
-                    background:${b.free ? '#dcfce7' : '#fee2e2'};
-                    color:${b.free ? '#166534' : '#b91c1c'};
-                    border:1px solid ${b.free ? '#86efac' : '#fca5a5'};`;
-                row.appendChild(tag);
-            });
-            const lbl = table.querySelector('.table-label');
-            if (lbl) lbl.after(row);
-            
+                    const aStatus = String(r.approvalStatus || 'pending').toLowerCase().trim();
 
-            // 👉 FIX: Visually grey out the table so the customer knows it is unavailable
-            if (timeTaken || locked) {
-                table.classList.remove('available');
-                table.style.opacity = '0.5';
-                table.style.filter = 'grayscale(1)';
-            }
+                    // 👉 FIX: ONLY show the table as taken if it is strictly 'approved' or 'seated'.
+                    // (Pending reservations won't lock the table visually until you confirm them!)
+                    if (aStatus !== 'approved' && aStatus !== 'seated') return false;
 
-            // Click to select
-            table.addEventListener('click', () => {
-                if (locked) {
-                    if (typeof superModal === 'function') {
-                        superModal({ title: 'Table Locked 🔒', message: 'This table is currently unavailable for management reasons.' });
-                    } else alert('Table Locked.');
-                    return;
+                    return true;
+                });
+
+                // 👉 FIX: 2.5 hours (150 minutes) gap check before and after!
+                const timeTaken = bookings.some(r => {
+                    const bMins = parseTimeMins(r.arrivalTime);
+                    return Math.abs(bMins - chosenMins) < 150;
+                });
+
+                // ── AVAILABILITY TIMELINE BADGES ──
+                const OPEN_MIN = 10 * 60 + 30, CLOSE_MIN = 21 * 60, STAY_MIN = 180; // 3h per booking
+                const fmt = m => {
+                    let h = Math.floor(m / 60), mm = m % 60;
+                    const ap = h >= 12 ? 'PM' : 'AM';
+                    h = h % 12 || 12;
+                    return `${h}:${String(mm).padStart(2, '0')} ${ap}`;
+                };
+
+                // Merge booked blocks
+                const busy = bookings
+                    .map(b => { const s = parseTimeMins(b.arrivalTime); return [s, s + STAY_MIN]; })
+                    .sort((a, b) => a[0] - b[0]);
+                const merged = [];
+                busy.forEach(iv => {
+                    const last = merged[merged.length - 1];
+                    if (last && iv[0] <= last[1]) last[1] = Math.max(last[1], iv[1]);
+                    else merged.push([...iv]);
+                });
+
+                // Build ordered badges: free / reserved / free ...
+                const badges = [];
+                let cursor = OPEN_MIN;
+                merged.forEach(([s, e]) => {
+                    if (s > cursor) badges.push({ free: true, text: `${fmt(cursor)} – ${fmt(s)}` });
+                    badges.push({ free: false, text: `${fmt(s)} – ${fmt(e)}` });
+                    cursor = Math.max(cursor, e);
+                });
+                if (cursor <= CLOSE_MIN) {
+                    badges.push({ free: true, text: cursor === OPEN_MIN ? '| Open all day' : `${fmt(cursor)} onwards` });
                 }
 
-                if (timeTaken) {
-                    // Stop the user from selecting it and explain why
-                    if (typeof superModal === 'function') {
-                        superModal({ 
-                            title: 'Table Unavailable ⚠️', 
-                            message: `This table already has a confirmed booking within 2.5 hours of your arrival time (${chosenTime}). Please choose another table or change your time.` 
-                        });
-                    } else alert('Table Unavailable due to time conflict.');
-                    return;
+                const row = document.createElement('div');
+                row.className = 'rsh-time-wrapper';
+                row.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:3px;width:100%;align-items:center;';
+                badges.forEach(b => {
+                    const tag = document.createElement('span');
+                    tag.className = 'rsh-time-badge';
+                    tag.textContent = (b.free ? '🟢 Available ' : '🔴 Reserved ') + b.text;
+                    tag.style.cssText = `display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;
+                        border-radius:20px;white-space:nowrap;
+                        background:${b.free ? '#dcfce7' : '#fee2e2'};
+                        color:${b.free ? '#166534' : '#b91c1c'};
+                        border:1px solid ${b.free ? '#86efac' : '#fca5a5'};`;
+                    row.appendChild(tag);
+                });
+                const lbl = table.querySelector('.table-label');
+                if (lbl) lbl.after(row);
+
+                // 👉 FIX: Visually grey out the table so the customer knows it is unavailable
+                if (timeTaken || locked) {
+                    table.classList.remove('available');
+                    table.style.opacity = '0.5';
+                    table.style.filter = 'grayscale(1)';
+                } else if (chosenTableId && chosenTableId === tId) {
+                    table.classList.add('selected');
+                    chosenStillValid = true;
                 }
 
-                document.querySelectorAll('.table-seat').forEach(t => t.classList.remove('selected'));
-                table.classList.add('selected');
-                chosenTableId = tId;
-                displaySpan.textContent = tId;
-                confirmBtn.disabled = false;
+                // Click to select
+                table.addEventListener('click', () => {
+                    if (locked) {
+                        if (typeof superModal === 'function') {
+                            superModal({ title: 'Table Locked 🔒', message: 'This table is currently unavailable for management reasons.' });
+                        } else alert('Table Locked.');
+                        return;
+                    }
+
+                    if (timeTaken) {
+                        // Stop the user from selecting it and explain why
+                        if (typeof superModal === 'function') {
+                            superModal({
+                                title: 'Table Unavailable ⚠️',
+                                message: `This table already has a confirmed booking within 2.5 hours of your arrival time (${activeTime}). Please choose another table or change your time.`
+                            });
+                        } else alert('Table Unavailable due to time conflict.');
+                        return;
+                    }
+
+                    document.querySelectorAll('.table-seat').forEach(seat => seat.classList.remove('selected'));
+                    table.classList.add('selected');
+                    chosenTableId = tId;
+                    displaySpan.textContent = tId;
+                    confirmBtn.disabled = false;
+                });
+
+                floorPlanContainer.appendChild(table);
             });
-        });
+
+            if (!chosenStillValid && chosenTableId) {
+                chosenTableId = null;
+                if (displaySpan) displaySpan.textContent = 'None';
+                if (confirmBtn) confirmBtn.disabled = true;
+            }
+
+            if (typeof window.__syncSeatSelectionCards === 'function') {
+                window.__syncSeatSelectionCards();
+            }
+        };
+
+        window.renderTables();
 
         // Confirm booking (Standard / Priority)
         confirmBtn.addEventListener('click', () => {
@@ -770,10 +807,11 @@ body.vip-mode .rsh-floating-summary-card {
         // 👉 Sync Descriptions + Taken Reservation Times + Floor Overrides across all devices!
         async function syncAllTableDataFromCloud() {
             try {
+                const activeBranch = (typeof window.getEffectiveBranch === 'function') ? window.getEffectiveBranch() : 'General Santos City';
                 const [cfgRes, ovrRes, resRes] = await Promise.all([
-                    fetch(`${API_BASE}/api/memory/floor-plan-config?nocache=${Date.now()}`).catch(() => null),
-                    fetch(`${API_BASE}/api/memory/table-overrides?nocache=${Date.now()}`).catch(() => null),
-                    fetch(`${API_BASE}/reservations?nocache=${Date.now()}`).catch(() => null)
+                    fetch(`${API_BASE}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBranch)}&nocache=${Date.now()}`).catch(() => null),
+                    fetch(`${API_BASE}/api/memory/table-overrides?branch=${encodeURIComponent(activeBranch)}&nocache=${Date.now()}`).catch(() => null),
+                    fetch(`${API_BASE}/reservations?branch=${encodeURIComponent(activeBranch)}&nocache=${Date.now()}`).catch(() => null)
                 ]);
 
                 let changed = false;
@@ -852,12 +890,9 @@ body.vip-mode .rsh-floating-summary-card {
                     lastCloudSig = currentSig;
                     loadLocalFloorMap();
 
-                    // Call whichever native render function seat-selection.html uses
-                    ['renderTables', 'updateTables', 'loadTables', 'checkTableAvailability', 'initTables', 'renderFloorPlan'].forEach(fn => {
-                        if (typeof window[fn] === 'function') {
-                            try { window[fn](); } catch (e) {}
-                        }
-                    });
+                    if (typeof window.renderTables === 'function') {
+                        try { window.renderTables(); } catch (e) {}
+                    }
                     window.dispatchEvent(new Event('storage'));
                     setTimeout(syncTableCards, 60);
                 }
@@ -872,7 +907,9 @@ body.vip-mode .rsh-floating-summary-card {
             // Remove any leftover duplicate description elements from earlier
             document.querySelectorAll('.rsh-table-desc-line').forEach(el => el.remove());
 
-            const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
+            const imgs = Array.from(document.querySelectorAll('#dynamic-floor-plan .table-seat img, img')).filter((img, idx, arr) => {
+                if (arr.indexOf(img) !== idx) return false;
+                if (img.closest('#dynamic-floor-plan .table-seat')) return true;
                 const parentText = (img.parentElement?.innerText || '').trim();
                 return /^Table\s*\d+|VIP/i.test(parentText);
             });
@@ -892,16 +929,16 @@ body.vip-mode .rsh-floating-summary-card {
                 }
 
                 // Identify table name & deduplicate any repeated description lines inside the card
-                let tableTitleText = '';
+                let tableTitleText = (card.getAttribute('data-id') || '').trim();
                 const seenTexts = new Set();
 
                 Array.from(card.children).forEach(child => {
-                    if (child === img || child.classList.contains('rsh-table-select-btn')) return;
+                    if (child === img || child.classList.contains('rsh-table-select-btn') || child.classList.contains('rsh-time-wrapper')) return;
                     const txt = (child.innerText || '').trim();
                     if (!txt) return;
 
-                    if (/^Table\s*\d+|VIP/i.test(txt) && !tableTitleText) {
-                        tableTitleText = txt.split('\n')[0].trim();
+                    if (child.classList.contains('table-label') || (/^Table\s*\d+|VIP/i.test(txt) && !tableTitleText)) {
+                        if (!tableTitleText) tableTitleText = txt.split('\n')[0].trim();
                         child.style.fontSize = '16px';
                         child.style.fontWeight = '800';
                     } else {
@@ -968,6 +1005,8 @@ body.vip-mode .rsh-floating-summary-card {
                 }
             });
         }
+
+        window.__syncSeatSelectionCards = syncTableCards;
 
         document.addEventListener('DOMContentLoaded', () => {
             syncTableCards();
