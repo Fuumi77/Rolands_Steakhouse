@@ -729,6 +729,14 @@
                         </div>
                     </div>
 
+                    <div style="margin-bottom:14px;">
+                        <label
+                            style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Customer Email
+                            <span style="font-weight:500; color:#64748b;">(Optional — sends E-Receipt, QR Proof &amp; enables refund emails)</span></label>
+                        <input type="email" id="walkin-email" placeholder="e.g. customer@gmail.com" autocomplete="new-password"
+                            style="width:100%; padding:11px 13px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
+                    </div>
+
                     <!-- Priority fields -->
                     <div id="walkin-priority-fields">
                         <div style="margin-bottom:14px;">
@@ -7177,6 +7185,7 @@ window.adminRawFilter = 'all';
 
     const name = (document.getElementById('walkin-name').value || '').trim();
     const contact = (document.getElementById('walkin-contact').value || '').trim();
+    const walkinEmail = (document.getElementById('walkin-email')?.value || '').trim();
     const date = document.getElementById('walkin-date').value;
     const time = document.getElementById('walkin-time').value;
     const table = document.getElementById('walkin-table').value;
@@ -7201,6 +7210,11 @@ window.adminRawFilter = 'all';
         errorEl.textContent = 'A valid 11-digit contact number is required.'; 
         errorEl.style.display = 'block'; 
         return; 
+    }
+    if (walkinEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(walkinEmail)) {
+        errorEl.textContent = 'Please enter a valid customer email address (or leave it blank).';
+        errorEl.style.display = 'block';
+        return;
     }
     
     if (!date) { errorEl.textContent = 'Arrival date is required.'; errorEl.style.display = 'block'; return; }
@@ -7257,17 +7271,22 @@ window.adminRawFilter = 'all';
     // 👉 FIX: Restored the ₱200 reservation fee for Standard Walk-ins!
     const finalPaymentAmount = walkinType === 'priority' ? payment : 200;
 
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (v) => String(v || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
     const receiptHtml = `
         <div style="text-align: left; font-size: 14px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px;">
-            <div style="margin-bottom: 8px;"><strong>Customer:</strong> ${name}</div>
-            <div style="margin-bottom: 8px;"><strong>Table:</strong> ${table}</div>
-            <div style="margin-bottom: 8px;"><strong>Arrival:</strong> ${displayDt}</div>
+            <div style="margin-bottom: 8px;"><strong>Customer:</strong> ${esc(name)}</div>
+            ${walkinEmail ? `<div style="margin-bottom: 8px;"><strong>Email:</strong> ${esc(walkinEmail)} <span style="font-size:11px; color:#15803d; font-weight:600;">(E-Receipt &amp; QR will be sent)</span></div>` : ''}
+            <div style="margin-bottom: 8px;"><strong>Table:</strong> ${esc(table)}</div>
+            <div style="margin-bottom: 8px;"><strong>Arrival:</strong> ${esc(displayDt)}</div>
             <div style="margin-bottom: 8px;"><strong>Type:</strong> ${walkinType === 'priority' ? '⭐ Priority' : '🪑 Standard'}</div>
-            <div style="margin-bottom: 8px;"><strong>Guests:</strong> ${guests || 'N/A'}</div>
-            ${orderSummary ? `<div style="margin-bottom: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Food Order:</strong><br>${orderSummary}</div>` : ''}
-            ${donenessVal ? `<div style="margin-bottom: 8px;"><strong>Beef Preference:</strong> 🥩 ${donenessVal}</div>` : ''}
-            ${walkinType === 'priority' && kitchenTiming ? `<div style="margin-bottom: 8px;"><strong>Kitchen Timing:</strong> ⏱️ ${kitchenTiming}</div>` : ''}
-            ${notes ? `<div style="margin-bottom: 8px;"><strong>Notes:</strong> ${notes}</div>` : ''}
+            <div style="margin-bottom: 8px;"><strong>Guests:</strong> ${esc(guests || 'N/A')}</div>
+            ${orderSummary ? `<div style="margin-bottom: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Food Order:</strong><br>${esc(orderSummary)}</div>` : ''}
+            ${donenessVal ? `<div style="margin-bottom: 8px;"><strong>Beef Preference:</strong> 🥩 ${esc(donenessVal)}</div>` : ''}
+            ${walkinType === 'priority' && kitchenTiming ? `<div style="margin-bottom: 8px;"><strong>Kitchen Timing:</strong> ⏱️ ${esc(kitchenTiming)}</div>` : ''}
+            ${notes ? `<div style="margin-bottom: 8px;"><strong>Notes:</strong> ${esc(notes)}</div>` : ''}
             <div style="margin-top: 12px; font-size: 16px; color: #1b5e20; border-top: 1px solid #e2e8f0; padding-top: 8px;"><strong>Total Payment:</strong> ₱${finalPaymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
         <p style="margin-top: 15px; font-size: 13px; color: #64748b;">Please verify these details before saving the reservation.</p>
@@ -7314,7 +7333,9 @@ window.adminRawFilter = 'all';
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: name,
-                email: `walkin-${Date.now()}@temp.com`,
+                email: walkinEmail || `walkin-${Date.now()}@temp.com`,
+                bookedBy: 'staff',
+                isWalkin: true,
                 phone: contact,
                 date: date,
                 time: time,
@@ -7365,6 +7386,8 @@ window.adminRawFilter = 'all';
             arrivalTime: time,
             arrivalDateTimeDisplay: displayDt,
             customerName: name,
+            email: walkinEmail,
+            customerEmail: walkinEmail,
             contactNumber: contact,
             bookedTable: table,
             guestCount: guests,
@@ -7391,6 +7414,40 @@ window.adminRawFilter = 'all';
         history.push(reservation);
         localStorage.setItem('reservationHistory', JSON.stringify(history));
 
+        // Send Official E-Receipt & QR Proof email in parallel without blocking the Save flow
+        if (walkinEmail) {
+            const emailOrderSummary = (walkinType === 'priority')
+                ? `${orderSummary || 'Walk-in Priority Order'}${donenessVal ? ` (Beef: ${donenessVal})` : ''}${kitchenTiming ? ` — ${kitchenTiming}` : ''}`
+                : (notes ? `Standard Table Reservation — ${notes}` : 'Standard Table Reservation (Deposit)');
+
+            fetch(`${API_BASE_URL}/api/send-receipt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: walkinEmail,
+                    customerName: name,
+                    amount: finalPaymentAmount,
+                    reservationNumber: resNo,
+                    paymentMethod: walkinType === 'priority' ? 'Walk-in Priority (Manual)' : 'Walk-in Standard (Manual)',
+                    arrivalDateTime: displayDt,
+                    table: table,
+                    orderSummary: emailOrderSummary,
+                    branch: activeBranch
+                })
+            }).then(async r => {
+                const d = await r.json().catch(() => ({}));
+                if (d && d.emailSent) {
+                    if (window.showToast) window.showToast(`E-Receipt emailed to ${walkinEmail} (${resNo})`, 'success', 4000);
+                } else {
+                    const warn = (d && d.warning) ? ` (${d.warning})` : '';
+                    if (window.showToast) window.showToast(`Reservation ${resNo} saved, but email could not be sent${warn}`, 'error', 5000);
+                }
+            }).catch(e => {
+                console.warn('Walk-in receipt email error:', e);
+                if (window.showToast) window.showToast(`Reservation ${resNo} saved, but email could not be sent.`, 'error', 4000);
+            });
+        }
+
         if (typeof syncReservations === 'function') await syncReservations();
         if (typeof renderMenuManagement === 'function') renderMenuManagement();
 
@@ -7398,7 +7455,7 @@ window.adminRawFilter = 'all';
         if (typeof superModal === 'function') {
             await superModal({
                 title: 'Reservation Saved! 🎉',
-                message: `Walk-in reservation for <b>${name}</b> at <b>${table}</b> has been successfully saved to the list.`,
+                message: `Walk-in reservation (<b>${esc(resNo)}</b>) for <b>${esc(name)}</b> at <b>${esc(table)}</b> has been successfully saved to the list.${walkinEmail ? `<br><br><span style="font-size:13px; color:#15803d; font-weight:600;">📧 Official E-Receipt &amp; QR Proof is being emailed to ${esc(walkinEmail)}.</span>` : ''}`,
                 confirmText: 'Done'
             });
         } else {
@@ -7408,6 +7465,8 @@ window.adminRawFilter = 'all';
         // Reset form
         document.getElementById('walkin-name').value = '';
         document.getElementById('walkin-contact').value = '';
+        const walkinEmailEl = document.getElementById('walkin-email');
+        if (walkinEmailEl) walkinEmailEl.value = '';
         document.getElementById('walkin-date').value = '';
         document.getElementById('walkin-time').value = '';
         document.getElementById('walkin-table').value = '';
@@ -7479,7 +7538,7 @@ window.adminRawFilter = 'all';
                                 ${r.reservationType === 'priority' ? '⭐ Priority' : '🪑 Standard'}
                             </span>
                         </div>
-                        <div class="muted" style="margin-top:4px; font-size:13px;">${r.bookedTable} &nbsp;·&nbsp; ${r.arrivalDateTimeDisplay}</div>
+                        <div class="muted" style="margin-top:4px; font-size:13px;">${r.bookedTable} &nbsp;·&nbsp; ${r.arrivalDateTimeDisplay}${r.email ? ` &nbsp;·&nbsp; ✉️ ${(typeof window.escapeHtml === 'function') ? window.escapeHtml(r.email) : r.email}` : ''}</div>
                         ${foodLine ? `<div style="font-size:12px; color:#64748b; margin-top:3px;">🍽️ ${foodLine}</div>` : ''}
                     </div>
                     <div style="font-weight:800; font-size:16px; color:#1b5e20;">₱${Number(r.paymentAmount).toLocaleString()}</div>
