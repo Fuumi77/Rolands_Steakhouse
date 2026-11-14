@@ -8,11 +8,11 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="css/admin.css?v=2.0">
+    <link rel="stylesheet" href="css/admin.css?v=2.1">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=6.7"></script>
+    <script src="js/inventory-system.js?v=6.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
@@ -1736,30 +1736,6 @@ window.readReservationHistory = function () {
             return `plain:${str}`;
         }
 
-        function parseReservationArrivalDateTime(r) {
-            if (!r || !r.arrivalTime) return null;
-            const timeRaw = String(r.arrivalTime).trim();
-            const ampmMatch = timeRaw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
-            if (!ampmMatch) return null;
-            let h = parseInt(ampmMatch[1], 10);
-            const m = parseInt(ampmMatch[2], 10);
-            const mer = (ampmMatch[3] || '').toUpperCase();
-            if (isNaN(h) || isNaN(m)) return null;
-            if (mer === 'PM' && h < 12) h += 12;
-            if (mer === 'AM' && h === 12) h = 0;
-
-            const rawDate = String(r.arrivalDate || '').trim();
-            if (!rawDate) return null;
-
-            const ymd = rawDate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-            if (ymd) {
-                return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), h, m, 0, 0);
-            }
-            const parsedDate = new Date(rawDate);
-            if (isNaN(parsedDate.getTime())) return null;
-            return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), h, m, 0, 0);
-        }
-
         // 👉 Reservations arriving within 2 hours TODAY that haven't arrived/been served yet
         function getArrivingSoonIds() {
             const now = new Date();
@@ -1770,23 +1746,7 @@ window.readReservationHistory = function () {
             hist.forEach(r => {
                 if (!r) return;
                 if (activeBranch && r.branch && r.branch !== activeBranch) return;
-
-                // skip anything already seated, finished, or cancelled
-                const aStatus = String(r.approvalStatus || '').toLowerCase();
-                const kds = String(r.kdsStatus || '').toLowerCase();
-                if (['seated', 'completed', 'cancelled', 'rejected'].includes(aStatus)) return;
-                if (kds === 'served' || kds === 'cancelled') return;
-                if (String(r.paymentStatus || '').toLowerCase() === 'refunded') return;
-
-                // must be a confirmed booking waiting for arrival
-                const isConfirmed = aStatus === 'approved' || (!aStatus && String(r.status || '').toLowerCase() === 'approved');
-                if (!isConfirmed) return;
-
-                const arrival = parseReservationArrivalDateTime(r);
-                if (!arrival) return;
-
-                const diffMins = (arrival - now) / 60000;
-                if (diffMins > 0 && diffMins <= 120) {
+                if (typeof window.getReservationArrivalMinsLeft === 'function' && window.getReservationArrivalMinsLeft(r, now) !== null) {
                     soon.add(r.reservationNumber);
                 }
             });
@@ -2009,6 +1969,13 @@ window.readReservationHistory = function () {
                             match.arrivalTime = dbRes.arrivalTime;
                             updated = true;
                         }
+                        const resolvedCreatedAt = typeof window.resolveSyncedCreatedAt === 'function'
+                            ? window.resolveSyncedCreatedAt(match, dbRes)
+                            : (dbRes.createdAt || null);
+                        if (match.createdAt !== resolvedCreatedAt) {
+                            match.createdAt = resolvedCreatedAt;
+                            updated = true;
+                        }
 
                         if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
@@ -2085,7 +2052,7 @@ window.readReservationHistory = function () {
                             paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
                             kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
-                            createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
+                            createdAt: dbRes.createdAt || null,
                             foods: cloudFoods, 
                             beefNote: cloudNote,
                             notes: cloudNote,
@@ -2103,6 +2070,9 @@ window.readReservationHistory = function () {
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
                     renderDashboard();
+                } else {
+                    if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
+                    if (typeof window.applySearch === 'function') window.applySearch();
                 }
             } catch (err) {
                 console.error("Sync error:", err);
@@ -2355,32 +2325,41 @@ window.readReservationHistory = function () {
             }
 
             function renderRows(rows) {
+                const now = new Date();
+                const nowMs = now.getTime();
                 const arrivingSoon = getArrivingSoonIds();
                 if (typeof window.updateSidebarResBadge === 'function') window.updateSidebarResBadge();
                 const rowsSig = JSON.stringify({
                     arrivingSoon: Array.from(arrivingSoon),
-                    rows: rows.map(r => [
-                        r.reservationNumber,
-                        r.customerName,
-                        r.bookedTable,
-                        r.arrivalDate,
-                        r.arrivalTime,
-                        r.reservationType,
-                        r.approvalStatus,
-                        r.paymentStatus,
-                        r.refundStatus,
-                        r.refundAmount,
-                        r.kdsStatus,
-                        r.paymentAmount,
-                        r.discountType,
-                        r.discountAmount,
-                        r.voucherCode,
-                        r.completedAt,
-                        r.cancelledBy,
-                        r.cancellationReason,
-                        foodText(r),
-                        Boolean(r.createdAt && (Date.now() - new Date(r.createdAt).getTime() < 10000))
-                    ])
+                    rows: rows.map(r => {
+                        const isNew = typeof window.isReservationNew === 'function' ? window.isReservationNew(r, nowMs) : false;
+                        const soonMins = arrivingSoon.has(r.reservationNumber) && typeof window.getReservationArrivalMinsLeft === 'function'
+                            ? window.getReservationArrivalMinsLeft(r, now)
+                            : null;
+                        return [
+                            r.reservationNumber,
+                            r.customerName,
+                            r.bookedTable,
+                            r.arrivalDate,
+                            r.arrivalTime,
+                            r.reservationType,
+                            r.approvalStatus,
+                            r.paymentStatus,
+                            r.refundStatus,
+                            r.refundAmount,
+                            r.kdsStatus,
+                            r.paymentAmount,
+                            r.discountType,
+                            r.discountAmount,
+                            r.voucherCode,
+                            r.completedAt,
+                            r.cancelledBy,
+                            r.cancellationReason,
+                            foodText(r),
+                            isNew,
+                            soonMins
+                        ];
+                    })
                 });
                 if (window.__lastAdminRowsSig === rowsSig && historyTbody.children.length > 0) {
                     return;
@@ -2402,12 +2381,17 @@ window.readReservationHistory = function () {
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
 
-                    // NEW HIGHLIGHT LOGIC: Less than 1 minute old
-                    const createdTime = r.createdAt ? new Date(r.createdAt).getTime() : 0;
-                    const isNew = createdTime && (Date.now() - createdTime < 10000);
+                    // NEW HIGHLIGHT LOGIC: Show only for 3 minutes from real reservation creation time
+                    const isNew = typeof window.isReservationNew === 'function' ? window.isReservationNew(r, nowMs) : false;
+                    const soonMins = arrivingSoon.has(r.reservationNumber) && typeof window.getReservationArrivalMinsLeft === 'function'
+                        ? window.getReservationArrivalMinsLeft(r, now)
+                        : null;
 
                     if (isNew) {
                         tr.classList.add('new-order-row');
+                    }
+                    if (soonMins !== null) {
+                        tr.classList.add('arriving-soon-row');
                     }
 
                     const foods = foodText(r);
@@ -2423,7 +2407,19 @@ window.readReservationHistory = function () {
                     tdReservation.appendChild(resNumText);
 
                     const tdArrival = document.createElement('td');
-                    tdArrival.textContent = formatArrival(r);
+                    const arrivalText = document.createElement('div');
+                    arrivalText.textContent = formatArrival(r);
+                    tdArrival.appendChild(arrivalText);
+                    if (soonMins !== null) {
+                        tdArrival.title = 'Within 2 hours of reserved time';
+                        const countdown = typeof window.formatArrivalCountdown === 'function'
+                            ? window.formatArrivalCountdown(soonMins)
+                            : `${soonMins}m`;
+                        const soonBadge = document.createElement('div');
+                        soonBadge.className = 'soon-badge';
+                        soonBadge.textContent = `⏰ SOON · ${countdown}`;
+                        tdArrival.appendChild(soonBadge);
+                    }
 
                     const tdCustomer = document.createElement('td');
                     const isCustCancelled = (r.approvalStatus === 'rejected' || r.approvalStatus === 'cancelled') && r.cancelledBy === 'customer';
