@@ -104,7 +104,9 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_type VARCHAR(50) DEFAULT 'none'").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN voucher_code VARCHAR(50) DEFAULT ''").catch(()=>{});
-    await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(50) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN table_label VARCHAR(100) DEFAULT ''").catch(()=>{});
+    await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(150) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
+    await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_key VARCHAR(150)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
     await db.query("ALTER TABLE customer_credentials ADD COLUMN phone VARCHAR(20) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE staff_credentials ADD COLUMN assigned_branch VARCHAR(100) DEFAULT 'General Santos City'").catch(()=>{});
@@ -740,7 +742,7 @@ app.get('/reservations', async (req, res) => {
                 SELECT r.reservation_id, c.name, c.email, c.phone,
                        DATE_FORMAT(r.reservation_time, '%Y-%m-%d') AS ph_date,
                        DATE_FORMAT(r.reservation_time, '%H:%i') AS ph_time,
-                       r.reservation_time, r.table_number, r.status, r.booked_by,
+                       r.reservation_time, r.table_number, r.table_label, r.status, r.booked_by,
                        r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
                        r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at,
                        r.discount_type, r.discount_amount, r.voucher_code
@@ -770,7 +772,8 @@ app.get('/reservations', async (req, res) => {
                     });
                 }
 
-                const tableLabel = (Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`;
+                const savedTableLabel = (r.table_label || '').trim();
+                const tableLabel = savedTableLabel || ((Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`);
                 let displayCustomerName = r.name || 'Guest';
                 if (isPos && (!r.name || /^(walk-in guest|walk-in|pos customer|guest)$/i.test(String(r.name).trim()))) {
                     displayCustomerName = `Dine-In Customer (${tableLabel})`;
@@ -845,8 +848,10 @@ app.post('/reserve', async (req, res) => {
             customerId = result.insertId;
         }
 
-        const isVipBooking = /vip/i.test(String(table || '')) || String(reservationType || '').toLowerCase() === 'vip';
-        const tableInt = isVipBooking ? 99 : (parseInt(String(table).replace(/[^0-9]/g, '')) || 1);
+        const rawTableStr = String(table || '').trim();
+        const isVipBooking = /vip/i.test(rawTableStr) || String(reservationType || '').toLowerCase() === 'vip';
+        const tableInt = isVipBooking ? 99 : (parseInt(rawTableStr.replace(/[^0-9]/g, '')) || 1);
+        const tableLabel = rawTableStr || (isVipBooking ? 'VIP Room' : `Table ${tableInt}`);
         const finalResType = isVipBooking ? 'vip' : (reservationType || 'standard');
 
         const safeDate = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : new Date().toISOString().split('T')[0];
@@ -870,8 +875,8 @@ app.post('/reserve', async (req, res) => {
         const finalVoucher = String(voucherCode || '').trim();
 
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
+            'INSERT INTO reservation_log (customer_id, table_number, table_label, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, tableLabel, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
         );
 
         // Save uploaded payment screenshot & discount ID/voucher photo in cloud memory for cross-device Proof Viewer
@@ -1487,7 +1492,9 @@ app.post('/api/reservations/update-order', async (req, res) => {
                 }
             }
 
-            const tableInt = bookedTable ? (/vip/i.test(String(bookedTable)) ? 99 : (parseInt(String(bookedTable).replace(/[^0-9]/g, '')) || null)) : null;
+            const rawBookedTable = bookedTable ? String(bookedTable).trim() : '';
+            const tableInt = rawBookedTable ? (/vip/i.test(rawBookedTable) ? 99 : (parseInt(rawBookedTable.replace(/[^0-9]/g, '')) || 1)) : null;
+            const tableLabelVal = rawBookedTable || null;
             let resTime = null;
             if (arrivalDate && /^\d{4}-\d{2}-\d{2}$/.test(arrivalDate)) {
                 const safeTime = (arrivalTime && /^\d{2}:\d{2}/.test(arrivalTime)) ? arrivalTime.substring(0, 5) : '12:00';
@@ -1499,11 +1506,12 @@ app.post('/api/reservations/update-order', async (req, res) => {
                  SET payment_amount = ?, 
                      foods = ?, 
                      table_number = COALESCE(?, table_number),
+                     table_label = COALESCE(?, table_label),
                      reservation_time = COALESCE(?, reservation_time),
                      status = COALESCE(?, status), 
                      kds_status = COALESCE(?, kds_status) 
                  WHERE reservation_id = ?`, 
-                [Number(paymentAmount) || 0, foodsJson, tableInt, resTime, status || null, kdsStatus || null, numericId]
+                [Number(paymentAmount) || 0, foodsJson, tableInt, tableLabelVal, resTime, status || null, kdsStatus || null, numericId]
             );
         }
         cachedReservations = null;
