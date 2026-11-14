@@ -818,7 +818,7 @@ app.get('/reservations', async (req, res) => {
 });
 
 app.post('/reserve', async (req, res) => {
-    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, beefNote, notes, kitchenTiming, branch, discountType, discountAmount, voucherCode, paymentProof, discountProofImage, paymentRef } = req.body;
+    const { name, email, date, time, table, status, reservationType, paymentAmount, foods, beefNote, notes, kitchenTiming, branch, discountType, discountAmount, voucherCode, paymentProof, discountProofImage, paymentRef, bookedBy: reqBookedBy, isWalkin: reqIsWalkin } = req.body;
     const finalBranch = (branch || req.query.branch || 'General Santos City').trim();
     try {
         const cleanName = (name || 'Guest').trim();
@@ -826,8 +826,8 @@ app.post('/reserve', async (req, res) => {
 
         let customers = [];
         if (cleanEmail && !cleanEmail.includes('@temp.com')) {
-            [customers] = await db.query('SELECT customer_id, name FROM customer_credentials WHERE email = ? LIMIT 1', [cleanEmail]);
-            if (customers.length > 0 && cleanName && customers[0].name !== cleanName) {
+            [customers] = await db.query('SELECT customer_id, name, password_hash FROM customer_credentials WHERE email = ? LIMIT 1', [cleanEmail]);
+            if (customers.length > 0 && cleanName && customers[0].name !== cleanName && customers[0].password_hash === 'guest') {
                 await db.query('UPDATE customer_credentials SET name = ? WHERE customer_id = ?', [cleanName, customers[0].customer_id]);
             }
         } else {
@@ -853,9 +853,9 @@ app.post('/reserve', async (req, res) => {
         const safeTime = (time && /^\d{2}:\d{2}/.test(time)) ? time.substring(0, 5) : '12:00';
         const reservationTime = `${safeDate} ${safeTime}:00`;
 
-        const isWalkin = cleanEmail.includes('walkin-');
-        const isPos = cleanEmail.includes('pos-'); 
-        const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online'); 
+        const isWalkin = String(reqBookedBy || '').toLowerCase() === 'staff' || reqIsWalkin === true || cleanEmail.includes('walkin-');
+        const isPos = !isWalkin && (String(reqBookedBy || '').toLowerCase() === 'pos' || cleanEmail.includes('pos-'));
+        const bookedBy = isWalkin ? 'staff' : (isPos ? 'pos' : 'online');
         let finalBeefNote = String(beefNote || notes || '').trim();
         if (kitchenTiming && !/KITCHEN_TIMING/i.test(finalBeefNote)) {
             finalBeefNote = finalBeefNote ? `${finalBeefNote} | [[KITCHEN_TIMING: ${kitchenTiming}]]` : `[[KITCHEN_TIMING: ${kitchenTiming}]]`;
