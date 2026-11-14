@@ -3285,46 +3285,6 @@
         }
     };
 
-    // Sync branch-specific Floor Plan Config & Table Overrides from Cloud on every page (including seat-selection.html!)
-    window.syncBranchFloorPlanFromCloud = async function () {
-        try {
-            const branch = window.getEffectiveBranch();
-            const [cfgRes, ovrRes] = await Promise.all([
-                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
-                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`)
-            ]);
-            let changed = false;
-            if (cfgRes.ok) {
-                const cloudCfg = await cfgRes.json();
-                if (Array.isArray(cloudCfg) && cloudCfg.length > 0) {
-                    const prev = localStorage.getItem('floorPlanConfig');
-                    const next = JSON.stringify(cloudCfg);
-                    if (prev !== next) {
-                        localStorage.setItem('floorPlanConfig', next);
-                        changed = true;
-                    }
-                }
-            }
-            if (ovrRes.ok) {
-                const cloudOvr = await ovrRes.json();
-                if (cloudOvr && typeof cloudOvr === 'object') {
-                    const prevOvr = localStorage.getItem('tableOverrides');
-                    const nextOvr = JSON.stringify(cloudOvr);
-                    if (prevOvr !== nextOvr) {
-                        localStorage.setItem('tableOverrides', nextOvr);
-                        changed = true;
-                    }
-                }
-            }
-            if (changed) {
-                if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
-                if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
-                if (typeof window.renderTables === 'function') window.renderTables();
-                window.dispatchEvent(new Event('storage'));
-            }
-        } catch (e) { }
-    };
-
     // 4. Update Customer UI (index.html, payment.html, receipt.html, pos.html, superadmin.html)
     window.applyCustomerBranchUI = function () {
         const bName = window.getEffectiveBranch();
@@ -3491,6 +3451,9 @@
                 if (typeof window.renderFloorPlan === 'function') window.renderFloorPlan();
                 if (typeof window.loadFloorPlan === 'function') window.loadFloorPlan();
                 if (typeof window.renderTables === 'function') window.renderTables();
+                if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
+                if (typeof window.renderEditTableOptions === 'function') window.renderEditTableOptions();
+                if (typeof window.renderPosTableSelect === 'function') window.renderPosTableSelect();
                 window.dispatchEvent(new Event('storage'));
             }
         } catch (e) { }
