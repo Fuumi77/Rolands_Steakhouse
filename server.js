@@ -105,6 +105,7 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN voucher_code VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN table_label VARCHAR(100) DEFAULT ''").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN created_at_ms BIGINT NULL").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(150) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_key VARCHAR(150)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
@@ -745,7 +746,7 @@ app.get('/reservations', async (req, res) => {
                        r.reservation_time, r.table_number, r.table_label, r.status, r.booked_by,
                        r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
                        r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at,
-                       r.discount_type, r.discount_amount, r.voucher_code
+                       r.discount_type, r.discount_amount, r.voucher_code, r.created_at_ms
                 FROM reservation_log r
                 JOIN customer_credentials c ON r.customer_id = c.customer_id
             `);
@@ -803,6 +804,7 @@ app.get('/reservations', async (req, res) => {
                     discountType: r.discount_type || 'none',
                     discountAmount: parseFloat(r.discount_amount) || 0,
                     voucherCode: r.voucher_code || '',
+                    createdAt: r.created_at_ms ? new Date(Number(r.created_at_ms)).toISOString() : null,
                     foods: parsedFoods,
                     beefNote: extractedNote,
                     notes: extractedNote,
@@ -873,10 +875,11 @@ app.post('/reserve', async (req, res) => {
         const finalDiscType = String(discountType || 'none').toLowerCase().trim();
         const finalDiscAmt = Math.max(0, Number(discountAmount) || 0);
         const finalVoucher = String(voucherCode || '').trim();
+        const createdAtMs = Date.now();
 
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, table_label, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, tableLabel, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher]
+            'INSERT INTO reservation_log (customer_id, table_number, table_label, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, tableLabel, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher, createdAtMs]
         );
 
         // Save uploaded payment screenshot & discount ID/voucher photo in cloud memory for cross-device Proof Viewer
@@ -898,7 +901,7 @@ app.post('/reserve', async (req, res) => {
         }
 
         cachedReservations = null;
-        res.json({ success: true, reservationId: result.insertId, branch: finalBranch, discountType: finalDiscType, discountAmount: finalDiscAmt, voucherCode: finalVoucher }); 
+        res.json({ success: true, reservationId: result.insertId, branch: finalBranch, discountType: finalDiscType, discountAmount: finalDiscAmt, voucherCode: finalVoucher, createdAt: new Date(createdAtMs).toISOString() }); 
     } catch (err) {
         console.error('Reserve DB Error:', err);
         res.status(500).json({ error: err.message });
