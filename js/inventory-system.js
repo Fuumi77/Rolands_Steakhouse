@@ -2812,6 +2812,105 @@
         return BRANCHES.find(b => b.name === target) || BRANCHES[0];
     };
 
+    window.NEW_RESERVATION_WINDOW_MS = 3 * 60 * 1000;
+    window.ARRIVING_SOON_WINDOW_MINS = 120;
+
+    /**
+     * Checks whether a reservation record's creation timestamp is within the 3-minute NEW highlight window.
+     */
+    window.isReservationNew = function (r, nowMs = Date.now()) {
+        if (!r || !r.createdAt) return false;
+        const createdMs = new Date(r.createdAt).getTime();
+        if (isNaN(createdMs) || createdMs <= 0) return false;
+        const ageMs = nowMs - createdMs;
+        // Allow up to 60s clock skew without triggering on future scheduled arrival times.
+        return ageMs >= -60000 && ageMs < window.NEW_RESERVATION_WINDOW_MS;
+    };
+
+    /**
+     * Resolves createdAt when syncing cloud records so future arrival timestamps are never treated as creation times.
+     */
+    window.resolveSyncedCreatedAt = function (match, dbRes, nowMs = Date.now()) {
+        if (dbRes && dbRes.createdAt) {
+            return dbRes.createdAt;
+        }
+        const existing = match ? match.createdAt : null;
+        if (!existing) return null;
+        const naiveArrivalIso = dbRes && dbRes.arrivalDate
+            ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`
+            : '';
+        if (naiveArrivalIso && existing === naiveArrivalIso) {
+            return null;
+        }
+        const ms = new Date(existing).getTime();
+        if (isNaN(ms) || ms - nowMs > 60000) {
+            return null;
+        }
+        return existing;
+    };
+
+    /**
+     * Parses a reservation's scheduled local arrival Date from arrivalDate and arrivalTime.
+     */
+    window.parseReservationArrivalDateTime = function (r) {
+        if (!r || !r.arrivalTime) return null;
+        const timeRaw = String(r.arrivalTime).trim();
+        const ampmMatch = timeRaw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+        if (!ampmMatch) return null;
+        let h = parseInt(ampmMatch[1], 10);
+        const m = parseInt(ampmMatch[2], 10);
+        const mer = (ampmMatch[3] || '').toUpperCase();
+        if (isNaN(h) || isNaN(m)) return null;
+        if (mer === 'PM' && h < 12) h += 12;
+        if (mer === 'AM' && h === 12) h = 0;
+
+        const rawDate = String(r.arrivalDate || '').trim();
+        if (!rawDate) return null;
+
+        const ymd = rawDate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        if (ymd) {
+            return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]), h, m, 0, 0);
+        }
+        const parsedDate = new Date(rawDate);
+        if (isNaN(parsedDate.getTime())) return null;
+        return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), h, m, 0, 0);
+    };
+
+    /**
+     * Returns rounded minutes remaining if a confirmed booking is within (0, 120] minutes of arrival, else null.
+     */
+    window.getReservationArrivalMinsLeft = function (r, now = new Date()) {
+        if (!r) return null;
+        const aStatus = String(r.approvalStatus || '').toLowerCase();
+        const kds = String(r.kdsStatus || '').toLowerCase();
+        if (['seated', 'completed', 'cancelled', 'rejected'].includes(aStatus)) return null;
+        if (kds === 'served' || kds === 'cancelled') return null;
+        if (String(r.paymentStatus || '').toLowerCase() === 'refunded') return null;
+
+        const isConfirmed = aStatus === 'approved' || (!aStatus && String(r.status || '').toLowerCase() === 'approved');
+        if (!isConfirmed) return null;
+
+        const arrival = window.parseReservationArrivalDateTime(r);
+        if (!arrival) return null;
+
+        const diffMins = (arrival - now) / 60000;
+        if (diffMins > 0 && diffMins <= window.ARRIVING_SOON_WINDOW_MINS) {
+            return Math.max(1, Math.round(diffMins));
+        }
+        return null;
+    };
+
+    /**
+     * Formats remaining minutes (1..120) cleanly as "1h 53m" or "45m".
+     */
+    window.formatArrivalCountdown = function (minsLeft) {
+        const mins = Math.max(1, Math.round(Number(minsLeft) || 0));
+        if (mins < 60) return `${mins}m`;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    };
+
     function healFullLocalStorage() {
         try {
             const histRaw = rawGet('reservationHistory');
@@ -3081,7 +3180,8 @@
                                 r.branch = existingBranchByRes[r.reservationNumber];
                             } else {
                                 // Only tag brand-new reservations (<15s old) with targetBranch; older untagged ones belong to Gensan
-                                const isBrandNew = r.createdAt && (Date.now() - new Date(r.createdAt).getTime() < 15000);
+                                const createdAgeMs = r.createdAt ? (Date.now() - new Date(r.createdAt).getTime()) : NaN;
+                                const isBrandNew = !isNaN(createdAgeMs) && createdAgeMs >= -60000 && createdAgeMs < 15000;
                                 r.branch = isBrandNew ? targetBranch : 'General Santos City';
                             }
                         });
@@ -4426,7 +4526,8 @@
                         const list = JSON.parse(rawHist);
                         if (!Array.isArray(list) || list.length === 0) return;
                         const newest = list[list.length - 1];
-                        if (newest && newest.createdAt && (Date.now() - new Date(newest.createdAt).getTime() < 30000)) {
+                        const newestAgeMs = newest && newest.createdAt ? (Date.now() - new Date(newest.createdAt).getTime()) : NaN;
+                        if (!isNaN(newestAgeMs) && newestAgeMs >= -60000 && newestAgeMs < 30000) {
                             let changed = false;
                             if (!newest.discountType || newest.discountType === 'none') {
                                 newest.discountType = discType;
@@ -4479,8 +4580,10 @@
                     let keep = false;
                     if (validSet.has(fullNo) || (numNo && validSet.has(numNo))) {
                         keep = true;
-                    } else if (r.createdAt && (now - new Date(r.createdAt).getTime() < 10 * 60 * 1000)) {
-                        keep = true;
+                    } else if (r.createdAt) {
+                        const createdAge = now - new Date(r.createdAt).getTime();
+                        if (!isNaN(createdAge) && createdAge >= -60000 && createdAge < 10 * 60 * 1000) keep = true;
+                        else mutated = true;
                     } else {
                         mutated = true;
                     }
