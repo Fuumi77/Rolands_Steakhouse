@@ -426,6 +426,28 @@ tr:hover td { background: #f9fdf9; }
 .new-order-row td { background: #f0fdf4 !important; }
 .new-badge { background: var(--sa-primary); color: white; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 4px; margin-right: 6px; vertical-align: middle; display: inline-block; }
 
+/* ── ARRIVING WITHIN 2 HOURS BADGE ── */
+.arriving-soon-row td { background: rgba(254, 243, 199, 0.55) !important; }
+.arriving-soon-row td:first-child { border-left: 4px solid #ea580c !important; }
+.new-order-row.arriving-soon-row td { background: #f0fdf4 !important; }
+.soon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.25px;
+    line-height: 1.25;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(234, 88, 12, 0.28);
+}
+
 /* ── INVENTORY ── */
 .inv-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
 .inv-search-wrap { position: relative; flex: 1; min-width: 220px; }
