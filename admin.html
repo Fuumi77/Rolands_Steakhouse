@@ -1944,7 +1944,11 @@ window.readReservationHistory = function () {
                             }
                         }
                     }
-                    if (floorChanged && typeof renderFloorPlan === 'function') renderFloorPlan(true);
+                    if (floorChanged) {
+                        if (typeof renderFloorPlan === 'function') renderFloorPlan(true);
+                        if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
+                        if (typeof window.renderEditTableOptions === 'function') window.renderEditTableOptions();
+                    }
                 } catch(e) {}
 
                 const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
@@ -2902,6 +2906,9 @@ if (resKeyForBtn) {
                     document.getElementById('edit-payment-ref').value = r.paymentRef || (`E-RECEIPT-${r.reservationNumber}`);
                 }
 
+                if (typeof window.renderEditTableOptions === 'function') {
+                    window.renderEditTableOptions(r.bookedTable || '');
+                }
                 const tSelect = document.getElementById('edit-table');
                 if (r.bookedTable && tSelect) {
                     let foundOption = false;
@@ -3250,7 +3257,10 @@ window.rejectReservation = async function (resNum) {
             function getFloorPlanConfig() {
                 try {
                     const saved = localStorage.getItem('floorPlanConfig');
-                    if (saved) return JSON.parse(saved);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    }
                 } catch (e) { }
                 return [
                     { id: "Table 1", name: "Table 1", image: "images/T1.jpg" },
@@ -3265,6 +3275,84 @@ window.rejectReservation = async function (resNum) {
                     { id: "Table 10", name: "Table 10", image: "images/T10.jpg" },
                     { id: "VIP Room", name: "VIP Room", image: "images/VIP1.jpg", isVip: true }
                 ];
+            }
+
+            function populateTableSelectFromFloorPlan(selectId, { placeholder = '', preserveValue = null, includeExtraVal = null } = {}) {
+                const selectEl = document.getElementById(selectId);
+                if (!selectEl) return;
+
+                const currentVal = (preserveValue !== null && preserveValue !== undefined) ? String(preserveValue) : selectEl.value;
+                const tables = getFloorPlanConfig();
+                const seen = new Set();
+
+                selectEl.innerHTML = '';
+                if (placeholder) {
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = placeholder;
+                    selectEl.appendChild(ph);
+                }
+
+                tables.forEach(t => {
+                    const tId = String((t && (t.id || t.name)) || '').trim();
+                    if (!tId || seen.has(tId.toLowerCase())) return;
+                    seen.add(tId.toLowerCase());
+
+                    const opt = document.createElement('option');
+                    opt.value = tId;
+                    const desc = (t && t.description) ? String(t.description).trim() : '';
+                    opt.textContent = desc ? `${tId} (${desc})` : tId;
+                    selectEl.appendChild(opt);
+                });
+
+                const targetVal = String(includeExtraVal || currentVal || '').trim();
+                if (targetVal && !seen.has(targetVal.toLowerCase())) {
+                    const extra = document.createElement('option');
+                    extra.value = targetVal;
+                    extra.textContent = targetVal;
+                    selectEl.appendChild(extra);
+                }
+
+                if (targetVal) {
+                    const matchOpt = Array.from(selectEl.options).find(o => o.value.toLowerCase() === targetVal.toLowerCase());
+                    if (matchOpt) selectEl.value = matchOpt.value;
+                }
+            }
+
+            window.renderWalkinTableOptions = function () {
+                populateTableSelectFromFloorPlan('walkin-table', { placeholder: '-- Select Table --' });
+            };
+
+            window.renderEditTableOptions = function (preserveVal = null) {
+                populateTableSelectFromFloorPlan('edit-table', { preserveValue: preserveVal, includeExtraVal: preserveVal });
+            };
+
+            async function syncFloorPlanConfigToCloud(configArr, overridesObj = null) {
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                try {
+                    await fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(Array.isArray(configArr) ? configArr : [])
+                    });
+                    if (overridesObj && typeof overridesObj === 'object') {
+                        await fetch(`${API_BASE_URL}/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(overridesObj)
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to sync floorPlanConfig to cloud:', e);
+                }
+                try {
+                    window.dispatchEvent(new CustomEvent('floorPlanConfigUpdated', { detail: configArr }));
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        const bc = new BroadcastChannel('inventory_sync_channel');
+                        bc.postMessage({ action: 'floorPlanConfigUpdated', branch: activeBr });
+                        if (overridesObj) bc.postMessage({ action: 'tableOverridesUpdated', branch: activeBr });
+                    }
+                } catch (e) {}
             }
 
             let currentFloorConfig = [];
@@ -3423,8 +3511,10 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
             }
 
             window.addNewTable = function () {
-                const count = currentFloorConfig.length + 1;
-                const id = `Table ${count}`;
+                const usedIds = new Set(currentFloorConfig.map(t => String((t && (t.id || t.name)) || '').trim().toLowerCase()));
+                let num = 1;
+                while (usedIds.has(`table ${num}`)) num++;
+                const id = `Table ${num}`;
                 currentFloorConfig.push({ id, name: id, image: '', description: '' });
                 floorEditorSelectedId = id;
                 renderFloorEditorCanvas();
@@ -3457,24 +3547,23 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                 floorEditorSelectedId = currentFloorConfig[0]?.id || null;
 
                 // Clean up any override on the deleted table
+                let updatedOverrides = null;
                 try {
                     const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
                     delete overrides[removedId];
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                    updatedOverrides = overrides;
                 } catch (e) {}
 
                 // Persist & sync immediately so the deletion takes effect right away!
                 localStorage.setItem('floorPlanConfig', JSON.stringify(currentFloorConfig));
-                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-                fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(currentFloorConfig)
-                }).catch(() => {});
+                await syncFloorPlanConfigToCloud(currentFloorConfig, updatedOverrides);
 
                 renderFloorEditorCanvas();
                 renderFloorEditorProps();
-                renderFloorPlan();
+                renderFloorPlan(true);
+                window.renderWalkinTableOptions();
+                window.renderEditTableOptions();
 
                 if (window.showToast) {
                     window.showToast(`Deleted ${target.name || removedId}`, 'info', 2500);
@@ -3523,8 +3612,10 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                 reader.readAsDataURL(file);
             };
 
-            window.saveFloorPlanConfig = function () {
+            window.saveFloorPlanConfig = async function () {
                 // Migrate dependent data for any table renames
+                let overridesChanged = false;
+                let updatedOverrides = null;
                 try {
                     const overrides = safeJsonParse(localStorage.getItem('tableOverrides'), {});
                     let hist = safeJsonParse(localStorage.getItem('reservationHistory'), []);
@@ -3533,8 +3624,12 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                         if (t._renamedFrom && t._renamedFrom !== t.id) {
                             if (overrides[t._renamedFrom] !== undefined && overrides[t.id] === undefined) {
                                 overrides[t.id] = overrides[t._renamedFrom];
+                                overridesChanged = true;
                             }
-                            delete overrides[t._renamedFrom];
+                            if (overrides[t._renamedFrom] !== undefined) {
+                                delete overrides[t._renamedFrom];
+                                overridesChanged = true;
+                            }
                             hist = hist.map(r => (r && r.bookedTable === t._renamedFrom) ? ({ ...r, bookedTable: t.id }) : r);
                             delete t._renamedFrom;
                         }
@@ -3542,18 +3637,17 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
 
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
                     localStorage.setItem('reservationHistory', JSON.stringify(hist));
+                    if (overridesChanged) updatedOverrides = overrides;
                 } catch (e) { }
 
                 localStorage.setItem('floorPlanConfig', JSON.stringify(currentFloorConfig));
                 const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-                fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(currentFloorConfig)
-                }).catch(() => {});
+                await syncFloorPlanConfigToCloud(currentFloorConfig, updatedOverrides);
 
                 document.getElementById('floor-editor-modal').style.display = 'none';
-                renderFloorPlan();
+                renderFloorPlan(true);
+                window.renderWalkinTableOptions();
+                window.renderEditTableOptions();
                 if (typeof showNotification === 'function') showNotification(`Floor plan saved & synced for ${activeBr}!`, 'success', 'Saved');
             };
 
@@ -3571,7 +3665,13 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                 const floorConfig = getFloorPlanConfig();
                 floorConfig.forEach(t => overrides[t.id] = 'unavailable');
                 localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                renderFloorPlan();
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                await fetch(`${API_BASE_URL}/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(overrides)
+                }).catch(() => {});
+                renderFloorPlan(true);
                 if (typeof showNotification === 'function') showNotification('All tables marked unavailable.', 'success', 'Full Booking Applied');
             };
 window.resetFloor = async function () {
@@ -3582,6 +3682,7 @@ window.resetFloor = async function () {
     });
     if (!confirmed) return;
 
+    const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
     try {
         const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
         const data = await res.json();
@@ -3593,7 +3694,7 @@ window.resetFloor = async function () {
                 });
             }
         }
-        await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { 
+        await fetch(`${API_BASE_URL}/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}`, { 
             method: 'POST', headers: {'Content-Type':'application/json'}, 
             body: JSON.stringify({})
         });
@@ -3602,7 +3703,7 @@ window.resetFloor = async function () {
     }
 
     localStorage.removeItem('tableOverrides');
-    renderFloorPlan();
+    renderFloorPlan(true);
     if (typeof showNotification === 'function') {
         showNotification('All tables are now available.', 'success', 'Floor Plan Reset');
     }
@@ -3672,7 +3773,10 @@ window.resetFloor = async function () {
                         config[draggedIdx] = config[targetIdx];
                         config[targetIdx] = temp;
                         localStorage.setItem('floorPlanConfig', JSON.stringify(config));
+                        syncFloorPlanConfigToCloud(config);
                         renderFloorPlan(true);
+                        window.renderWalkinTableOptions();
+                        window.renderEditTableOptions();
                     });
 
                     card.innerHTML = `
@@ -5170,6 +5274,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             
             // Allow the UI to draw normally
             renderFloorPlan();
+            window.renderWalkinTableOptions();
+            window.renderEditTableOptions();
             renderPayments();
             renderPromosAdmin();
 
@@ -5874,6 +5980,8 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                         refreshActiveAdminInvTab();
                         if (typeof applySearch === 'function') applySearch();
                         if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                        if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
+                        if (typeof window.renderEditTableOptions === 'function') window.renderEditTableOptions();
                         if (typeof renderReservations === 'function') renderReservations();
                         if (typeof renderTodayQueue === 'function') renderTodayQueue();
                     };
@@ -5881,12 +5989,14 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             } catch (e) {}
 
             window.addEventListener('storage', function (e) {
-                if (e.key === 'inventoryItems' || e.key === 'rawIngredients') {
+                if (!e.key || e.key === 'inventoryItems' || e.key === 'rawIngredients') {
                     refreshActiveAdminInvTab();
                 }
-                if (e.key === 'reservationHistory' || e.key === 'tableOverrides' || e.key === 'floorPlanConfig') {
+                if (!e.key || e.key === 'reservationHistory' || e.key === 'tableOverrides' || e.key === 'floorPlanConfig') {
                     if (typeof applySearch === 'function') applySearch();
                     if (typeof renderFloorPlan === 'function') renderFloorPlan();
+                    if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
+                    if (typeof window.renderEditTableOptions === 'function') window.renderEditTableOptions();
                     if (typeof renderReservations === 'function') renderReservations();
                     if (typeof renderTodayQueue === 'function') renderTodayQueue();
                 }
@@ -7617,7 +7727,11 @@ window.adminRawFilter = 'all';
                 }
             }
             if (tab === 'walkin') {
+                if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
                 renderRecentWalkins();
+            }
+            if (tab === 'floorplan') {
+                if (typeof renderFloorPlan === 'function') renderFloorPlan();
             }
             if (tab === 'menu') {
                 if (typeof window.switchAdminInvSubTab === 'function') window.switchAdminInvSubTab(window.activeAdminInvSubTab || 'food');
@@ -7886,47 +8000,22 @@ window.adminRawFilter = 'all';
             });
         })();
     </script>
-    <!-- CLOUD FLOOR PLAN CONFIG & DESCRIPTIONS SYNC (STAFF PORTAL) -->
+    <!-- CLOUD FLOOR PLAN CONFIG & DESCRIPTIONS SYNC (BRANCH-SCOPED STAFF PORTAL) -->
     <script>
-        (function initFloorPlanCloudSync() {
-            const FLOOR_CLOUD_URL = `${API_BASE_URL}/api/memory/floor-plan-config`;
-            let lastFloorConfigJson = '';
-
-            async function pushFloorConfigToCloud(cfg) {
+        (function initBranchFloorPlanInitialSync() {
+            async function pullBranchFloorConfig() {
                 try {
-                    const data = cfg || JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
-                    if (!Array.isArray(data) || data.length === 0) return;
-                    lastFloorConfigJson = JSON.stringify(data);
-                    await fetch(FLOOR_CLOUD_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: lastFloorConfigJson
-                    });
-                } catch (err) {
-                    console.error('Failed to push floorPlanConfig to cloud:', err);
-                }
-            }
-
-            async function syncFloorConfigFromCloud() {
-                try {
-                    const res = await fetch(`${FLOOR_CLOUD_URL}?nocache=${Date.now()}`);
+                    const activeBr = (typeof window.getEffectiveBranch === 'function') ? window.getEffectiveBranch() : 'General Santos City';
+                    const res = await fetch(`${API_BASE_URL}/api/memory/floor-plan-config?branch=${encodeURIComponent(activeBr)}&nocache=${Date.now()}`);
                     if (!res.ok) return;
                     const cloudConfig = await res.json();
-                    const localConfig = JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
-
-                    const localHasDesc = Array.isArray(localConfig) && localConfig.some(t => t && t.description && t.description.trim() !== '');
-                    const cloudHasDesc = Array.isArray(cloudConfig) && cloudConfig.some(t => t && t.description && t.description.trim() !== '');
-
-                    if ((!Array.isArray(cloudConfig) || cloudConfig.length === 0 || (!cloudHasDesc && localHasDesc)) && localConfig.length > 0) {
-                        await pushFloorConfigToCloud(localConfig);
-                        return;
-                    }
-
                     if (Array.isArray(cloudConfig) && cloudConfig.length > 0) {
                         const cloudJson = JSON.stringify(cloudConfig);
-                        if (cloudJson !== lastFloorConfigJson && cloudJson !== localStorage.getItem('floorPlanConfig')) {
-                            lastFloorConfigJson = cloudJson;
+                        if (cloudJson !== localStorage.getItem('floorPlanConfig')) {
                             localStorage.setItem('floorPlanConfig', cloudJson);
+                            if (typeof renderFloorPlan === 'function') renderFloorPlan(true);
+                            if (typeof window.renderWalkinTableOptions === 'function') window.renderWalkinTableOptions();
+                            if (typeof window.renderEditTableOptions === 'function') window.renderEditTableOptions();
                             window.dispatchEvent(new Event('storage'));
                         }
                     }
@@ -7935,20 +8024,8 @@ window.adminRawFilter = 'all';
                 }
             }
 
-            const origSetItem = localStorage.setItem.bind(localStorage);
-            localStorage.setItem = function (key, value) {
-                origSetItem(key, value);
-                if (key === 'floorPlanConfig' && value !== lastFloorConfigJson) {
-                    try {
-                        const parsed = JSON.parse(value);
-                        pushFloorConfigToCloud(parsed);
-                    } catch (e) {}
-                }
-            };
-
             window.addEventListener('load', () => {
-                setTimeout(syncFloorConfigFromCloud, 300);
-                setInterval(syncFloorConfigFromCloud, 8000);
+                setTimeout(pullBranchFloorConfig, 300);
             });
         })();
     </script>
