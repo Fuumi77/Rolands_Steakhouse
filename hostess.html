@@ -42,10 +42,22 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        const tables = [
+        const DEFAULT_HOSTESS_TABLES = [
             "Table 1", "Table 2", "Table 3", "Table 4", "Table 5",
-            "Table 6", "Table 7", "Table 8", "Table 9", "Table 10"
+            "Table 6", "Table 7", "Table 8", "Table 9", "Table 10",
+            "VIP Room"
         ];
+
+        function getHostessTables() {
+            try {
+                const cfg = JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
+                if (Array.isArray(cfg) && cfg.length > 0) {
+                    const list = cfg.map(t => String((t && (t.id || t.name)) || '').trim()).filter(Boolean);
+                    if (list.length > 0) return list;
+                }
+            } catch (e) {}
+            return DEFAULT_HOSTESS_TABLES;
+        }
 
         // Status flow: available -> reserved -> seated -> cleaning -> available
         const cycleStatus = {
@@ -61,6 +73,7 @@
             // the hostess tool uses specific states (seated, cleaning, reserved).
             const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const tables = getHostessTables();
             
             const fp = document.getElementById('floor-plan');
             fp.innerHTML = '';
@@ -96,9 +109,21 @@
                 const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
                 overrides[tId] = nextStatus;
                 localStorage.setItem('tableOverrides', JSON.stringify(overrides));
+                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/table-overrides?branch=${encodeURIComponent(activeBr)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(overrides)
+                }).catch(() => {});
             }
             loadFloorPlan();
         };
+
+        window.addEventListener('storage', (e) => {
+            if (!e.key || e.key === 'floorPlanConfig' || e.key === 'tableOverrides' || e.key === 'reservationHistory') {
+                loadFloorPlan();
+            }
+        });
 
         // Network Poller wrapper
         setInterval(loadFloorPlan, 5000);
