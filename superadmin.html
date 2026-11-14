@@ -12,10 +12,10 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="css/superadmin.css?v=2.0">
+    <link rel="stylesheet" href="css/superadmin.css?v=2.1">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=6.7"></script>
+    <script src="js/inventory-system.js?v=6.8"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         input[type="checkbox"] {
@@ -1826,6 +1826,13 @@
                             match.arrivalTime = dbRes.arrivalTime;
                             updated = true;
                         }
+                        const resolvedCreatedAt = typeof window.resolveSyncedCreatedAt === 'function'
+                            ? window.resolveSyncedCreatedAt(match, dbRes)
+                            : (dbRes.createdAt || null);
+                        if (match.createdAt !== resolvedCreatedAt) {
+                            match.createdAt = resolvedCreatedAt;
+                            updated = true;
+                        }
 
                         if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
@@ -1901,7 +1908,7 @@
                             paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
                             kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
                             completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
-                            createdAt: `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`,
+                            createdAt: dbRes.createdAt || null,
                             foods: cloudFoods,
                             beefNote: cloudNote,
                             notes: cloudNote,
@@ -1920,6 +1927,8 @@
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
                     renderDashboard();
                     if (typeof window.brRefresh === 'function') window.brRefresh();
+                } else {
+                    if (typeof window.applySearch === 'function') window.applySearch();
                 }
             } catch (err) {
                 console.error("Sync error:", err);
@@ -2678,26 +2687,33 @@
             }
 
             function renderRows(rows) {
-                const rowsSig = JSON.stringify(rows.map(r => [
-                    r.reservationNumber,
-                    r.customerName,
-                    r.bookedTable,
-                    r.arrivalDate,
-                    r.arrivalTime,
-                    r.reservationType,
-                    r.approvalStatus,
-                    r.paymentStatus,
-                    r.refundStatus,
-                    r.refundAmount,
-                    r.kdsStatus,
-                    r.paymentAmount,
-                    r.discountType,
-                    r.discountAmount,
-                    r.voucherCode,
-                    r.completedAt,
-                    foodText(r),
-                    Boolean(r.completedAt && (Date.now() - new Date(r.completedAt).getTime() < 60000))
-                ]));
+                const now = new Date();
+                const nowMs = now.getTime();
+                const rowsSig = JSON.stringify(rows.map(r => {
+                    const isNew = typeof window.isReservationNew === 'function' ? window.isReservationNew(r, nowMs) : false;
+                    const soonMins = typeof window.getReservationArrivalMinsLeft === 'function' ? window.getReservationArrivalMinsLeft(r, now) : null;
+                    return [
+                        r.reservationNumber,
+                        r.customerName,
+                        r.bookedTable,
+                        r.arrivalDate,
+                        r.arrivalTime,
+                        r.reservationType,
+                        r.approvalStatus,
+                        r.paymentStatus,
+                        r.refundStatus,
+                        r.refundAmount,
+                        r.kdsStatus,
+                        r.paymentAmount,
+                        r.discountType,
+                        r.discountAmount,
+                        r.voucherCode,
+                        r.completedAt,
+                        foodText(r),
+                        isNew,
+                        soonMins
+                    ];
+                }));
                 if (window.__lastSuperAdminRowsSig === rowsSig && historyTbody.children.length > 0) {
                     return;
                 }
@@ -2711,9 +2727,10 @@
 
                 rows.forEach(r => {
                     const tr = document.createElement('tr');
-                    const createdTime = r.completedAt ? new Date(r.completedAt).getTime() : 0;
-                    const isNew = createdTime && (Date.now() - createdTime < 60000);
+                    const isNew = typeof window.isReservationNew === 'function' ? window.isReservationNew(r, nowMs) : false;
+                    const soonMins = typeof window.getReservationArrivalMinsLeft === 'function' ? window.getReservationArrivalMinsLeft(r, now) : null;
                     if (isNew) tr.classList.add('new-order-row');
+                    if (soonMins !== null) tr.classList.add('arriving-soon-row');
 
                     let typePill = '';
                     const resNum = String(r.reservationNumber || '');
@@ -2806,7 +2823,10 @@
 
                     tr.innerHTML = `
                         <td>${isNew ? '<span class="new-badge">NEW</span>' : ''}<strong style="font-size:12px;">${r.reservationNumber || 'N/A'}</strong></td>
-                        <td style="font-size:12px; color:var(--sa-muted);">${dateStr}</td>
+                        <td style="font-size:12px; color:var(--sa-muted);"${soonMins !== null ? ' title="Within 2 hours of reserved time"' : ''}>
+                            <div>${dateStr}</div>
+                            ${soonMins !== null ? `<div class="soon-badge">⏰ SOON · ${typeof window.formatArrivalCountdown === 'function' ? window.formatArrivalCountdown(soonMins) : soonMins + 'm'}</div>` : ''}
+                        </td>
                         <td style="font-weight:600;">${r.customerName || 'Walk-in Guest'}</td>
                         <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
