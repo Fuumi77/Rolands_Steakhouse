@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/style.css?v=2.0">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=6.7"></script>
+    <script src="js/inventory-system.js?v=7.0"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         .nav-manage-pill {
@@ -458,14 +458,16 @@
     <!-- 🎁 FLOATING PROMOTION MODAL -->
     <div class="promo-modal-overlay" id="promo-modal">
         <div class="promo-modal-card">
-            <button class="promo-modal-close" onclick="closePromoModal()">✕</button>
+            <button class="promo-modal-close" onclick="closePromoModal()" aria-label="Close promotion">✕</button>
             <img src="" id="promo-modal-img" class="promo-modal-img" alt="Promotion">
             <div class="promo-modal-content">
+                <span class="promo-modal-badge" id="promo-modal-badge">Limited Offer</span>
                 <h2 class="promo-modal-title" id="promo-modal-title">Special Offer</h2>
                 <p class="promo-modal-desc" id="promo-modal-desc"></p>
+                <div class="promo-modal-vouchers" id="promo-modal-vouchers" style="display:none;"></div>
                 <div class="promo-modal-actions">
                     <button class="promo-modal-btn secondary" onclick="closePromoModal()">Maybe Later</button>
-                    <button class="promo-modal-btn primary" onclick="openReservationModal(); closePromoModal();">Book Now</button>
+                    <button class="promo-modal-btn primary" onclick="reserveFromPromoModal()">Reserve Now!</button>
                 </div>
             </div>
         </div>
@@ -840,28 +842,198 @@
             updatePages();
         })();
 
-        // Live promotions
+        // Live promotions (syncs picture, title, desc, and vouchers across devices)
         (function initPromotions() {
-            // --- FLOATING AD TRIGGER ---
-            window.closePromoModal = function() {
-                document.getElementById('promo-modal').classList.remove('active');
+            let currentPromoSignature = '';
+            let activePopupVoucherCode = '';
+            let promoDelayReady = false;
+            let initialCloudDone = false;
+
+            const escPromo = (v) => String(v == null ? '' : v)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            window.closePromoModal = function () {
+                const ov = document.getElementById('promo-modal');
+                if (ov) ov.classList.remove('active');
+                if (currentPromoSignature) {
+                    try { sessionStorage.setItem('dismissedPromoSignature', currentPromoSignature); } catch (e) { }
+                }
             };
 
-            const hasSeenAd = sessionStorage.getItem('hasSeenPromoAd');
-            if (!hasSeenAd) {
-                // Show ad after 2 seconds delay for premium feel
-                setTimeout(() => {
-                    const promos = JSON.parse(localStorage.getItem('activePromos') || '[]');
-                    if (promos.length > 0) {
-                        const latest = promos[promos.length - 1]; // Show most recent
-                        document.getElementById('promo-modal-img').src = latest.image;
-                        document.getElementById('promo-modal-title').textContent = latest.title;
-                        document.getElementById('promo-modal-desc').textContent = latest.desc;
-                        document.getElementById('promo-modal').classList.add('active');
-                        sessionStorage.setItem('hasSeenPromoAd', 'true');
+            window.copyPromoPopupVoucher = function (code, btn) {
+                const cleanCode = String(code || '').trim().toUpperCase();
+                if (!cleanCode) return;
+                activePopupVoucherCode = cleanCode;
+                try { localStorage.setItem('claimedPromoVoucher', cleanCode); } catch (e) { }
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(cleanCode).catch(() => { });
+                }
+                if (btn) {
+                    btn.classList.add('copied');
+                    const prevText = btn.getAttribute('data-label') || 'Claim / Copy';
+                    btn.textContent = '✓ Claimed!';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.textContent = prevText;
+                    }, 2200);
+                }
+            };
+
+            window.reserveFromPromoModal = function () {
+                if (activePopupVoucherCode) {
+                    try { localStorage.setItem('claimedPromoVoucher', activePopupVoucherCode); } catch (e) { }
+                }
+                window.closePromoModal();
+                if (typeof window.openReservationModal === 'function') {
+                    window.openReservationModal();
+                }
+            };
+
+            function renderPromoPopupContent() {
+                if (!window.PromoAdSystem || !window.VoucherSystem) return null;
+                const promo = window.PromoAdSystem.pickActiveCustomerPromo();
+                if (!promo) {
+                    const ov = document.getElementById('promo-modal');
+                    if (ov && ov.classList.contains('active')) ov.classList.remove('active');
+                    currentPromoSignature = '';
+                    activePopupVoucherCode = '';
+                    return null;
+                }
+
+                const allVouchers = window.VoucherSystem.getVouchers();
+                const matchedVouchers = window.PromoAdSystem.resolvePopupVouchers(promo, allVouchers);
+                const signature = window.PromoAdSystem.getPromoSignature(promo, matchedVouchers);
+                currentPromoSignature = signature;
+
+                let alreadyClaimed = '';
+                try { alreadyClaimed = (localStorage.getItem('claimedPromoVoucher') || '').trim().toUpperCase(); } catch (e) { }
+                if (alreadyClaimed && matchedVouchers.some(v => String(v.code || '').toUpperCase() === alreadyClaimed)) {
+                    activePopupVoucherCode = alreadyClaimed;
+                } else {
+                    activePopupVoucherCode = matchedVouchers.length > 0 ? String(matchedVouchers[0].code || '').toUpperCase() : '';
+                }
+
+                const imgEl = document.getElementById('promo-modal-img');
+                if (imgEl) {
+                    if (promo.image) {
+                        imgEl.src = promo.image;
+                        imgEl.style.display = 'block';
+                    } else {
+                        imgEl.removeAttribute('src');
+                        imgEl.style.display = 'none';
                     }
-                }, 2000);
+                }
+                const titleEl = document.getElementById('promo-modal-title');
+                if (titleEl) titleEl.textContent = promo.title || 'Special Offer';
+
+                const descEl = document.getElementById('promo-modal-desc');
+                if (descEl) descEl.textContent = promo.desc || '';
+
+                const badgeEl = document.getElementById('promo-modal-badge');
+                if (badgeEl) {
+                    badgeEl.textContent = matchedVouchers.length > 0 ? 'Special Offer + Voucher' : 'Limited Offer';
+                }
+
+                const vBox = document.getElementById('promo-modal-vouchers');
+                if (vBox) {
+                    if (matchedVouchers.length > 0) {
+                        const rowsHtml = matchedVouchers.map(v => {
+                            const dTxt = v.discountMode === 'pct'
+                                ? `${v.value}% OFF`
+                                : `₱${Number(v.value).toLocaleString()} OFF`;
+                            const reqTxt = window.VoucherSystem.formatRequirementSummary(v);
+                            const safeCode = escPromo(v.code);
+                            return `
+                                <div class="promo-voucher-item">
+                                    <div>
+                                        <span class="promo-voucher-code">${safeCode}</span>
+                                        <span class="promo-voucher-discount">${escPromo(dTxt)}</span>
+                                        <div class="promo-voucher-req">${escPromo(reqTxt)}</div>
+                                    </div>
+                                    <button type="button" class="promo-voucher-copy-btn" data-label="Claim / Copy" onclick="copyPromoPopupVoucher('${safeCode}', this)">Claim / Copy</button>
+                                </div>`;
+                        }).join('');
+                        vBox.innerHTML = `<div class="promo-modal-vouchers-heading">🎟️ Available Pre-Order Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>${rowsHtml}`;
+                        vBox.style.display = 'block';
+                    } else {
+                        vBox.innerHTML = '';
+                        vBox.style.display = 'none';
+                    }
+                }
+                return { promo, signature };
             }
+
+            function maybeShowPromoPopup(forceCheckOnly) {
+                const state = renderPromoPopupContent();
+                if (!state) return;
+                const ov = document.getElementById('promo-modal');
+                if (!ov) return;
+                let dismissedSig = '';
+                try { dismissedSig = sessionStorage.getItem('dismissedPromoSignature') || ''; } catch (e) { }
+                if (dismissedSig === state.signature) return;
+                if (!promoDelayReady) return;
+                if (!initialCloudDone && !forceCheckOnly) return;
+                ov.classList.add('active');
+            }
+
+            function startPromoSyncAndDisplay() {
+                setTimeout(() => {
+                    promoDelayReady = true;
+                    maybeShowPromoPopup(false);
+                }, 1000);
+
+                // Fallback guard so offline/slow networks can still display cached promos
+                setTimeout(() => {
+                    if (!initialCloudDone) {
+                        initialCloudDone = true;
+                        maybeShowPromoPopup(true);
+                    }
+                }, 2600);
+
+                const pulls = [];
+                if (window.PromoAdSystem && typeof window.PromoAdSystem.pullFromCloud === 'function') {
+                    pulls.push(window.PromoAdSystem.pullFromCloud());
+                }
+                if (window.VoucherSystem && typeof window.VoucherSystem.pullFromCloud === 'function') {
+                    pulls.push(window.VoucherSystem.pullFromCloud());
+                }
+                Promise.allSettled(pulls).then(() => {
+                    initialCloudDone = true;
+                    maybeShowPromoPopup(true);
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', startPromoSyncAndDisplay);
+            } else {
+                startPromoSyncAndDisplay();
+            }
+
+            window.addEventListener('promosUpdated', () => {
+                initialCloudDone = true;
+                maybeShowPromoPopup(true);
+            });
+            window.addEventListener('vouchersUpdated', () => {
+                if (document.getElementById('promo-modal')?.classList.contains('active')) {
+                    renderPromoPopupContent();
+                } else {
+                    maybeShowPromoPopup(true);
+                }
+            });
+            window.addEventListener('branchChanged', () => {
+                Promise.allSettled([
+                    window.PromoAdSystem?.pullFromCloud(),
+                    window.VoucherSystem?.pullFromCloud()
+                ].filter(Boolean)).then(() => maybeShowPromoPopup(true));
+            });
+            window.addEventListener('storage', (e) => {
+                if (!e || !e.key || e.key.includes('activePromos') || e.key.includes('vouchers')) {
+                    maybeShowPromoPopup(true);
+                }
+            });
         })();
 
         // Customer online heartbeat
