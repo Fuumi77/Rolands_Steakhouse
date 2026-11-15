@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=6.8"></script>
+    <script src="js/inventory-system.js?v=7.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
@@ -855,55 +855,11 @@
                 <div
                     style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
                     <h2 style="margin:0; font-family:'Playfair Display',serif; color:#2e7d32; font-size:26px; display:flex; align-items:center; gap:10px;">
-                        Promotions & Ads</h2>
-                    <span class="muted" style="font-weight:700;">Promos are shown live on the homepage</span>
+                        Promotions, Pop-up Ads & Vouchers</h2>
+                    <span class="muted" style="font-weight:700;">Synced live across customer devices</span>
                 </div>
-
-                <div class="card" style="margin-bottom:24px;">
-                    <h3
-                        style="margin:0 0 16px; color:#1b5e20; font-size:16px; text-transform:uppercase; letter-spacing:.5px;">
-                        Upload New Promotion</h3>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
-                        <div>
-                            <label
-                                style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Promo
-                                Title</label>
-                            <input type="text" id="promo-title" placeholder="e.g. Weekend Steak Special"
-                                style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
-                        </div>
-                        <div>
-                            <label
-                                style="display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#555;">Short
-                                Description</label>
-                            <input type="text" id="promo-desc" placeholder="e.g. 20% off all steaks this weekend!"
-                                style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:14px;">
-                        </div>
-                    </div>
-                    <label style="display:block; margin-bottom:8px; font-weight:700; font-size:13px; color:#555;">Promo
-                        Image</label>
-                    <div style="border:2px dashed #c8e6c9; border-radius:10px; padding:24px; text-align:center; cursor:pointer; background:#f0fdf4; position:relative; margin-bottom:14px;"
-                        onclick="document.getElementById('promo-upload-input').click()">
-                        <div style="display:flex; justify-content:center; margin-bottom:8px;">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                        </div>
-                        <div style="font-size:14px; color:#555; margin-top:4px;">Click to upload a promo image</div>
-                        <div style="font-size:12px; color:#aaa; margin-top:4px;">PNG, JPG supported</div>
-                        <input type="file" id="promo-upload-input" accept="image/*" style="display:none;"
-                            onchange="previewPromoImage(this)">
-                    </div>
-                    <img id="promo-preview-img" src=""
-                        style="display:none; max-height:180px; border-radius:8px; margin-bottom:14px; border:1px solid #e2e8f0;">
-                    <button type="button" onclick="addPromo()" style="width:100%; padding:13px; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                        Publish Promotion</button>
-                </div>
-
-                <h3
-                    style="margin:0 0 14px; color:#1b5e20; font-size:16px; text-transform:uppercase; letter-spacing:.5px;">
-                    Active Promotions</h3>
-                <div id="promo-list"
-                    style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:16px;"></div>
-                <div id="promo-empty" style="color:#aaa; font-style:italic; text-align:center; padding:30px;">No
-                    promotions published yet.</div>
+                <div id="admin-promo-mount"></div>
+                <div id="voucher-manager-mount"></div>
             </div>
 
             <!-- PAYMENTS TAB -->
@@ -5127,110 +5083,11 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 }, 10000);
             };
 
-            // Promotions logic
-            window.promoBase64 = '';
-
-            window.previewPromoImage = function (input) {
-                const file = input.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    window.promoBase64 = e.target.result;
-                    const img = document.getElementById('promo-preview-img');
-                    img.src = window.promoBase64;
-                    img.style.display = 'inline-block';
-                };
-                reader.readAsDataURL(file);
-            };
-
-            window.syncPromosToCloud = async function (promosList) {
-                const activeBr = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-                try {
-                    await fetch(`${API_BASE_URL}/api/memory/promos?branch=${encodeURIComponent(activeBr)}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(promosList)
-                    });
-                } catch (e) {}
-            };
-
-            window.addPromo = async function () {
-                const title = document.getElementById('promo-title').value.trim();
-                const desc = document.getElementById('promo-desc').value.trim();
-
-                if (!title || !desc || !window.promoBase64) {
-                    showNotification('Please provide a title, description, and upload an image.', 'error', 'Action Required');
-                    return;
-                }
-
-                const promos = safeJsonParse(localStorage.getItem('activePromos'), []);
-                promos.push({
-                    id: 'promo_' + Date.now(),
-                    title: title,
-                    desc: desc,
-                    image: window.promoBase64,
-                    publishedAt: new Date().toLocaleDateString()
-                });
-
-                localStorage.setItem('activePromos', JSON.stringify(promos));
-                await window.syncPromosToCloud(promos);
-
-                // Clear form
-                document.getElementById('promo-title').value = '';
-                document.getElementById('promo-desc').value = '';
-                document.getElementById('promo-preview-img').style.display = 'none';
-                document.getElementById('promo-preview-img').src = '';
-                window.promoBase64 = '';
-                document.getElementById('promo-upload-input').value = '';
-
-                showNotification('Your promotion is now live & synced across all devices!', 'success', 'Promo Published');
-                renderPromosAdmin();
-            };
-
-            window.deletePromo = function (id) {
-                superModal({
-                    title: 'Delete Promotion? 🗑️',
-                    message: 'Are you sure you want to remove this promotion?',
-                    type: 'confirm'
-                }).then(async confirmed => {
-                    if (confirmed) {
-                        let promos = safeJsonParse(localStorage.getItem('activePromos'), []);
-                        promos = promos.filter(p => p.id !== id);
-                        localStorage.setItem('activePromos', JSON.stringify(promos));
-                        await window.syncPromosToCloud(promos);
-                        showNotification('Promotion removed across all devices.', 'success', 'Promo Deleted');
-                        renderPromosAdmin();
-                    }
-                });
-            };
-
+            // Promotions logic delegated to shared PromoAdSystem in js/inventory-system.js
             window.renderPromosAdmin = function () {
-                const promos = safeJsonParse(localStorage.getItem('activePromos'), []);
-                const listEl = document.getElementById('promo-list');
-                const emptyEl = document.getElementById('promo-empty');
-
-                if (!listEl) return;
-
-                if (promos.length === 0) {
-                    listEl.innerHTML = '';
-                    emptyEl.style.display = 'block';
-                    return;
-                }
-
-                emptyEl.style.display = 'none';
-                let html = '';
-                promos.forEach(p => {
-                    html += `
-                        <div class="card" style="padding:15px;">
-                            <img src="${p.image}" style="width:100%; height:140px; object-fit:cover; border-radius:8px; margin-bottom:10px;">
-                            <div style="font-weight:700; font-size:16px; color:#1b5e20; margin-bottom:5px;">${p.title}</div>
-                            <div style="font-size:13px; color:#555; margin-bottom:12px; line-height:1.4;">${p.desc}</div>
-                            <button type="button" class="danger" style="width:100%; font-size:12px; padding:6px 0;" onclick="deletePromo('${p.id}')">Remove Promo</button>
-                        </div>
-                    `;
-                });
-                listEl.innerHTML = html;
+                if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
             };
+            window.renderPromotions = window.renderPromosAdmin;
             
             // Bind pollers
             if (!window.isPollingActive) {
@@ -7733,7 +7590,12 @@ window.adminRawFilter = 'all';
                 if (typeof window.switchAdminInvSubTab === 'function') window.switchAdminInvSubTab(window.activeAdminInvSubTab || 'food');
                 else if (typeof renderMenuManagement === 'function') renderMenuManagement();
             }
-            if (tab === 'promotions' && typeof renderPromotions === 'function') renderPromotions();
+            if (tab === 'promotions') {
+                if (window.PromoAdSystem && typeof window.PromoAdSystem.pullFromCloud === 'function') window.PromoAdSystem.pullFromCloud();
+                if (window.VoucherSystem && typeof window.VoucherSystem.pullFromCloud === 'function') window.VoucherSystem.pullFromCloud();
+                if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+                if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
+            }
             // 👉 FIX 3: Call the correct rendering function when switching back to the Payments tab!
             if (tab === 'payments' && typeof window.renderPayments === 'function') window.renderPayments();
         };
