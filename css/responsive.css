@@ -222,6 +222,9 @@ img, video, iframe { max-width: 100%; height: auto; }
     .promo-modal-img { height: 180px; }
     .promo-modal-content { padding: 20px 16px; }
     .promo-modal-title { font-size: 22px; }
+    .promo-modal-vouchers { padding: 10px 12px; }
+    .promo-voucher-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .promo-voucher-copy-btn { width: 100%; }
     .promo-modal-actions { flex-direction: column; gap: 10px; }
     .promo-modal-btn { width: 100%; }
 
