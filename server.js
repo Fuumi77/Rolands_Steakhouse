@@ -106,6 +106,8 @@ db.query('SELECT 1').then(async () => {
     await db.query("ALTER TABLE reservation_log ADD COLUMN voucher_code VARCHAR(50) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN table_label VARCHAR(100) DEFAULT ''").catch(()=>{});
     await db.query("ALTER TABLE reservation_log ADD COLUMN created_at_ms BIGINT NULL").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN updated_at_ms BIGINT NULL").catch(()=>{});
+    await db.query("ALTER TABLE reservation_log ADD COLUMN refunded_at_ms BIGINT NULL").catch(()=>{});
     await db.query("CREATE TABLE IF NOT EXISTS system_memory (mem_key VARCHAR(150) PRIMARY KEY, mem_val LONGTEXT)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_key VARCHAR(150)").catch(()=>{});
     await db.query("ALTER TABLE system_memory MODIFY COLUMN mem_val LONGTEXT").catch(()=>{});
@@ -727,6 +729,131 @@ app.post('/api/staff/heartbeat', async (req, res) => {
 let cachedReservations = null;
 let resCacheTime = 0;
 
+function extractReservationSummary(r) {
+    const isStaff = r.booked_by === 'staff';
+    const isPos = r.booked_by === 'pos';
+    const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
+    const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
+
+    let rawFoods = [];
+    try { rawFoods = r.foods ? JSON.parse(r.foods) : []; } catch (e) {}
+    const parsedFoods = [];
+    let extractedNote = '';
+    if (Array.isArray(rawFoods)) {
+        rawFoods.forEach(item => {
+            const str = String(item || '').trim();
+            const m = str.match(/^\[\[ORDER_NOTE:\s*([\s\S]*?)\]\]$/i);
+            if (m) {
+                if (m[1] && m[1].trim()) extractedNote = m[1].trim();
+            } else if (str) {
+                parsedFoods.push(item);
+            }
+        });
+    }
+
+    const savedTableLabel = (r.table_label || '').trim();
+    const tableLabel = savedTableLabel || ((Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`);
+    let displayCustomerName = r.name || 'Guest';
+    if (isPos && (!r.name || /^(walk-in guest|walk-in|pos customer|guest)$/i.test(String(r.name).trim()))) {
+        displayCustomerName = `Dine-In Customer (${tableLabel})`;
+    }
+
+    return {
+        reservationNumber: `${prefix}${r.reservation_id}`,
+        customerName: displayCustomerName,
+        tableLabel,
+        reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
+        bookedBy: r.booked_by || 'online',
+        branch: r.branch || 'General Santos City',
+        paymentAmount: parseFloat(r.payment_amount) || 0,
+        foods: parsedFoods,
+        extractedNote,
+        isVip
+    };
+}
+
+async function getReservationSummaryById(numericId) {
+    if (!numericId) return null;
+    try {
+        const [rows] = await queryWithRetry(
+            `SELECT r.reservation_id, c.name, r.table_number, r.table_label, r.status, r.booked_by,
+                    r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch
+             FROM reservation_log r
+             LEFT JOIN customer_credentials c ON r.customer_id = c.customer_id
+             WHERE r.reservation_id = ?
+             LIMIT 1`,
+            [numericId]
+        );
+        if (!rows || !rows.length) return null;
+        return {
+            row: rows[0],
+            summary: extractReservationSummary(rows[0])
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+async function recordLiveActivity(entry) {
+    if (!entry || !entry.label) return;
+    try {
+        let log = await getSystemMemoryKey('liveActivityLog', []);
+        if (!Array.isArray(log)) log = [];
+
+        const nowMs = Number(entry.timestamp) || Date.now();
+        const resNum = String(entry.reservationNumber || '').trim();
+        const statusKey = String(entry.statusKey || '').trim().toLowerCase();
+
+        // Deduplicate back-to-back calls (e.g. simultaneous kitchen cancel + status cancel) within 15s
+        const isDuplicate = log.slice(0, 12).some(prev =>
+            prev &&
+            String(prev.reservationNumber || '').trim() === resNum &&
+            String(prev.statusKey || '').trim().toLowerCase() === statusKey &&
+            Math.abs(nowMs - Number(prev.timestamp || 0)) < 15000
+        );
+        if (isDuplicate) return;
+
+        const cleanEntry = {
+            id: `ACT-${nowMs}-${Math.random().toString(36).slice(2, 7)}`,
+            reservationNumber: resNum,
+            customerName: String(entry.customerName || 'Guest').trim(),
+            bookedTable: String(entry.bookedTable || '').trim(),
+            reservationType: String(entry.reservationType || 'standard').toLowerCase(),
+            bookedBy: String(entry.bookedBy || 'online').toLowerCase(),
+            branch: String(entry.branch || 'General Santos City').trim(),
+            paymentAmount: Number(entry.paymentAmount || 0),
+            foods: Array.isArray(entry.foods) ? entry.foods.slice(0, 6) : [],
+            category: String(entry.category || 'reserved'),
+            statusKey,
+            icon: String(entry.icon || '🆕'),
+            label: String(entry.label),
+            color: String(entry.color || '#3b82f6'),
+            actor: String(entry.actor || '').trim(),
+            timestamp: nowMs
+        };
+
+        log.unshift(cleanEntry);
+        if (log.length > 300) log = log.slice(0, 300);
+        await setSystemMemoryKey('liveActivityLog', log);
+    } catch (e) {
+        console.warn('Activity log skipped:', e.message);
+    }
+}
+
+app.get('/api/activity-feed', async (req, res) => {
+    try {
+        const reqBranch = (req.query.branch || '').trim();
+        const data = await getSystemMemoryKey('liveActivityLog', []);
+        const list = Array.isArray(data) ? data : [];
+        if (reqBranch && reqBranch !== 'ALL') {
+            return res.json(list.filter(item => (item.branch || 'General Santos City') === reqBranch));
+        }
+        res.json(list);
+    } catch (err) {
+        res.json([]);
+    }
+});
+
 app.get('/reservations', async (req, res) => {
     try {
         const reqBranch = (req.query.branch || '').trim();
@@ -746,70 +873,45 @@ app.get('/reservations', async (req, res) => {
                        r.reservation_time, r.table_number, r.table_label, r.status, r.booked_by,
                        r.reservation_type, r.payment_amount, r.foods, r.kds_status, r.branch,
                        r.payment_status, r.refund_amount, r.refund_method, r.refund_ref, r.refunded_at,
-                       r.discount_type, r.discount_amount, r.voucher_code, r.created_at_ms
+                       r.discount_type, r.discount_amount, r.voucher_code, r.created_at_ms, r.updated_at_ms, r.refunded_at_ms
                 FROM reservation_log r
                 JOIN customer_credentials c ON r.customer_id = c.customer_id
             `);
 
             cachedReservations = rows.map(r => {
                 const d = new Date(r.reservation_time);
-                const isStaff = r.booked_by === 'staff';
-                const isPos = r.booked_by === 'pos';
-                const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
-                const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
-                let rawFoods = [];
-                try { rawFoods = r.foods ? JSON.parse(r.foods) : []; } catch(e) {}
-                let parsedFoods = [];
-                let extractedNote = '';
-                if (Array.isArray(rawFoods)) {
-                    rawFoods.forEach(item => {
-                        const str = String(item || '').trim();
-                        const m = str.match(/^\[\[ORDER_NOTE:\s*([\s\S]*?)\]\]$/i);
-                        if (m) {
-                            if (m[1] && m[1].trim()) extractedNote = m[1].trim();
-                        } else if (str) {
-                            parsedFoods.push(item);
-                        }
-                    });
-                }
-
-                const savedTableLabel = (r.table_label || '').trim();
-                const tableLabel = savedTableLabel || ((Number(r.table_number) === 99 || isVip) ? 'VIP Room' : `Table ${r.table_number}`);
-                let displayCustomerName = r.name || 'Guest';
-                if (isPos && (!r.name || /^(walk-in guest|walk-in|pos customer|guest)$/i.test(String(r.name).trim()))) {
-                    displayCustomerName = `Dine-In Customer (${tableLabel})`;
-                }
-
+                const summary = extractReservationSummary(r);
                 const isRefunded = r.payment_status === 'refunded' || parseFloat(r.refund_amount) > 0;
                 const cleanEmail = (r.email && !/@(temp\.com|rolands\.local)$/i.test(String(r.email).trim())) ? String(r.email).trim() : '';
 
                 return {
-                    reservationNumber: `${prefix}${r.reservation_id}`,
-                    customerName: displayCustomerName,
+                    reservationNumber: summary.reservationNumber,
+                    customerName: summary.customerName,
                     email: cleanEmail,
                     phone: r.phone || '',
                     arrivalDate: r.ph_date || d.toLocaleDateString('en-CA'),
                     arrivalTime: r.ph_time || d.toTimeString().substring(0, 5),
-                    bookedTable: tableLabel,
+                    bookedTable: summary.tableLabel,
                     status: r.status,
                     bookedBy: r.booked_by,
-                    reservationType: isVip ? 'vip' : (r.reservation_type || 'standard'),
-                    paymentAmount: parseFloat(r.payment_amount) || 0,
+                    reservationType: summary.reservationType,
+                    paymentAmount: summary.paymentAmount,
                     paymentStatus: isRefunded ? 'refunded' : (r.payment_status || 'unpaid'),
                     refundStatus: isRefunded ? 'refunded' : '',
                     refundAmount: parseFloat(r.refund_amount) || 0,
                     refundMethod: r.refund_method || '',
                     refundRef: r.refund_ref || '',
-                    refundedAt: r.refunded_at || null,
+                    refundedAt: r.refunded_at_ms ? new Date(Number(r.refunded_at_ms)).toISOString() : (r.refunded_at ? new Date(r.refunded_at).toISOString() : null),
                     discountType: r.discount_type || 'none',
                     discountAmount: parseFloat(r.discount_amount) || 0,
                     voucherCode: r.voucher_code || '',
                     createdAt: r.created_at_ms ? new Date(Number(r.created_at_ms)).toISOString() : null,
-                    foods: parsedFoods,
-                    beefNote: extractedNote,
-                    notes: extractedNote,
+                    updatedAt: r.updated_at_ms ? new Date(Number(r.updated_at_ms)).toISOString() : null,
+                    foods: summary.foods,
+                    beefNote: summary.extractedNote,
+                    notes: summary.extractedNote,
                     kdsStatus: r.kds_status || 'pending',
-                    branch: r.branch || 'General Santos City'
+                    branch: summary.branch
                 };
             });
             resCacheTime = Date.now();
@@ -878,15 +980,16 @@ app.post('/reserve', async (req, res) => {
         const createdAtMs = Date.now();
 
         const [result] = await db.query(
-            'INSERT INTO reservation_log (customer_id, table_number, table_label, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [customerId, tableInt, tableLabel, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher, createdAtMs]
+            'INSERT INTO reservation_log (customer_id, table_number, table_label, reservation_time, status, booked_by, reservation_type, payment_amount, foods, branch, discount_type, discount_amount, voucher_code, created_at_ms, updated_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [customerId, tableInt, tableLabel, reservationTime, status || 'Pending', bookedBy, finalResType, Number(paymentAmount) || 0, foodsJson, finalBranch, finalDiscType, finalDiscAmt, finalVoucher, createdAtMs, createdAtMs]
         );
+
+        const prefix = isPos ? 'POS-' : (isWalkin ? 'WI-' : (isVipBooking ? 'VIP-' : 'RES-'));
+        const fullResNum = `${prefix}${result.insertId}`;
 
         // Save uploaded payment screenshot & discount ID/voucher photo in cloud memory for cross-device Proof Viewer
         if (paymentProof || discountProofImage || paymentRef) {
             try {
-                const prefix = isPos ? 'POS-' : (isWalkin ? 'WI-' : (isVipBooking ? 'VIP-' : 'RES-'));
-                const fullResNum = `${prefix}${result.insertId}`;
                 const proofPayload = {
                     paymentProof: paymentProof || '',
                     discountProofImage: discountProofImage || '',
@@ -899,6 +1002,26 @@ app.post('/reserve', async (req, res) => {
                 console.error('Failed to save orderProof:', e);
             }
         }
+
+        const displayName = (isPos && (!cleanName || /^(walk-in guest|walk-in|pos customer|guest)$/i.test(cleanName)))
+            ? `Dine-In Customer (${tableLabel})`
+            : cleanName;
+        await recordLiveActivity({
+            reservationNumber: fullResNum,
+            customerName: displayName,
+            bookedTable: tableLabel,
+            reservationType: finalResType,
+            bookedBy,
+            branch: finalBranch,
+            paymentAmount: Number(paymentAmount) || 0,
+            foods: cleanFoodsArr.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim())),
+            category: 'reserved',
+            statusKey: isPos ? 'pos_new' : (isWalkin ? 'walkin_new' : 'new'),
+            icon: '🆕',
+            label: isPos ? 'New POS Order' : (isWalkin ? 'New Walk-in Reservation' : 'New Online Reservation'),
+            color: '#3b82f6',
+            timestamp: createdAtMs
+        });
 
         cachedReservations = null;
         res.json({ success: true, reservationId: result.insertId, branch: finalBranch, discountType: finalDiscType, discountAmount: finalDiscAmt, voucherCode: finalVoucher, createdAt: new Date(createdAtMs).toISOString() }); 
@@ -1202,14 +1325,41 @@ app.post('/api/reservations/update-status', async (req, res) => {
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         if (numericId) {
+            const nowMs = Date.now();
+            const existing = await getReservationSummaryById(numericId);
+            const prevStatusLower = existing ? String(existing.row.status || '').toLowerCase().trim() : '';
+            const prevKdsLower = existing ? String(existing.row.kds_status || '').toLowerCase().trim() : '';
             const lower = String(status || '').toLowerCase().trim();
-            // 👉 FIX: If an order is Completed, Cancelled, or Rejected, automatically close its Kitchen ticket too!
+
             if (lower === 'completed') {
-                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'served' WHERE reservation_id = ?", [status, numericId]);
+                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'served', updated_at_ms = ? WHERE reservation_id = ?", [status, nowMs, numericId]);
             } else if (lower === 'cancelled' || lower === 'rejected') {
-                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'cancelled' WHERE reservation_id = ?", [status, numericId]);
+                await db.query("UPDATE reservation_log SET status = ?, kds_status = 'cancelled', updated_at_ms = ? WHERE reservation_id = ?", [status, nowMs, numericId]);
             } else {
-                await db.query('UPDATE reservation_log SET status = ? WHERE reservation_id = ?', [status, numericId]);
+                await db.query('UPDATE reservation_log SET status = ?, updated_at_ms = ? WHERE reservation_id = ?', [status, nowMs, numericId]);
+            }
+
+            if (existing && prevStatusLower !== lower && !(lower === 'seated' && prevKdsLower === 'served')) {
+                const map = {
+                    approved: { category: 'reserved', statusKey: 'approved', icon: '👍', label: 'Reservation Approved', color: '#8b5cf6' },
+                    seated: { category: 'reserved', statusKey: 'seated', icon: '🪑', label: 'Customer Seated', color: '#0ea5e9' },
+                    completed: { category: 'completed', statusKey: 'completed', icon: '💰', label: 'Billed & Completed', color: '#16a34a' },
+                    cancelled: { category: 'completed', statusKey: 'cancelled', icon: '🚫', label: 'Cancelled', color: '#ef4444' },
+                    rejected: { category: 'completed', statusKey: 'cancelled', icon: '🚫', label: 'Rejected', color: '#ef4444' }
+                };
+                const meta = map[lower] || { category: 'reserved', statusKey: lower || 'updated', icon: '🔔', label: `Status: ${status}`, color: '#64748b' };
+                await recordLiveActivity({
+                    reservationNumber: existing.summary.reservationNumber,
+                    customerName: existing.summary.customerName,
+                    bookedTable: existing.summary.tableLabel,
+                    reservationType: existing.summary.reservationType,
+                    bookedBy: existing.summary.bookedBy,
+                    branch: existing.summary.branch,
+                    paymentAmount: existing.summary.paymentAmount,
+                    foods: existing.summary.foods,
+                    ...meta,
+                    timestamp: nowMs
+                });
             }
         }
         cachedReservations = null;
@@ -1223,6 +1373,8 @@ app.post('/api/reservations/refund', async (req, res) => {
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         if (numericId) {
+            const nowMs = Date.now();
+            const existing = await getReservationSummaryById(numericId);
             await db.query(
                 `UPDATE reservation_log
                  SET payment_status = 'refunded',
@@ -1230,9 +1382,11 @@ app.post('/api/reservations/refund', async (req, res) => {
                      refund_method = ?,
                      refund_ref = ?,
                      refunded_by = ?,
-                     refunded_at = NOW()
+                     refunded_at = NOW(),
+                     updated_at_ms = ?,
+                     refunded_at_ms = ?
                  WHERE reservation_id = ?`,
-                [refundAmount || 0, refundMethod || '', refundRef || '', operator || 'Admin', numericId]
+                [refundAmount || 0, refundMethod || '', refundRef || '', operator || 'Admin', nowMs, nowMs, numericId]
             ).catch(async () => {
                 await db.query(
                     `UPDATE reservation_log
@@ -1240,9 +1394,11 @@ app.post('/api/reservations/refund', async (req, res) => {
                          refund_amount = ?,
                          refund_method = ?,
                          refund_ref = ?,
-                         refunded_at = NOW()
+                         refunded_at = NOW(),
+                         updated_at_ms = ?,
+                         refunded_at_ms = ?
                      WHERE reservation_id = ?`,
-                    [refundAmount || 0, refundMethod || '', refundRef || '', numericId]
+                    [refundAmount || 0, refundMethod || '', refundRef || '', nowMs, nowMs, numericId]
                 );
             });
             if (email && String(email).includes('@')) {
@@ -1253,6 +1409,27 @@ app.post('/api/reservations/refund', async (req, res) => {
                      WHERE r.reservation_id = ?`,
                     [String(email).trim(), numericId]
                 ).catch(() => {});
+            }
+
+            if (existing) {
+                const methodText = refundMethod ? ` (${String(refundMethod).toUpperCase()})` : '';
+                await recordLiveActivity({
+                    reservationNumber: existing.summary.reservationNumber,
+                    customerName: existing.summary.customerName,
+                    bookedTable: existing.summary.tableLabel,
+                    reservationType: existing.summary.reservationType,
+                    bookedBy: existing.summary.bookedBy,
+                    branch: existing.summary.branch,
+                    paymentAmount: Number(refundAmount || existing.summary.paymentAmount || 0),
+                    foods: existing.summary.foods,
+                    category: 'completed',
+                    statusKey: 'refunded',
+                    icon: '💸',
+                    label: `Refund Processed${methodText}`,
+                    color: '#2563eb',
+                    actor: operator || 'Admin',
+                    timestamp: nowMs
+                });
             }
         }
         cachedReservations = null;
@@ -1268,10 +1445,39 @@ app.post('/api/reservations/update-kds', async (req, res) => {
     try {
         const numericId = String(id).replace(/[^0-9]/g, '');
         if (numericId) {
-            if (kdsStatus === 'cancelled') {
-                await db.query("UPDATE reservation_log SET kds_status = 'cancelled', status = 'Cancelled' WHERE reservation_id = ?", [numericId]);
+            const nowMs = Date.now();
+            const existing = await getReservationSummaryById(numericId);
+            const prevKdsLower = existing ? String(existing.row.kds_status || '').toLowerCase().trim() : '';
+            const lower = String(kdsStatus || '').toLowerCase().trim();
+
+            if (lower === 'cancelled') {
+                await db.query("UPDATE reservation_log SET kds_status = 'cancelled', status = 'Cancelled', updated_at_ms = ? WHERE reservation_id = ?", [nowMs, numericId]);
             } else {
-                await db.query('UPDATE reservation_log SET kds_status = ? WHERE reservation_id = ?', [kdsStatus, numericId]);
+                await db.query('UPDATE reservation_log SET kds_status = ?, updated_at_ms = ? WHERE reservation_id = ?', [kdsStatus, nowMs, numericId]);
+            }
+
+            if (existing && prevKdsLower !== lower && lower !== 'pending') {
+                const map = {
+                    cooking: { category: 'kitchen', statusKey: 'cooking', icon: '👨‍🍳', label: 'Kitchen Cooking', color: '#f97316' },
+                    ready: { category: 'kitchen', statusKey: 'ready', icon: '✅', label: 'Cooked & Ready', color: '#10b981' },
+                    served: { category: 'served', statusKey: 'served', icon: '🍽️', label: 'Served to Table', color: '#4f46e5' },
+                    cancelled: { category: 'completed', statusKey: 'cancelled', icon: '🚫', label: 'Cancelled', color: '#ef4444' }
+                };
+                const meta = map[lower];
+                if (meta) {
+                    await recordLiveActivity({
+                        reservationNumber: existing.summary.reservationNumber,
+                        customerName: existing.summary.customerName,
+                        bookedTable: existing.summary.tableLabel,
+                        reservationType: existing.summary.reservationType,
+                        bookedBy: existing.summary.bookedBy,
+                        branch: existing.summary.branch,
+                        paymentAmount: existing.summary.paymentAmount,
+                        foods: existing.summary.foods,
+                        ...meta,
+                        timestamp: nowMs
+                    });
+                }
             }
         }
         cachedReservations = null;
@@ -1424,6 +1630,7 @@ app.delete('/api/reservations/all', async (req, res) => {
     try {
         await db.query('DELETE FROM reservation_log');
         await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1'); 
+        await setSystemMemoryKey('liveActivityLog', []);
         cachedReservations = null;
         resCacheTime = 0;
         res.json({ success: true });
@@ -1465,10 +1672,29 @@ app.delete('/api/reservations/:id', async (req, res) => {
     try {
         const numericId = String(req.params.id || '').replace(/[^0-9]/g, '');
         if (numericId) {
+            const existing = await getReservationSummaryById(numericId);
             await db.query('DELETE FROM reservation_log WHERE reservation_id = ?', [numericId]);
             const [cntRows] = await db.query('SELECT COUNT(*) AS cnt FROM reservation_log');
             if (cntRows && cntRows[0] && Number(cntRows[0].cnt) === 0) {
                 await db.query('ALTER TABLE reservation_log AUTO_INCREMENT = 1');
+            }
+            if (existing) {
+                await recordLiveActivity({
+                    reservationNumber: existing.summary.reservationNumber,
+                    customerName: existing.summary.customerName,
+                    bookedTable: existing.summary.tableLabel,
+                    reservationType: existing.summary.reservationType,
+                    bookedBy: existing.summary.bookedBy,
+                    branch: existing.summary.branch,
+                    paymentAmount: existing.summary.paymentAmount,
+                    foods: existing.summary.foods,
+                    category: 'completed',
+                    statusKey: 'deleted',
+                    icon: '🗑️',
+                    label: 'Reservation Deleted',
+                    color: '#dc2626',
+                    timestamp: Date.now()
+                });
             }
         }
         cachedReservations = null;
@@ -1488,6 +1714,7 @@ app.post('/api/reservations/update-order', async (req, res) => {
         if (finalNote) cleanFoodsArr.push(`[[ORDER_NOTE: ${finalNote}]]`);
         const foodsJson = JSON.stringify(cleanFoodsArr);
         if (numericId) {
+            const nowMs = Date.now();
             if (customerName && String(customerName).trim() !== '') {
                 const [rows] = await db.query('SELECT customer_id FROM reservation_log WHERE reservation_id = ?', [numericId]);
                 if (rows.length > 0 && rows[0].customer_id) {
@@ -1512,10 +1739,32 @@ app.post('/api/reservations/update-order', async (req, res) => {
                      table_label = COALESCE(?, table_label),
                      reservation_time = COALESCE(?, reservation_time),
                      status = COALESCE(?, status), 
-                     kds_status = COALESCE(?, kds_status) 
+                     kds_status = COALESCE(?, kds_status),
+                     updated_at_ms = ?
                  WHERE reservation_id = ?`, 
-                [Number(paymentAmount) || 0, foodsJson, tableInt, tableLabelVal, resTime, status || null, kdsStatus || null, numericId]
+                [Number(paymentAmount) || 0, foodsJson, tableInt, tableLabelVal, resTime, status || null, kdsStatus || null, nowMs, numericId]
             );
+
+            const updatedRow = await getReservationSummaryById(numericId);
+            if (updatedRow) {
+                const isComp = String(status || '').toLowerCase().trim() === 'completed';
+                await recordLiveActivity({
+                    reservationNumber: updatedRow.summary.reservationNumber,
+                    customerName: updatedRow.summary.customerName,
+                    bookedTable: updatedRow.summary.tableLabel,
+                    reservationType: updatedRow.summary.reservationType,
+                    bookedBy: updatedRow.summary.bookedBy,
+                    branch: updatedRow.summary.branch,
+                    paymentAmount: updatedRow.summary.paymentAmount,
+                    foods: updatedRow.summary.foods,
+                    category: isComp ? 'completed' : 'reserved',
+                    statusKey: isComp ? 'completed' : 'updated',
+                    icon: isComp ? '💰' : '✏️',
+                    label: isComp ? 'Billed & Completed' : 'Order Updated',
+                    color: isComp ? '#16a34a' : '#0284c7',
+                    timestamp: nowMs
+                });
+            }
         }
         cachedReservations = null;
         resCacheTime = 0;
