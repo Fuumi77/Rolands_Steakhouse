@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/superadmin.css?v=2.1">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=6.8"></script>
+    <script src="js/inventory-system.js?v=7.0"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         input[type="checkbox"] {
@@ -352,6 +352,11 @@
                 <span class="tab-icon"
                     style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">🏬</span>
                 Branches
+            </button>
+            <button class="tab-link" onclick="switchTab('promotions', this)">
+                <span class="tab-icon"
+                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">📢</span>
+                Promotions
             </button>
             <div class="sidebar-label">System</div>
             <button class="tab-link" onclick="switchTab('holidays', this)">
@@ -1425,6 +1430,26 @@
                 <div id="br-content" style="overflow-x:auto;"></div>
             </div>
 
+            <!-- PROMOTIONS & POP-UP ADS TAB -->
+            <div id="tab-promotions" class="superadmin-tab-content">
+                <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                    <div>
+                        <h2 style="margin:0 0 4px; font-family:'Playfair Display',serif; color:#1b5e20; font-size:24px;">📢 Promotions, Pop-up Ads & Vouchers</h2>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Modify the customer website pop-up advertisement (picture, title, description, and vouchers) and sync across devices.</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <label for="superadmin-promo-branch-select" style="font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.4px;">Target Branch:</label>
+                        <select id="superadmin-promo-branch-select" onchange="switchSuperAdminPromoBranch(this.value)" style="padding:9px 14px; border:1.5px solid #cbd5e1; border-radius:10px; font-weight:700; color:#1e293b; background:white; cursor:pointer;">
+                            <option value="ALL">🌐 All Branches (Sync Everywhere)</option>
+                            <option value="General Santos City">🥩 General Santos City</option>
+                            <option value="Koronadal City">🥩 Koronadal City</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="superadmin-promo-mount"></div>
+                <div id="superadmin-voucher-mount"></div>
+            </div>
+
             <!-- HOLIDAYS & CLOSURES CALENDAR TAB -->
             <div id="tab-holidays" class="superadmin-tab-content">
                 <div
@@ -1837,7 +1862,26 @@
                         if (String(match.approvalStatus).toLowerCase() !== dbStatus) {
                             match.approvalStatus = dbStatus;
                             if (dbStatus === 'cancelled' || dbStatus === 'rejected') match.kdsStatus = 'cancelled';
-                            if (dbStatus === 'completed' && !match.completedAt) match.completedAt = `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00`;
+                            if (dbStatus === 'completed') {
+                                const compTs = dbRes.updatedAt || (dbRes.arrivalDate ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null);
+                                if (compTs) match.completedAt = compTs;
+                            }
+                            updated = true;
+                        }
+                        if (dbStatus === 'completed' && dbRes.updatedAt && match.completedAt !== dbRes.updatedAt) {
+                            match.completedAt = dbRes.updatedAt;
+                            updated = true;
+                        }
+                        if (dbRes.updatedAt && match.updatedAt !== dbRes.updatedAt) {
+                            match.updatedAt = dbRes.updatedAt;
+                            updated = true;
+                        }
+                        if (dbRes.refundedAt && match.refundedAt !== dbRes.refundedAt) {
+                            match.refundedAt = dbRes.refundedAt;
+                            updated = true;
+                        }
+                        if (dbRes.bookedBy && match.bookedBy !== dbRes.bookedBy) {
+                            match.bookedBy = dbRes.bookedBy;
                             updated = true;
                         }
 
@@ -1907,8 +1951,10 @@
                             refundRef: dbRes.refundRef || '',
                             paymentMethod: dbRes.bookedBy === 'online' ? 'paymongo' : 'walk-in',
                             kdsStatus: dbRes.kdsStatus || (dbStatus === 'completed' ? 'served' : 'pending'),
-                            completedAt: dbStatus === 'completed' ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null,
+                            completedAt: dbStatus === 'completed' ? (dbRes.updatedAt || (dbRes.arrivalDate ? `${dbRes.arrivalDate}T${dbRes.arrivalTime || '12:00'}:00` : null)) : null,
                             createdAt: dbRes.createdAt || null,
+                            updatedAt: dbRes.updatedAt || null,
+                            refundedAt: dbRes.refundedAt || null,
                             foods: cloudFoods,
                             beefNote: cloudNote,
                             notes: cloudNote,
@@ -1926,6 +1972,7 @@
                 if (updated) {
                     localStorage.setItem('reservationHistory', JSON.stringify(localHistory));
                     renderDashboard();
+                    if (typeof window.renderActivityFeed === 'function') window.renderActivityFeed();
                     if (typeof window.brRefresh === 'function') window.brRefresh();
                 } else {
                     if (typeof window.applySearch === 'function') window.applySearch();
@@ -1970,7 +2017,28 @@
             const target = document.getElementById('tab-' + tabId);
             if (target) target.classList.add('active');
             if (tabId === 'revenue') renderRevenueTab();
-            if (tabId === 'activity') renderActivityFeed();
+            if (tabId === 'activity') {
+                if (typeof window.syncActivityFeed === 'function') window.syncActivityFeed();
+                if (typeof syncReservations === 'function') syncReservations();
+                renderActivityFeed();
+            }
+            if (tabId === 'promotions') {
+                const sel = document.getElementById('superadmin-promo-branch-select');
+                if (sel && !window.superadminPromoBranch) window.superadminPromoBranch = sel.value || 'ALL';
+                window.__promoBranchOverride = window.superadminPromoBranch || (sel ? sel.value : 'ALL') || 'ALL';
+                if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+                if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
+                if (window.PromoAdSystem && typeof window.PromoAdSystem.pullFromCloud === 'function') {
+                    window.PromoAdSystem.pullFromCloud().then(() => {
+                        if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+                    });
+                }
+                if (window.VoucherSystem && typeof window.VoucherSystem.pullFromCloud === 'function') {
+                    window.VoucherSystem.pullFromCloud().then(() => {
+                        if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
+                    });
+                }
+            }
             if (tabId === 'kitchen' || tabId === 'holidays') {
                 if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
                 if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
@@ -1992,6 +2060,22 @@
             if (typeof window.toggleSuperAdminMobileNav === 'function') {
                 window.toggleSuperAdminMobileNav(false);
             }
+        };
+
+        window.switchSuperAdminPromoBranch = async function (branchVal) {
+            const cleanBranch = branchVal || 'ALL';
+            window.superadminPromoBranch = cleanBranch;
+            window.__promoBranchOverride = cleanBranch;
+            const sel = document.getElementById('superadmin-promo-branch-select');
+            if (sel && sel.value !== cleanBranch) sel.value = cleanBranch;
+            if (window.PromoAdSystem && typeof window.PromoAdSystem.pullFromCloud === 'function') {
+                await window.PromoAdSystem.pullFromCloud();
+            }
+            if (window.VoucherSystem && typeof window.VoucherSystem.pullFromCloud === 'function') {
+                await window.VoucherSystem.pullFromCloud();
+            }
+            if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+            if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
         };
 
         window.toggleSuperAdminMobileNav = function (forceState) {
@@ -6044,6 +6128,16 @@
             // ── LIVE ACTIVITY FEED ──
             window.currentActivityFilter = 'all';
             window.currentActivityLimit = 30;
+            window.__cloudActivityLog = window.__cloudActivityLog || [];
+
+            function escActivityHtml(str) {
+                return String(str ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
 
             window.setActivityFilter = function (filter) {
                 window.currentActivityFilter = filter;
@@ -6060,74 +6154,58 @@
                 renderActivityFeed();
             };
 
+            window.syncActivityFeed = async function () {
+                if (window.__syncingActivityFeed) return;
+                window.__syncingActivityFeed = true;
+                try {
+                    const activeBranch = typeof window.getCurrentBranch === 'function' ? window.getCurrentBranch() : 'ALL';
+                    const res = await fetch(`${API_BASE_URL}/api/activity-feed?branch=${encodeURIComponent(activeBranch)}&nocache=${Date.now()}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data)) {
+                            window.__cloudActivityLog = data;
+                        }
+                    }
+                } catch (e) {
+                } finally {
+                    window.__syncingActivityFeed = false;
+                    if (typeof window.renderActivityFeed === 'function') window.renderActivityFeed();
+                }
+            };
+
             window.renderActivityFeed = function () {
-                const hist = getReservationHistory();
-                const cutoff = Date.now() - 24 * 60 * 60 * 1000; // last 24h
-
-                const recent = hist.filter(r => {
-                    const eventTime = new Date(r.completedAt || r.createdAt || r.arrivalDate || Date.now()).getTime();
-                    if (eventTime <= cutoff) return false;
-
-                    const isCompleted = !!r.completedAt;
-                    const isCancelled = r.approvalStatus === 'cancelled' || r.approvalStatus === 'rejected';
-
-                    // Apply the new category filters
-                    if (window.currentActivityFilter === 'completed') {
-                        return isCompleted || isCancelled;
-                    }
-                    if (window.currentActivityFilter === 'kitchen') {
-                        return !isCompleted && !isCancelled && (r.kdsStatus === 'cooking' || r.kdsStatus === 'ready');
-                    }
-                    if (window.currentActivityFilter === 'served') {
-                        return !isCompleted && !isCancelled && r.kdsStatus === 'served';
-                    }
-                    if (window.currentActivityFilter === 'reserved') {
-                        return !isCompleted && !isCancelled && r.kdsStatus !== 'cooking' && r.kdsStatus !== 'ready' && r.kdsStatus !== 'served';
-                    }
-                    return true; // 'all'
-                }).sort((a, b) => {
-                    const timeA = new Date(a.completedAt || a.createdAt || a.arrivalDate || 0).getTime();
-                    const timeB = new Date(b.completedAt || b.createdAt || b.arrivalDate || 0).getTime();
-                    return timeB - timeA;
-                }).slice(0, window.currentActivityLimit); // Apply the new row limit
-
                 const el = document.getElementById('activity-feed');
                 if (!el) return;
+
+                const hist = getReservationHistory();
+                const activeBranch = typeof window.getCurrentBranch === 'function' ? window.getCurrentBranch() : 'ALL';
+                const nowMs = Date.now();
+                const allItems = typeof window.buildMergedActivityItems === 'function'
+                    ? window.buildMergedActivityItems(window.__cloudActivityLog || [], hist, activeBranch, nowMs)
+                    : [];
+
+                const recent = allItems.filter(item => {
+                    if (window.currentActivityFilter === 'all') return true;
+                    return item.category === window.currentActivityFilter;
+                }).slice(0, window.currentActivityLimit);
+
                 if (!recent.length) {
-                    el.innerHTML = '<div style="text-align:center; padding:60px; color:var(--sa-muted); font-weight: 500;">No activity found for this category.</div>';
+                    el.innerHTML = '<div style="text-align:center; padding:60px; color:var(--sa-muted); font-weight: 500;">No activity found for this category in the last 24 hours.</div>';
                     return;
                 }
 
                 el.innerHTML = recent.map(r => {
-                    let eventIcon = '🆕';
-                    let eventLabel = 'New Order';
-                    let eventColor = '#3b82f6'; // blue
+                    const eventIcon = escActivityHtml(r.icon || '🆕');
+                    const eventLabel = escActivityHtml(r.label || 'Activity');
+                    const eventColor = /^#[0-9a-f]{3,8}$/i.test(String(r.color || '')) ? r.color : '#3b82f6';
+                    const timeAgo = typeof window.formatActivityTimeAgo === 'function'
+                        ? window.formatActivityTimeAgo(r.timestamp, nowMs)
+                        : 'Just now';
 
-                    if (r.completedAt) {
-                        eventIcon = '💰'; eventLabel = 'Billed / Paid'; eventColor = '#16a34a';
-                    } else if (r.approvalStatus === 'cancelled' || r.approvalStatus === 'rejected') {
-                        eventIcon = '🚫'; eventLabel = 'Cancelled'; eventColor = '#ef4444';
-                    } else if (r.kdsStatus === 'served') {
-                        eventIcon = '🍽️'; eventLabel = 'Served to Table'; eventColor = '#4f46e5';
-                    } else if (r.kdsStatus === 'ready') {
-                        eventIcon = '✅'; eventLabel = 'Cooked & Ready'; eventColor = '#10b981';
-                    } else if (r.kdsStatus === 'cooking') {
-                        eventIcon = '👨‍🍳'; eventLabel = 'Kitchen Cooking'; eventColor = '#f97316';
-                    } else if (r.approvalStatus === 'seated') {
-                        eventIcon = '🪑'; eventLabel = 'Customer Seated'; eventColor = '#0ea5e9';
-                    } else if (r.approvalStatus === 'approved') {
-                        eventIcon = '👍'; eventLabel = 'Approved / Waiting'; eventColor = '#8b5cf6';
-                    }
-
-                    const timeAgo = (() => {
-                        const eventTime = new Date(r.completedAt || r.createdAt || r.arrivalDate || Date.now()).getTime();
-                        const secs = Math.floor((Date.now() - eventTime) / 1000);
-                        if (secs < 60) return `${secs}s ago`;
-                        if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-                        return `${Math.floor(secs / 3600)}h ago`;
-                    })();
-
-                    const foods = Array.isArray(r.foods) && r.foods.length ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '') : 'Table Reserved';
+                    const fallbackSummary = r.bookedBy === 'pos' ? 'POS Dine-In Order' : 'Table Reserved';
+                    const foodsText = Array.isArray(r.foods) && r.foods.length
+                        ? r.foods.slice(0, 2).join(', ') + (r.foods.length > 2 ? ' ...' : '')
+                        : fallbackSummary;
 
                     let typeTag = '';
                     const feedResNum = String(r.reservationNumber || '');
@@ -6137,25 +6215,36 @@
                         typeTag = `<span style="background:#dbeafe; color:#1e3a8a; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
                     } else if (feedResNum.startsWith('POS-')) {
                         typeTag = `<span style="background:#e0e7ff; color:#3730a3; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
+                    } else if (feedResNum.startsWith('VIP-') || feedResType === 'vip' || /vip\s*room/i.test(String(r.bookedTable || ''))) {
+                        typeTag = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">👑 VIP</span>`;
                     } else if (feedResType === 'priority') {
                         typeTag = `<span style="background:#fef3c7; color:#92400e; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
                     } else {
                         typeTag = `<span style="background:#f1f5f9; color:#475569; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
                     }
 
-                    return `<div class="activity-item" style="border-left: 4px solid ${eventColor}; margin-bottom: 12px; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between;">
+                    const tableText = typeof window.formatActivityTableLabel === 'function'
+                        ? window.formatActivityTableLabel(r.bookedTable)
+                        : (r.bookedTable || 'No Table');
+                    const branchBadge = activeBranch === 'ALL'
+                        ? `<span style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px;">📍 ${escActivityHtml(r.branch || 'General Santos City')}</span>`
+                        : '';
+                    const actorNote = r.actor ? ` · by ${escActivityHtml(r.actor)}` : '';
+
+                    return `<div class="activity-item" style="border-left: 4px solid ${eventColor}; margin-bottom: 12px; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap;">
-                                <strong style="font-size:14px; color: #0f172a;">${r.customerName || 'Walk-in Guest'}</strong>
+                                <strong style="font-size:14px; color: #0f172a;">${escActivityHtml(r.customerName || 'Walk-in Guest')}</strong>
                                 ${typeTag}
-                                <span style="font-size:11px; color:#64748b; font-weight: 600;">Table ${r.bookedTable || 'N/A'} · ${r.reservationNumber || ''}</span>
+                                ${branchBadge}
+                                <span style="font-size:11px; color:#64748b; font-weight: 600;">${escActivityHtml(tableText)}${feedResNum ? ' · ' + escActivityHtml(feedResNum) : ''}</span>
                             </div>
-                            <div style="font-size:12px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${foods}</div>
+                            <div style="font-size:12px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escActivityHtml(foodsText)}</div>
                         </div>
                         <div style="text-align:right; flex-shrink:0;">
                             <div style="font-size:13px; font-weight:800; color:#1e293b;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             <div style="font-size:12px; color:${eventColor}; margin-top:4px; font-weight: 700;">${eventIcon} ${eventLabel}</div>
-                            <div style="font-size:10px; color:#94a3b8; margin-top:4px; font-weight: 600;">${timeAgo}</div>
+                            <div style="font-size:10px; color:#94a3b8; margin-top:4px; font-weight: 600;">${escActivityHtml(timeAgo)}${actorNote}</div>
                         </div>
                     </div>`;
                 }).join('');
@@ -6168,9 +6257,18 @@
                 syncReservations();
                 setInterval(syncReservations, 30000);
 
+                syncActivityFeed();
+                setInterval(() => {
+                    const actTab = document.getElementById('tab-activity');
+                    if (actTab && actTab.classList.contains('active')) {
+                        syncActivityFeed();
+                    } else {
+                        renderActivityFeed();
+                    }
+                }, 10000);
+
                 pollOnlineAdmins();
                 setInterval(pollOnlineAdmins, 20000);
-                setInterval(renderActivityFeed, 30000);
 
                 setInterval(renderStaffManagement, 30000);
             }
