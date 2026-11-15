@@ -2911,6 +2911,196 @@
         return m > 0 ? `${h}h ${m}m` : `${h}h`;
     };
 
+    /**
+     * Formats a reservation's table label without duplicating "Table" prefixes.
+     */
+    window.formatActivityTableLabel = function (tableName) {
+        const raw = String(tableName || '').trim();
+        if (!raw || raw.toLowerCase() === 'n/a' || raw.toLowerCase() === 'unassigned') return 'No Table';
+        if (/^\d+$/.test(raw)) return `Table ${raw}`;
+        return raw.replace(/^(table\s+)+/i, 'Table ');
+    };
+
+    /**
+     * Formats an activity timestamp into a non-negative relative age string.
+     */
+    window.formatActivityTimeAgo = function (timestampMs, nowMs) {
+        const ts = Number(timestampMs);
+        if (!Number.isFinite(ts) || ts <= 0) return 'Just now';
+        const refNow = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+        const diffMs = refNow - ts;
+        if (diffMs <= 5000) return 'Just now';
+        const secs = Math.floor(diffMs / 1000);
+        if (secs < 60) return `${secs}s ago`;
+        const mins = Math.floor(secs / 60);
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        let timeStr = '';
+        try {
+            timeStr = new Date(ts).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch (e) {}
+        const rel = remMins > 0 ? `${hrs}h ${remMins}m ago` : `${hrs}h ago`;
+        return timeStr ? `${rel} · ${timeStr}` : rel;
+    };
+
+    function parseActivityTimestampMs(value) {
+        if (value === null || value === undefined || value === '') return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const ms = new Date(value).getTime();
+        return Number.isFinite(ms) ? ms : 0;
+    }
+
+    function deriveFallbackActivityMeta(r) {
+        const approval = String(r.approvalStatus || r.status || '').toLowerCase().trim();
+        const kds = String(r.kdsStatus || '').toLowerCase().trim();
+        const isRefunded = r.refundStatus === 'refunded' || r.paymentStatus === 'refunded' || Number(r.refundAmount) > 0;
+        const isCancelled = approval === 'cancelled' || approval === 'rejected';
+        const isCompleted = !!r.completedAt || approval === 'completed';
+
+        if (isRefunded) {
+            const method = r.refundMethod ? ` (${String(r.refundMethod).toUpperCase()})` : '';
+            return {
+                category: 'completed',
+                statusKey: isCancelled ? 'cancelled_refunded' : 'refunded',
+                icon: '💸',
+                label: isCancelled ? `Cancelled & Refunded${method}` : `Refund Processed${method}`,
+                color: '#2563eb'
+            };
+        }
+        if (isCancelled) {
+            return {
+                category: 'completed',
+                statusKey: 'cancelled',
+                icon: '🚫',
+                label: approval === 'rejected' ? 'Rejected' : 'Cancelled',
+                color: '#ef4444'
+            };
+        }
+        if (isCompleted) {
+            return { category: 'completed', statusKey: 'completed', icon: '💰', label: 'Billed & Completed', color: '#16a34a' };
+        }
+        if (kds === 'served') {
+            return { category: 'served', statusKey: 'served', icon: '🍽️', label: 'Served to Table', color: '#4f46e5' };
+        }
+        if (kds === 'ready') {
+            return { category: 'kitchen', statusKey: 'ready', icon: '✅', label: 'Cooked & Ready', color: '#10b981' };
+        }
+        if (kds === 'cooking') {
+            return { category: 'kitchen', statusKey: 'cooking', icon: '👨‍🍳', label: 'Kitchen Cooking', color: '#f97316' };
+        }
+        if (approval === 'seated') {
+            return { category: 'reserved', statusKey: 'seated', icon: '🪑', label: 'Customer Seated', color: '#0ea5e9' };
+        }
+        if (approval === 'approved') {
+            return { category: 'reserved', statusKey: 'approved', icon: '👍', label: 'Approved / Waiting', color: '#8b5cf6' };
+        }
+        return { category: 'reserved', statusKey: 'new', icon: '🆕', label: 'New Order', color: '#3b82f6' };
+    }
+
+    /**
+     * Merges cloud live activity events with 24h fallback reservation states (excluding future bogus timestamps).
+     */
+    window.buildMergedActivityItems = function (cloudEvents, reservationHistory, activeBranch, nowMs) {
+        const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+        const cutoff = now - 24 * 60 * 60 * 1000;
+        const maxFuture = now + 60000;
+        const targetBranch = String(activeBranch || 'ALL').trim();
+        const filterByBranch = targetBranch && targetBranch !== 'ALL';
+
+        const merged = [];
+        const cloudResNums = new Set();
+
+        (Array.isArray(cloudEvents) ? cloudEvents : []).forEach(ev => {
+            if (!ev || typeof ev !== 'object') return;
+            const ts = parseActivityTimestampMs(ev.timestamp);
+            if (!ts || ts <= cutoff || ts > maxFuture) return;
+            const evBranch = String(ev.branch || 'General Santos City').trim();
+            if (filterByBranch && evBranch !== targetBranch) return;
+
+            const resNum = String(ev.reservationNumber || '').trim();
+            if (resNum) cloudResNums.add(resNum);
+
+            merged.push({
+                id: ev.id || `cloud-${resNum}-${ts}`,
+                source: 'cloud',
+                reservationNumber: resNum,
+                customerName: String(ev.customerName || 'Guest').trim(),
+                bookedTable: String(ev.bookedTable || '').trim(),
+                reservationType: String(ev.reservationType || 'standard').toLowerCase(),
+                bookedBy: String(ev.bookedBy || 'online').toLowerCase(),
+                branch: evBranch,
+                paymentAmount: Number(ev.paymentAmount || 0),
+                foods: Array.isArray(ev.foods) ? ev.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim())) : [],
+                category: String(ev.category || 'reserved'),
+                statusKey: String(ev.statusKey || ''),
+                icon: String(ev.icon || '🆕'),
+                label: String(ev.label || 'Activity'),
+                color: String(ev.color || '#3b82f6'),
+                actor: String(ev.actor || '').trim(),
+                timestamp: ts
+            });
+        });
+
+        (Array.isArray(reservationHistory) ? reservationHistory : []).forEach(r => {
+            if (!r || typeof r !== 'object') return;
+            const resNum = String(r.reservationNumber || '').trim();
+            if (resNum && cloudResNums.has(resNum)) return;
+
+            const rBranch = String(r.branch || 'General Santos City').trim();
+            if (filterByBranch && rBranch !== targetBranch) return;
+
+            // Use only real action timestamps; never fall back to arrivalDate or Date.now()
+            const candidates = [
+                parseActivityTimestampMs(r.refundedAt),
+                parseActivityTimestampMs(r.updatedAt),
+                parseActivityTimestampMs(r.completedAt),
+                parseActivityTimestampMs(r.createdAt)
+            ].filter(t => t > 0 && t <= maxFuture);
+            const eventTs = candidates.length ? Math.max(...candidates) : 0;
+            if (!eventTs || eventTs <= cutoff) return;
+
+            const meta = deriveFallbackActivityMeta(r);
+            const foods = Array.isArray(r.foods)
+                ? r.foods.filter(f => !/^\[\[ORDER_NOTE:/i.test(String(f || '').trim()))
+                : [];
+
+            merged.push({
+                id: `hist-${resNum || eventTs}-${meta.statusKey}`,
+                source: 'history',
+                reservationNumber: resNum,
+                customerName: String(r.customerName || 'Walk-in Guest').trim(),
+                bookedTable: String(r.bookedTable || '').trim(),
+                reservationType: String(r.reservationType || 'standard').toLowerCase(),
+                bookedBy: String(r.bookedBy || 'online').toLowerCase(),
+                branch: rBranch,
+                paymentAmount: Number(r.paymentAmount || 0),
+                foods,
+                category: meta.category,
+                statusKey: meta.statusKey,
+                icon: meta.icon,
+                label: meta.label,
+                color: meta.color,
+                actor: '',
+                timestamp: eventTs
+            });
+        });
+
+        merged.sort((a, b) => {
+            const diff = Number(b.timestamp || 0) - Number(a.timestamp || 0);
+            if (diff !== 0) return diff;
+            const idA = parseInt(String(a.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+            const idB = parseInt(String(b.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+            return idB - idA;
+        });
+
+        return merged;
+    };
+
     function healFullLocalStorage() {
         try {
             const histRaw = rawGet('reservationHistory');
@@ -3450,10 +3640,12 @@
             if (promoRes.ok) {
                 const cloudPromos = await promoRes.json();
                 if (Array.isArray(cloudPromos)) {
-                    const prevPromos = localStorage.getItem('activePromos');
+                    const promoKey = branch === 'General Santos City' ? 'activePromos' : `${branch}__activePromos`;
+                    const prevPromos = rawGet(promoKey);
                     const nextPromos = JSON.stringify(cloudPromos);
                     if (prevPromos !== nextPromos) {
-                        localStorage.setItem('activePromos', nextPromos);
+                        safeRawSet(promoKey, nextPromos);
+                        if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
                         if (typeof window.renderPromosAdmin === 'function') window.renderPromosAdmin();
                         if (typeof window.renderPromotions === 'function') window.renderPromotions();
                         if (typeof window.loadPromotions === 'function') window.loadPromotions();
@@ -4138,46 +4330,73 @@
     ];
 
     window.VoucherSystem = {
-        getVouchers: function () {
+        getTargetBranch: function () {
+            const domSel = isSuperAdminPage && typeof document !== 'undefined' ? document.getElementById('superadmin-promo-branch-select') : null;
+            if (domSel && domSel.value) return domSel.value;
+            if (isSuperAdminPage && window.__promoBranchOverride) return window.__promoBranchOverride;
+            if (isSuperAdminPage && window.getCurrentBranch && window.getCurrentBranch() === 'ALL') return 'ALL';
+            return window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+        },
+
+        _getStorageKey: function (branchName) {
+            const b = (!branchName || branchName === 'ALL' || branchName === 'General Santos City') ? 'General Santos City' : branchName;
+            return b === 'General Santos City' ? 'vouchers' : `${b}__vouchers`;
+        },
+
+        getVouchers: function (branchOverride) {
             try {
-                const raw = localStorage.getItem('vouchers');
+                const rawTarget = branchOverride || this.getTargetBranch();
+                const key = this._getStorageKey(rawTarget);
+                const raw = rawGet(key);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (Array.isArray(parsed)) return parsed;
                 }
+                const seeded = JSON.parse(JSON.stringify(DEFAULT_VOUCHERS));
+                safeRawSet(key, JSON.stringify(seeded));
+                return seeded;
             } catch (e) { }
-            localStorage.setItem('vouchers', JSON.stringify(DEFAULT_VOUCHERS));
             return JSON.parse(JSON.stringify(DEFAULT_VOUCHERS));
         },
 
-        saveVouchers: async function (list) {
+        saveVouchers: async function (list, branchOverride) {
             const cleanList = Array.isArray(list) ? list : [];
-            localStorage.setItem('vouchers', JSON.stringify(cleanList));
+            const target = branchOverride || this.getTargetBranch();
+            const targets = target === 'ALL' ? BRANCHES.map(b => b.name) : [target];
+            const payload = JSON.stringify(cleanList);
+
+            await Promise.all(targets.map(async (b) => {
+                safeRawSet(this._getStorageKey(b), payload);
+                try {
+                    await origFetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(b)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ branch: b, vouchers: cleanList })
+                    });
+                } catch (e) { }
+            }));
+
             window.dispatchEvent(new CustomEvent('vouchersUpdated', { detail: cleanList }));
-            const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-            try {
-                await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ branch, vouchers: cleanList })
-                });
-            } catch (e) { }
+            if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
             return cleanList;
         },
 
-        pullFromCloud: async function () {
+        pullFromCloud: async function (branchOverride) {
             try {
-                const branch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
-                const res = await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`);
+                const rawTarget = branchOverride || this.getTargetBranch();
+                const readBranch = (!rawTarget || rawTarget === 'ALL') ? 'General Santos City' : rawTarget;
+                const res = await origFetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/vouchers?branch=${encodeURIComponent(readBranch)}&nocache=${Date.now()}`);
                 if (res.ok) {
                     const cloudList = await res.json();
-                    if (Array.isArray(cloudList) && cloudList.length > 0) {
-                        const prev = localStorage.getItem('vouchers');
+                    if (Array.isArray(cloudList)) {
+                        const key = this._getStorageKey(readBranch);
+                        const prev = rawGet(key);
                         const next = JSON.stringify(cloudList);
                         if (prev !== next) {
-                            localStorage.setItem('vouchers', next);
+                            safeRawSet(key, next);
                             window.dispatchEvent(new CustomEvent('vouchersUpdated', { detail: cloudList }));
                             if (typeof window.renderVoucherAdminManager === 'function') window.renderVoucherAdminManager();
+                            if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
                         }
                     }
                 }
@@ -4472,31 +4691,596 @@
     };
 
     window.deleteVoucherByCode = async function (code) {
-        if (!confirm(`Delete voucher "${code}" permanently?`)) return;
+        let confirmed = false;
+        if (typeof window.superModal === 'function') {
+            confirmed = await window.superModal({
+                title: 'Delete Voucher? 🗑️',
+                message: `Delete voucher <b>${code}</b> permanently?`,
+                type: 'confirm',
+                confirmText: 'Delete',
+                cancelText: 'Cancel'
+            });
+        } else {
+            confirmed = confirm(`Delete voucher "${code}" permanently?`);
+        }
+        if (!confirmed) return;
         let list = window.VoucherSystem.getVouchers().filter(x => x.code !== code);
         await window.VoucherSystem.saveVouchers(list);
         window.renderVoucherAdminManager();
+        if (window.showToast) window.showToast(`Voucher ${code} deleted across branches.`, 'info');
     };
 
-    // Mount Voucher Manager in Admin (Promotions tab) & SuperAdmin (Branding/Security) + Bridge Pre-Order Discount Proof on payment.html
+    // ============================================================================
+    // 📣 MODIFIABLE CUSTOMER POP-UP ADVERTISEMENT & CROSS-DEVICE SYNC ENGINE
+    // ============================================================================
+    function escPromoHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function notifyPromoFeedback(message, type = 'success', title = 'Promotions') {
+        if (typeof window.showToast === 'function') window.showToast(message, type);
+        else if (typeof window.showNotification === 'function') window.showNotification(message, type, title);
+    }
+
+    function getLocalDateIsoStr(nowMs = Date.now()) {
+        const d = new Date(nowMs);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    window.PromoAdSystem = {
+        getTargetBranch: function () {
+            const domSel = isSuperAdminPage && typeof document !== 'undefined' ? document.getElementById('superadmin-promo-branch-select') : null;
+            if (domSel && domSel.value) return domSel.value;
+            if (isSuperAdminPage && window.__promoBranchOverride) return window.__promoBranchOverride;
+            if (isSuperAdminPage && window.getCurrentBranch && window.getCurrentBranch() === 'ALL') return 'ALL';
+            return window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
+        },
+
+        _getStorageKey: function (branchName) {
+            const b = (!branchName || branchName === 'ALL' || branchName === 'General Santos City') ? 'General Santos City' : branchName;
+            return b === 'General Santos City' ? 'activePromos' : `${b}__activePromos`;
+        },
+
+        getPromos: function (branchOverride) {
+            try {
+                const rawTarget = branchOverride || this.getTargetBranch();
+                const raw = rawGet(this._getStorageKey(rawTarget));
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch (e) { }
+            return [];
+        },
+
+        savePromos: async function (list, branchOverride) {
+            const cleanList = Array.isArray(list) ? list : [];
+            const target = branchOverride || this.getTargetBranch();
+            const targets = target === 'ALL' ? BRANCHES.map(b => b.name) : [target];
+            const payload = JSON.stringify(cleanList);
+
+            await Promise.all(targets.map(async (b) => {
+                safeRawSet(this._getStorageKey(b), payload);
+                try {
+                    await origFetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/promos?branch=${encodeURIComponent(b)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload
+                    });
+                } catch (e) { }
+            }));
+
+            window.dispatchEvent(new CustomEvent('promosUpdated', { detail: cleanList }));
+            if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+            return cleanList;
+        },
+
+        pullFromCloud: async function (branchOverride) {
+            try {
+                const rawTarget = branchOverride || this.getTargetBranch();
+                const readBranch = (!rawTarget || rawTarget === 'ALL') ? 'General Santos City' : rawTarget;
+                const res = await origFetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/promos?branch=${encodeURIComponent(readBranch)}&nocache=${Date.now()}`);
+                if (!res.ok) return null;
+                const cloudPromos = await res.json();
+                if (!Array.isArray(cloudPromos)) return null;
+                const key = this._getStorageKey(readBranch);
+                const prev = rawGet(key);
+                const next = JSON.stringify(cloudPromos);
+                if (prev !== next) {
+                    safeRawSet(key, next);
+                    window.dispatchEvent(new CustomEvent('promosUpdated', { detail: cloudPromos }));
+                    if (typeof window.renderPromoAdManager === 'function') window.renderPromoAdManager();
+                }
+                return cloudPromos;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        compressImageFile: function (file, maxWidth = 1000, quality = 0.82) {
+            return new Promise((resolve, reject) => {
+                if (!file) return reject(new Error('No file provided'));
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Could not read file'));
+                reader.onload = (ev) => {
+                    const dataUrl = ev.target.result;
+                    if (typeof document === 'undefined' || typeof Image === 'undefined') {
+                        return resolve(dataUrl);
+                    }
+                    const img = new Image();
+                    img.onerror = () => resolve(dataUrl);
+                    img.onload = () => {
+                        try {
+                            let w = img.width || maxWidth;
+                            let h = img.height || maxWidth;
+                            if (w > maxWidth) {
+                                h = Math.round(h * (maxWidth / w));
+                                w = maxWidth;
+                            }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = w;
+                            canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return resolve(dataUrl);
+                            ctx.drawImage(img, 0, 0, w, h);
+                            const out = canvas.toDataURL('image/jpeg', quality);
+                            resolve(out && out.length < dataUrl.length ? out : dataUrl);
+                        } catch (err) {
+                            resolve(dataUrl);
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+        },
+
+        pickActiveCustomerPromo: function (promos) {
+            const source = promos !== undefined ? promos : this.getPromos();
+            const list = (Array.isArray(source) ? source : []).filter(p => p && p.active !== false);
+            if (!list.length) return null;
+            return list.slice().sort((a, b) => {
+                const tsA = Number(a.updatedAt) || Number(String(a.id || '').replace(/[^0-9]/g, '')) || 0;
+                const tsB = Number(b.updatedAt) || Number(String(b.id || '').replace(/[^0-9]/g, '')) || 0;
+                return tsB - tsA;
+            })[0];
+        },
+
+        resolvePopupVouchers: function (promo, vouchersList, todayIso) {
+            if (!promo || promo.showVouchers === false) return [];
+            const vCode = String(promo.voucherCode || 'ALL').trim().toUpperCase();
+            if (vCode === 'NONE') return [];
+
+            const today = todayIso || getLocalDateIsoStr();
+            const activeList = (Array.isArray(vouchersList) ? vouchersList : []).filter(v => {
+                if (!v || !v.code || v.active === false) return false;
+                if (v.expiryDate && today > String(v.expiryDate)) return false;
+                return true;
+            });
+            if (!activeList.length) return [];
+
+            if (!vCode || vCode === 'ALL') {
+                return activeList.map(v => ({ ...v }));
+            }
+            const exact = activeList.find(v => String(v.code).toUpperCase() === vCode);
+            return exact ? [{ ...exact, featured: true }] : [];
+        },
+
+        getPromoSignature: function (promo, resolvedVouchers) {
+            if (!promo) return '';
+            const vSig = (Array.isArray(resolvedVouchers) ? resolvedVouchers : [])
+                .map(v => `${v.code}:${v.discountMode}:${v.value}:${v.minSpend || 0}`)
+                .join('|');
+            const imgLen = promo.image ? String(promo.image).length : 0;
+            return `${promo.id || ''}::${promo.updatedAt || promo.publishedAt || ''}::${promo.title || ''}::${promo.desc || ''}::${promo.voucherCode || ''}::${imgLen}::${vSig}`;
+        }
+    };
+
+    const promoEditorState = {
+        editingId: null,
+        imageData: '',
+        removedImage: false
+    };
+
+    function buildPromoVoucherSelectHtml(selectedCode) {
+        const activeVouchers = window.VoucherSystem.getVouchers().filter(v => v && v.active !== false);
+        const sel = String(selectedCode || 'ALL').toUpperCase();
+        const opts = [
+            `<option value="ALL" ${sel === 'ALL' ? 'selected' : ''}>🎟️ Include All Active Vouchers (${activeVouchers.length})</option>`
+        ];
+        activeVouchers.forEach(v => {
+            const dTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `₱${Number(v.value).toLocaleString()} OFF`;
+            opts.push(`<option value="${escPromoHtml(v.code)}" ${sel === String(v.code).toUpperCase() ? 'selected' : ''}>🎯 Only ${escPromoHtml(v.code)} — ${dTxt} (${escPromoHtml(v.title || v.code)})</option>`);
+        });
+        opts.push(`<option value="NONE" ${sel === 'NONE' ? 'selected' : ''}>🚫 Hide Vouchers on This Pop-up</option>`);
+        return opts.join('');
+    }
+
+    function renderPromoListIntoMounts(promos) {
+        const activeTop = window.PromoAdSystem.pickActiveCustomerPromo(promos);
+        const vouchers = window.VoucherSystem.getVouchers();
+        const cardsHtml = promos.length === 0
+            ? `<div style="grid-column:1/-1; background:#f8fafc; border:1.5px dashed #cbd5e1; border-radius:12px; padding:32px; text-align:center; color:#64748b; font-size:13.5px;">No pop-up advertisements published yet. Create one above to show it live to customers!</div>`
+            : promos.map(p => {
+                const isLiveTop = activeTop && p.id === activeTop.id;
+                const isPaused = p.active === false;
+                const statusBadge = isPaused
+                    ? `<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:20px;">⏸️ PAUSED</span>`
+                    : (isLiveTop
+                        ? `<span style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:20px;">🟢 LIVE ON CUSTOMER SITE</span>`
+                        : `<span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:20px;">✅ ACTIVE</span>`);
+                const vList = window.PromoAdSystem.resolvePopupVouchers(p, vouchers);
+                const voucherSummary = vList.length
+                    ? `🎟️ ${vList.map(v => escPromoHtml(v.code)).join(', ')}`
+                    : (String(p.voucherCode || '').toUpperCase() === 'NONE' ? 'No voucher attached' : 'No active vouchers matched');
+                const imgBlock = p.image
+                    ? `<img src="${escPromoHtml(p.image)}" alt="${escPromoHtml(p.title || 'Promo')}" style="width:100%; height:150px; object-fit:cover; border-radius:10px; margin-bottom:10px; border:1px solid #e2e8f0;">`
+                    : `<div style="width:100%; height:90px; border-radius:10px; background:linear-gradient(135deg,#f0fdf4,#ecfdf5); border:1px dashed #86efac; display:flex; align-items:center; justify-content:center; color:#166534; font-size:12px; font-weight:700; margin-bottom:10px;">📝 Text & Voucher Pop-up (No Picture)</div>`;
+
+                return `
+                    <div class="card" style="padding:15px; border:1.5px solid ${isLiveTop ? '#86efac' : '#e2e8f0'}; border-radius:14px; display:flex; flex-direction:column; justify-content:space-between; background:white;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+                                ${statusBadge}
+                                <span style="font-size:11px; color:#94a3b8; font-weight:600;">${escPromoHtml(p.publishedAt || '')}</span>
+                            </div>
+                            ${imgBlock}
+                            <div style="font-weight:800; font-size:16px; color:#1b5e20; margin-bottom:6px;">${escPromoHtml(p.title || 'Special Offer')}</div>
+                            <div style="font-size:13px; color:#475569; margin-bottom:10px; line-height:1.45;">${escPromoHtml(p.desc || '')}</div>
+                            <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:7px 10px; font-size:11.5px; font-weight:700; color:#334155; margin-bottom:12px;">${voucherSummary}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" onclick="window.editPromoAd('${escPromoHtml(p.id)}')" style="flex:1; min-width:70px; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:7px 8px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">✏️ Modify</button>
+                            <button type="button" onclick="window.togglePromoAdActive('${escPromoHtml(p.id)}')" style="flex:1; min-width:70px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:7px 8px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">${isPaused ? '▶️ Activate' : '⏸️ Pause'}</button>
+                            <button type="button" onclick="window.openPromoPreviewModal('${escPromoHtml(p.id)}')" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:7px 10px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;" title="Preview Customer Pop-up">👁️</button>
+                            <button type="button" onclick="window.deletePromoAd('${escPromoHtml(p.id)}')" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:7px 10px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;" title="Delete Promo">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        document.querySelectorAll('.rsh-promo-list-grid').forEach(el => {
+            el.innerHTML = cardsHtml;
+        });
+        document.querySelectorAll('.rsh-promo-count-badge').forEach(el => {
+            el.textContent = `${promos.length} Pop-up Ad${promos.length === 1 ? '' : 's'}`;
+        });
+    }
+
+    function updatePromoPreviewThumb() {
+        const imgEl = document.getElementById('rsh-promo-preview-img');
+        const clearBtn = document.getElementById('rsh-promo-clear-img-btn');
+        const hintEl = document.getElementById('rsh-promo-img-hint');
+        if (!imgEl) return;
+        if (promoEditorState.imageData) {
+            imgEl.src = promoEditorState.imageData;
+            imgEl.style.display = 'inline-block';
+            if (clearBtn) clearBtn.style.display = 'inline-flex';
+            if (hintEl) hintEl.textContent = promoEditorState.editingId ? 'Current picture attached (upload to replace or remove below)' : 'Picture ready for pop-up ad';
+        } else {
+            imgEl.src = '';
+            imgEl.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            if (hintEl) hintEl.textContent = 'Click to upload a promo banner picture (PNG / JPG / WebP)';
+        }
+    }
+
+    window.renderPromoAdManager = function () {
+        const mount = document.getElementById('superadmin-promo-mount') || document.getElementById('admin-promo-mount');
+        if (!mount) return;
+
+        const promos = window.PromoAdSystem.getPromos();
+        const voucherOptsHtml = buildPromoVoucherSelectHtml(
+            document.getElementById('rsh-promo-voucher-select')?.value || 'ALL'
+        );
+
+        // If editor shell already exists, update only list + voucher dropdown without disrupting typing
+        if (mount.querySelector('#rsh-promo-editor-card')) {
+            const vSel = document.getElementById('rsh-promo-voucher-select');
+            if (vSel) {
+                const curVal = vSel.value || 'ALL';
+                vSel.innerHTML = buildPromoVoucherSelectHtml(curVal);
+            }
+            renderPromoListIntoMounts(promos);
+            return;
+        }
+
+        mount.innerHTML = `
+            <div id="rsh-promo-editor-card" class="card" style="margin-bottom:24px; border:1.5px solid #bbf7d0; background:#ffffff; border-radius:14px; padding:22px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+                    <div>
+                        <h3 id="rsh-promo-form-heading" style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">+ Create or Modify Pop-up Advertisement</h3>
+                        <p style="margin:4px 0 0; font-size:12.5px; color:#64748b;">Shown automatically on the customer homepage with picture, title, description, vouchers, <b>Maybe Later</b> and <b>Reserve Now!</b> buttons.</p>
+                    </div>
+                    <span class="rsh-promo-count-badge" style="background:#dcfce7; color:#166534; font-weight:800; font-size:11.5px; padding:4px 12px; border-radius:20px;">0 Pop-up Ads</span>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:14px;">
+                    <div>
+                        <label style="display:block; font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:5px;">Promo Title *</label>
+                        <input type="text" id="rsh-promo-title" placeholder="e.g. Weekend Wagyu & Steak Special" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:5px;">Voucher Shown in Pop-up</label>
+                        <select id="rsh-promo-voucher-select" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; background:white; font-size:13.5px; font-weight:700; box-sizing:border-box;">
+                            ${voucherOptsHtml}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:5px;">Advertisement Description *</label>
+                    <textarea id="rsh-promo-desc" rows="2" placeholder="e.g. Enjoy 10% off your dining reservation + claim an exclusive voucher below!" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:11.5px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Advertisement Picture (Modifiable)</label>
+                    <div onclick="document.getElementById('rsh-promo-upload-input').click()" style="border:2px dashed #bbf7d0; border-radius:10px; padding:18px; text-align:center; cursor:pointer; background:#f0fdf4;">
+                        <div style="font-size:24px; margin-bottom:4px;">🖼️</div>
+                        <div id="rsh-promo-img-hint" style="font-size:13.5px; color:#166534; font-weight:700;">Click to upload a promo banner picture (PNG / JPG / WebP)</div>
+                        <input type="file" id="rsh-promo-upload-input" accept="image/*" style="display:none;" onchange="window.handlePromoAdImageChange(this)">
+                    </div>
+                    <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:10px;">
+                        <img id="rsh-promo-preview-img" src="" alt="Promo Preview" style="display:none; max-height:160px; max-width:100%; border-radius:10px; border:1px solid #cbd5e1;">
+                        <button type="button" id="rsh-promo-clear-img-btn" onclick="window.clearPromoAdImage()" style="display:none; align-items:center; gap:5px; padding:7px 12px; border-radius:8px; border:1px solid #fca5a5; background:#fee2e2; color:#dc2626; font-size:12px; font-weight:700; cursor:pointer;">🗑️ Remove Picture</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+                    <button type="button" onclick="window.openPromoPreviewModal()" style="padding:10px 16px; border-radius:8px; border:1px solid #86efac; background:#f0fdf4; color:#166534; font-weight:800; font-size:13px; cursor:pointer;">👁️ Preview Customer Pop-up</button>
+                    <button type="button" id="rsh-promo-cancel-edit-btn" onclick="window.resetPromoAdForm()" style="display:none; padding:10px 16px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#475569; font-weight:700; font-size:13px; cursor:pointer;">Cancel Edit</button>
+                    <button type="button" id="rsh-promo-save-btn" onclick="window.savePromoAdFromForm()" style="padding:10px 22px; border-radius:8px; border:none; background:#16a34a; color:white; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 10px rgba(22,163,74,0.25);">🚀 Publish Pop-up & Sync</button>
+                </div>
+            </div>
+
+            <div class="card" style="border:1px solid #e2e8f0; border-radius:14px; padding:20px; background:white;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+                    <h3 style="margin:0; color:#1b5e20; font-size:16px; text-transform:uppercase; letter-spacing:0.5px;">Published Pop-up Advertisements</h3>
+                    <span style="font-size:12px; color:#64748b; font-weight:600;">Most recently published / updated active ad shows first</span>
+                </div>
+                <div class="rsh-promo-list-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px;"></div>
+            </div>
+        `;
+
+        renderPromoListIntoMounts(promos);
+    };
+
+    window.handlePromoAdImageChange = async function (input) {
+        const file = input && input.files && input.files[0];
+        if (!file) return;
+        try {
+            promoEditorState.imageData = await window.PromoAdSystem.compressImageFile(file, 1000, 0.82);
+            promoEditorState.removedImage = false;
+            updatePromoPreviewThumb();
+        } catch (err) {
+            notifyPromoFeedback('Could not load image file.', 'error', 'Image Error');
+        }
+    };
+
+    window.clearPromoAdImage = function () {
+        promoEditorState.imageData = '';
+        promoEditorState.removedImage = true;
+        const fileInput = document.getElementById('rsh-promo-upload-input');
+        if (fileInput) fileInput.value = '';
+        updatePromoPreviewThumb();
+    };
+
+    window.resetPromoAdForm = function () {
+        promoEditorState.editingId = null;
+        promoEditorState.imageData = '';
+        promoEditorState.removedImage = false;
+        if (document.getElementById('rsh-promo-title')) document.getElementById('rsh-promo-title').value = '';
+        if (document.getElementById('rsh-promo-desc')) document.getElementById('rsh-promo-desc').value = '';
+        if (document.getElementById('rsh-promo-voucher-select')) document.getElementById('rsh-promo-voucher-select').value = 'ALL';
+        if (document.getElementById('rsh-promo-upload-input')) document.getElementById('rsh-promo-upload-input').value = '';
+        if (document.getElementById('rsh-promo-form-heading')) document.getElementById('rsh-promo-form-heading').textContent = '+ Create or Modify Pop-up Advertisement';
+        if (document.getElementById('rsh-promo-save-btn')) document.getElementById('rsh-promo-save-btn').textContent = '🚀 Publish Pop-up & Sync';
+        if (document.getElementById('rsh-promo-cancel-edit-btn')) document.getElementById('rsh-promo-cancel-edit-btn').style.display = 'none';
+        updatePromoPreviewThumb();
+    };
+
+    window.editPromoAd = function (id) {
+        const promos = window.PromoAdSystem.getPromos();
+        const found = promos.find(p => p && p.id === id);
+        if (!found) return;
+        promoEditorState.editingId = found.id;
+        promoEditorState.imageData = found.image || '';
+        promoEditorState.removedImage = false;
+        if (document.getElementById('rsh-promo-title')) document.getElementById('rsh-promo-title').value = found.title || '';
+        if (document.getElementById('rsh-promo-desc')) document.getElementById('rsh-promo-desc').value = found.desc || '';
+        const vSel = document.getElementById('rsh-promo-voucher-select');
+        if (vSel) {
+            vSel.innerHTML = buildPromoVoucherSelectHtml(found.voucherCode || 'ALL');
+            vSel.value = found.voucherCode || (found.showVouchers === false ? 'NONE' : 'ALL');
+        }
+        if (document.getElementById('rsh-promo-form-heading')) document.getElementById('rsh-promo-form-heading').textContent = `✏️ Modifying Pop-up: ${found.title || 'Ad'}`;
+        if (document.getElementById('rsh-promo-save-btn')) document.getElementById('rsh-promo-save-btn').textContent = '💾 Save Modifications & Sync';
+        if (document.getElementById('rsh-promo-cancel-edit-btn')) document.getElementById('rsh-promo-cancel-edit-btn').style.display = 'inline-flex';
+        updatePromoPreviewThumb();
+        document.getElementById('rsh-promo-editor-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    window.savePromoAdFromForm = async function () {
+        const title = (document.getElementById('rsh-promo-title')?.value || '').trim();
+        const desc = (document.getElementById('rsh-promo-desc')?.value || '').trim();
+        const voucherCode = (document.getElementById('rsh-promo-voucher-select')?.value || 'ALL').trim();
+
+        if (!title || !desc) {
+            notifyPromoFeedback('Please enter both a promo title and description.', 'warning', 'Action Required');
+            return;
+        }
+
+        const promos = window.PromoAdSystem.getPromos();
+        const nowMs = Date.now();
+        if (promoEditorState.editingId) {
+            const idx = promos.findIndex(p => p && p.id === promoEditorState.editingId);
+            if (idx >= 0) {
+                promos[idx] = {
+                    ...promos[idx],
+                    title,
+                    desc,
+                    image: promoEditorState.removedImage ? '' : (promoEditorState.imageData || promos[idx].image || ''),
+                    voucherCode,
+                    showVouchers: voucherCode !== 'NONE',
+                    active: true,
+                    updatedAt: nowMs
+                };
+            }
+        } else {
+            promos.push({
+                id: 'promo_' + nowMs,
+                title,
+                desc,
+                image: promoEditorState.imageData || '',
+                voucherCode,
+                showVouchers: voucherCode !== 'NONE',
+                active: true,
+                publishedAt: new Date(nowMs).toLocaleDateString(),
+                updatedAt: nowMs
+            });
+        }
+
+        await window.PromoAdSystem.savePromos(promos);
+        window.resetPromoAdForm();
+        notifyPromoFeedback('Pop-up advertisement saved & synced across all devices!', 'success', 'Promo Synced');
+    };
+
+    window.togglePromoAdActive = async function (id) {
+        const promos = window.PromoAdSystem.getPromos();
+        const item = promos.find(p => p && p.id === id);
+        if (!item) return;
+        item.active = item.active === false ? true : false;
+        item.updatedAt = Date.now();
+        await window.PromoAdSystem.savePromos(promos);
+        notifyPromoFeedback(item.active ? 'Pop-up activated across devices.' : 'Pop-up paused.', 'info', 'Promo Status');
+    };
+
+    window.deletePromoAd = async function (id) {
+        let confirmed = false;
+        if (typeof window.superModal === 'function') {
+            confirmed = await window.superModal({
+                title: 'Delete Promotion? 🗑️',
+                message: 'Are you sure you want to delete this pop-up advertisement across devices?',
+                type: 'confirm',
+                confirmText: 'Delete',
+                cancelText: 'Cancel'
+            });
+        } else {
+            confirmed = confirm('Delete this promotion permanently?');
+        }
+        if (!confirmed) return;
+        const nextList = window.PromoAdSystem.getPromos().filter(p => p && p.id !== id);
+        await window.PromoAdSystem.savePromos(nextList);
+        if (promoEditorState.editingId === id) window.resetPromoAdForm();
+        notifyPromoFeedback('Promotion removed across all devices.', 'success', 'Promo Deleted');
+    };
+
+    window.openPromoPreviewModal = function (promoId) {
+        const promos = window.PromoAdSystem.getPromos();
+        let targetPromo = promoId ? promos.find(p => p && p.id === promoId) : null;
+        if (!targetPromo) {
+            const titleVal = (document.getElementById('rsh-promo-title')?.value || '').trim();
+            const descVal = (document.getElementById('rsh-promo-desc')?.value || '').trim();
+            const vVal = document.getElementById('rsh-promo-voucher-select')?.value || 'ALL';
+            targetPromo = {
+                title: titleVal || 'Special Dining Offer',
+                desc: descVal || 'Reserve your table today and enjoy exclusive steakhouse privileges.',
+                image: promoEditorState.imageData || '',
+                voucherCode: vVal,
+                showVouchers: vVal !== 'NONE'
+            };
+        }
+
+        const matchedVouchers = window.PromoAdSystem.resolvePopupVouchers(targetPromo, window.VoucherSystem.getVouchers());
+        const vouchersHtml = matchedVouchers.length
+            ? `<div style="margin:14px 0 18px; padding:12px; background:#f0fdf4; border:1.5px dashed #86efac; border-radius:12px; text-align:left;">
+                    <div style="font-size:11px; font-weight:800; color:#166534; text-transform:uppercase; margin-bottom:8px;">🎟️ Available Promo Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>
+                    ${matchedVouchers.map(v => {
+                        const dTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `₱${Number(v.value).toLocaleString()} OFF`;
+                        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:white; border:1px solid #bbf7d0; border-radius:8px; padding:8px 10px; margin-bottom:6px;">
+                            <div>
+                                <span style="font-family:monospace; font-weight:900; color:#15803d; background:#dcfce7; padding:2px 7px; border-radius:5px; font-size:12px;">${escPromoHtml(v.code)}</span>
+                                <span style="font-weight:800; color:#166534; font-size:12px; margin-left:6px;">${dTxt}</span>
+                                <div style="font-size:11px; color:#64748b; margin-top:3px;">${escPromoHtml(window.VoucherSystem.formatRequirementSummary(v))}</div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+               </div>`
+            : '';
+
+        let ov = document.getElementById('rsh-admin-promo-preview-overlay');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'rsh-admin-promo-preview-overlay';
+            ov.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px;';
+            ov.onclick = (e) => { if (e.target === ov) ov.style.display = 'none'; };
+            document.body.appendChild(ov);
+        }
+        ov.innerHTML = `
+            <div style="width:100%; max-width:480px; background:white; border-radius:22px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.35); position:relative; max-height:92vh; overflow-y:auto;">
+                <button type="button" onclick="document.getElementById('rsh-admin-promo-preview-overlay').style.display='none'" style="position:absolute; top:12px; right:12px; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.2);">✕</button>
+                ${targetPromo.image ? `<img src="${escPromoHtml(targetPromo.image)}" style="width:100%; height:230px; object-fit:cover; display:block;" alt="Promo Preview">` : ''}
+                <div style="padding:24px; text-align:center;">
+                    <span style="display:inline-block; background:#dcfce7; color:#166534; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:20px; text-transform:uppercase; margin-bottom:8px;">Customer Preview</span>
+                    <h2 style="font-family:'Playfair Display',serif; font-size:25px; color:#1b5e20; margin:0 0 10px;">${escPromoHtml(targetPromo.title || 'Special Offer')}</h2>
+                    <p style="color:#64748b; line-height:1.55; margin:0 0 14px; font-size:14.5px;">${escPromoHtml(targetPromo.desc || '')}</p>
+                    ${vouchersHtml}
+                    <div style="display:flex; gap:12px; margin-top:16px;">
+                        <button type="button" onclick="document.getElementById('rsh-admin-promo-preview-overlay').style.display='none'" style="flex:1; padding:13px; border-radius:12px; border:none; background:#f1f5f9; color:#475569; font-weight:700; font-size:14px; cursor:pointer;">Maybe Later</button>
+                        <button type="button" onclick="document.getElementById('rsh-admin-promo-preview-overlay').style.display='none'" style="flex:1; padding:13px; border-radius:12px; border:none; background:#1b5e20; color:white; font-weight:800; font-size:14px; cursor:pointer;">Reserve Now!</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        ov.style.display = 'flex';
+    };
+
+    window.renderPromosAdmin = window.renderPromoAdManager;
+
+    // Mount Promo Manager & Voucher Manager cleanly in Admin & SuperAdmin + sync on load
     document.addEventListener('DOMContentLoaded', () => {
         // 1. Mount in Admin Promotions Tab
         const adminPromoTab = document.getElementById('tab-promotions');
-        if (adminPromoTab && !document.getElementById('voucher-manager-mount')) {
-            const m = document.createElement('div');
-            m.id = 'voucher-manager-mount';
-            adminPromoTab.appendChild(m);
+        if (adminPromoTab && isAdminPage) {
+            if (document.getElementById('admin-promo-mount')) {
+                window.renderPromoAdManager();
+            }
+            if (!document.getElementById('voucher-manager-mount')) {
+                const m = document.createElement('div');
+                m.id = 'voucher-manager-mount';
+                adminPromoTab.appendChild(m);
+            }
             window.renderVoucherAdminManager();
         }
 
-        // 2. Mount in SuperAdmin Overview/Branding Tab
-        const saBrandingTab = document.getElementById('tab-branding') || document.getElementById('tab-kitchen');
-        if (saBrandingTab && !document.getElementById('superadmin-voucher-mount')) {
-            const m2 = document.createElement('div');
-            m2.id = 'superadmin-voucher-mount';
-            saBrandingTab.appendChild(m2);
+        // 2. Mount in SuperAdmin Promotions Tab (preferred) or Branding fallback if custom layout
+        const saPromoTab = document.getElementById('tab-promotions');
+        if (saPromoTab && isSuperAdminPage) {
+            window.renderPromoAdManager();
             window.renderVoucherAdminManager();
+        } else {
+            const saBrandingTab = document.getElementById('tab-branding') || document.getElementById('tab-kitchen');
+            if (saBrandingTab && !document.getElementById('superadmin-voucher-mount')) {
+                const m2 = document.createElement('div');
+                m2.id = 'superadmin-voucher-mount';
+                saBrandingTab.appendChild(m2);
+                window.renderVoucherAdminManager();
+            }
         }
+
+        // Trigger fast initial promo + voucher sync on all pages
+        setTimeout(() => {
+            window.VoucherSystem.pullFromCloud();
+            window.PromoAdSystem.pullFromCloud();
+        }, 120);
 
         // 3. Bridge Pre-Order Discount & Mandatory ID/Voucher Photo Proof onto payment.html & reservationHistory!
         if (pagePath.includes('payment')) {
