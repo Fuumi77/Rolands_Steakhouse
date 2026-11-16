@@ -1916,9 +1916,37 @@ app.get('/api/memory/branches', async (req, res) => {
 
 app.post('/api/memory/branches', async (req, res) => {
     try {
-        const list = Array.isArray(req.body) ? req.body : (req.body.list || []);
-        await setSystemMemoryKey('branches', list);
-        res.json({ success: true, count: list.length });
+        const rawList = Array.isArray(req.body) ? req.body : (req.body && Array.isArray(req.body.list) ? req.body.list : []);
+        const seen = new Set();
+        const cleaned = [];
+        for (const item of rawList) {
+            if (!item || typeof item !== 'object') continue;
+            const name = String(item.name || item.branchKey || item.id || '').replace(/[<>]/g, '').trim().slice(0, 80);
+            if (!name || name.toLowerCase() === 'all' || name.toLowerCase() === 'all branches') continue;
+            const lower = name.toLowerCase();
+            if (seen.has(lower)) continue;
+            seen.add(lower);
+            const rawApi = String(item.apiUrl || item.api || '').trim().replace(/\/+$/, '');
+            const apiUrl = /^https?:\/\/[a-z0-9.-]+(?::\d+)?(\/.*)?$/i.test(rawApi)
+                ? rawApi
+                : 'https://rolands-steakhouse-jsoo.onrender.com';
+            const address = String(item.address || '').replace(/[<>]/g, '').trim().slice(0, 220) || `${name} Branch`;
+            const tel = String(item.tel || '').replace(/[<>]/g, '').trim().slice(0, 40) || '(083) 123-4567';
+            cleaned.push({
+                id: name,
+                branchKey: name,
+                name,
+                shortName: String(item.shortName || name).replace(/[<>]/g, '').trim().slice(0, 80) || name,
+                tagline: String(item.tagline || `Fine Dining Excellence in ${name}`).replace(/[<>]/g, '').trim().slice(0, 140),
+                address,
+                tel,
+                apiUrl,
+                isDefault: Boolean(item.isDefault),
+                ...(item.mapEmbed && /^https:\/\//i.test(String(item.mapEmbed)) ? { mapEmbed: String(item.mapEmbed) } : {})
+            });
+        }
+        await setSystemMemoryKey('branches', cleaned);
+        res.json({ success: true, count: cleaned.length, branches: cleaned });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
