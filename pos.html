@@ -30,23 +30,32 @@
             background: white !important;
             border-radius: 12px !important;
             overflow: hidden !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
             border: 1px solid #e2e8f0 !important;
             transition: transform 0.15s ease, box-shadow 0.15s ease !important;
             cursor: pointer !important;
             height: 100% !important;
             padding: 0 !important;
         }
-        
+
         .product-card:hover {
             transform: translateY(-3px) !important;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
             border-color: #cbd5e1 !important;
         }
 
         /* Tablets/Phones drop to 2 or 1 columns so they don't break */
-        @media (max-width: 1024px) { .product-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 600px) { .product-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 1024px) {
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .product-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
     </style>
 </head>
 
@@ -81,18 +90,59 @@
             <div id="pos-auth-msg" class="auth-msg"></div>
         </div>
     </div>
+    <!-- STEP 2: BRANCH ACCESS GATE (Shown over visible POS interface until Branch PIN verified) -->
+    <div id="pos-branch-gate" style="display:none; position:fixed; inset:0; z-index:25000; background:rgba(15,23,42,0.58); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
+        <div style="background:#ffffff; border-radius:22px; width:100%; max-width:410px; padding:28px 26px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); border:2px solid #bbf7d0; text-align:center;">
+            <div style="display:inline-block; background:#fef3c7; color:#b45309; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:0.6px; margin-bottom:10px;">STEP 2: BRANCH SECURITY LOCK</div>
+            <h2 style="font-family:'Playfair Display', serif; color:#155e2b; margin:0 0 8px 0; font-size:24px;">Verify Branch PIN</h2>
+            <p style="color:#475569; font-size:13.5px; margin:0 0 14px 0; line-height:1.5;">
+                POS is currently open for <strong id="pos-branch-gate-name" style="color:#155e2b;">General Santos City</strong>.<br>
+                Enter the branch PIN before accessing or modifying orders.
+            </p>
+            <div style="text-align:left; margin-bottom:12px;">
+                <label for="pos-branch-gate-select" style="display:block; font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:5px;">Active Branch</label>
+                <select id="pos-branch-gate-select" onchange="handlePosBranchGateSwitch(this.value)"
+                    style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:10px; font-weight:700; color:#0f172a; background:#f8fafc; font-size:13.5px; cursor:pointer; box-sizing:border-box;">
+                </select>
+            </div>
+            <div style="text-align:left; margin-bottom:10px;">
+                <label for="pos-branch-pin-input" style="display:block; font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:5px;">Branch Security PIN</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="password" id="pos-branch-pin-input" placeholder="Enter Branch PIN" maxlength="12" autocomplete="off"
+                        onkeydown="if(event.key==='Enter'){ event.preventDefault(); verifyPosBranchGate(); }"
+                        style="flex:1; padding:11px 14px; border:2px solid #cbd5e1; border-radius:10px; font-size:16px; font-weight:800; letter-spacing:3px; color:#0f172a; background:#ffffff; outline:none; box-sizing:border-box;">
+                    <button type="button" onclick="togglePosBranchPinVisibility(this)"
+                        style="padding:0 14px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; color:#475569; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">Reveal</button>
+                </div>
+            </div>
+            <div id="pos-branch-pin-msg" style="min-height:18px; color:#dc2626; font-size:12.5px; font-weight:700; margin-bottom:12px;"></div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" onclick="lockPosTerminal()"
+                    style="flex:1; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#f1f5f9; color:#334155; font-size:13px; font-weight:800; cursor:pointer;">🔒 Lock POS</button>
+                <button type="button" id="pos-branch-unlock-btn" onclick="verifyPosBranchGate()"
+                    style="flex:1.4; padding:12px; border:none; border-radius:12px; background:#155e2b; color:#ffffff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(21,94,43,0.3);">Verify & Unlock</button>
+            </div>
+        </div>
+    </div>
+
     <header>
         <div class="brand">
             Roland's POS Terminal
             <span class="brand-badge">PRO TERMINAL</span>
         </div>
-        <div style="display: flex; gap: 16px; align-items: center;">
+        <div style="display: flex; gap: 10px; align-items: center;">
             <div class="terminal-status">
                 <div class="status-dot"></div> SYNCED WITH INVENTORY
             </div>
+            <button type="button" onclick="lockPosTerminal()" title="Lock POS Terminal"
+                style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:10px; color:white; font-size:13px; font-weight:700; cursor:pointer; padding:7px 14px; display:flex; align-items:center; gap:6px; transition:0.2s;">
+                🔒 Lock
+            </button>
             <button onclick="window.close()"
                 style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:10px; color:white; font-size:13px; font-weight:700; cursor:pointer; padding:7px 16px; display:flex; align-items:center; gap:6px; transition:0.2s;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
                 Exit
             </button>
         </div>
@@ -120,9 +170,6 @@
                     style="background: white; border-radius: 20px; padding: 20px; max-width: 600px; margin: 20px auto; box-shadow: var(--card-shadow);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h2 style="font-family:'Playfair Display'; margin:0; color:var(--primary);">Order Status</h2>
-                        <div style="display:flex; gap:10px;">
-                            <button onclick="downloadCloudToPos()" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">☁️ Cloud Sync</button>
-                        </div>
                     </div>
                     <div id="pos-order-status-list"></div>
                 </div>
@@ -130,12 +177,19 @@
 
             <!-- Scanning View -->
             <div id="view-scanning" class="hidden">
-                <div style="background: white; border-radius: 20px; padding: 30px; text-align: center; max-width: 500px; margin: 20px auto; box-shadow: var(--card-shadow); border: 1px solid #e2e8f0;">
-                    <h2 style="font-family:'Playfair Display'; margin:0 0 10px; color:var(--primary);">Scan Customer QR</h2>
-                    <p style="color:var(--text-muted); margin-bottom:20px; font-size:13.5px;">Position the customer QR receipt code in front of camera to verify payment & pre-orders.</p>
-                    <div id="pos-reader" style="width:100%; border-radius:15px; overflow:hidden; margin-bottom:20px; min-height:220px; background:#000;"></div>
-                    <button id="scan-start-btn" onclick="startScanner()" class="checkout-btn" style="width:100%; font-size:15px;">Start Camera Scanner</button>
-                    <button id="scan-stop-btn" onclick="stopScanner()" class="checkout-btn hidden" style="width:100%; font-size:15px; background:#dc2626;">Stop Camera Scanner</button>
+                <div
+                    style="background: white; border-radius: 20px; padding: 30px; text-align: center; max-width: 500px; margin: 20px auto; box-shadow: var(--card-shadow); border: 1px solid #e2e8f0;">
+                    <h2 style="font-family:'Playfair Display'; margin:0 0 10px; color:var(--primary);">Scan Customer QR
+                    </h2>
+                    <p style="color:var(--text-muted); margin-bottom:20px; font-size:13.5px;">Position the customer QR
+                        receipt code in front of camera to verify payment & pre-orders.</p>
+                    <div id="pos-reader"
+                        style="width:100%; border-radius:15px; overflow:hidden; margin-bottom:20px; min-height:220px; background:#000;">
+                    </div>
+                    <button id="scan-start-btn" onclick="startScanner()" class="checkout-btn"
+                        style="width:100%; font-size:15px;">Start Camera Scanner</button>
+                    <button id="scan-stop-btn" onclick="stopScanner()" class="checkout-btn hidden"
+                        style="width:100%; font-size:15px; background:#dc2626;">Stop Camera Scanner</button>
                 </div>
             </div>
         </section>
@@ -146,17 +200,26 @@
                 <div class="cart-header">
                     <h2 id="cart-title">Current Order</h2>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <button id="btn-cancel-edit" onclick="cancelEdit()" style="display:none; background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">Cancel Edit</button>
-                        <span id="cart-count-badge" style="background:var(--primary-light); color:var(--primary); padding:4px 10px; border-radius:20px; font-weight:bold; font-size:13px;">0 items</span>
+                        <button id="btn-cancel-edit" onclick="cancelEdit()"
+                            style="display:none; background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">Cancel
+                            Edit</button>
+                        <span id="cart-count-badge"
+                            style="background:var(--primary-light); color:var(--primary); padding:4px 10px; border-radius:20px; font-weight:bold; font-size:13px;">0
+                            items</span>
                     </div>
                 </div>
 
                 <div class="cart-items" id="cart-list">
                     <div style="text-align:center; padding:36px 20px; color:var(--text-muted);">
-                        <div style="width:60px; height:60px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+                        <div
+                            style="width:60px; height:60px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                stroke-width="2">
+                                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0" />
+                            </svg>
                         </div>
-                        <div style="font-weight:700; color:#334155; font-size:14.5px; margin-bottom:4px;">Your Cart is Empty</div>
+                        <div style="font-weight:700; color:#334155; font-size:14.5px; margin-bottom:4px;">Your Cart is
+                            Empty</div>
                         <div style="font-size:12px; color:#94a3b8;">Select items from menu catalog to add</div>
                     </div>
                 </div>
@@ -165,16 +228,19 @@
                 <div class="order-meta-container" style="padding:0 20px; margin-top:15px;">
                     <input type="hidden" id="order-guests" value="2">
                     <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <select class="meta-select" id="order-table" title="Table Number" aria-label="Table Number" style="flex:1;" onchange="handlePosTableSelectChange()">
+                        <select class="meta-select" id="order-table" title="Table Number" aria-label="Table Number"
+                            style="flex:1;" onchange="handlePosTableSelectChange()">
                             <option value="">Select Table...</option>
                         </select>
-                        <button type="button" onclick="openPosReservationSearch()" style="background:#15803d; color:white; border:none; border-radius:8px; padding:0 14px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                        <button type="button" onclick="openPosReservationSearch()"
+                            style="background:#15803d; color:white; border:none; border-radius:8px; padding:0 14px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.15);">
                             Find Reservation
                         </button>
                     </div>
 
                     <!-- ACTIVE RESERVATION DETECTED BANNER -->
-                    <div id="pos-active-res-banner" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-bottom:12px;">
+                    <div id="pos-active-res-banner"
+                        style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-bottom:12px;">
                     </div>
 
                     <input type="text" class="meta-input" id="order-name" title="Customer Name"
@@ -182,8 +248,11 @@
                         style="width:100%; margin-bottom:15px; box-sizing:border-box;">
 
                     <!-- ── PWD / Senior / Voucher Discount Panel ── -->
-                    <div class="discount-panel" style="display:block; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px; margin-bottom:12px;">
-                        <div class="discount-label" style="font-size:11.5px; font-weight:800; color:#1b5e20; text-transform:uppercase; margin-bottom:6px;">🏷️ Discount / Promo Voucher</div>
+                    <div class="discount-panel"
+                        style="display:block; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px; margin-bottom:12px;">
+                        <div class="discount-label"
+                            style="font-size:11.5px; font-weight:800; color:#1b5e20; text-transform:uppercase; margin-bottom:6px;">
+                            🏷️ Discount / Promo Voucher</div>
                         <select class="discount-select" id="pos-discount-type" title="Discount Type"
                             aria-label="Discount Type" onchange="handlePosDiscountChange()"
                             style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; font-size:13px; background:white; color:#0f172a; cursor:pointer; box-sizing:border-box;">
@@ -204,8 +273,8 @@
                                 style="width:100%; padding:8px 10px; border:1px solid #86efac; border-radius:8px; background:#f0fdf4; color:#166534; font-weight:800; font-size:12.5px; cursor:pointer; box-sizing:border-box;">
                                 <option value="">-- Select Available Voucher --</option>
                             </select>
-                            <input type="text" id="pos-voucher-code-input" placeholder="Or type Voucher Code (e.g. STEAK100)"
-                                oninput="updateCartUI()"
+                            <input type="text" id="pos-voucher-code-input"
+                                placeholder="Or type Voucher Code (e.g. STEAK100)" oninput="updateCartUI()"
                                 style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:12.5px; font-weight:800; text-transform:uppercase; box-sizing:border-box;">
                             <div id="pos-voucher-status-msg" style="font-size:11.5px; font-weight:700;"></div>
                         </div>
@@ -232,7 +301,8 @@
                     <span>Total</span>
                     <span id="total-val">₱0</span>
                 </div>
-                <button class="checkout-btn" onclick="processCheckout()" style="margin-top:10px; width: 100%;">COMPLETE TRANSACTION</button>
+                <button class="checkout-btn" onclick="processCheckout()" style="margin-top:10px; width: 100%;">COMPLETE
+                    TRANSACTION</button>
             </div>
         </section>
     </main>
@@ -244,7 +314,10 @@
             style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border: 2px solid var(--primary); box-shadow: 0 15px 30px rgba(21, 128, 61, 0.2);">
             <div
                 style="margin-bottom:15px; background: white; width: 80px; height: 80px; margin: 0 auto 15px auto; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: var(--primary);">
-                <svg class="ds-icon ds-icon-lg" viewBox="0 0 24 24"><path fill="#1b5e20" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                <svg class="ds-icon ds-icon-lg" viewBox="0 0 24 24">
+                    <path fill="#1b5e20"
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+                </svg>
             </div>
             <h2 style="font-family:'Playfair Display'; margin:0 0 10px; color: var(--primary);">Bill Out Order</h2>
             <p id="confirm-bill-msg" style="color:#475569; font-size:15px; line-height:1.6; font-weight: 500;">Are you
@@ -273,27 +346,35 @@
 
     <!-- RESERVATION SEARCH MODAL -->
     <div id="modal-reservation-search" class="modal-overlay">
-        <div class="modal-card" style="max-width:550px; text-align:left; max-height:85vh; display:flex; flex-direction:column; padding:24px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:15px;">
-                <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">Find Customer Reservation</h3>
-                <button type="button" onclick="document.getElementById('modal-reservation-search').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">✕</button>
+        <div class="modal-card"
+            style="max-width:550px; text-align:left; max-height:85vh; display:flex; flex-direction:column; padding:24px;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:15px;">
+                <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">Find Customer
+                    Reservation</h3>
+                <button type="button" onclick="document.getElementById('modal-reservation-search').style.display='none'"
+                    style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">✕</button>
             </div>
-            
-            <input type="text" id="pos-res-search-input" placeholder="Search by Customer Name, Phone, or Res #" oninput="filterPosReservationsModal()" style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; margin-bottom:15px; box-sizing:border-box;">
-            
-            <div id="pos-res-search-list" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; min-height:220px; max-height:400px;">
+
+            <input type="text" id="pos-res-search-input" placeholder="Search by Customer Name, Phone, or Res #"
+                oninput="filterPosReservationsModal()"
+                style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:14px; margin-bottom:15px; box-sizing:border-box;">
+
+            <div id="pos-res-search-list"
+                style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px; min-height:220px; max-height:400px;">
             </div>
 
             <div style="margin-top:15px; text-align:right;">
-                <button type="button" onclick="document.getElementById('modal-reservation-search').style.display='none'" style="background:#cbd5e1; color:#334155; border:none; padding:9px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">Close</button>
+                <button type="button" onclick="document.getElementById('modal-reservation-search').style.display='none'"
+                    style="background:#cbd5e1; color:#334155; border:none; padding:9px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">Close</button>
             </div>
         </div>
     </div>
 
     <script>
-        
+
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
-        
+
         const CATEGORIES = [
             { key: 'All', label: 'All Items' },
             { key: 'Beef', label: 'Beef Steaks' },
@@ -312,17 +393,195 @@
         let currentPin = "";
         let lastTransactionId = null;
         let editingTransactionId = null;
+        let posTerminalUnlocked = false;
+        let posBranchUnlocked = false;
+        let posSyncTimer = null;
+
+        // Always start every POS open/reload locked at Step 1 -> then Step 2 (Branch PIN)
+        try { sessionStorage.removeItem('posAuthenticated'); } catch (e) { }
+
+        function isPosFullyUnlocked() {
+            return posTerminalUnlocked && posBranchUnlocked;
+        }
+        window.isPosFullyUnlocked = isPosFullyUnlocked;
+
+        function setPosInterfaceLocked(locked) {
+            const hdr = document.querySelector('header');
+            const mainEl = document.querySelector('main');
+            [hdr, mainEl].forEach(el => {
+                if (!el) return;
+                el.inert = Boolean(locked);
+                el.style.pointerEvents = locked ? 'none' : '';
+                el.style.userSelect = locked ? 'none' : '';
+            });
+        }
+
+        function getActivePosBranch() {
+            return typeof window.getEffectiveBranch === 'function' ? window.getEffectiveBranch() : 'General Santos City';
+        }
+
+        function updatePosBranchGateLabels(branchName) {
+            const clean = branchName || getActivePosBranch();
+            const nameEl = document.getElementById('pos-branch-gate-name');
+            const btnEl = document.getElementById('pos-branch-unlock-btn');
+            const selEl = document.getElementById('pos-branch-gate-select');
+            if (nameEl) nameEl.textContent = clean;
+            if (btnEl) btnEl.textContent = `Verify & Unlock`;
+            if (selEl) {
+                if (selEl.options.length === 0 && typeof window.syncAllBranchSelects === 'function') {
+                    window.syncAllBranchSelects();
+                }
+                if (Array.from(selEl.options).some(o => o.value === clean)) selEl.value = clean;
+            }
+        }
+
+        function showPosBranchGate() {
+            const branchGate = document.getElementById('pos-branch-gate');
+            const msgEl = document.getElementById('pos-branch-pin-msg');
+            const pinInput = document.getElementById('pos-branch-pin-input');
+            if (typeof window.syncAllBranchSelects === 'function') window.syncAllBranchSelects();
+            updatePosBranchGateLabels(getActivePosBranch());
+            if (msgEl) msgEl.textContent = '';
+            if (pinInput) {
+                pinInput.value = '';
+                pinInput.type = 'password';
+            }
+            if (branchGate) branchGate.style.display = 'flex';
+            setTimeout(() => { if (pinInput) pinInput.focus(); }, 60);
+        }
+
+        window.togglePosBranchPinVisibility = function (btnEl) {
+            const inp = document.getElementById('pos-branch-pin-input');
+            if (!inp) return;
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                if (btnEl) btnEl.textContent = 'Hide';
+            } else {
+                inp.type = 'password';
+                if (btnEl) btnEl.textContent = 'Reveal';
+            }
+        };
+
+        window.handlePosBranchGateSwitch = async function (branchName) {
+            if (!branchName) return;
+            try {
+                if (typeof window.__rawSetStorage === 'function') {
+                    window.__rawSetStorage('adminSelectedBranch', branchName);
+                } else {
+                    localStorage.setItem('adminSelectedBranch', branchName);
+                }
+            } catch (e) { }
+            const topSel = document.getElementById('rsh-staff-branch-select');
+            if (topSel) topSel.value = branchName;
+            updatePosBranchGateLabels(branchName);
+            const msgEl = document.getElementById('pos-branch-pin-msg');
+            const pinInput = document.getElementById('pos-branch-pin-input');
+            if (msgEl) msgEl.textContent = '';
+            if (pinInput) {
+                pinInput.value = '';
+                pinInput.focus();
+            }
+            if (typeof window.syncBranchFloorPlanFromCloud === 'function') {
+                await window.syncBranchFloorPlanFromCloud();
+            }
+            renderCategories();
+            renderProducts();
+            renderPosTableSelect();
+            updateCartUI();
+        };
+
+        window.verifyPosBranchGate = async function () {
+            if (!posTerminalUnlocked) {
+                lockPosTerminal();
+                return;
+            }
+            const pinInput = document.getElementById('pos-branch-pin-input');
+            const msgEl = document.getElementById('pos-branch-pin-msg');
+            const entered = String(pinInput ? pinInput.value : '').trim();
+            const selEl = document.getElementById('pos-branch-gate-select');
+            const targetBranch = (selEl && selEl.value) ? selEl.value : getActivePosBranch();
+
+            if (!entered) {
+                if (msgEl) msgEl.textContent = `Please enter the Branch PIN for ${targetBranch}.`;
+                if (pinInput) pinInput.focus();
+                return;
+            }
+
+            if (typeof window.syncPosBranchPinsFromCloud === 'function') {
+                await window.syncPosBranchPinsFromCloud();
+            }
+            const requiredPin = typeof window.getPosBranchPin === 'function' ? window.getPosBranchPin(targetBranch) : '1234';
+            if (entered !== String(requiredPin).trim() && entered !== '789456') {
+                if (msgEl) msgEl.textContent = `❌ Incorrect Branch PIN for ${targetBranch}.`;
+                if (pinInput) {
+                    pinInput.value = '';
+                    pinInput.focus();
+                }
+                if (typeof showToast === 'function') showToast(`Incorrect Branch PIN for ${targetBranch}`, 'error');
+                return;
+            }
+
+            posBranchUnlocked = true;
+            const branchGate = document.getElementById('pos-branch-gate');
+            if (branchGate) branchGate.style.display = 'none';
+            setPosInterfaceLocked(false);
+
+            if (typeof window.syncBranchFloorPlanFromCloud === 'function') window.syncBranchFloorPlanFromCloud();
+            if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                window.InventorySystem.syncFoodMenuStockFromIngredients();
+            }
+            await syncPosReservationsFromCloud(true);
+            renderCategories();
+            renderProducts();
+            renderPosTableSelect();
+            renderOrderStatus();
+            updateCartUI();
+
+            if (typeof showToast === 'function') showToast(`POS unlocked for ${targetBranch}`, 'success');
+        };
+
+        function lockPosTerminal() {
+            posTerminalUnlocked = false;
+            posBranchUnlocked = false;
+            try { sessionStorage.removeItem('posAuthenticated'); } catch (e) { }
+            if (typeof stopScanner === 'function') stopScanner();
+            const branchGate = document.getElementById('pos-branch-gate');
+            const authGate = document.getElementById('pos-auth-gate');
+            if (branchGate) branchGate.style.display = 'none';
+            setPosInterfaceLocked(true);
+            clearPin();
+            if (authGate) authGate.style.display = 'flex';
+        }
+        window.lockPosTerminal = lockPosTerminal;
+
+        function requirePosUnlocked() {
+            if (isPosFullyUnlocked()) return true;
+            if (!posTerminalUnlocked) {
+                lockPosTerminal();
+            } else {
+                showPosBranchGate();
+            }
+            return false;
+        }
+        window.requirePosUnlocked = requirePosUnlocked;
 
         function appendPin(num) {
             if (currentPin.length >= 4) return;
+            if (currentPin.length === 0) {
+                const msgEl = document.getElementById('pos-auth-msg');
+                if (msgEl) msgEl.textContent = '';
+            }
             currentPin += num;
             updatePinDots();
             if (currentPin.length === 4) checkPosAuth();
         }
-        function clearPin() {
+        function clearPin(preserveMsg = false) {
             currentPin = "";
             updatePinDots();
-            document.getElementById('pos-auth-msg').textContent = '';
+            if (!preserveMsg) {
+                const msgEl = document.getElementById('pos-auth-msg');
+                if (msgEl) msgEl.textContent = '';
+            }
         }
         function updatePinDots() {
             const dots = document.querySelectorAll('.pin-dot');
@@ -331,7 +590,7 @@
             });
         }
 
-        // Global physical keyboard listener for PIN entry
+        // Global physical keyboard listener for Step 1 PIN entry
         document.addEventListener('keydown', function (e) {
             const gate = document.getElementById('pos-auth-gate');
             if (!gate || gate.style.display === 'none') return;
@@ -351,82 +610,74 @@
         });
 
         async function checkPosAuth() {
-            const correct = localStorage.getItem('posPassword') || '0000';
             const msg = document.getElementById('pos-auth-msg');
+            if (typeof window.syncPosBranchPinsFromCloud === 'function') {
+                await window.syncPosBranchPinsFromCloud();
+            }
+            const correct = typeof window.getTerminalPin === 'function'
+                ? window.getTerminalPin('pos')
+                : (localStorage.getItem('posPassword') || '0000');
 
             // Add small delay for visual feedback of the last dot filling
             await new Promise(r => setTimeout(r, 150));
 
             if (currentPin === correct) {
-                // 👉 FIX: Main PIN passed. Now require Branch PIN.
-                const currentBranch = typeof window.getCurrentBranch === 'function' ? window.getCurrentBranch() : 'General Santos City';
-                const branchPin = typeof window.getPosBranchPin === 'function' ? window.getPosBranchPin(currentBranch) : '1234';
-                
-                let bPin;
-                if (typeof window.superModal === 'function') {
-                    bPin = await window.superModal({
-                        title: `🔒 POS Terminal — ${currentBranch}`,
-                        message: `Main Terminal Unlocked.<br><br>Enter the POS Branch PIN for <b>${currentBranch}</b>:`,
-                        showInput: true,
-                        inputType: 'password',
-                        placeholder: `Enter ${currentBranch} PIN`,
-                        confirmText: 'Access POS',
-                        cancelText: 'Cancel'
-                    });
-                } else {
-                    bPin = prompt(`🔒 Main Terminal Unlocked.\nEnter the POS Branch PIN for ${currentBranch}:`);
-                }
-
-                if (bPin === null || (String(bPin).trim() !== String(branchPin).trim() && String(bPin).trim() !== '789456')) {
-                    if (typeof window.superModal === 'function') {
-                        await window.superModal({
-                            title: '❌ Invalid Branch PIN',
-                            message: `Incorrect POS Branch PIN for <b>${currentBranch}</b>. Access denied.`,
-                            confirmText: 'Close'
-                        });
-                    } else {
-                        alert(`❌ Incorrect POS Branch PIN for ${currentBranch}. Access denied.`);
-                    }
-                    clearPin();
-                    return;
-                }
-
-                sessionStorage.setItem('posAuthenticated', 'true');
+                posTerminalUnlocked = true;
+                posBranchUnlocked = false;
                 document.getElementById('pos-auth-gate').style.display = 'none';
+                setPosInterfaceLocked(true);
 
-                // 👉 FIX: Force sync inventory and floor plan on open to correct the branch stock
+                // Sync and render the POS interface behind Step 2 Branch Lock overlay
                 if (typeof window.syncBranchFloorPlanFromCloud === 'function') window.syncBranchFloorPlanFromCloud();
                 if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
                     window.InventorySystem.syncFoodMenuStockFromIngredients();
                 }
-
                 renderCategories();
                 renderProducts();
                 renderPosTableSelect();
                 updateCartUI();
+
+                showPosBranchGate();
             } else {
                 msg.textContent = 'Invalid POS Terminal code.';
-                clearPin();
+                clearPin(true);
             }
         }
 
         function init() {
-            if (sessionStorage.getItem('posAuthenticated') === 'true') {
-                document.getElementById('pos-auth-gate').style.display = 'none';
-                // 👉 FIX: Force sync even if already authenticated to ensure correct branch stock
-                if (typeof window.syncBranchFloorPlanFromCloud === 'function') window.syncBranchFloorPlanFromCloud();
-                if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
-                    window.InventorySystem.syncFoodMenuStockFromIngredients();
-                }
-            }
+            posTerminalUnlocked = false;
+            posBranchUnlocked = false;
+            try { sessionStorage.removeItem('posAuthenticated'); } catch (e) { }
+            setPosInterfaceLocked(true);
+            const authGate = document.getElementById('pos-auth-gate');
+            const branchGate = document.getElementById('pos-branch-gate');
+            if (branchGate) branchGate.style.display = 'none';
+            if (authGate) authGate.style.display = 'flex';
+
             renderCategories();
             renderProducts();
             renderPosTableSelect();
             updateCartUI();
 
+            if (!posSyncTimer) {
+                posSyncTimer = setInterval(() => {
+                    if (isPosFullyUnlocked()) syncPosReservationsFromCloud(true);
+                }, 10000);
+            }
+
+            window.addEventListener('pageshow', function (e) {
+                if (e && e.persisted) lockPosTerminal();
+            });
             window.addEventListener('storage', function (e) {
+                if (e.key === 'posPassword') {
+                    lockPosTerminal();
+                    return;
+                }
                 if (!e.key || e.key === 'reservationHistory' || e.key === 'floorPlanConfig' || e.key === 'tableOverrides') {
                     renderPosTableSelect();
+                    if (document.getElementById('view-status') && !document.getElementById('view-status').classList.contains('hidden')) {
+                        renderOrderStatus();
+                    }
                 }
                 if (!e.key || e.key === 'inventoryItems' || e.key === 'rawIngredients') {
                     renderProducts();
@@ -444,9 +695,10 @@
                     syncChannel.onmessage = function () {
                         renderPosTableSelect();
                         renderProducts();
+                        if (isPosFullyUnlocked()) renderOrderStatus();
                     };
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         /* --- UI RENDERERS --- */
@@ -458,6 +710,7 @@
         }
 
         function setCategory(cat) {
+            if (!requirePosUnlocked()) return;
             currentCat = cat;
             renderCategories();
             renderProducts();
@@ -655,11 +908,11 @@
                 const title = item.title || item.name || 'Food Item';
                 const stockVal = item.stock_val || 0;
                 const isLow = stockVal <= 10;
-                
+
                 // 👉 ALWAYS use an image! If no custom image exists, create a beautiful placeholder.
                 const hasCustomPhoto = item.image && !item.image.includes('placehold.co') && (item.image.startsWith('data:') || item.image.startsWith('http'));
-                const imgSrc = hasCustomPhoto 
-                    ? item.image 
+                const imgSrc = hasCustomPhoto
+                    ? item.image
                     : `https://placehold.co/400x300/f0fdf4/2e7d32?text=${encodeURIComponent(title.substring(0, 3).toUpperCase())}`;
 
                 // Force uniform height, taller images, and a clean floating stock pill
@@ -693,6 +946,7 @@
 
         /* --- CART LOGIC --- */
         function addToCart(id) {
+            if (!requirePosUnlocked()) return;
             const items = getInventory();
             const item = items.find(i => i.id === id);
             if (!item || item.stock_val <= 0) {
@@ -715,6 +969,7 @@
         }
 
         function changeQty(id, delta) {
+            if (!requirePosUnlocked()) return;
             const items = getInventory();
             const item = items.find(i => i.id === id);
 
@@ -748,7 +1003,7 @@
                     const parsed = JSON.parse(stored);
                     if (Array.isArray(parsed) && parsed.length > 0) return parsed;
                 }
-            } catch (e) {}
+            } catch (e) { }
 
             return [
                 { id: 'Table 1', description: '2 Pax' },
@@ -892,13 +1147,13 @@
                 const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
                 overrides[res.bookedTable] = 'seated';
                 localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                
+
                 try {
                     window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
                     if (typeof BroadcastChannel !== 'undefined') {
                         new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
                     }
-                } catch(e) {}
+                } catch (e) { }
             }
 
             // 👉 NEW: Update the reservation status locally so it stays seated
@@ -908,7 +1163,7 @@
                 if (typeof BroadcastChannel !== 'undefined') {
                     new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
                 }
-            } catch(e) {}
+            } catch (e) { }
 
             if (window.showToast) {
                 window.showToast(`Loaded Reservation #${res.reservationNumber}. Table marked as Seated!`, 'success', 3500);
@@ -916,6 +1171,7 @@
         }
 
         function openPosReservationSearch() {
+            if (!requirePosUnlocked()) return;
             const modal = document.getElementById('modal-reservation-search');
             if (!modal) return;
 
@@ -1246,11 +1502,11 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             name: name,
-                            email: `pos-${Date.now()}@temp.com`, 
+                            email: `pos-${Date.now()}@temp.com`,
                             date: new Date().toISOString().split('T')[0],
-                            time: new Date().toTimeString().substring(0,5),
+                            time: new Date().toTimeString().substring(0, 5),
                             table: table,
-                            cartItems: rawCartItems, 
+                            cartItems: rawCartItems,
                             status: 'Seated',
                             reservationType: 'standard',
                             paymentAmount: totalAmt,
@@ -1261,22 +1517,22 @@
                             branch: activeBranch
                         })
                     });
-                    
+
                     if (!dbRes.ok) {
                         const errData = await dbRes.json().catch(() => ({ error: 'Database crashed.' }));
                         throw new Error(`MySQL Error: ${errData.error}`);
                     }
                     const dbData = await dbRes.json();
-                    
+
                     // 👉 Apply the official Sequential Database ID
                     resNo = 'POS-' + dbData.reservationId;
-                    
+
                     // 👉 FIX: Instantly sync the KDS status so the Kitchen Phone wakes up!
                     fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: resNo, kdsStatus: 'pending' })
-                    }).catch(()=>{});
+                    }).catch(() => { });
                 }
 
                 if (window.InventorySystem && typeof window.InventorySystem.deductIngredientsForOrder === 'function') {
@@ -1295,19 +1551,19 @@
                     existingRes.discountIdNo = discountIdNo;
                     existingRes.paymentAmount = totalAmt;
                     existingRes.modified = true;
-                    existingRes.approvalStatus = 'seated'; 
-                    existingRes.kdsStatus = 'pending'; 
-                    
+                    existingRes.approvalStatus = 'seated';
+                    existingRes.kdsStatus = 'pending';
+
                     // Strip away the "completed" tags so it shows up in Order Status
                     existingRes.status = 'seated';
-                    
+
                     // 👉 FIX: Change it to 'verified' instead of 'paid' so it waits for the Bill Out button!
                     if (existingRes.paymentStatus === 'paid') {
-                        existingRes.paymentStatus = 'verified'; 
+                        existingRes.paymentStatus = 'verified';
                     } else if (!existingRes.paymentStatus) {
                         existingRes.paymentStatus = 'verified';
                     }
-                    
+
                     if (existingRes.completedAt) delete existingRes.completedAt;
 
                     // 👉 FIX: Send the FULL updated order (foods, payment, status) to the Live MySQL Database!
@@ -1316,12 +1572,12 @@
                         await fetch(`${API_BASE_URL}/api/reservations/update-order`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                id: existingRes.reservationNumber, 
+                            body: JSON.stringify({
+                                id: existingRes.reservationNumber,
                                 status: 'Seated',
                                 kdsStatus: 'pending',
                                 paymentAmount: totalAmt,
-                                foods: orderList 
+                                foods: orderList
                             })
                         });
                     } catch (e) {
@@ -1341,8 +1597,8 @@
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
                         paymentStatus: 'verified', // 👉 FIX: Set to 'verified'. It will only become 'paid' when billed out!
-                        approvalStatus: 'seated', 
-                        bookedBy: 'pos', 
+                        approvalStatus: 'seated',
+                        bookedBy: 'pos',
                         createdAt: new Date().toISOString(),
                         completedAt: null,
                         arrivalDateTimeDisplay: 'POS Walk-in'
@@ -1350,38 +1606,38 @@
                     history.push(reservation);
                 }
                 localStorage.setItem('reservationHistory', JSON.stringify(history));
-                
+
                 try {
                     window.dispatchEvent(new CustomEvent('reservationHistoryUpdated', { detail: history }));
                     if (typeof BroadcastChannel !== 'undefined') {
                         new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // 👉 FIX: Update table occupancy status to the CLOUD!
                 if (table && table !== 'Takeout') {
                     const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
-                    overrides[table] = 'seated'; 
+                    overrides[table] = 'seated';
                     localStorage.setItem('tableOverrides', JSON.stringify(overrides));
-                    
+
                     // Push to Live MySQL Database so phones can see the floor plan change instantly
                     fetch(`${API_BASE_URL}/api/memory/table-overrides`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(overrides)
-                    }).catch(()=>{});
+                    }).catch(() => { });
 
                     window.dispatchEvent(new CustomEvent('tableOverridesUpdated', { detail: overrides }));
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
                             new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 // 4. Reset
                 editingTransactionId = null; // 👉 FIX: Erase the edit memory FIRST!
                 clearCart();                 // 👉 Then clear the cart so the UI resets to "Current Order"
-                
+
                 if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
                 if (document.getElementById('order-guests')) document.getElementById('order-guests').value = '';
                 if (document.getElementById('order-name')) document.getElementById('order-name').value = '';
@@ -1397,14 +1653,14 @@
 
                 lastTransactionId = resNo;
                 if (typeof superModal === 'function') {
-                    superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen and database.` });
+                    superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen.` });
                 } else {
                     alert(`Order ${resNo} has been successfully sent to the kitchen.`);
                 }
 
             } catch (err) {
                 console.error(err);
-                if (typeof superModal === 'function') superModal({ title: 'Database Error ❌', message: err.message });
+                if (typeof superModal === 'function') superModal({ title: 'Error ❌', message: err.message });
                 else alert(err.message);
             } finally {
                 checkoutBtn.innerHTML = originalBtnHtml;
@@ -1445,12 +1701,12 @@
 
             // 👉 FIX: The Ultimate Filter + Strict Numeric ID Sorting (Highest at Top, Lowest at Bottom).
             const posOrders = history.filter(r => {
-                if (!r || !r.reservationNumber) return false; 
-                
+                if (!r || !r.reservationNumber) return false;
+
                 const appStatus = String(r.approvalStatus || '').toLowerCase().trim();
                 const payStatus = String(r.paymentStatus || '').toLowerCase().trim();
                 const genStatus = String(r.status || '').toLowerCase().trim();
-                
+
                 if (r.completedAt) return false;
                 if (appStatus === 'completed' || genStatus === 'completed') return false;
                 if (appStatus === 'rejected' || appStatus === 'cancelled') return false;
@@ -1463,20 +1719,20 @@
                     const match = String(id).match(/\d+/);
                     return match ? parseInt(match[0], 10) : 0;
                 };
-                
+
                 const numA = extractNumber(a.reservationNumber);
                 const numB = extractNumber(b.reservationNumber);
-                
+
                 // 👉 FIX: Swapped to numB - numA. 
                 // This puts the Highest number (Newest) at the Top, and Lowest (Oldest) at the Bottom!
-                return numB - numA; 
+                return numB - numA;
             });
-            
+
             let html = '';
             posOrders.forEach(r => {
                 const status = r.approvalStatus || r.status || 'pending';
                 let statusBadge = '';
-                
+
                 if (status === 'pending' || status === 'pending_check') {
                     statusBadge = `<span style="background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending</span>`;
                 } else if (status === 'approved') {
@@ -1536,6 +1792,7 @@
         }
 
         function editOrder(resNo) {
+            if (!requirePosUnlocked()) return;
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             const r = history.find(h => h.reservationNumber === resNo);
             if (!r) return;
@@ -1586,6 +1843,7 @@
         }
 
         function billOutOrder(resNo) {
+            if (!requirePosUnlocked()) return;
             document.getElementById('confirm-bill-msg').innerHTML = `Are you sure you want to bill out <b>${resNo}</b>? It will be marked as paid and transferred to History.`;
             document.getElementById('modal-confirm-bill').style.display = 'flex';
 
@@ -1604,7 +1862,7 @@
                             body: JSON.stringify({ id: resNo, status: 'Completed' })
                         });
                     } catch (e) {
-                        console.error('Failed to sync bill out to database:', e);
+                        console.error('Failed to sync bill:', e);
                     }
 
                     // Transfer to Admin/Super history by marking it paid and completed locally
@@ -1623,17 +1881,17 @@
                             if (typeof BroadcastChannel !== 'undefined') {
                                 new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'tableOverridesUpdated', payload: overrides });
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
 
                     localStorage.setItem('reservationHistory', JSON.stringify(history));
-                    
+
                     // 👉 NEW: Broadcast the completion so the Admin dashboard updates instantly
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
                             new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 closeModals();
@@ -1648,6 +1906,7 @@
         }
         /* --- MODE LOGIC --- */
         function switchMode(mode) {
+            if (!requirePosUnlocked()) return;
             document.getElementById('mode-ordering').classList.toggle('active', mode === 'ordering');
             document.getElementById('mode-status').classList.toggle('active', mode === 'status');
             document.getElementById('mode-scanning').classList.toggle('active', mode === 'scanning');
@@ -1658,6 +1917,7 @@
 
             if (mode === 'status') {
                 renderOrderStatus();
+                syncPosReservationsFromCloud(true);
             }
             if (mode !== 'scanning') {
                 stopScanner();
@@ -1666,6 +1926,7 @@
 
         /* --- SCANNER LOGIC --- */
         async function startScanner() {
+            if (!requirePosUnlocked()) return;
             document.getElementById('scan-start-btn').classList.add('hidden');
             document.getElementById('scan-stop-btn').classList.remove('hidden');
 
@@ -1714,11 +1975,11 @@
             if (res) {
                 // Check if reservation is cancelled or rejected
                 const isCancelled = res.approvalStatus === 'cancelled' ||
-                                    res.approvalStatus === 'rejected' ||
-                                    res.kdsStatus === 'cancelled' ||
-                                    res.status === 'cancelled' ||
-                                    res.isCancelled === true ||
-                                    Boolean(res.cancelledAt);
+                    res.approvalStatus === 'rejected' ||
+                    res.kdsStatus === 'cancelled' ||
+                    res.status === 'cancelled' ||
+                    res.isCancelled === true ||
+                    Boolean(res.cancelledAt);
 
                 if (isCancelled) {
                     const isRefunded = res.refundStatus === 'refunded' || res.paymentStatus === 'refunded';
@@ -1785,32 +2046,84 @@
         function closeModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
         }
-        async function downloadCloudToPos() {
+        async function syncPosReservationsFromCloud(silent = true) {
             try {
                 const res = await fetch(`${API_BASE_URL}/reservations?nocache=${Date.now()}`);
-                const data = await res.json();
-                localStorage.setItem('reservationHistory', JSON.stringify(data));
+                if (!res.ok) return;
+                const dbReservations = await res.json();
+                if (!Array.isArray(dbReservations)) return;
+
+                let localHistory = [];
+                try { localHistory = JSON.parse(localStorage.getItem('reservationHistory') || '[]'); } catch (e) { localHistory = []; }
+
+                const nextList = dbReservations.map(dbRes => {
+                    const existing = localHistory.find(l => l && l.reservationNumber === dbRes.reservationNumber) || {};
+                    let foods = Array.isArray(dbRes.foods) ? dbRes.foods : (existing.foods || []);
+                    let beefNote = dbRes.beefNote || dbRes.notes || existing.beefNote || '';
+                    if (typeof window.unpackCloudFoodsAndNote === 'function') {
+                        const unpacked = window.unpackCloudFoodsAndNote(foods, beefNote);
+                        foods = unpacked.foods;
+                        beefNote = unpacked.beefNote;
+                    }
+                    const rawStatus = String(dbRes.status || existing.approvalStatus || 'pending').toLowerCase().trim();
+                    const approvalStatus = rawStatus === 'walk-in' ? 'approved' : rawStatus;
+                    const pStatus = dbRes.paymentStatus || (['completed', 'approved', 'seated'].includes(approvalStatus) ? 'verified' : (existing.paymentStatus || 'pending'));
+                    return {
+                        ...existing,
+                        ...dbRes,
+                        foods,
+                        beefNote,
+                        approvalStatus,
+                        paymentStatus: pStatus,
+                        kdsStatus: approvalStatus === 'completed' ? 'served' : (dbRes.kdsStatus || existing.kdsStatus || 'pending'),
+                        completedAt: approvalStatus === 'completed' ? (existing.completedAt || new Date().toISOString()) : null
+                    };
+                });
+
+                localStorage.setItem('reservationHistory', JSON.stringify(nextList));
+                renderPosTableSelect();
                 renderOrderStatus();
-                if(typeof showToast === 'function') showToast('POS synced with Cloud', 'success');
-            } catch (e) { alert("Cloud sync failed"); }
+                if (!silent && typeof showToast === 'function') showToast('POS synced with Cloud', 'success');
+            } catch (e) { }
         }
+        window.syncPosReservationsFromCloud = syncPosReservationsFromCloud;
+        window.downloadCloudToPos = () => syncPosReservationsFromCloud(false);
         init();
     </script>
 
     <style>
         @keyframes posBackdropFadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
+
         @keyframes posModalSpringPop {
-            0%   { opacity: 0; transform: scale(0.86) translateY(18px); }
-            70%  { opacity: 1; transform: scale(1.02) translateY(-2px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
+            0% {
+                opacity: 0;
+                transform: scale(0.86) translateY(18px);
+            }
+
+            70% {
+                opacity: 1;
+                transform: scale(1.02) translateY(-2px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
+
         #pos-confirm-modal-overlay {
             animation: posBackdropFadeIn 0.2s ease forwards !important;
         }
-        #pos-confirm-modal-overlay > div {
+
+        #pos-confirm-modal-overlay>div {
             animation: posModalSpringPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
         }
     </style>
@@ -1890,7 +2203,7 @@
                                     ${loadedResNo ? `<div style="margin-bottom:6px; color:#0369a1; font-weight:800;">🔖 Updating Reservation: #${loadedResNo}</div>` : ''}
                                     <div style="margin-bottom:6px;"><strong>Customer:</strong> ${customerName || 'Walk-in Guest'}</div>
                                     <div style="margin-bottom:6px;"><strong>Table:</strong> ${table || 'Walk-in / Counter'}</div>
-                                    <div style="margin-bottom:6px;"><strong>Time:</strong> ${new Date().toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</div>
+                                    <div style="margin-bottom:6px;"><strong>Time:</strong> ${new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                                     <div style="margin-top:8px; border-top:1px solid #e2e8f0; padding-top:8px;">
                                         <strong>Food Order:</strong><br>
                                         <span style="color:#334155; line-height:1.5;">${itemsList.length ? itemsList.join(', ') : 'Standard Order'}</span>
@@ -1932,6 +2245,7 @@
                 if (typeof origProcessCheckout !== 'function') return;
 
                 window.processCheckout = async function () {
+                    if (typeof window.requirePosUnlocked === 'function' && !window.requirePosUnlocked()) return;
                     if (typeof cart !== 'undefined' && Object.keys(cart).length === 0) {
                         return superModal({ title: 'Empty Cart 🛒', message: 'Please add items to the order before finalizing.' });
                     }
