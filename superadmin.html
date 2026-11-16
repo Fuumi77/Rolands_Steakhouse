@@ -1308,15 +1308,15 @@
                                 <span style="font-size:24px;">🏬</span>
                             </div>
                             <div>
-                                <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS Branch
-                                    Switch PINs</h3>
+                                <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS & Kitchen
+                                    Branch PINs</h3>
                                 <span
                                     style="font-size:12px; font-weight:700; color:#b45309; background:#fffbeb; padding:3px 8px; border-radius:12px; border:1px solid #fde68a;">Per-Branch
                                     Lock</span>
                             </div>
                         </div>
                         <p style="color:#64748b; font-size:13px; margin-bottom:14px; line-height:1.5;">Each branch has
-                            its own dedicated PIN required when switching a POS Terminal to that branch.</p>
+                            its own dedicated PIN required after unlocking a POS or Kitchen terminal for that branch.</p>
 
                         <label for="pos-branch-pin-select"
                             style="display:block; margin-bottom:6px; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.8px;">Select
@@ -2292,10 +2292,14 @@
             });
 
             if (pin === "789456") {
-                localStorage.setItem('kitchenPassword', pass);
+                if (typeof window.setTerminalPin === 'function') {
+                    await window.setTerminalPin('kitchen', pass);
+                } else {
+                    localStorage.setItem('kitchenPassword', pass);
+                }
                 await superModal({
                     title: '✅ Success',
-                    message: 'Kitchen Area Access Code has been updated successfully.',
+                    message: 'Kitchen Area Access Code has been updated and synced across devices.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
@@ -2305,6 +2309,13 @@
                     confirmText: 'Close'
                 });
             }
+        };
+
+        window.loadTerminalPinInputs = function () {
+            const kInp = document.getElementById('kitchen-password-input');
+            const pInp = document.getElementById('pos-password-input');
+            if (kInp) kInp.value = localStorage.getItem('kitchenPassword') || '';
+            if (pInp) pInp.value = localStorage.getItem('posPassword') || '';
         };
 
         window.loadPosBranchPinInput = function () {
@@ -2374,10 +2385,14 @@
             });
 
             if (pin === "789456") {
-                localStorage.setItem('posPassword', pass);
+                if (typeof window.setTerminalPin === 'function') {
+                    await window.setTerminalPin('pos', pass);
+                } else {
+                    localStorage.setItem('posPassword', pass);
+                }
                 await superModal({
                     title: '✅ Success',
-                    message: 'POS Terminal Access Code has been updated successfully.',
+                    message: 'POS Terminal Access Code has been updated and synced across devices.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
