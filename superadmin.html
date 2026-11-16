@@ -1414,8 +1414,12 @@
                             style="background:#16a34a; color:#fff; border:none; padding:9px 18px; border-radius:8px; font-weight:700; cursor:pointer;">Add
                             Branch</button>
                     </div>
-                    <div style="font-size:12px; color:#475569; margin-top:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; line-height:1.45;">
-                        💡 <strong>API URL Guide:</strong> Keep the default shared backend URL <code>https://rolands-steakhouse-jsoo.onrender.com</code> (or leave blank to auto-use it) — branches are separated cleanly by <code>?branch=...</code>. Only enter a different URL if this branch runs on its own separate server. New branches automatically sync across devices and appear in all Customer, Admin, POS/Kitchen, and SuperAdmin dropdowns.
+                    <div
+                        style="font-size:12px; color:#475569; margin-top:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; line-height:1.45;">
+                        💡 <strong>API URL Guide:</strong> Keep the default shared backend URL
+                        <code>https://rolands-steakhouse-jsoo.onrender.com</code> (or leave blank to auto-use it) —
+                        branches are separated cleanly by <code>?branch=...</code>. Only enter a different URL if this
+                        branch runs on its own separate server. New branches automatically sync.
                     </div>
                     <div id="br-msg" style="font-size:12px; font-weight:700; margin-top:8px; color:#b91c1c;"></div>
                 </div>
@@ -1440,14 +1444,21 @@
 
             <!-- PROMOTIONS & POP-UP ADS TAB -->
             <div id="tab-promotions" class="superadmin-tab-content">
-                <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                <div
+                    style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
                     <div>
-                        <h2 style="margin:0 0 4px; font-family:'Playfair Display',serif; color:#1b5e20; font-size:24px;">📢 Promotions, Pop-up Ads & Vouchers</h2>
-                        <p style="margin:0; font-size:13px; color:#64748b;">Modify the customer website pop-up advertisement (picture, title, description, and vouchers) and sync across devices.</p>
+                        <h2
+                            style="margin:0 0 4px; font-family:'Playfair Display',serif; color:#1b5e20; font-size:24px;">
+                            📢 Promotions, Pop-up Ads & Vouchers</h2>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Modify the customer website pop-up
+                            advertisement (picture, title, description, and vouchers) and sync across devices.</p>
                     </div>
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <label for="superadmin-promo-branch-select" style="font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.4px;">Target Branch:</label>
-                        <select id="superadmin-promo-branch-select" onchange="switchSuperAdminPromoBranch(this.value)" style="padding:9px 14px; border:1.5px solid #cbd5e1; border-radius:10px; font-weight:700; color:#1e293b; background:white; cursor:pointer;">
+                        <label for="superadmin-promo-branch-select"
+                            style="font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.4px;">Target
+                            Branch:</label>
+                        <select id="superadmin-promo-branch-select" onchange="switchSuperAdminPromoBranch(this.value)"
+                            style="padding:9px 14px; border:1.5px solid #cbd5e1; border-radius:10px; font-weight:700; color:#1e293b; background:white; cursor:pointer;">
                             <option value="ALL">🌐 All Branches (Sync Everywhere)</option>
                             <option value="General Santos City">🥩 General Santos City</option>
                             <option value="Koronadal City">🥩 Koronadal City</option>
@@ -3345,9 +3356,9 @@
                                 <div>
                                     <select class="sa-staff-branch-select" data-branch="${safeStaffBranch}" onchange="window.changeStaffBranch('${safeUser}', this.value)" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#1e293b; font-size:12px; font-weight:700; cursor:pointer;">
                                         ${branchNamesForRow.map(bn => {
-                                            const ebn = String(bn).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                            return `<option value="${ebn}" ${staffBranch === bn ? 'selected' : ''}>📍 ${ebn}</option>`;
-                                        }).join('')}
+                            const ebn = String(bn).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            return `<option value="${ebn}" ${staffBranch === bn ? 'selected' : ''}>📍 ${ebn}</option>`;
+                        }).join('')}
                                         <option value="ALL" ${staffBranch === 'ALL' ? 'selected' : ''}>🌐 All Branches</option>
                                     </select>
                                 </div>
@@ -3450,11 +3461,11 @@
                 if (pin === "789456") {
                     try {
                         const res = await fetch(`${API_BASE_URL}/api/staff/` + username, { method: 'DELETE' });
-                        if (!res.ok) throw new Error('Could not delete from database.');
+                        if (!res.ok) throw new Error('Could not delete.');
                         await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> has been permanently removed.`, confirmText: 'OK' });
                         renderStaffManagement();
                     } catch (e) {
-                        await superModal({ title: '❌ Database Error', message: e.message, confirmText: 'Close' });
+                        await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
                     }
                 }
             };
@@ -3481,7 +3492,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ branch: newBranch })
                     });
-                    if (!res.ok) throw new Error('Failed to update branch in database.');
+                    if (!res.ok) throw new Error('Failed to update branch.');
 
                     const localUsers = getAdminUsers();
                     const u = localUsers.find(x => (x.username || '').toLowerCase() === username.toLowerCase());
@@ -3536,12 +3547,12 @@
                         }
 
                         uInput.value = ''; pInput.value = '';
-                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> (assigned to <b>${branch}</b>) was saved to the cloud database!`, confirmText: 'Done' });
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> (assigned to <b>${branch}</b>) was saved to the cloud!`, confirmText: 'Done' });
                         window.__staffLastFetch = 0;
                         renderStaffManagement(true);
 
                     } catch (e) {
-                        await superModal({ title: '❌ Database Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
+                        await superModal({ title: '❌ Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
                     } finally {
                         btn.textContent = '+ Create Account';
                         btn.disabled = false;
@@ -5022,7 +5033,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(items)
-                }).catch(() => {});
+                }).catch(() => { });
 
                 // Visual feedback
                 const target = event.currentTarget.parentElement;
@@ -5059,7 +5070,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(items)
-                    }).catch(() => {});
+                    }).catch(() => { });
                     window.dispatchEvent(new Event('storage'));
                     await superModal({
                         title: 'Bulk Update Success! 🚀',
@@ -5578,7 +5589,7 @@
                 closeOCRModal();
                 superModal({
                     title: 'Import Successful! 📦',
-                    message: `Successfully synchronized ${items.length} items to the database.`
+                    message: `Successfully synchronized ${items.length} items.`
                 });
             };
 
@@ -7403,7 +7414,7 @@
                                 }
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 window.ensureOrderProofUpToDate(rec);
                 localStorage.setItem('reservationHistory', JSON.stringify(hist));
@@ -7547,7 +7558,7 @@
                 };
 
                 try {
-                    setBranchMsg('⏳ Adding branch and syncing dropdowns across devices...', true);
+                    setBranchMsg('⏳ Adding branch...', true);
                     const nextList = [...existing, newBranch];
                     if (typeof window.saveBranchesToCloud === 'function') {
                         await window.saveBranchesToCloud(nextList);
@@ -7565,7 +7576,7 @@
                     if (pinEl) pinEl.value = '';
                     if (apiEl) apiEl.value = DEFAULT_API_URL;
 
-                    setBranchMsg(`✅ Branch "${rawName}" added and synced to all dropdowns (POS PIN: ${branchPin}).`, true);
+                    setBranchMsg(`✅ Branch "${rawName}" added (POS PIN: ${branchPin}).`, true);
                     if (typeof window.showToast === 'function') {
                         window.showToast(`Branch "${rawName}" added across all dropdowns!`, 'success');
                     }
@@ -7589,7 +7600,7 @@
                 if (typeof window.superModal === 'function') {
                     ok = await window.superModal({
                         title: '🗑️ Remove Custom Branch?',
-                        message: `Remove branch <b>${esc(target)}</b> from all dropdowns?<br><br>Existing reservations stay in the database, and you can re-add this branch anytime.`,
+                        message: `Remove branch <b>${esc(target)}</b> from all dropdowns?<br><br>Existing records remain,and you may add this branch again.`,
                         confirmText: 'Remove Branch',
                         cancelText: 'Cancel'
                     });
@@ -7604,7 +7615,7 @@
                         await window.saveBranchesToCloud(nextList);
                     }
                     if (filter === target || filter === found.id) filter = 'all';
-                    setBranchMsg(`✅ Removed "${target}" and synced all dropdowns.`, true);
+                    setBranchMsg(`✅ Removed "${target}" .`, true);
                     await window.brRefresh(false);
                 } catch (err) {
                     setBranchMsg(`❌ Failed to remove branch: ${err.message || err}`, false);
