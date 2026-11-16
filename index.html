@@ -676,9 +676,18 @@
                             .then(r => r.json())
                             .then(data => {
                                 if (data && data.success) {
-                                    if (data.name) localStorage.setItem('loggedInUserName', data.name);
+                                    if (data.name) {
+                                        localStorage.setItem('loggedInUserName', data.name);
+                                        localStorage.setItem('customerName', data.name);
+                                        if (profName) profName.textContent = data.name.split(' ')[0];
+                                        const greetEl = document.getElementById('profile-greet-name');
+                                        if (greetEl) greetEl.textContent = 'Hi, ' + data.name.split(' ')[0] + '!';
+                                        const profNameInput = document.getElementById('prof-name-input');
+                                        if (profNameInput && document.activeElement !== profNameInput) profNameInput.value = data.name;
+                                    }
                                     localStorage.setItem('loggedInUserPhone', data.phone || '');
                                     window.syncBookingFormAutofill();
+                                    if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                                 }
                             }).catch(() => {});
                     }
@@ -1436,6 +1445,9 @@ function toggleChat() {
                         reservationNumber: dbR.reservationNumber,
                         reservationType: dbR.reservationType || existing.reservationType || 'standard',
                         customerName: dbR.customerName || existing.customerName || 'Guest',
+                        email: dbR.email || existing.email || '',
+                        phone: dbR.phone || existing.phone || '',
+                        branch: dbR.branch || existing.branch || 'General Santos City',
                         bookedTable: dbR.bookedTable || existing.bookedTable,
                         arrivalDate: dbR.arrivalDate || existing.arrivalDate,
                         arrivalTime: dbR.arrivalTime || existing.arrivalTime,
@@ -1451,6 +1463,13 @@ function toggleChat() {
                 });
 
                 localStorage.setItem('reservationHistory', JSON.stringify(merged));
+                const profOverlay = document.getElementById('profile-modal-overlay');
+                if (profOverlay && profOverlay.style.display === 'flex' && typeof window.renderProfileHistory === 'function') {
+                    window.renderProfileHistory();
+                }
+                if (typeof checkActiveReservation === 'function') {
+                    checkActiveReservation();
+                }
             } catch (e) {}
         }
         syncCustomerReservationsFromCloud();
@@ -2687,7 +2706,7 @@ function toggleChat() {
 
             <div style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc; padding: 0 10px; font-family:'Roboto',sans-serif;">
                 <button id="prof-tab-history" onclick="switchProfileTab('history')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">📋 Reservation History</button>
-                <button id="prof-tab-security" onclick="switchProfileTab('security')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">📱 Mobile & Security</button>
+                <button id="prof-tab-security" onclick="switchProfileTab('security')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">👤 Account & Security</button>
             </div>
 
             <div style="padding:24px; overflow-y:auto; flex:1; background:#f8fafc; font-family:'Roboto',sans-serif;">
@@ -2696,6 +2715,20 @@ function toggleChat() {
                 </div>
 
                 <div id="profile-view-security" style="display:none; flex-direction:column; gap:16px;">
+                    <!-- 👉 Full Name Management Card -->
+                    <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">👤 Full Name</h4>
+                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Update your account name across all your past and active reservation records.</p>
+                        <form onsubmit="handleProfileUpdateName(event)">
+                            <div style="margin-bottom:14px;">
+                                <label for="prof-name-input" style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Customer Name</label>
+                                <input type="text" id="prof-name-input" placeholder="Enter your full name" minlength="2" maxlength="80" required style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                            </div>
+                            <div id="prof-name-msg" style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;"></div>
+                            <button type="submit" id="prof-name-btn" style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save Name</button>
+                        </form>
+                    </div>
+
                     <!-- 👉 NEW: Mobile Number Management Card -->
                     <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
                         <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">📱 Mobile Number</h4>
@@ -2765,12 +2798,66 @@ function toggleChat() {
 
             document.getElementById('profile-modal-overlay').style.display = 'flex';
             const cName = localStorage.getItem('loggedInUserName') || '';
+            const cEmail = localStorage.getItem('loggedInUserEmail') || '';
             const cPhone = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '');
             document.getElementById('profile-greet-name').textContent = 'Hi, ' + (cName ? cName.split(' ')[0] : 'Guest') + '!';
-            document.getElementById('profile-greet-email').textContent = localStorage.getItem('loggedInUserEmail') || 'Manage your account';
+            document.getElementById('profile-greet-email').textContent = cEmail || 'Manage your account';
+            const nameField = document.getElementById('prof-name-input');
+            if (nameField) nameField.value = cName;
+            const nameMsg = document.getElementById('prof-name-msg');
+            if (nameMsg) nameMsg.style.display = 'none';
             const phoneField = document.getElementById('prof-phone-input');
             if (phoneField) phoneField.value = cPhone;
             switchProfileTab('history');
+
+            // Refresh latest profile & all-branch cloud reservation history so edits from any device show up immediately
+            if (cEmail) {
+                fetch(`https://rolands-steakhouse-vqtr.vercel.app/api/auth/profile?email=${encodeURIComponent(cEmail)}&nocache=${Date.now()}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.success && data.name) {
+                            localStorage.setItem('loggedInUserName', data.name);
+                            localStorage.setItem('customerName', data.name);
+                            localStorage.setItem('loggedInUserPhone', data.phone || '');
+                            const greetEl = document.getElementById('profile-greet-name');
+                            if (greetEl) greetEl.textContent = 'Hi, ' + data.name.split(' ')[0] + '!';
+                            const profName = document.getElementById('header-profile-name');
+                            if (profName) profName.textContent = data.name.split(' ')[0];
+                            const nf = document.getElementById('prof-name-input');
+                            if (nf && document.activeElement !== nf) nf.value = data.name;
+                            const pf = document.getElementById('prof-phone-input');
+                            if (pf && document.activeElement !== pf) pf.value = (data.phone || '').replace(/^(\+?63|0)/, '');
+                            if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
+                            if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
+                        }
+                    }).catch(() => {});
+            }
+            fetch(`https://rolands-steakhouse-vqtr.vercel.app/reservations?branch=ALL&nocache=${Date.now()}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(allCloud => {
+                    if (Array.isArray(allCloud)) {
+                        window.__allBranchesProfileHistory = allCloud.map(dbR => {
+                            const rawStatus = String(dbR.status || 'Pending').toLowerCase().trim();
+                            const isDone = rawStatus === 'completed' || dbR.kdsStatus === 'served';
+                            const isCancelled = rawStatus === 'cancelled' || rawStatus === 'rejected' || dbR.kdsStatus === 'cancelled';
+                            return {
+                                reservationNumber: dbR.reservationNumber,
+                                reservationType: dbR.reservationType || 'standard',
+                                customerName: dbR.customerName || 'Guest',
+                                email: dbR.email || '',
+                                phone: dbR.phone || '',
+                                branch: dbR.branch || 'General Santos City',
+                                bookedTable: dbR.bookedTable,
+                                arrivalDate: dbR.arrivalDate,
+                                arrivalTime: dbR.arrivalTime,
+                                approvalStatus: isCancelled ? 'cancelled' : (isDone ? 'completed' : (rawStatus === 'walk-in' ? 'approved' : rawStatus)),
+                                paymentAmount: dbR.paymentAmount || 0,
+                                bookedBy: dbR.bookedBy || 'online'
+                            };
+                        });
+                        if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
+                    }
+                }).catch(() => {});
         };
 
         window.closeProfileModal = function() {
@@ -2794,8 +2881,140 @@ function toggleChat() {
                 hTab.style.color = '#94a3b8'; hTab.style.borderBottom = '2.5px solid transparent';
                 sView.style.display = 'block';
                 hView.style.display = 'none';
+                const nameField = document.getElementById('prof-name-input');
+                if (nameField) nameField.value = localStorage.getItem('loggedInUserName') || '';
                 const phoneField = document.getElementById('prof-phone-input');
                 if (phoneField) phoneField.value = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '');
+            }
+        };
+
+        function propagateCustomerNameInLocalRecords(oldName, newName, email, reservationNumbers) {
+            const cleanOld = String(oldName || '').trim().toLowerCase();
+            const cleanEmail = String(email || '').trim().toLowerCase();
+            const resSet = new Set((Array.isArray(reservationNumbers) ? reservationNumbers : []).map(x => String(x || '').trim()));
+            const isOwned = (r) => {
+                if (!r) return false;
+                const rNum = String(r.reservationNumber || '').trim();
+                const rEmail = String(r.email || '').trim().toLowerCase();
+                const rName = String(r.customerName || '').trim().toLowerCase();
+                if (resSet.size > 0 && resSet.has(rNum)) return true;
+                if (cleanEmail && rEmail === cleanEmail) return true;
+                if (cleanOld && rName === cleanOld && r.bookedBy !== 'staff') return true;
+                return false;
+            };
+
+            try {
+                const rawGet = Storage.prototype.getItem.bind(localStorage);
+                const rawSet = Storage.prototype.setItem.bind(localStorage);
+                const rawHist = rawGet('reservationHistory');
+                if (rawHist) {
+                    const parsed = JSON.parse(rawHist);
+                    if (Array.isArray(parsed)) {
+                        let changed = false;
+                        parsed.forEach(r => {
+                            if (isOwned(r) && r.customerName !== newName) {
+                                r.customerName = newName;
+                                changed = true;
+                            }
+                        });
+                        if (changed) rawSet('reservationHistory', JSON.stringify(parsed));
+                    }
+                }
+            } catch (e) { }
+
+            if (Array.isArray(window.__allBranchesProfileHistory)) {
+                window.__allBranchesProfileHistory.forEach(r => {
+                    if (isOwned(r)) r.customerName = newName;
+                });
+            }
+
+            try {
+                const activeResRaw = localStorage.getItem('activeCustomerReservation');
+                if (activeResRaw) {
+                    const activeRes = JSON.parse(activeResRaw);
+                    if (isOwned(activeRes)) {
+                        activeRes.customerName = newName;
+                        localStorage.setItem('activeCustomerReservation', JSON.stringify(activeRes));
+                    }
+                }
+            } catch (e) { }
+
+            try {
+                const guestResRaw = sessionStorage.getItem('guestChatRes');
+                if (guestResRaw) {
+                    const guestRes = JSON.parse(guestResRaw);
+                    if (isOwned(guestRes)) {
+                        guestRes.customerName = newName;
+                        sessionStorage.setItem('guestChatRes', JSON.stringify(guestRes));
+                    }
+                }
+            } catch (e) { }
+        }
+
+        window.handleProfileUpdateName = async function(e) {
+            e.preventDefault();
+            const rawInput = (document.getElementById('prof-name-input')?.value || '').replace(/[<>]/g, '').trim();
+            const email = (localStorage.getItem('loggedInUserEmail') || '').trim();
+            const oldName = (localStorage.getItem('loggedInUserName') || '').trim();
+            const msg = document.getElementById('prof-name-msg');
+            const btn = document.getElementById('prof-name-btn');
+
+            if (rawInput.length < 2) {
+                msg.textContent = '❌ Please enter a valid name (at least 2 characters).';
+                msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                msg.style.display = 'block';
+                return;
+            }
+            if (!email) {
+                msg.textContent = '❌ Please sign in again to update your account name.';
+                msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                msg.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            msg.style.display = 'none';
+
+            try {
+                const res = await fetch('https://rolands-steakhouse-vqtr.vercel.app/api/auth/update-name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, newName: rawInput })
+                });
+                const data = await res.json();
+                if (data && data.success) {
+                    const finalName = data.name || rawInput;
+                    localStorage.setItem('loggedInUserName', finalName);
+                    localStorage.setItem('customerName', finalName);
+
+                    propagateCustomerNameInLocalRecords(oldName, finalName, email, data.reservationNumbers || []);
+
+                    const greetEl = document.getElementById('profile-greet-name');
+                    if (greetEl) greetEl.textContent = 'Hi, ' + finalName.split(' ')[0] + '!';
+                    const profName = document.getElementById('header-profile-name');
+                    if (profName) profName.textContent = finalName.split(' ')[0];
+
+                    if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
+                    if (typeof checkActiveReservation === 'function') checkActiveReservation();
+                    if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
+                    if (typeof syncCustomerReservationsFromCloud === 'function') syncCustomerReservationsFromCloud();
+
+                    msg.textContent = '✅ Name updated! Your account and reservation records are now updated.';
+                    msg.style.color = '#166534'; msg.style.background = '#dcfce7';
+                    msg.style.display = 'block';
+                } else {
+                    msg.textContent = '❌ ' + ((data && data.error) || 'Failed to update name.');
+                    msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                    msg.style.display = 'block';
+                }
+            } catch (err) {
+                msg.textContent = '❌ Connection error while saving your name.';
+                msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
+                msg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Name';
             }
         };
 
@@ -2849,16 +3068,43 @@ function toggleChat() {
 
         window.renderProfileHistory = function() {
             const listEl = document.getElementById('profile-history-list');
-            const cName = localStorage.getItem('loggedInUserName');
-            const cEmail = localStorage.getItem('loggedInUserEmail');
+            if (!listEl) return;
+            const cName = (localStorage.getItem('loggedInUserName') || '').trim();
+            const cEmail = (localStorage.getItem('loggedInUserEmail') || '').trim();
             if (!cName && !cEmail) return;
 
-            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            
-            let myRes = hist.filter(r => {
-                if (r.bookedBy === 'staff') return false; 
-                return (r.customerName === cName || r.email === cEmail);
-            }).reverse();
+            const escProf = (v) => String(v == null ? '' : v)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            const localHist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const cloudHist = Array.isArray(window.__allBranchesProfileHistory) ? window.__allBranchesProfileHistory : [];
+            const byResNum = new Map();
+            localHist.forEach(r => { if (r && r.reservationNumber) byResNum.set(r.reservationNumber, r); });
+            cloudHist.forEach(r => {
+                if (r && r.reservationNumber) {
+                    const prev = byResNum.get(r.reservationNumber) || {};
+                    byResNum.set(r.reservationNumber, { ...prev, ...r });
+                }
+            });
+            const mergedHist = Array.from(byResNum.values());
+
+            const cleanNameLower = cName.toLowerCase();
+            const cleanEmailLower = cEmail.toLowerCase();
+            let myRes = mergedHist.filter(r => {
+                if (!r) return false;
+                const rEmail = String(r.email || '').trim().toLowerCase();
+                const rName = String(r.customerName || '').trim().toLowerCase();
+                if (cleanEmailLower && rEmail === cleanEmailLower) return true;
+                if (r.bookedBy !== 'staff' && cleanNameLower && rName === cleanNameLower) return true;
+                return false;
+            }).sort((a, b) => {
+                const idA = parseInt(String(a.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+                const idB = parseInt(String(b.reservationNumber || '').replace(/[^0-9]/g, ''), 10) || 0;
+                return idB - idA;
+            });
 
             if (myRes.length === 0) {
                 listEl.innerHTML = `<div style="text-align:center; padding:30px; color:#94a3b8; font-size:13px;">No reservations found in your account history.</div>`;
@@ -2874,11 +3120,12 @@ function toggleChat() {
 
                 return `
                     <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">🎫 ${r.reservationNumber}</div>
-                            <div style="font-size:10px; font-weight:800; color:${statusColor}; background:${statusBg}; padding:3px 8px; border-radius:8px;">${status}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
+                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">🎫 ${escProf(r.reservationNumber)}</div>
+                            <div style="font-size:10px; font-weight:800; color:${statusColor}; background:${statusBg}; padding:3px 8px; border-radius:8px;">${escProf(status)}</div>
                         </div>
-                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">📅 ${r.arrivalDate} &nbsp; ⏰ ${r.arrivalTime} &nbsp; 🪑 ${r.bookedTable || 'TBD'}</div>
+                        <div style="font-size:12px; color:#1e293b; font-weight:700; margin-bottom:4px;">👤 ${escProf(r.customerName || cName || 'Guest')} ${r.branch ? `<span style="color:#64748b; font-weight:600;">• 📍 ${escProf(r.branch)}</span>` : ''}</div>
+                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">📅 ${escProf(r.arrivalDate)} &nbsp; ⏰ ${escProf(r.arrivalTime)} &nbsp; 🪑 ${escProf(r.bookedTable || 'TBD')}</div>
                         <div style="font-size:12px; color:#475569; font-weight:600;">💰 Paid: ₱${Number(r.paymentAmount||0).toLocaleString()}</div>
                     </div>
                 `;
