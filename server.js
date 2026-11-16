@@ -589,30 +589,108 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
 app.post('/api/auth/change-password', authLimiter, async (req, res) => {
     const { email, currentPassword, newPassword } = req.body;
     try {
-        const [users] = await db.query('SELECT customer_id FROM customer_credentials WHERE email = ? AND password_hash = ?', [email, currentPassword]);
+        const [users] = await db.query('SELECT customer_id FROM customer_credentials WHERE LOWER(email) = LOWER(?) AND password_hash = ?', [email, currentPassword]);
         if (users.length === 0) return res.json({ success: false, error: 'Incorrect current password.' });
         
-        await db.query('UPDATE customer_credentials SET password_hash = ? WHERE email = ?', [newPassword, email]);
+        await db.query('UPDATE customer_credentials SET password_hash = ? WHERE LOWER(email) = LOWER(?)', [newPassword, email]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
 
-// 6b. Get & Update Customer Profile (Mobile Number)
+// 6b. Get & Update Customer Profile (Name & Mobile Number)
 app.get('/api/auth/profile', async (req, res) => {
     const { email } = req.query;
     if (!email) return res.json({ success: false });
     try {
-        const [users] = await db.query('SELECT name, email, phone FROM customer_credentials WHERE email = ?', [email]);
+        const [users] = await db.query('SELECT name, email, phone FROM customer_credentials WHERE LOWER(email) = LOWER(?)', [email]);
         if (users.length > 0) res.json({ success: true, name: users[0].name, email: users[0].email, phone: users[0].phone || '' });
         else res.json({ success: false });
     } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.post('/api/auth/update-name', authLimiter, async (req, res) => {
+    const cleanEmail = String(req.body?.email || '').trim();
+    const rawNewName = String(req.body?.newName || req.body?.name || '').replace(/[<>]/g, '').trim();
+    if (!cleanEmail) return res.status(400).json({ success: false, error: 'Email required' });
+    if (rawNewName.length < 2) return res.status(400).json({ success: false, error: 'Please enter a valid name (at least 2 characters).' });
+    const cleanName = rawNewName.slice(0, 80);
+
+    try {
+        const [users] = await db.query(
+            'SELECT customer_id, name, email FROM customer_credentials WHERE LOWER(email) = LOWER(?)',
+            [cleanEmail]
+        );
+        if (!users || users.length === 0) {
+            return res.status(404).json({ success: false, error: 'Account not found.' });
+        }
+
+        const customerIds = users.map(u => u.customer_id);
+        await db.query('UPDATE customer_credentials SET name = ? WHERE LOWER(email) = LOWER(?)', [cleanName, cleanEmail]);
+
+        let linkedRes = [];
+        const resNums = new Set();
+        if (customerIds.length > 0) {
+            const nowMs = Date.now();
+            const [resRows] = await db.query(
+                'SELECT reservation_id, table_number, reservation_type, booked_by FROM reservation_log WHERE customer_id IN (?)',
+                [customerIds]
+            );
+            linkedRes = Array.isArray(resRows) ? resRows : [];
+            linkedRes.forEach(r => {
+                const isStaff = String(r.booked_by || '').toLowerCase() === 'staff';
+                const isPos = !isStaff && String(r.booked_by || '').toLowerCase() === 'pos';
+                const isVip = String(r.reservation_type || '').toLowerCase() === 'vip' || Number(r.table_number) === 99;
+                const prefix = isPos ? 'POS-' : (isStaff ? 'WI-' : (isVip ? 'VIP-' : 'RES-'));
+                resNums.add(`${prefix}${r.reservation_id}`);
+            });
+
+            if (linkedRes.length > 0) {
+                await db.query('UPDATE reservation_log SET updated_at_ms = ? WHERE customer_id IN (?)', [nowMs, customerIds]);
+            }
+        }
+
+        // Propagate updated name to Live Activity Feed snapshots (SuperAdmin Live Activity)
+        if (resNums.size > 0) {
+            try {
+                let log = await getSystemMemoryKey('liveActivityLog', []);
+                if (Array.isArray(log) && log.length > 0) {
+                    let logChanged = false;
+                    log.forEach(entry => {
+                        if (entry && resNums.has(String(entry.reservationNumber || '').trim()) && entry.customerName !== cleanName) {
+                            entry.customerName = cleanName;
+                            logChanged = true;
+                        }
+                    });
+                    if (logChanged) {
+                        await setSystemMemoryKey('liveActivityLog', log);
+                    }
+                }
+            } catch (actErr) {
+                console.warn('Activity log name sync warning:', actErr.message);
+            }
+        }
+
+        // Invalidate reservation cache so customer, admin, and superadmin records reflect new name immediately
+        cachedReservations = null;
+        resCacheTime = 0;
+
+        res.json({
+            success: true,
+            name: cleanName,
+            updatedReservationsCount: linkedRes.length,
+            reservationNumbers: Array.from(resNums)
+        });
+    } catch (err) {
+        console.error('update-name error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
 });
 
 app.post('/api/auth/update-phone', authLimiter, async (req, res) => {
     const { email, phone } = req.body;
     if (!email) return res.status(400).json({ success: false, error: 'Email required' });
     try {
-        await db.query('UPDATE customer_credentials SET phone = ? WHERE email = ?', [phone || '', email]);
+        await db.query('UPDATE customer_credentials SET phone = ? WHERE LOWER(email) = LOWER(?)', [phone || '', email]);
         res.json({ success: true, phone: phone || '' });
     } catch (err) { res.status(500).json({ success: false, error: 'Database error' }); }
 });
