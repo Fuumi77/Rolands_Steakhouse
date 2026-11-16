@@ -3222,6 +3222,34 @@
         'Koronadal City': '2222'
     };
 
+    const DEFAULT_TERMINAL_PINS = {
+        posPassword: '0000',
+        kitchenPassword: '1234'
+    };
+
+    window.getTerminalPin = function (role) {
+        if (role === 'kitchen') {
+            return String(rawGet('kitchenPassword') || DEFAULT_TERMINAL_PINS.kitchenPassword).trim();
+        }
+        return String(rawGet('posPassword') || DEFAULT_TERMINAL_PINS.posPassword).trim();
+    };
+
+    window.setTerminalPin = async function (role, newPin) {
+        const cleanPin = String(newPin || '').trim().slice(0, 12);
+        if (!cleanPin) return null;
+        const key = role === 'kitchen' ? 'kitchenPassword' : 'posPassword';
+        safeRawSet(key, cleanPin);
+        const payload = { [key]: cleanPin };
+        try {
+            await origFetch(`${DEFAULT_BACKEND_URL}/api/memory/terminal-pins`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch (e) { }
+        return cleanPin;
+    };
+
     window.getPosBranchPinMap = function () {
         let saved = {};
         try {
@@ -3240,7 +3268,7 @@
         map[branchName] = String(newPin).trim();
         safeRawSet('posBranchSwitchPins', JSON.stringify(map));
         try {
-            await fetch('https://rolands-steakhouse-jsoo.onrender.com/api/memory/pos-branch-pins', {
+            await origFetch(`${DEFAULT_BACKEND_URL}/api/memory/pos-branch-pins`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(map)
@@ -3249,20 +3277,34 @@
         return map;
     };
 
-    // Sync per-branch POS PINs from cloud on startup
-    setTimeout(async () => {
+    window.syncPosBranchPinsFromCloud = async function () {
         try {
-            const res = await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/pos-branch-pins?nocache=${Date.now()}`);
-            if (res.ok) {
-                const cloudPins = await res.json();
+            const [pinsRes, termRes] = await Promise.all([
+                origFetch(`${DEFAULT_BACKEND_URL}/api/memory/pos-branch-pins?nocache=${Date.now()}`).catch(() => null),
+                origFetch(`${DEFAULT_BACKEND_URL}/api/memory/terminal-pins?nocache=${Date.now()}`).catch(() => null)
+            ]);
+            if (pinsRes && pinsRes.ok) {
+                const cloudPins = await pinsRes.json();
                 if (cloudPins && typeof cloudPins === 'object' && Object.keys(cloudPins).length > 0) {
                     const merged = { ...DEFAULT_POS_BRANCH_PINS, ...cloudPins };
                     safeRawSet('posBranchSwitchPins', JSON.stringify(merged));
                     if (typeof window.loadPosBranchPinInput === 'function') window.loadPosBranchPinInput();
                 }
             }
+            if (termRes && termRes.ok) {
+                const cloudTerm = await termRes.json();
+                if (cloudTerm && typeof cloudTerm === 'object') {
+                    if (cloudTerm.posPassword) safeRawSet('posPassword', String(cloudTerm.posPassword).trim());
+                    if (cloudTerm.kitchenPassword) safeRawSet('kitchenPassword', String(cloudTerm.kitchenPassword).trim());
+                    if (typeof window.loadTerminalPinInputs === 'function') window.loadTerminalPinInputs();
+                }
+            }
         } catch (e) { }
-    }, 600);
+        return window.getPosBranchPinMap();
+    };
+
+    // Sync terminal & per-branch PINs from cloud immediately on startup
+    window.syncPosBranchPinsFromCloud();
 
     function resetBranchDropdownsToCurrent() {
         const curr = window.getCurrentBranch();
@@ -3277,6 +3319,7 @@
         if (!branchName || branchName === previousBranch) return;
 
         const isPosPage = pagePath.includes('pos');
+        const isKitchenPage = pagePath.includes('kitchen');
         const loggedInStaff = sessionStorage.getItem('adminLoggedInUser');
         const assignedBranch = sessionStorage.getItem('adminAssignedBranch');
 
@@ -3295,15 +3338,17 @@
             return;
         }
 
-        // 2. PER-BRANCH POS SWITCH PIN GUARD: Require the target branch's specific PIN on POS
-        if (isPosPage) {
+        // 2. PER-BRANCH POS & KITCHEN SWITCH PIN GUARD: Require the target branch's specific PIN
+        if (isPosPage || isKitchenPage) {
+            await window.syncPosBranchPinsFromCloud();
+            const termLabel = isKitchenPage ? 'Kitchen' : 'POS';
             const requiredPin = window.getPosBranchPin(branchName);
             let enteredPin = null;
 
             if (typeof window.superModal === 'function') {
                 enteredPin = await window.superModal({
-                    title: `🔒 ${branchName} — POS Security`,
-                    message: `Enter the <b>${branchName}</b> POS Branch PIN to switch this terminal:`,
+                    title: `🔒 ${branchName} — ${termLabel} Security`,
+                    message: `Enter the <b>${branchName}</b> Branch PIN to switch this ${termLabel} terminal:`,
                     showInput: true,
                     inputType: 'password',
                     placeholder: `Enter ${branchName} PIN`,
@@ -3311,7 +3356,7 @@
                     cancelText: 'Cancel'
                 });
             } else {
-                enteredPin = prompt(`🔒 Enter the POS Branch PIN for ${branchName}:`);
+                enteredPin = prompt(`🔒 Enter the ${branchName} Branch PIN for ${termLabel}:`);
             }
 
             if (enteredPin === null) {
@@ -3324,11 +3369,11 @@
                 if (typeof window.superModal === 'function') {
                     await window.superModal({
                         title: '❌ Invalid Branch PIN',
-                        message: `Incorrect POS Branch PIN for <b>${branchName}</b>. Branch switch cancelled.`,
+                        message: `Incorrect Branch PIN for <b>${branchName}</b>. Branch switch cancelled.`,
                         confirmText: 'Close'
                     });
                 } else {
-                    alert(`❌ Incorrect POS Branch PIN for ${branchName}. Branch switch cancelled.`);
+                    alert(`❌ Incorrect Branch PIN for ${branchName}. Branch switch cancelled.`);
                 }
                 return;
             }
@@ -3769,6 +3814,16 @@
                 brFilterSel.value || 'all'
             );
         }
+        ['pos-branch-gate-select', 'kds-branch-gate-select'].forEach(gateSelId => {
+            const gEl = document.getElementById(gateSelId);
+            if (gEl) {
+                setSelectOptions(
+                    gEl,
+                    list.map(b => ({ value: b.name, label: `📍 ${b.name}` })),
+                    window.getEffectiveBranch()
+                );
+            }
+        });
         document.querySelectorAll('select.sa-staff-branch-select').forEach(el => {
             setSelectOptions(
                 el,
