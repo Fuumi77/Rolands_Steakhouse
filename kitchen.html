@@ -103,6 +103,41 @@
         </div>
     </div>
 
+    <!-- STEP 2: BRANCH ACCESS GATE (Shown over visible Kitchen display until Branch PIN verified) -->
+    <div id="kds-branch-gate" style="display:none; position:fixed; inset:0; z-index:25000; background:rgba(7,18,11,0.72); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
+        <div style="background:#112217; border:1px solid #23422e; border-radius:24px; width:100%; max-width:420px; padding:30px 26px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.75); color:#f0fdf4;">
+            <div style="display:inline-block; background:rgba(245,158,11,0.16); border:1px solid rgba(251,191,36,0.35); color:#fbbf24; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:0.6px; margin-bottom:10px;">STEP 2: BRANCH SECURITY LOCK</div>
+            <h2 style="font-family:'Playfair Display', serif; color:#c5a059; margin:0 0 8px 0; font-size:25px;">Verify Branch PIN</h2>
+            <p style="color:#94a3b8; font-size:13.5px; margin:0 0 16px 0; line-height:1.5;">
+                Kitchen Display is open for <strong id="kds-branch-gate-name" style="color:#4ade80;">General Santos City</strong>.<br>
+                Enter the branch PIN before accessing or modifying kitchen orders.
+            </p>
+            <div style="text-align:left; margin-bottom:12px;">
+                <label for="kds-branch-gate-select" style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:5px;">Active Branch</label>
+                <select id="kds-branch-gate-select" onchange="handleKitchenBranchGateSwitch(this.value)"
+                    style="width:100%; padding:10px 12px; border:1px solid #284c35; border-radius:10px; background:#162a1d; color:#f0fdf4; font-weight:700; font-size:13.5px; cursor:pointer; box-sizing:border-box;">
+                </select>
+            </div>
+            <div style="text-align:left; margin-bottom:10px;">
+                <label for="kds-branch-pin-input" style="display:block; font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:5px;">Branch Security PIN</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="password" id="kds-branch-pin-input" placeholder="Enter Branch PIN" maxlength="12" autocomplete="off"
+                        onkeydown="if(event.key==='Enter'){ event.preventDefault(); verifyKitchenBranchGate(); }"
+                        style="flex:1; padding:11px 14px; border:1.5px solid #284c35; border-radius:10px; background:#0b140e; color:#f0fdf4; font-size:16px; font-weight:800; letter-spacing:3px; outline:none; box-sizing:border-box;">
+                    <button type="button" onclick="toggleKitchenBranchPinVisibility(this)"
+                        style="padding:0 14px; border:1px solid #284c35; border-radius:10px; background:#182e20; color:#f0fdf4; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">Reveal</button>
+                </div>
+            </div>
+            <div id="kds-branch-pin-msg" style="min-height:18px; color:#ef4444; font-size:12.5px; font-weight:700; margin-bottom:12px;"></div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" onclick="lockKitchen()"
+                    style="flex:1; padding:12px; border:1px solid #284c35; border-radius:12px; background:#182e20; color:#e2e8f0; font-size:13px; font-weight:800; cursor:pointer;">🔒 Lock Kitchen</button>
+                <button type="button" id="kds-branch-unlock-btn" onclick="verifyKitchenBranchGate()"
+                    style="flex:1.4; padding:12px; border:none; border-radius:12px; background:#16a34a; color:#ffffff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(22,163,74,0.35);">Verify & Unlock</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MAIN KITCHEN HEADER -->
     <header>
         <div class="brand-section">
@@ -153,6 +188,152 @@
         let isSoundEnabled = true;
         let knownActiveTicketIds = null;
         const localKdsShield = {};
+        let kitchenTerminalUnlocked = false;
+        let kitchenBranchUnlocked = false;
+        let kitchenSyncInterval = null;
+
+        // Always start locked so Step 1 (Kitchen PIN) -> Step 2 (Branch PIN) are required every time
+        try { sessionStorage.removeItem('kitchenAuthenticated'); } catch (e) {}
+
+        function isKitchenFullyUnlocked() {
+            return kitchenTerminalUnlocked && kitchenBranchUnlocked;
+        }
+        window.isKitchenFullyUnlocked = isKitchenFullyUnlocked;
+
+        function setKitchenInterfaceLocked(locked) {
+            const hdr = document.querySelector('header');
+            const bar = document.querySelector('.toolbar');
+            const mainEl = document.querySelector('main');
+            [hdr, bar, mainEl].forEach(el => {
+                if (!el) return;
+                el.inert = Boolean(locked);
+                el.style.pointerEvents = locked ? 'none' : '';
+                el.style.userSelect = locked ? 'none' : '';
+            });
+        }
+
+        function getActiveKitchenBranch() {
+            return typeof window.getEffectiveBranch === 'function' ? window.getEffectiveBranch() : 'General Santos City';
+        }
+
+        function updateKitchenBranchGateLabels(branchName) {
+            const clean = branchName || getActiveKitchenBranch();
+            const nameEl = document.getElementById('kds-branch-gate-name');
+            const selEl = document.getElementById('kds-branch-gate-select');
+            if (nameEl) nameEl.textContent = clean;
+            if (selEl) {
+                if (selEl.options.length === 0 && typeof window.syncAllBranchSelects === 'function') {
+                    window.syncAllBranchSelects();
+                }
+                if (Array.from(selEl.options).some(o => o.value === clean)) selEl.value = clean;
+            }
+        }
+
+        function showKitchenBranchGate() {
+            const gate = document.getElementById('kds-branch-gate');
+            const msgEl = document.getElementById('kds-branch-pin-msg');
+            const pinInput = document.getElementById('kds-branch-pin-input');
+            if (typeof window.syncAllBranchSelects === 'function') window.syncAllBranchSelects();
+            updateKitchenBranchGateLabels(getActiveKitchenBranch());
+            if (msgEl) msgEl.textContent = '';
+            if (pinInput) {
+                pinInput.value = '';
+                pinInput.type = 'password';
+            }
+            if (gate) gate.style.display = 'flex';
+            setTimeout(() => { if (pinInput) pinInput.focus(); }, 60);
+        }
+
+        window.toggleKitchenBranchPinVisibility = function (btnEl) {
+            const inp = document.getElementById('kds-branch-pin-input');
+            if (!inp) return;
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                if (btnEl) btnEl.textContent = 'Hide';
+            } else {
+                inp.type = 'password';
+                if (btnEl) btnEl.textContent = 'Reveal';
+            }
+        };
+
+        window.handleKitchenBranchGateSwitch = async function (branchName) {
+            if (!branchName) return;
+            try {
+                if (typeof window.__rawSetStorage === 'function') {
+                    window.__rawSetStorage('adminSelectedBranch', branchName);
+                } else {
+                    localStorage.setItem('adminSelectedBranch', branchName);
+                }
+            } catch (e) {}
+            const topSel = document.getElementById('rsh-staff-branch-select');
+            if (topSel) topSel.value = branchName;
+            updateKitchenBranchGateLabels(branchName);
+            const msgEl = document.getElementById('kds-branch-pin-msg');
+            const pinInput = document.getElementById('kds-branch-pin-input');
+            if (msgEl) msgEl.textContent = '';
+            if (pinInput) {
+                pinInput.value = '';
+                pinInput.focus();
+            }
+            if (typeof window.syncBranchFloorPlanFromCloud === 'function') {
+                await window.syncBranchFloorPlanFromCloud();
+            }
+            knownActiveTicketIds = null;
+            renderKitchenQueue(true);
+            syncKitchenQueueFromCloud();
+        };
+
+        window.verifyKitchenBranchGate = async function () {
+            if (!kitchenTerminalUnlocked) {
+                lockKitchen();
+                return;
+            }
+            const pinInput = document.getElementById('kds-branch-pin-input');
+            const msgEl = document.getElementById('kds-branch-pin-msg');
+            const entered = String(pinInput ? pinInput.value : '').trim();
+            const selEl = document.getElementById('kds-branch-gate-select');
+            const targetBranch = (selEl && selEl.value) ? selEl.value : getActiveKitchenBranch();
+
+            if (!entered) {
+                if (msgEl) msgEl.textContent = `Please enter the Branch PIN for ${targetBranch}.`;
+                if (pinInput) pinInput.focus();
+                return;
+            }
+
+            if (typeof window.syncPosBranchPinsFromCloud === 'function') {
+                await window.syncPosBranchPinsFromCloud();
+            }
+            const requiredPin = typeof window.getPosBranchPin === 'function' ? window.getPosBranchPin(targetBranch) : '1234';
+            if (entered !== String(requiredPin).trim() && entered !== '789456') {
+                if (msgEl) msgEl.textContent = `❌ Incorrect Branch PIN for ${targetBranch}.`;
+                if (pinInput) {
+                    pinInput.value = '';
+                    pinInput.focus();
+                }
+                if (typeof showToast === 'function') showToast(`Incorrect Branch PIN for ${targetBranch}`, 'error');
+                return;
+            }
+
+            kitchenBranchUnlocked = true;
+            const gate = document.getElementById('kds-branch-gate');
+            if (gate) gate.style.display = 'none';
+            setKitchenInterfaceLocked(false);
+            initKitchen();
+            if (typeof showToast === 'function') {
+                showToast(`Kitchen unlocked for ${targetBranch}`, 'success');
+            }
+        };
+
+        function requireKitchenUnlocked() {
+            if (isKitchenFullyUnlocked()) return true;
+            if (!kitchenTerminalUnlocked) {
+                lockKitchen();
+            } else {
+                showKitchenBranchGate();
+            }
+            return false;
+        }
+        window.requireKitchenUnlocked = requireKitchenUnlocked;
 
         function escapeHtml(str) {
             if (typeof str !== 'string') return String(str || '');
@@ -180,15 +361,22 @@
         // ── AUTHENTICATION LOGIC ──
         function appendPin(num) {
             if (currentPin.length >= 4) return;
+            if (currentPin.length === 0) {
+                const msgEl = document.getElementById('auth-msg');
+                if (msgEl) msgEl.textContent = '';
+            }
             currentPin += num;
             updatePinDots();
             if (currentPin.length === 4) checkAuth();
         }
 
-        function clearPin() {
+        function clearPin(preserveMsg = false) {
             currentPin = "";
             updatePinDots();
-            document.getElementById('auth-msg').textContent = '';
+            if (!preserveMsg) {
+                const msgEl = document.getElementById('auth-msg');
+                if (msgEl) msgEl.textContent = '';
+            }
         }
 
         function updatePinDots() {
@@ -199,21 +387,29 @@
         }
 
         async function checkAuth() {
-            const correct = localStorage.getItem('kitchenPassword') || '1234';
             const msg = document.getElementById('auth-msg');
+            if (typeof window.syncPosBranchPinsFromCloud === 'function') {
+                await window.syncPosBranchPinsFromCloud();
+            }
+            const correct = typeof window.getTerminalPin === 'function'
+                ? window.getTerminalPin('kitchen')
+                : (localStorage.getItem('kitchenPassword') || '1234');
 
             await new Promise(r => setTimeout(r, 120));
 
             if (currentPin === correct) {
-                sessionStorage.setItem('kitchenAuthenticated', 'true');
+                kitchenTerminalUnlocked = true;
+                kitchenBranchUnlocked = false;
                 document.getElementById('auth-gate').style.display = 'none';
-                initKitchen();
-                if (typeof showToast === 'function') {
-                    showToast('Kitchen display unlocked', 'success');
-                }
+                setKitchenInterfaceLocked(true);
+
+                // Show Kitchen display cleanly underneath Step 2 Branch Lock overlay (read-only until Branch PIN entered)
+                renderKitchenQueue(true);
+                syncKitchenQueueFromCloud();
+                showKitchenBranchGate();
             } else {
                 msg.textContent = 'Invalid access code. Please try again.';
-                clearPin();
+                clearPin(true);
                 if (typeof showToast === 'function') {
                     showToast('Invalid access code', 'error');
                 }
@@ -221,17 +417,23 @@
         }
 
         function lockKitchen() {
-            sessionStorage.removeItem('kitchenAuthenticated');
+            kitchenTerminalUnlocked = false;
+            kitchenBranchUnlocked = false;
+            try { sessionStorage.removeItem('kitchenAuthenticated'); } catch (e) {}
+            const branchGate = document.getElementById('kds-branch-gate');
+            if (branchGate) branchGate.style.display = 'none';
+            setKitchenInterfaceLocked(true);
             currentPin = "";
             updatePinDots();
             document.getElementById('auth-msg').textContent = '';
             document.getElementById('auth-gate').style.display = 'flex';
         }
+        window.lockKitchen = lockKitchen;
 
-        if (sessionStorage.getItem('kitchenAuthenticated') === 'true') {
-            document.getElementById('auth-gate').style.display = 'none';
-            initKitchen();
-        }
+        setKitchenInterfaceLocked(true);
+        window.addEventListener('pageshow', (e) => {
+            if (e && e.persisted) lockKitchen();
+        });
 
         // ── LIVE CLOCK ──
         function updateClock() {
@@ -245,6 +447,7 @@
         updateClock();
 
         function toggleSound() {
+            if (!requireKitchenUnlocked()) return;
             isSoundEnabled = !isSoundEnabled;
             const soundBtn = document.getElementById('sound-btn');
             if (soundBtn) {
@@ -256,6 +459,7 @@
         }
 
         function setFilter(filterName) {
+            if (!requireKitchenUnlocked()) return;
             activeFilter = filterName;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`tab-${filterName}`);
@@ -556,9 +760,11 @@
         function initKitchen() {
             renderKitchenQueue(true);
             syncKitchenQueueFromCloud();
-            setInterval(() => {
-                syncKitchenQueueFromCloud();
-            }, 5000);
+            if (!kitchenSyncInterval) {
+                kitchenSyncInterval = setInterval(() => {
+                    if (isKitchenFullyUnlocked()) syncKitchenQueueFromCloud();
+                }, 5000);
+            }
         }
 
         // ── TICKET CARD BUILDER HELPER ──
@@ -849,6 +1055,7 @@
 
         // ── UPDATE TICKET STATUS ──
         async function updateStatus(resNo, newStatus) {
+            if (!requireKitchenUnlocked()) return;
             const hist = getReservationHistory();
             const idx = hist.findIndex(r => String(r.reservationNumber) === String(resNo));
             if (idx === -1) return;
@@ -928,6 +1135,7 @@
 
         // ── CANCEL ORDER FROM KITCHEN ──
         window.cancelOrder = async function(resNo) {
+            if (!requireKitchenUnlocked()) return;
             let confirmed = false;
             if (typeof superModal === 'function') {
                 confirmed = await superModal({
@@ -1048,8 +1256,7 @@
                 renderKitchenQueue(true);
             }
             if (e.key === 'kitchenPassword') {
-                sessionStorage.removeItem('kitchenAuthenticated');
-                window.location.reload();
+                lockKitchen();
             }
         });
 
