@@ -2175,7 +2175,7 @@
                     </div>
 
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-                        <button onclick="document.getElementById('spoilage-modal').style.display='none'" style="padding:10px 16px; border-radius:8px; border:1px solid #cbd5e1; background:white; cursor:pointer; font-weight:bold; font-size:12px;">Cancel</button>
+                        <button onclick="document.getElementById('spoilage-modal').style.display='none'" style="padding:10px 16px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#334155; cursor:pointer; font-weight:bold; font-size:12px;">Cancel</button>
                         <button onclick="submitSpoilageLogModal()" style="padding:10px 20px; border-radius:8px; border:none; background:#ef4444; color:white; cursor:pointer; font-weight:bold; font-size:12px; box-shadow:0 4px 10px rgba(239,68,68,0.3);">Submit Spoilage Record</button>
                     </div>
                 </div>
@@ -5226,7 +5226,7 @@
         }
         ov.innerHTML = `
             <div style="width:100%; max-width:480px; background:white; border-radius:22px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.35); position:relative; max-height:92vh; overflow-y:auto;">
-                <button type="button" onclick="document.getElementById('rsh-admin-promo-preview-overlay').style.display='none'" style="position:absolute; top:12px; right:12px; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); font-size:18px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.2);">✕</button>
+                <button type="button" onclick="document.getElementById('rsh-admin-promo-preview-overlay').style.display='none'" style="position:absolute; top:12px; right:12px; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); color:#1e293b; font-size:18px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.2);">✕</button>
                 ${targetPromo.image ? `<img src="${escPromoHtml(targetPromo.image)}" style="width:100%; height:230px; object-fit:cover; display:block;" alt="Promo Preview">` : ''}
                 <div style="padding:24px; text-align:center;">
                     <span style="display:inline-block; background:#dcfce7; color:#166534; font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:20px; text-transform:uppercase; margin-bottom:8px;">Customer Preview</span>
