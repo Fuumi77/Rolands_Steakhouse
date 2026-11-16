@@ -1971,6 +1971,41 @@ app.post('/api/memory/pos-branch-pins', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+/* 🔐 TERMINAL ACCESS PINS (POS & KITCHEN) — shared across all devices */
+app.get('/api/memory/terminal-pins', async (req, res) => {
+    try {
+        const data = await getSystemMemoryKey('terminalPins', {
+            posPassword: '0000',
+            kitchenPassword: '1234'
+        });
+        const obj = (data && typeof data === 'object') ? data : {};
+        res.json({
+            posPassword: String(obj.posPassword || '0000').trim(),
+            kitchenPassword: String(obj.kitchenPassword || '1234').trim()
+        });
+    } catch (err) {
+        res.json({ posPassword: '0000', kitchenPassword: '1234' });
+    }
+});
+
+app.post('/api/memory/terminal-pins', async (req, res) => {
+    try {
+        const existing = await getSystemMemoryKey('terminalPins', {
+            posPassword: '0000',
+            kitchenPassword: '1234'
+        });
+        const base = (existing && typeof existing === 'object') ? { ...existing } : { posPassword: '0000', kitchenPassword: '1234' };
+        if (req.body && typeof req.body.posPassword === 'string' && req.body.posPassword.trim()) {
+            base.posPassword = req.body.posPassword.trim().slice(0, 12);
+        }
+        if (req.body && typeof req.body.kitchenPassword === 'string' && req.body.kitchenPassword.trim()) {
+            base.kitchenPassword = req.body.kitchenPassword.trim().slice(0, 12);
+        }
+        await setSystemMemoryKey('terminalPins', base);
+        res.json({ success: true, ...base });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /* 🧾 RAW INGREDIENTS SYNC */
 app.get('/api/memory/raw-ingredients', async (req, res) => {
     try {
