@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/superadmin.css?v=2.1">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.0"></script>
+    <script src="js/inventory-system.js?v=7.1"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         input[type="checkbox"] {
@@ -1402,14 +1402,22 @@
                         <input id="br-name" placeholder="Branch name (e.g. Cebu)"
                             style="flex:1; min-width:150px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
                         <input id="br-addr" placeholder="Address (optional)"
-                            style="flex:1; min-width:150px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
-                        <input id="br-api" placeholder="Branch API URL ([...](https://...)"
-                            style="flex:2; min-width:200px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                            style="flex:1.2; min-width:160px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="br-tel" placeholder="Phone / Tel (optional)"
+                            style="flex:0.8; min-width:130px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="br-pin" placeholder="POS PIN (default 1234)" maxlength="12"
+                            style="flex:0.7; min-width:130px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input id="br-api" value="https://rolands-steakhouse-jsoo.onrender.com"
+                            placeholder="https://rolands-steakhouse-jsoo.onrender.com (shared default)"
+                            style="flex:1.8; min-width:220px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px;">
                         <button type="button" onclick="window.brAddBranch()"
                             style="background:#16a34a; color:#fff; border:none; padding:9px 18px; border-radius:8px; font-weight:700; cursor:pointer;">Add
                             Branch</button>
                     </div>
-                    <div id="br-msg" style="font-size:12px; margin-top:8px; color:#b91c1c;"></div>
+                    <div style="font-size:12px; color:#475569; margin-top:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; line-height:1.45;">
+                        💡 <strong>API URL Guide:</strong> Keep the default shared backend URL <code>https://rolands-steakhouse-jsoo.onrender.com</code> (or leave blank to auto-use it) — branches are separated cleanly by <code>?branch=...</code>. Only enter a different URL if this branch runs on its own separate server. New branches automatically sync across devices and appear in all Customer, Admin, POS/Kitchen, and SuperAdmin dropdowns.
+                    </div>
+                    <div id="br-msg" style="font-size:12px; font-weight:700; margin-top:8px; color:#b91c1c;"></div>
                 </div>
 
                 <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">
@@ -3323,14 +3331,23 @@
                             ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">🟢 Online</span>`
                             : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">⚪ Offline</span>`;
                         const staffBranch = u.branch || u.assigned_branch || 'General Santos City';
+                        const branchListForRow = (typeof window.getBranches === 'function' ? window.getBranches() : [{ name: 'General Santos City' }, { name: 'Koronadal City' }]);
+                        const branchNamesForRow = branchListForRow.map(b => b.name);
+                        if (staffBranch && staffBranch !== 'ALL' && !branchNamesForRow.includes(staffBranch)) {
+                            branchNamesForRow.push(staffBranch);
+                        }
+                        const safeStaffBranch = String(staffBranch).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                        const safeUser = String(u.username || '').replace(/'/g, "\\'");
 
                         newHtml += `
                             <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr 1.2fr; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: center; gap: 8px;">
                                 <div style="text-align: left;"><strong style="color: #0f172a; font-size:14px;">${u.username}</strong></div>
                                 <div>
-                                    <select onchange="window.changeStaffBranch('${u.username}', this.value)" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#1e293b; font-size:12px; font-weight:700; cursor:pointer;">
-                                        <option value="General Santos City" ${staffBranch === 'General Santos City' ? 'selected' : ''}>📍 General Santos City</option>
-                                        <option value="Koronadal City" ${staffBranch === 'Koronadal City' ? 'selected' : ''}>📍 Koronadal City</option>
+                                    <select class="sa-staff-branch-select" data-branch="${safeStaffBranch}" onchange="window.changeStaffBranch('${safeUser}', this.value)" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#1e293b; font-size:12px; font-weight:700; cursor:pointer;">
+                                        ${branchNamesForRow.map(bn => {
+                                            const ebn = String(bn).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                            return `<option value="${ebn}" ${staffBranch === bn ? 'selected' : ''}>📍 ${ebn}</option>`;
+                                        }).join('')}
                                         <option value="ALL" ${staffBranch === 'ALL' ? 'selected' : ''}>🌐 All Branches</option>
                                     </select>
                                 </div>
@@ -7439,9 +7456,10 @@
     </script>
     <script>
         (function () {
-            const DEFAULT_BRANCHES = [
-                { id: 'gensan', name: 'General Santos City', address: 'Jose Catolico Sr. Ave., General Santos City', branchKey: 'General Santos City' },
-                { id: 'koronadal', name: 'Koronadal City', address: 'Gensan Drive, Zone II, Koronadal City', branchKey: 'Koronadal City' }
+            const DEFAULT_API_URL = window.DEFAULT_ROLANDS_BACKEND_URL || 'https://rolands-steakhouse-jsoo.onrender.com';
+            const FALLBACK_BRANCHES = [
+                { id: 'General Santos City', name: 'General Santos City', address: 'Jose Catolico Sr. Ave., General Santos City', tel: '(083) 123-4567', branchKey: 'General Santos City', apiUrl: DEFAULT_API_URL, isDefault: true },
+                { id: 'Koronadal City', name: 'Koronadal City', address: 'Gensan Drive, Zone II, Koronadal City', tel: '(083) 228-9876', branchKey: 'Koronadal City', apiUrl: DEFAULT_API_URL, isDefault: true }
             ];
             let view = 'overview';
             let filter = 'all';
@@ -7450,6 +7468,14 @@
             const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const rawRead = key => (window.__rawGetStorage ? window.__rawGetStorage(key) : localStorage.getItem(key));
+
+            function brGetBranches() {
+                if (typeof window.getBranches === 'function') {
+                    const list = window.getBranches();
+                    if (Array.isArray(list) && list.length > 0) return list;
+                }
+                return FALLBACK_BRANCHES;
+            }
 
             function getBranchLocalInventory(branchKey) {
                 try {
@@ -7465,22 +7491,154 @@
                 } catch (e) { return []; }
             }
 
-            window.brRefresh = async function (forceCloud) {
-                if (forceCloud && typeof syncReservations === 'function') {
-                    await syncReservations();
+            function setBranchMsg(text, isOk) {
+                const msgEl = document.getElementById('br-msg');
+                if (!msgEl) return;
+                msgEl.style.color = isOk ? '#15803d' : '#b91c1c';
+                msgEl.textContent = text || '';
+            }
+
+            window.brAddBranch = async function () {
+                const nameEl = document.getElementById('br-name');
+                const addrEl = document.getElementById('br-addr');
+                const telEl = document.getElementById('br-tel');
+                const pinEl = document.getElementById('br-pin');
+                const apiEl = document.getElementById('br-api');
+
+                const rawName = (nameEl?.value || '').replace(/[<>]/g, '').trim();
+                const rawAddr = (addrEl?.value || '').replace(/[<>]/g, '').trim();
+                const rawTel = (telEl?.value || '').replace(/[<>]/g, '').trim();
+                const rawPin = (pinEl?.value || '').replace(/[^0-9A-Za-z]/g, '').trim();
+                const rawApi = (apiEl?.value || '').trim().replace(/\/+$/, '');
+
+                if (rawName.length < 2) {
+                    setBranchMsg('⚠️ Please enter a branch name (at least 2 characters).', false);
+                    return;
                 }
+                if (rawName.toLowerCase() === 'all' || rawName.toLowerCase() === 'all branches') {
+                    setBranchMsg('⚠️ "All" is reserved. Please enter a specific city or branch name.', false);
+                    return;
+                }
+
+                const existing = brGetBranches();
+                if (existing.some(b => String(b.name || '').toLowerCase() === rawName.toLowerCase())) {
+                    setBranchMsg(`⚠️ Branch "${rawName}" already exists.`, false);
+                    return;
+                }
+
+                let finalApi = DEFAULT_API_URL;
+                if (rawApi) {
+                    if (!/^https?:\/\/[a-z0-9.-]+(?::\d+)?(\/.*)?$/i.test(rawApi)) {
+                        setBranchMsg(`⚠️ Invalid API URL. Use ${DEFAULT_API_URL} (shared backend) or a valid https:// URL.`, false);
+                        return;
+                    }
+                    finalApi = rawApi;
+                }
+
+                const newBranch = {
+                    id: rawName,
+                    branchKey: rawName,
+                    name: rawName,
+                    shortName: rawName,
+                    address: rawAddr || `${rawName} Branch`,
+                    tel: rawTel || '(083) 123-4567',
+                    apiUrl: finalApi,
+                    isDefault: false
+                };
+
+                try {
+                    setBranchMsg('⏳ Adding branch and syncing dropdowns across devices...', true);
+                    const nextList = [...existing, newBranch];
+                    if (typeof window.saveBranchesToCloud === 'function') {
+                        await window.saveBranchesToCloud(nextList);
+                    }
+                    const branchPin = rawPin || '1234';
+                    if (typeof window.setPosBranchPin === 'function') {
+                        await window.setPosBranchPin(rawName, branchPin);
+                    }
+                    if (typeof window.syncAllBranchSelects === 'function') {
+                        window.syncAllBranchSelects();
+                    }
+                    if (nameEl) nameEl.value = '';
+                    if (addrEl) addrEl.value = '';
+                    if (telEl) telEl.value = '';
+                    if (pinEl) pinEl.value = '';
+                    if (apiEl) apiEl.value = DEFAULT_API_URL;
+
+                    setBranchMsg(`✅ Branch "${rawName}" added and synced to all dropdowns (POS PIN: ${branchPin}).`, true);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(`Branch "${rawName}" added across all dropdowns!`, 'success');
+                    }
+                    await window.brRefresh(false);
+                } catch (err) {
+                    setBranchMsg(`❌ Could not save branch to cloud: ${err.message || err}`, false);
+                }
+            };
+
+            window.brDeleteBranch = async function (branchName) {
+                const target = String(branchName || '').trim();
+                if (!target) return;
+                const existing = brGetBranches();
+                const found = existing.find(b => b.name === target);
+                if (!found || found.isDefault) {
+                    setBranchMsg('⚠️ Core branches (General Santos City & Koronadal City) cannot be removed.', false);
+                    return;
+                }
+
+                let ok = false;
+                if (typeof window.superModal === 'function') {
+                    ok = await window.superModal({
+                        title: '🗑️ Remove Custom Branch?',
+                        message: `Remove branch <b>${esc(target)}</b> from all dropdowns?<br><br>Existing reservations stay in the database, and you can re-add this branch anytime.`,
+                        confirmText: 'Remove Branch',
+                        cancelText: 'Cancel'
+                    });
+                } else {
+                    ok = confirm(`Remove branch "${target}" from all dropdowns?`);
+                }
+                if (!ok) return;
+
+                try {
+                    const nextList = existing.filter(b => b.name !== target);
+                    if (typeof window.saveBranchesToCloud === 'function') {
+                        await window.saveBranchesToCloud(nextList);
+                    }
+                    if (filter === target || filter === found.id) filter = 'all';
+                    setBranchMsg(`✅ Removed "${target}" and synced all dropdowns.`, true);
+                    await window.brRefresh(false);
+                } catch (err) {
+                    setBranchMsg(`❌ Failed to remove branch: ${err.message || err}`, false);
+                }
+            };
+
+            window.brRefresh = async function (forceCloud) {
+                if (forceCloud) {
+                    if (typeof window.syncBranchesFromCloud === 'function') {
+                        await window.syncBranchesFromCloud();
+                    }
+                    if (typeof syncReservations === 'function') {
+                        await syncReservations();
+                    }
+                }
+                const branches = brGetBranches();
                 data = {};
-                for (const b of DEFAULT_BRANCHES) {
-                    data[b.id] = {
-                        res: getBranchLocalReservations(b.branchKey),
-                        inv: getBranchLocalInventory(b.branchKey)
+                for (const b of branches) {
+                    const key = b.branchKey || b.name;
+                    data[b.name] = {
+                        res: getBranchLocalReservations(key),
+                        inv: getBranchLocalInventory(key)
                     };
                 }
                 const sel = document.getElementById('br-filter');
                 if (sel) {
                     sel.innerHTML = '<option value="all">🌐 All Branches</option>' +
-                        DEFAULT_BRANCHES.map(b => `<option value="${esc(b.id)}">📍 ${esc(b.name)}</option>`).join('');
+                        branches.map(b => `<option value="${esc(b.name)}">📍 ${esc(b.name)}</option>`).join('');
+                    const hasMatch = filter === 'all' || branches.some(b => b.name === filter || b.id === filter);
+                    if (!hasMatch) filter = 'all';
                     sel.value = filter;
+                }
+                if (typeof window.syncAllBranchSelects === 'function') {
+                    window.syncAllBranchSelects();
                 }
                 render();
             };
@@ -7516,11 +7674,12 @@
             function render() {
                 const box = document.getElementById('br-content');
                 if (!box) return;
-                const bs = DEFAULT_BRANCHES.filter(b => filter === 'all' || b.id === filter);
+                const branches = brGetBranches();
+                const bs = branches.filter(b => filter === 'all' || b.name === filter || b.id === filter);
 
                 let totalRevAll = 0, totalRevToday = 0, totalBookings = 0;
                 bs.forEach(b => {
-                    const d = data[b.id] || { res: [], inv: [] };
+                    const d = data[b.name] || { res: [], inv: [] };
                     const rev = revenueOf(d.res);
                     totalRevAll += rev.all;
                     totalRevToday += rev.day;
@@ -7550,19 +7709,27 @@
                 if (view === 'overview') {
                     box.innerHTML = summaryBanner + `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">` +
                         bs.map(b => {
-                            const d = data[b.id] || { res: [], inv: [] };
+                            const d = data[b.name] || { res: [], inv: [] };
                             const rev = revenueOf(d.res);
                             const lowStock = d.inv.filter(i => Number(i.stock) <= Number(i.minThreshold || 10)).length;
+                            const bKey = b.branchKey || b.name;
+                            const pin = window.getPosBranchPin ? window.getPosBranchPin(b.name) : '1234';
                             return `
                             <div class="card" style="margin:0; border:1px solid #e2e8f0;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px;">
                                     <div>
                                         <h3 style="margin:0; font-size:18px; color:#1b5e20;">📍 ${esc(b.name)}</h3>
-                                        <div style="font-size:12px; color:#64748b;">${esc(b.address)}</div>
+                                        <div style="font-size:12px; color:#64748b; margin-top:2px;">${esc(b.address)}</div>
+                                        <div style="font-size:11px; color:#64748b; margin-top:4px; word-break:break-all;">
+                                            🔗 API: <code>${esc(b.apiUrl || DEFAULT_API_URL)}</code> · 🔒 POS PIN: <code>${esc(pin)}</code>
+                                        </div>
                                     </div>
-                                    <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey)}')" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">
-                                        Manage Branch →
-                                    </button>
+                                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                                        ${b.isDefault ? '' : `<button type="button" data-branch="${esc(b.name)}" onclick="window.brDeleteBranch(this.dataset.branch)" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">Delete</button>`}
+                                        <button type="button" data-branch="${esc(bKey)}" onclick="window.setActiveBranch(this.dataset.branch)" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">
+                                            Manage Branch →
+                                        </button>
+                                    </div>
                                 </div>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0;">
                                     <div><span style="font-size:11px; color:#64748b;">Total Revenue</span><div style="font-size:16px; font-weight:800; color:#16a34a;">${peso(rev.all)}</div></div>
@@ -7575,12 +7742,13 @@
                         }).join('') + `</div>`;
                 } else if (view === 'inventory') {
                     box.innerHTML = bs.map(b => {
-                        const d = data[b.id] || { inv: [] };
+                        const d = data[b.name] || { inv: [] };
+                        const bKey = b.branchKey || b.name;
                         return `
                         <div class="card" style="margin-bottom:20px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <h3 style="margin:0; color:#1b5e20;">📦 ${esc(b.name)} — Raw Inventory (${d.inv.length} Items)</h3>
-                                <button type="button" onclick="window.setActiveBranch('${esc(b.branchKey)}')" style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Edit ${esc(b.name)} Inventory</button>
+                                <button type="button" data-branch="${esc(bKey)}" onclick="window.setActiveBranch(this.dataset.branch)" style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Edit ${esc(b.name)} Inventory</button>
                             </div>
                             <table>
                                 <thead><tr><th>Ingredient</th><th>Category</th><th>Current Stock</th><th>Min Threshold</th><th>Status</th></tr></thead>
@@ -7603,7 +7771,7 @@
                             <thead><tr><th>Branch</th><th>Today's Revenue</th><th>This Month</th><th>All-Time Revenue</th><th>Active Bookings</th></tr></thead>
                             <tbody>
                                 ${bs.map(b => {
-                        const rev = revenueOf((data[b.id] || { res: [] }).res);
+                        const rev = revenueOf((data[b.name] || data[b.id] || { res: [] }).res);
                         return `<tr><td><strong>📍 ${esc(b.name)}</strong></td><td>${peso(rev.day)}</td><td>${peso(rev.month)}</td><td style="font-weight:800; color:#16a34a;">${peso(rev.all)}</td><td>${rev.count}</td></tr>`;
                     }).join('')}
                             </tbody>
@@ -7612,7 +7780,7 @@
                 `;
                 } else if (view === 'reservations') {
                     box.innerHTML = bs.map(b => {
-                        const d = data[b.id] || { res: [] };
+                        const d = data[b.name] || data[b.id] || { res: [] };
                         return `
                         <div class="card" style="margin-bottom:20px;">
                             <h3 style="margin:0 0 12px 0; color:#1b5e20;">🎫 ${esc(b.name)} — Reservations (${d.res.length})</h3>
