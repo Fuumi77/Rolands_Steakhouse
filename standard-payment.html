@@ -72,6 +72,10 @@
             <div class="order-summary">
                 <div class="order-summary-title">Booking Summary</div>
                 <div class="order-row">
+                    <span>Branch</span>
+                    <span id="summary-branch" style="font-weight:700; color:#1b5e20; text-align:right;">—</span>
+                </div>
+                <div class="order-row">
                     <span>Customer</span>
                     <span id="summary-name">—</span>
                 </div>
@@ -190,6 +194,9 @@
             document.getElementById('amount-display').textContent = '₱200';
         }
 
+        const summaryBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : (localStorage.getItem('selectedBranch') || 'General Santos City');
+        const summaryBranchEl = document.getElementById('summary-branch');
+        if (summaryBranchEl) summaryBranchEl.textContent = summaryBranchName;
         document.getElementById('summary-name').textContent  = customerName;
         document.getElementById('summary-date').textContent  = displayDt || '—';
         document.getElementById('summary-table').textContent = bookedTable;
@@ -331,6 +338,7 @@
 
             try {
                 // 2. Store booking draft in sessionStorage ONLY (Do NOT save to MySQL yet so no premature receipt is created!)
+                const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                 const pendingPayload = {
                     name: customerName,
                     email: customerEmail || `customer-${Date.now()}@temp.com`,
@@ -343,7 +351,8 @@
                     reservationType: isVip ? 'vip' : 'standard',
                     paymentAmount: depositAmt,
                     orderSummary: depositLabel,
-                    foods: []
+                    foods: [],
+                    branch: activeBranch
                 };
                 sessionStorage.setItem('pendingPaymongoOrder', JSON.stringify(pendingPayload));
                 localStorage.setItem('orderSummary', depositLabel);
@@ -451,12 +460,14 @@
             if (!confirmed) return;
 
             try {
+                const activeBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                 const dbRes = await fetch(`${API_BASE_URL}/reserve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: customerName,
                         email: customerEmail || `customer-${Date.now()}@temp.com`,
+                        phone: customerPhone || '',
                         date: arrivalDate,
                         time: arrivalTime,
                         table: bookedTable,
@@ -464,7 +475,10 @@
                         status: 'Pending',
                         reservationType: isVip ? 'vip' : 'standard',
                         paymentAmount: depositAmt,
-                        foods: []
+                        paymentProof: localStorage.getItem('tempPaymentUpload') || '',
+                        paymentRef: ref,
+                        foods: [],
+                        branch: activeBranch
                     })
                 });
 
@@ -472,6 +486,7 @@
                 if (!dbRes.ok || !dbData.reservationId) throw new Error('Database save failed');
 
                 const resNo = (isVip ? 'VIP-' : 'RES-') + dbData.reservationId;
+                const manualProofImg = localStorage.getItem('tempPaymentUpload') || '';
 
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 hist.push({
@@ -487,10 +502,12 @@
                     foods:                  [],
                     paymentAmount:          depositAmt,
                     paymentRef:             ref,
-                    paymentProof:           localStorage.getItem('tempPaymentUpload') || '',
+                    paymentProof:           manualProofImg,
+                    hasCustomProof:         Boolean(manualProofImg),
                     paymentStatus:          'pending',
                     approvalStatus:         'pending',
                     paymentMethod:          'manual',
+                    branch:                 activeBranch,
                     createdAt:              new Date().toISOString()
                 });
                 localStorage.removeItem('tempPaymentUpload');
