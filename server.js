@@ -1343,13 +1343,13 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
     }
 });
 
-/* 👉 AUDIT LOG CLOUD SYNC — read the shared movement log back to every device */
+/* 👉 AUDIT LOG CLOUD SYNC — read the shared movement log back to every device (per branch) */
 app.get('/api/inventory/audit-log', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('inventoryAuditLog', []);
+        const data = await getSystemMemoryKey('inventoryAuditLog', [], req);
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.json(memoryCache.inventoryAuditLog ? (memoryCache.inventoryAuditLog.data || []) : []);
+        res.json([]);
     }
 });
 
@@ -1358,7 +1358,7 @@ app.post('/api/inventory/audit-log', async (req, res) => {
         const incoming = Array.isArray(req.body) ? req.body : (req.body.logs || []);
         if (incoming.length === 0) return res.json({ success: true, count: 0 });
 
-        let existing = await getSystemMemoryKey('inventoryAuditLog', []);
+        let existing = await getSystemMemoryKey('inventoryAuditLog', [], req);
         if (!Array.isArray(existing)) existing = [];
 
         const byId = {};
@@ -1370,7 +1370,7 @@ app.post('/api/inventory/audit-log', async (req, res) => {
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .slice(0, 500);
 
-        await setSystemMemoryKey('inventoryAuditLog', merged);
+        await setSystemMemoryKey('inventoryAuditLog', merged, req);
         res.json({ success: true, count: merged.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2006,10 +2006,10 @@ app.post('/api/memory/terminal-pins', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/* 🧾 RAW INGREDIENTS SYNC */
+/* 🧾 RAW INGREDIENTS SYNC (PER BRANCH) */
 app.get('/api/memory/raw-ingredients', async (req, res) => {
     try {
-        const data = await getSystemMemoryKey('rawIngredients', []);
+        const data = await getSystemMemoryKey('rawIngredients', [], req);
         res.json(Array.isArray(data) ? data : []);
     } catch (err) { res.json([]); }
 });
@@ -2017,7 +2017,7 @@ app.get('/api/memory/raw-ingredients', async (req, res) => {
 app.post('/api/memory/raw-ingredients', async (req, res) => {
     try {
         const list = Array.isArray(req.body) ? req.body : (req.body.items || []);
-        await setSystemMemoryKey('rawIngredients', list);
+        await setSystemMemoryKey('rawIngredients', list, req);
         res.json({ success: true, count: list.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
