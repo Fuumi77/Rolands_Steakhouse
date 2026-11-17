@@ -420,6 +420,70 @@
         }
     }
 
+    function roundStockQty(val) {
+        const n = Number(val) || 0;
+        return Math.max(0, Math.round(n * 1000) / 1000);
+    }
+
+    function normalizeUnit(unit) {
+        const raw = String(unit || '').trim();
+        const low = raw.toLowerCase();
+        if (low === 'l' || low === 'liter' || low === 'liters') return 'L';
+        if (low === 'ml' || low === 'milliliter' || low === 'milliliters') return 'ml';
+        if (low === 'kg' || low === 'kilogram' || low === 'kilograms') return 'kg';
+        if (low === 'g' || low === 'gram' || low === 'grams') return 'g';
+        if (low === 'pcs' || low === 'pc' || low === 'piece' || low === 'pieces') return 'pcs';
+        if (low === 'slice' || low === 'slices') return 'slices';
+        return raw || 'pcs';
+    }
+
+    function getQuickRestockOptions(unit) {
+        const u = normalizeUnit(unit);
+        if (u === 'kg') return [{ amount: 1, label: '+1 kg' }, { amount: 5, label: '+5 kg' }];
+        if (u === 'g') return [{ amount: 1000, label: '+1 kg' }, { amount: 5000, label: '+5 kg' }];
+        if (u === 'L') return [{ amount: 1, label: '+1 L' }, { amount: 5, label: '+5 L' }];
+        if (u === 'ml') return [{ amount: 1000, label: '+1 L' }, { amount: 5000, label: '+5 L' }];
+        if (u === 'slices') return [{ amount: 10, label: '+10 slices' }, { amount: 50, label: '+50 slices' }];
+        if (u === 'pcs') return [{ amount: 10, label: '+10 pcs' }, { amount: 50, label: '+50 pcs' }];
+        return [{ amount: 10, label: `+10 ${u}` }, { amount: 50, label: `+50 ${u}` }];
+    }
+
+    function getSuggestedInputQty(unit, mode = 'add') {
+        const u = normalizeUnit(unit);
+        if (u === 'g' || u === 'ml') return mode === 'remove' ? 500 : 1000;
+        if (u === 'kg' || u === 'L') return mode === 'remove' ? 1 : 5;
+        return mode === 'remove' ? 5 : 10;
+    }
+
+    function convertQtyToIngredientUnit(qty, fromUnit, toUnit) {
+        const val = Number(qty) || 0;
+        const from = normalizeUnit(fromUnit);
+        const to = normalizeUnit(toUnit);
+        if (!from || !to || from === to) return val;
+        if (from === 'kg' && to === 'g') return val * 1000;
+        if (from === 'g' && to === 'kg') return val / 1000;
+        if (from === 'L' && to === 'ml') return val * 1000;
+        if (from === 'ml' && to === 'L') return val / 1000;
+        return val;
+    }
+
+    function refreshVisibleInventoryPanels() {
+        try {
+            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab(true);
+            else {
+                if (window.activeAdminInvSubTab === 'raw' && typeof window.renderRawIngredientsContainer === 'function') window.renderRawIngredientsContainer();
+                else if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+            }
+            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab(true);
+            else {
+                if (window.activeSuperAdminInvSubTab === 'raw' && typeof window.renderSuperAdminRawIngredients === 'function') window.renderSuperAdminRawIngredients();
+                else if (typeof window.renderInventory === 'function') window.renderInventory();
+            }
+            if (typeof window.renderProducts === 'function') window.renderProducts();
+            if (typeof window.renderMenu === 'function') window.renderMenu();
+        } catch (e) { }
+    }
+
     function snapshotRawPortionsOnItems(rawListSnapshot) {
         try {
             const rawList = rawListSnapshot || getRawIngredients();
@@ -458,9 +522,10 @@
         if (deductQty <= 0) return null;
 
         snapshotRawPortionsOnItems(rawList);
-        ing.stock = Math.max(0, (Number(ing.stock) || 0) - deductQty);
+        ing.stock = roundStockQty(Math.max(0, (Number(ing.stock) || 0) - deductQty));
         saveRawIngredients(rawList);
         syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+        refreshVisibleInventoryPanels();
 
         const costPerUnit = Number(ing.unitCost) || 0;
         const totalLoss = deductQty * costPerUnit;
@@ -572,10 +637,11 @@
         if (item) {
             snapshotRawPortionsOnItems(list);
             const addAmt = Number(addedAmount) || 0;
-            item.stock = (Number(item.stock) || 0) + addAmt;
+            item.stock = roundStockQty((Number(item.stock) || 0) + addAmt);
             item.lastRestocked = new Date().toISOString();
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+            refreshVisibleInventoryPanels();
 
             logStockMovement({
                 action: 'RESTOCK',
@@ -600,22 +666,24 @@
         if (item) {
             snapshotRawPortionsOnItems(list);
             const oldStock = Number(item.stock) || 0;
-            const target = Math.max(0, Number(newStock));
-            const diff = target - oldStock;
+            const target = roundStockQty(Math.max(0, Number(newStock)));
+            const diff = roundStockQty(target - oldStock) * ((target - oldStock) < 0 ? -1 : 1);
+            const signedDiff = Math.round((target - oldStock) * 1000) / 1000;
             item.stock = target;
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+            refreshVisibleInventoryPanels();
 
             logStockMovement({
                 action: 'ADJUSTMENT',
                 ingredientId: item.id,
                 ingredientName: item.name,
-                changeQty: diff,
+                changeQty: signedDiff,
                 newStock: target,
                 unit: item.unit,
                 operator: operator,
                 notes: notes || 'Manual stock adjustment',
-                financialValue: Math.abs(diff) * (Number(item.unitCost) || 0)
+                financialValue: Math.abs(signedDiff) * (Number(item.unitCost) || 0)
             });
 
             return item;
@@ -626,11 +694,15 @@
     function addRawIngredient(newItem, operator = 'Super Admin') {
         const list = getRawIngredients();
         if (!newItem.id) newItem.id = 'ING-CUSTOM-' + Date.now();
+        newItem.unit = normalizeUnit(newItem.unit);
+        newItem.stock = roundStockQty(newItem.stock);
         if (!newItem.unitCost) newItem.unitCost = 10.00;
         if (!newItem.supplier) newItem.supplier = 'Local Wholesale';
         newItem.lastRestocked = new Date().toISOString();
         list.push(newItem);
         saveRawIngredients(list);
+        syncFoodMenuStockFromIngredients();
+        refreshVisibleInventoryPanels();
 
         logStockMovement({
             action: 'RESTOCK',
@@ -652,9 +724,13 @@
         const idx = list.findIndex(i => i.id === id);
         if (idx !== -1) {
             snapshotRawPortionsOnItems(list);
-            list[idx] = { ...list[idx], ...data };
+            const cleanData = { ...data };
+            if (cleanData.unit !== undefined) cleanData.unit = normalizeUnit(cleanData.unit);
+            if (cleanData.stock !== undefined) cleanData.stock = roundStockQty(cleanData.stock);
+            list[idx] = { ...list[idx], ...cleanData };
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+            refreshVisibleInventoryPanels();
 
             logStockMovement({
                 action: 'ADJUSTMENT',
@@ -688,6 +764,7 @@
             } catch (e) { }
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+            refreshVisibleInventoryPanels();
 
             fetch(`https://rolands-steakhouse.onrender.com/api/inventory/raw/${encodeURIComponent(id)}`, {
                 method: 'DELETE'
@@ -855,16 +932,16 @@
                 return;
             }
             const currentStock = Number(rawIng.stock) || 0;
-            const requiredQty = Number(r.qty) || 1;
-            const possiblePortions = Math.floor(currentStock / requiredQty);
+            const requiredQtyInIngUnit = convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || rawIng.unit, rawIng.unit);
+            const possiblePortions = requiredQtyInIngUnit > 0 ? Math.floor(currentStock / requiredQtyInIngUnit) : Infinity;
 
             recipeDetails.push({
                 id: rawIng.id,
                 name: rawIng.name,
-                needed: requiredQty,
+                needed: Number(r.qty) || 0,
                 unit: r.unit || rawIng.unit,
                 availableStock: currentStock,
-                possiblePortions: possiblePortions
+                possiblePortions: possiblePortions === Infinity ? 0 : possiblePortions
             });
 
             if (possiblePortions < minPossiblePortions) minPossiblePortions = possiblePortions;
@@ -998,11 +1075,10 @@
             if (typeof window.renderInventory === 'function') window.renderInventory();
             if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
             if (typeof window.renderRecipeBuilderContainer === 'function') window.renderRecipeBuilderContainer();
-            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
-            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab(true);
+            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab(true);
             if (typeof window.renderProducts === 'function') window.renderProducts();
             if (typeof window.renderMenu === 'function') window.renderMenu();
-            if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
     }
 
@@ -1217,8 +1293,9 @@
                 recipe.forEach(r => {
                     const ing = rawList.find(x => x.id === r.ingredientId);
                     if (ing) {
-                        const deductAmt = (Number(r.qty) || 0) * qty;
-                        ing.stock = Math.max(0, (Number(ing.stock) || 0) - deductAmt);
+                        const rawDeductPerServing = convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || ing.unit, ing.unit);
+                        const deductAmt = roundStockQty(rawDeductPerServing * qty);
+                        ing.stock = roundStockQty(Math.max(0, (Number(ing.stock) || 0) - deductAmt));
                         logStockMovement({
                             action: 'ADJUSTMENT',
                             ingredientId: ing.id,
@@ -1263,19 +1340,20 @@
         const ing = rawList.find(i => i.id === ingId);
         if (!ing) return;
 
+        const suggestedRemove = getSuggestedInputQty(ing.unit, 'remove');
         let amountStr = null;
         if (typeof window.superModal === 'function') {
             amountStr = await window.superModal({
                 title: `➖ Remove Raw Stock — ${ing.name}`,
-                message: `Current Stock: <b>${Number(ing.stock).toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to REMOVE / DEDUCT:`,
+                message: `Current Stock: <b>${Number(ing.stock).toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to REMOVE / DEDUCT (in <b>${ing.unit}</b>):`,
                 showInput: true,
-                placeholder: `e.g. 500 (${ing.unit})`,
+                placeholder: `e.g. ${suggestedRemove} (${ing.unit})`,
                 inputType: 'number',
                 confirmText: 'Remove Stock',
                 cancelText: 'Cancel'
             });
         } else {
-            amountStr = prompt(`Remove stock from ${ing.name} (Current: ${ing.stock} ${ing.unit}):`, '500');
+            amountStr = prompt(`Remove stock from ${ing.name} (Current: ${ing.stock} ${ing.unit}):`, String(suggestedRemove));
         }
 
         if (amountStr === null || amountStr === undefined || String(amountStr).trim() === '') return;
@@ -1285,15 +1363,13 @@
             return;
         }
 
-        const newStock = Math.max(0, (Number(ing.stock) || 0) - deductAmt);
+        const newStock = roundStockQty(Math.max(0, (Number(ing.stock) || 0) - deductAmt));
         setRawIngredientStock(ingId, newStock, operator, `Manual stock removal (-${deductAmt} ${ing.unit})`);
 
         if (window.showToast) {
             window.showToast(`Removed ${deductAmt} ${ing.unit} from ${ing.name}. New stock: ${newStock} ${ing.unit}`, 'info');
         }
-        if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
-        if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        refreshVisibleInventoryPanels();
     };
 
     window.confirmDeleteRawIngredient = async function (ingId, operator = 'Staff/Manager') {
@@ -1317,9 +1393,7 @@
         if (!confirmed) return;
         deleteRawIngredient(ingId, operator);
         if (window.showToast) window.showToast(`Deleted ${ing.name} from Raw Ingredients.`, 'info');
-        if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
-        if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        refreshVisibleInventoryPanels();
     };
 
     let isSyncingStock = false;
@@ -1537,7 +1611,10 @@
                 const recipe = getItemRecipe(itemId, cartItem);
                 if (recipe && recipe.length > 0) {
                     recipe.forEach(r => {
-                        const reqQty = Number(r.qty) || 0;
+                        const rawItem = rawList.find(i => i.id === r.ingredientId);
+                        const reqQty = rawItem
+                            ? convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || rawItem.unit, rawItem.unit)
+                            : (Number(r.qty) || 0);
                         requiredTotals[r.ingredientId] = (requiredTotals[r.ingredientId] || 0) + (reqQty * qtyOrdered);
                     });
                 }
@@ -1598,9 +1675,10 @@
                 recipe.forEach(r => {
                     const rawIng = rawMap[r.ingredientId];
                     if (rawIng) {
-                        const totalDeduct = (Number(r.qty) || 0) * qtyOrdered;
+                        const qtyPerServing = convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || rawIng.unit, rawIng.unit);
+                        const totalDeduct = roundStockQty(qtyPerServing * qtyOrdered);
                         const oldS = Number(rawIng.stock) || 0;
-                        rawIng.stock = Math.max(0, oldS - totalDeduct);
+                        rawIng.stock = roundStockQty(Math.max(0, oldS - totalDeduct));
                         updatedAny = true;
 
                         logStockMovement({
@@ -1650,8 +1728,9 @@
                 recipe.forEach(r => {
                     const rawIng = rawMap[r.ingredientId];
                     if (rawIng) {
-                        const totalAdd = (Number(r.qty) || 0) * qtyOrdered;
-                        rawIng.stock = (Number(rawIng.stock) || 0) + totalAdd;
+                        const qtyPerServing = convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || rawIng.unit, rawIng.unit);
+                        const totalAdd = roundStockQty(qtyPerServing * qtyOrdered);
+                        rawIng.stock = roundStockQty((Number(rawIng.stock) || 0) + totalAdd);
                         updatedAny = true;
 
                         logStockMovement({
@@ -1915,9 +1994,10 @@
             const currentS = Number(ing.stock) || 0;
 
             if (currentS <= minT) {
-                const addAmt = (ing.unit === 'g' || ing.unit === 'ml') ? 5000 : 50;
-                const targetStock = Math.max(minT * 2, currentS + addAmt);
-                const actualAdded = targetStock - currentS;
+                const u = normalizeUnit(ing.unit);
+                const addAmt = (u === 'g' || u === 'ml') ? 5000 : ((u === 'kg' || u === 'L') ? 10 : 50);
+                const targetStock = roundStockQty(Math.max(minT * 2, currentS + addAmt));
+                const actualAdded = roundStockQty(targetStock - currentS);
                 ing.stock = targetStock;
                 ing.lastRestocked = new Date().toISOString();
                 restockedCount++;
@@ -1939,6 +2019,7 @@
         if (restockedCount > 0) {
             saveRawIngredients(list);
             syncFoodMenuStockFromIngredients({ applyRawDelta: true });
+            refreshVisibleInventoryPanels();
         }
         return restockedCount;
     }
@@ -2005,8 +2086,11 @@
         const detail = recipe.map(r => {
             const ing = rawMap[r.ingredientId];
             const unitCost = ing ? (Number(ing.unitCost) || 0) : 0;
+            const qtyInIngUnit = ing
+                ? convertQtyToIngredientUnit(Number(r.qty) || 0, r.unit || ing.unit, ing.unit)
+                : (Number(r.qty) || 0);
             const qty = Number(r.qty) || 0;
-            const lineCost = qty * unitCost;
+            const lineCost = qtyInIngUnit * unitCost;
             totalCost += lineCost;
 
             return {
@@ -2443,6 +2527,8 @@
             document.body.appendChild(modal);
         }
         const rawList = getRawIngredients();
+        const firstUnit = rawList.length > 0 ? normalizeUnit(rawList[0].unit) : 'g';
+        const firstSuggested = getSuggestedInputQty(firstUnit, 'remove');
         modal.innerHTML = `
             <div style="background:white; width:100%; max-width:480px; border-radius:16px; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); border:1px solid #e2e8f0;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
@@ -2453,14 +2539,14 @@
                 <div style="display:flex; flex-direction:column; gap:12px;">
                     <div>
                         <label style="font-size:12px; font-weight:bold; color:#475569; display:block; margin-bottom:4px;">Select Ingredient:</label>
-                        <select id="spoilage-ing-id" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600;">
+                        <select id="spoilage-ing-id" onchange="window.updateSpoilageUnitHint && window.updateSpoilageUnitHint(this.value)" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600;">
                             ${rawList.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('')}
                         </select>
                     </div>
                     
                     <div>
-                        <label style="font-size:12px; font-weight:bold; color:#475569; display:block; margin-bottom:4px;">Wasted Quantity:</label>
-                        <input type="number" id="spoilage-qty" placeholder="e.g. 500" min="0.01" step="any" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;">
+                        <label id="spoilage-qty-label" style="font-size:12px; font-weight:bold; color:#475569; display:block; margin-bottom:4px;">Wasted Quantity (${firstUnit}):</label>
+                        <input type="number" id="spoilage-qty" placeholder="e.g. ${firstSuggested} (${firstUnit})" min="0.001" step="any" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;">
                     </div>
 
                     <div>
@@ -2485,6 +2571,14 @@
                 </div>
             </div>
         `;
+        window.updateSpoilageUnitHint = function (selId) {
+            const match = getRawIngredients().find(i => i.id === selId);
+            const u = match ? normalizeUnit(match.unit) : 'g';
+            const lbl = document.getElementById('spoilage-qty-label');
+            const inp = document.getElementById('spoilage-qty');
+            if (lbl) lbl.textContent = `Wasted Quantity (${u}):`;
+            if (inp) inp.placeholder = `e.g. ${getSuggestedInputQty(u, 'remove')} (${u})`;
+        };
         modal.style.display = 'flex';
     };
 
@@ -2504,8 +2598,7 @@
             alert(`Recorded spoilage for ${entry.ingredientName}. Deducted ${entry.qty} ${entry.unit} (Loss: ₱${entry.totalLoss.toFixed(2)}).`);
             const modal = document.getElementById('spoilage-modal');
             if (modal) modal.style.display = 'none';
-            if (typeof refreshActiveAdminInvTab === 'function') refreshActiveAdminInvTab();
-            if (typeof refreshActiveSuperAdminInvTab === 'function') refreshActiveSuperAdminInvTab();
+            refreshVisibleInventoryPanels();
         }
     };
 
@@ -2726,6 +2819,11 @@
     window.InventorySystem = {
         DEFAULT_RAW_INGREDIENTS: DEFAULT_RAW_INGREDIENTS,
         DEFAULT_FOOD_RECIPES: DEFAULT_FOOD_RECIPES,
+        roundStockQty: roundStockQty,
+        normalizeUnit: normalizeUnit,
+        getQuickRestockOptions: getQuickRestockOptions,
+        getSuggestedInputQty: getSuggestedInputQty,
+        convertQtyToIngredientUnit: convertQtyToIngredientUnit,
         getFreshDefaultRawIngredients: getFreshDefaultRawIngredients,
         buildCleanBranchMenuItems: buildCleanBranchMenuItems,
         getRawIngredients: getRawIngredients,
@@ -3695,45 +3793,25 @@
             return;
         }
 
-        // 2. PER-BRANCH POS & KITCHEN SWITCH PIN GUARD: Require the target branch's specific PIN
+        // 2. PER-BRANCH POS & KITCHEN SWITCH PIN GUARD:
+        // Never show a modal popup or reload back to Step 1; open Step 2 Branch PIN directly for the target branch.
         if (isPosPage || isKitchenPage) {
-            await window.syncPosBranchPinsFromCloud();
-            const termLabel = isKitchenPage ? 'Kitchen' : 'POS';
-            const requiredPin = window.getPosBranchPin(branchName);
-            let enteredPin = null;
-
-            if (typeof window.superModal === 'function') {
-                enteredPin = await window.superModal({
-                    title: `🔒 ${branchName} — ${termLabel} Security`,
-                    message: `Enter the <b>${branchName}</b> Branch PIN to switch this ${termLabel} terminal:`,
-                    showInput: true,
-                    inputType: 'password',
-                    placeholder: `Enter ${branchName} PIN`,
-                    confirmText: 'Verify & Switch',
-                    cancelText: 'Cancel'
-                });
-            } else {
-                enteredPin = prompt(`🔒 Enter the ${branchName} Branch PIN for ${termLabel}:`);
-            }
-
-            if (enteredPin === null) {
-                resetBranchDropdownsToCurrent();
+            if (isKitchenPage && typeof window.requestKitchenBranchSwitch === 'function') {
+                await window.requestKitchenBranchSwitch(branchName, previousBranch);
                 return;
             }
-
-            if (String(enteredPin).trim() !== String(requiredPin).trim() && String(enteredPin).trim() !== '789456') {
-                resetBranchDropdownsToCurrent();
-                if (typeof window.superModal === 'function') {
-                    await window.superModal({
-                        title: '❌ Invalid Branch PIN',
-                        message: `Incorrect Branch PIN for <b>${branchName}</b>. Branch switch cancelled.`,
-                        confirmText: 'Close'
-                    });
-                } else {
-                    alert(`❌ Incorrect Branch PIN for ${branchName}. Branch switch cancelled.`);
-                }
+            if (isPosPage && typeof window.requestPosBranchSwitch === 'function') {
+                await window.requestPosBranchSwitch(branchName, previousBranch);
                 return;
             }
+            safeRawSet('adminSelectedBranch', branchName);
+            window.dispatchEvent(new CustomEvent('branchChanged', { detail: branchName }));
+            if (isKitchenPage && typeof window.showKitchenBranchGate === 'function') {
+                await window.showKitchenBranchGate();
+            } else if (isPosPage && typeof window.showPosBranchGate === 'function') {
+                await window.showPosBranchGate();
+            }
+            return;
         }
 
         // 3. Save new branch using quota-safe storage and reload
