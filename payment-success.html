@@ -181,22 +181,28 @@
             ctx.fillText(new Date().toLocaleDateString(), 510, 358);
 
             // Details
+            const entryBranch = entry.branch || (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
             ctx.textAlign = 'left';
             ctx.fillStyle = '#1e293b';
-            ctx.font = 'bold 15px Arial, sans-serif';
-            ctx.fillText('Customer: ', 90, 395);
-            ctx.font = '15px Arial, sans-serif';
-            ctx.fillText(entry.customerName || 'Guest', 175, 395);
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('Branch: ', 90, 386);
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillText(entryBranch, 155, 386);
 
-            ctx.font = 'bold 15px Arial, sans-serif';
-            ctx.fillText('Table: ', 90, 425);
-            ctx.font = '15px Arial, sans-serif';
-            ctx.fillText(entry.bookedTable || 'TBD', 145, 425);
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('Customer: ', 90, 412);
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillText(entry.customerName || 'Guest', 175, 412);
 
-            ctx.font = 'bold 15px Arial, sans-serif';
-            ctx.fillText('Arrival: ', 90, 455);
-            ctx.font = '15px Arial, sans-serif';
-            ctx.fillText(entry.arrivalDateTimeDisplay || 'Upcoming', 155, 455);
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('Table: ', 90, 438);
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillText(entry.bookedTable || 'TBD', 145, 438);
+
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.fillText('Arrival: ', 90, 464);
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillText(entry.arrivalDateTimeDisplay || 'Upcoming', 155, 464);
 
             // Divider
             ctx.strokeStyle = '#e2e8f0';
@@ -457,7 +463,9 @@
                 }
                 document.getElementById('receipt-total').textContent = '₱' + totalPaidVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
                 
-                let itemsHtml = `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
+                const receiptBranch = entry.branch || (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                let itemsHtml = `<div style="margin-bottom:4px;"><strong>Branch:</strong> ${receiptBranch}</div>`;
+                itemsHtml += `<div style="margin-bottom:4px;"><strong>Customer:</strong> ${entry.customerName}</div>`;
                 itemsHtml += `<div style="margin-bottom:4px;"><strong>Table:</strong> ${entry.bookedTable}</div>`;
                 itemsHtml += `<div style="margin-bottom:4px;"><strong>Arrival:</strong> ${entry.arrivalDateTimeDisplay}</div>`;
                 if (entry.orderSummary) {
