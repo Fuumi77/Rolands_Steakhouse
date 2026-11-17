@@ -60,6 +60,13 @@
         { id: 'ING-MILK-CREAM', name: 'Dairy Creamer', category: 'Dairy', stock: 6000, unit: 'ml', minThreshold: 1000, unitCost: 0.09, supplier: 'Nestle Ph', lastRestocked: new Date().toISOString() }
     ];
 
+    window.__DEFAULT_RAW_INGREDIENTS_TEMPLATE = DEFAULT_RAW_INGREDIENTS;
+
+    function getFreshDefaultRawIngredients() {
+        const nowIso = new Date().toISOString();
+        return DEFAULT_RAW_INGREDIENTS.map(i => ({ ...i, lastRestocked: nowIso }));
+    }
+
     // ── DEFAULT RECIPE MAP PER MENU FOOD ITEM (by Menu ID) ──
     const DEFAULT_FOOD_RECIPES = {
         // STEAKS (Different Meat Cuts + Salt & Pepper + Margarine + Oyster Sauce)
@@ -413,6 +420,35 @@
         }
     }
 
+    function snapshotRawPortionsOnItems(rawListSnapshot) {
+        try {
+            const rawList = rawListSnapshot || getRawIngredients();
+            const rawMap = {};
+            rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = Number(ing.stock) || 0; });
+            const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            if (!Array.isArray(items) || items.length === 0) return;
+            let changed = false;
+            items.forEach(item => {
+                if (!item || typeof item._lastRawPortions === 'number') return;
+                const recipe = getItemRecipe(item.id, item);
+                if (recipe && recipe.length > 0) {
+                    let minP = Infinity;
+                    recipe.forEach(r => {
+                        const avail = rawMap[r.ingredientId] !== undefined ? rawMap[r.ingredientId] : 0;
+                        const req = Number(r.qty) || 1;
+                        const p = Math.floor(avail / req);
+                        if (p < minP) minP = p;
+                    });
+                    item._lastRawPortions = (minP === Infinity) ? 0 : Math.max(0, minP);
+                } else {
+                    item._lastRawPortions = item.total_stock !== undefined ? Number(item.total_stock) || 0 : (Number(item.stock) || 0);
+                }
+                changed = true;
+            });
+            if (changed) localStorage.setItem('inventoryItems', JSON.stringify(items));
+        } catch (e) { }
+    }
+
     function logSpoilage(ingredientId, qty, reason, notes, operator) {
         const rawList = getRawIngredients();
         const ing = rawList.find(i => i.id === ingredientId);
@@ -421,9 +457,10 @@
         const deductQty = Math.abs(Number(qty)) || 0;
         if (deductQty <= 0) return null;
 
+        snapshotRawPortionsOnItems(rawList);
         ing.stock = Math.max(0, (Number(ing.stock) || 0) - deductQty);
         saveRawIngredients(rawList);
-        syncFoodMenuStockFromIngredients();
+        syncFoodMenuStockFromIngredients({ applyRawDelta: true });
 
         const costPerUnit = Number(ing.unitCost) || 0;
         const totalLoss = deductQty * costPerUnit;
@@ -502,25 +539,28 @@
         } catch (e) {
             console.error('Error loading raw ingredients:', e);
         }
-        saveRawIngredients(DEFAULT_RAW_INGREDIENTS);
-        _cachedRawIngredients = DEFAULT_RAW_INGREDIENTS;
+        const freshDefaults = getFreshDefaultRawIngredients();
+        saveRawIngredients(freshDefaults, { skipCloud: true });
+        _cachedRawIngredients = freshDefaults;
         return _cachedRawIngredients;
     }
 
-    function saveRawIngredients(list) {
+    function saveRawIngredients(list, options) {
         try {
             _cachedRawIngredients = list;
             localStorage.setItem('rawIngredients', JSON.stringify(list));
             window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: list }));
             broadcastSync('rawIngredientsUpdated', list);
 
-            // 👉 FIX: PUSH RAW INGREDIENTS TO CLOUD SO OTHER DEVICES SEE IT
-            window.__inventoryHoldUntil = Date.now() + 8000;
-            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/raw-ingredients', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(list)
-            }).catch(() => { });
+            if (!options || !options.skipCloud) {
+                const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                window.__inventoryHoldUntil = Date.now() + 8000;
+                fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/raw-ingredients?branch=${encodeURIComponent(invBranch)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(list)
+                }).catch(() => { });
+            }
         } catch (e) {
             console.error('Error saving raw ingredients:', e);
         }
@@ -530,11 +570,12 @@
         const list = getRawIngredients();
         const item = list.find(i => i.id === id);
         if (item) {
+            snapshotRawPortionsOnItems(list);
             const addAmt = Number(addedAmount) || 0;
             item.stock = (Number(item.stock) || 0) + addAmt;
             item.lastRestocked = new Date().toISOString();
             saveRawIngredients(list);
-            syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients({ applyRawDelta: true });
 
             logStockMovement({
                 action: 'RESTOCK',
@@ -557,12 +598,13 @@
         const list = getRawIngredients();
         const item = list.find(i => i.id === id);
         if (item) {
+            snapshotRawPortionsOnItems(list);
             const oldStock = Number(item.stock) || 0;
             const target = Math.max(0, Number(newStock));
             const diff = target - oldStock;
             item.stock = target;
             saveRawIngredients(list);
-            syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients({ applyRawDelta: true });
 
             logStockMovement({
                 action: 'ADJUSTMENT',
@@ -609,9 +651,10 @@
         const list = getRawIngredients();
         const idx = list.findIndex(i => i.id === id);
         if (idx !== -1) {
+            snapshotRawPortionsOnItems(list);
             list[idx] = { ...list[idx], ...data };
             saveRawIngredients(list);
-            syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients({ applyRawDelta: true });
 
             logStockMovement({
                 action: 'ADJUSTMENT',
@@ -634,6 +677,7 @@
         const list = getRawIngredients();
         const idx = list.findIndex(i => i.id === id);
         if (idx !== -1) {
+            snapshotRawPortionsOnItems(list);
             const removed = list.splice(idx, 1)[0];
             try {
                 const delIds = JSON.parse(localStorage.getItem('deletedRawIngredientIds') || '[]');
@@ -643,7 +687,7 @@
                 }
             } catch (e) { }
             saveRawIngredients(list);
-            syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients({ applyRawDelta: true });
 
             fetch(`https://rolands-steakhouse.onrender.com/api/inventory/raw/${encodeURIComponent(id)}`, {
                 method: 'DELETE'
@@ -767,8 +811,10 @@
             localStorage.setItem('inventoryItems', JSON.stringify(items));
 
             // 👉 FIX: PUSH RECIPE UPDATES TO CLOUD SO OTHER DEVICES SEE IT
+            const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
             window.__inventoryHoldUntil = Date.now() + 8000;
-            fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
+            window.__lastMenuPush = Date.now();
+            fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(items)
@@ -792,50 +838,10 @@
         }
     }
 
-    // ── DYNAMIC FOOD AVAILABILITY CALCULATION (SYNCED WITH END OF DAY STOCK / PORTIONS) ──
-    function calculateFoodAvailability(menuItem, ingredientsCatalog) {
-        const catalog = ingredientsCatalog || getRawIngredients();
-        const rawMap = {};
-        catalog.forEach(ing => { rawMap[ing.id] = ing; });
-
-        // Look up stored item in inventoryItems to get latest manualUnavailable, added_stock, sold_stock, and threshold
-        let storedItem = null;
-        try {
-            if (menuItem) {
-                const storedInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-                const normTitle = String(menuItem.title || menuItem.name || '').trim().toLowerCase();
-                storedItem = storedInv.find(i => i && (
-                    (menuItem.id && i.id === menuItem.id) ||
-                    (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
-                )) || null;
-            }
-        } catch (e) { }
-
-        // Check if item is manually toggled Unavailable by Staff or Manager
-        const isManualUnavailable = Boolean((menuItem && menuItem.manualUnavailable) || (storedItem && storedItem.manualUnavailable));
-        const addedStock = parseInt(menuItem?.added_stock !== undefined ? menuItem.added_stock : (storedItem?.added_stock || 0), 10) || 0;
-        const soldStock = parseInt(menuItem?.sold_stock !== undefined ? menuItem.sold_stock : (storedItem?.sold_stock || 0), 10) || 0;
-        const threshold = Number(menuItem?.threshold !== undefined ? menuItem.threshold : (storedItem?.threshold ?? 5));
-
-        const recipe = getItemRecipe(menuItem.id, menuItem);
-
-        if (!recipe || recipe.length === 0) {
-            const baseTotal = Number((menuItem?.total_stock !== undefined) ? menuItem.total_stock : (storedItem?.total_stock !== undefined ? storedItem.total_stock : (menuItem?.stock || 0))) || 0;
-            const eodLegacy = isManualUnavailable ? 0 : Math.max(0, baseTotal + addedStock - soldStock);
-            return {
-                availablePortions: eodLegacy,
-                rawPortions: Math.max(0, baseTotal),
-                addedStock: addedStock,
-                soldStock: soldStock,
-                eodPortions: eodLegacy,
-                isAvailable: !isManualUnavailable && eodLegacy > 0,
-                isManualUnavailable: isManualUnavailable,
-                status: isManualUnavailable ? 'Unavailable (Manual)' : (eodLegacy <= 0 ? 'Out of Stock' : (eodLegacy <= threshold ? 'Low Stock' : 'Available')),
-                recipe: [],
-                missingIngredients: isManualUnavailable ? ['Manually marked Unavailable'] : (eodLegacy <= 0 ? ['End of Day Stock depleted'] : [])
-            };
-        }
-
+    // Helper: computes raw recipe capacity for a single menu item from a raw ingredient map
+    function computeRawCapacityPortions(menuItem, rawMap) {
+        const recipe = menuItem ? getItemRecipe(menuItem.id, menuItem) : [];
+        if (!recipe || recipe.length === 0) return null;
         let minPossiblePortions = Infinity;
         const missingIngredients = [];
         const recipeDetails = [];
@@ -848,7 +854,6 @@
                 missingIngredients.push('Unknown ingredient (ID: ' + r.ingredientId + ')');
                 return;
             }
-
             const currentStock = Number(rawIng.stock) || 0;
             const requiredQty = Number(r.qty) || 1;
             const possiblePortions = Math.floor(currentStock / requiredQty);
@@ -862,31 +867,81 @@
                 possiblePortions: possiblePortions
             });
 
-            if (possiblePortions < minPossiblePortions) {
-                minPossiblePortions = possiblePortions;
-            }
-
-            if (possiblePortions <= 0) {
-                missingIngredients.push(rawIng.name + ' (0 ' + (r.unit || rawIng.unit) + ' left)');
-            }
+            if (possiblePortions < minPossiblePortions) minPossiblePortions = possiblePortions;
+            if (possiblePortions <= 0) missingIngredients.push(rawIng.name + ' (0 ' + (r.unit || rawIng.unit) + ' left)');
         });
 
         if (minPossiblePortions === Infinity) minPossiblePortions = 0;
+        return { minPossiblePortions, missingIngredients, recipeDetails, recipe };
+    }
 
+    // ── DYNAMIC FOOD AVAILABILITY CALCULATION (SYNCED WITH END OF DAY STOCK / PORTIONS) ──
+    function calculateFoodAvailability(menuItem, ingredientsCatalog) {
+        const catalog = ingredientsCatalog || getRawIngredients();
+        const rawMap = {};
+        catalog.forEach(ing => { rawMap[ing.id] = ing; });
+
+        // Look up stored item in inventoryItems to get latest total_stock, manualUnavailable, added_stock, sold_stock, and threshold
+        let storedItem = null;
+        try {
+            if (menuItem) {
+                const storedInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                const normTitle = String(menuItem.title || menuItem.name || '').trim().toLowerCase();
+                storedItem = storedInv.find(i => i && (
+                    (menuItem.id && i.id === menuItem.id) ||
+                    (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
+                )) || null;
+            }
+        } catch (e) { }
+
+        const isManualUnavailable = Boolean((menuItem && menuItem.manualUnavailable) || (storedItem && storedItem.manualUnavailable));
+        const addedStock = parseInt(menuItem?.added_stock !== undefined ? menuItem.added_stock : (storedItem?.added_stock || 0), 10) || 0;
+        const soldStock = parseInt(menuItem?.sold_stock !== undefined ? menuItem.sold_stock : (storedItem?.sold_stock || 0), 10) || 0;
+        const threshold = Number(menuItem?.threshold !== undefined ? menuItem.threshold : (storedItem?.threshold ?? 5));
+
+        const rawTotalCandidate = (menuItem && menuItem.total_stock !== undefined && menuItem.total_stock !== null && !isNaN(Number(menuItem.total_stock)))
+            ? Math.max(0, Number(menuItem.total_stock))
+            : (storedItem && storedItem.total_stock !== undefined && storedItem.total_stock !== null && !isNaN(Number(storedItem.total_stock)))
+                ? Math.max(0, Number(storedItem.total_stock))
+                : null;
+
+        const cap = computeRawCapacityPortions(menuItem, rawMap);
+
+        if (!cap) {
+            const baseTotal = rawTotalCandidate !== null ? rawTotalCandidate : Math.max(0, Number(menuItem?.stock ?? storedItem?.stock ?? 0) || 0);
+            const eodLegacy = isManualUnavailable ? 0 : Math.max(0, baseTotal + addedStock - soldStock);
+            return {
+                availablePortions: eodLegacy,
+                rawPortions: baseTotal,
+                possibleFromRaw: baseTotal,
+                addedStock: addedStock,
+                soldStock: soldStock,
+                eodPortions: eodLegacy,
+                isAvailable: !isManualUnavailable && eodLegacy > 0,
+                isManualUnavailable: isManualUnavailable,
+                status: isManualUnavailable ? 'Unavailable (Manual)' : (eodLegacy <= 0 ? 'Out of Stock' : (eodLegacy <= threshold ? 'Low Stock' : 'Available')),
+                recipe: [],
+                missingIngredients: isManualUnavailable ? ['Manually marked Unavailable'] : (eodLegacy <= 0 ? ['End of Day Stock depleted'] : [])
+            };
+        }
+
+        const possibleFromRaw = cap.minPossiblePortions;
+        const baseTotal = rawTotalCandidate !== null ? rawTotalCandidate : possibleFromRaw;
         // Sync available portions with End of Day (EOD) stock: Total Stock + Added - Sold
-        const eodPortions = Math.max(0, minPossiblePortions + addedStock - soldStock);
+        const eodPortions = isManualUnavailable ? 0 : Math.max(0, baseTotal + addedStock - soldStock);
 
         if (isManualUnavailable) {
             return {
                 availablePortions: 0,
-                rawPortions: minPossiblePortions,
+                rawPortions: baseTotal,
+                possibleFromRaw: possibleFromRaw,
                 addedStock: addedStock,
                 soldStock: soldStock,
                 eodPortions: 0,
                 isAvailable: false,
                 isManualUnavailable: true,
                 status: 'Unavailable (Manual)',
-                recipe: recipeDetails,
+                recipe: cap.recipeDetails,
                 missingIngredients: ['Manually marked Unavailable by Staff/Manager']
             };
         }
@@ -899,21 +954,99 @@
             status = 'Low Stock';
         }
 
+        const missingList = eodPortions <= 0
+            ? (cap.missingIngredients.length > 0 ? cap.missingIngredients : ['End of Day Stock depleted'])
+            : cap.missingIngredients;
+
         return {
             availablePortions: eodPortions,
-            rawPortions: minPossiblePortions,
+            rawPortions: baseTotal,
+            possibleFromRaw: possibleFromRaw,
             addedStock: addedStock,
             soldStock: soldStock,
             eodPortions: eodPortions,
             isAvailable: isAvailable,
             isManualUnavailable: false,
             status: status,
-            recipe: recipeDetails,
-            missingIngredients: missingIngredients
+            recipe: cap.recipeDetails,
+            missingIngredients: missingList
         };
     }
 
-    // ── GLOBAL HANDLERS FOR ADMIN & SUPERADMIN: TOGGLE AVAILABILITY, REMOVE PORTIONS, REMOVE/DELETE RAW INGREDIENTS ──
+    function getActiveInvBranchSafe() {
+        return window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+    }
+
+    function pushInventoryItemsCloudAndNotify(items, options = {}) {
+        const serialized = JSON.stringify(items || []);
+        localStorage.setItem('inventoryItems', serialized);
+        window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
+        broadcastSync('inventoryUpdated', items);
+
+        if (!options.skipCloud) {
+            const invBranch = getActiveInvBranchSafe();
+            window.__inventoryHoldUntil = Date.now() + 8000;
+            window.__lastMenuPush = Date.now();
+            fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: serialized
+            }).catch(() => { });
+        }
+
+        if (!options.skipRender) {
+            if (typeof window.renderInventory === 'function') window.renderInventory();
+            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+            if (typeof window.renderRecipeBuilderContainer === 'function') window.renderRecipeBuilderContainer();
+            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
+            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
+            if (typeof window.renderProducts === 'function') window.renderProducts();
+            if (typeof window.renderMenu === 'function') window.renderMenu();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        }
+    }
+
+    function buildCleanBranchMenuItems(templateItems, rawIngredientsList) {
+        const rawList = (Array.isArray(rawIngredientsList) && rawIngredientsList.length > 0)
+            ? rawIngredientsList
+            : getFreshDefaultRawIngredients();
+        const rawMap = {};
+        rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = ing; });
+
+        const src = Array.isArray(templateItems) ? templateItems : [];
+        const seenIds = new Set();
+        const cleaned = [];
+        src.forEach(srcItem => {
+            if (!srcItem || !srcItem.id || seenIds.has(srcItem.id)) return;
+            seenIds.add(srcItem.id);
+            const cap = computeRawCapacityPortions(srcItem, rawMap);
+            const basePortions = cap ? Math.max(0, cap.minPossiblePortions) : 100;
+            cleaned.push({
+                id: srcItem.id,
+                title: srcItem.title || srcItem.name || srcItem.id,
+                name: srcItem.name || srcItem.title || srcItem.id,
+                category: srcItem.category || 'Uncategorized',
+                price: Number(srcItem.price) || 0,
+                threshold: srcItem.threshold !== undefined ? Number(srcItem.threshold) : 5,
+                total_stock: basePortions,
+                _lastRawPortions: basePortions,
+                added_stock: 0,
+                sold_stock: 0,
+                stock: basePortions,
+                manualUnavailable: false,
+                stockUpdatedAt: 0,
+                image: srcItem.image || '',
+                syncPhotoBranches: srcItem.syncPhotoBranches !== false,
+                imageUpdatedAt: srcItem.imageUpdatedAt || 0,
+                imageRemovedAt: srcItem.imageRemovedAt || 0,
+                isCustomRecipe: Boolean(srcItem.isCustomRecipe),
+                recipe: Array.isArray(srcItem.recipe) ? JSON.parse(JSON.stringify(srcItem.recipe)) : undefined
+            });
+        });
+        return cleaned;
+    }
+
+    // ── GLOBAL HANDLERS FOR ADMIN & SUPERADMIN: TOGGLE AVAILABILITY, ADD/REMOVE PORTIONS, REMOVE/DELETE RAW INGREDIENTS ──
     window.toggleItemManualAvailability = async function (menuId, operator = 'Staff/Manager') {
         try {
             const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
@@ -921,20 +1054,15 @@
             if (idx === -1) return;
 
             items[idx].manualUnavailable = !items[idx].manualUnavailable;
+            items[idx].stockUpdatedAt = Date.now();
             items[idx].last_updated = new Date().toISOString();
             const isNowOff = items[idx].manualUnavailable;
+            const avail = calculateFoodAvailability(items[idx]);
+            items[idx].stock = avail.availablePortions;
+            items[idx].computedStatus = avail.status;
+            items[idx].missingIngredients = avail.missingIngredients;
 
-            localStorage.setItem('inventoryItems', JSON.stringify(items));
-            window.__inventoryHoldUntil = Date.now() + 8000;
-            window.__lastMenuPush = Date.now();
-
-            fetch('https://rolands-steakhouse.onrender.com/api/memory/inventory-items', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(items)
-            }).catch(() => { });
-
-            syncFoodMenuStockFromIngredients();
+            pushInventoryItemsCloudAndNotify(items);
 
             if (window.showToast) {
                 window.showToast(
@@ -943,14 +1071,100 @@
                     3000
                 );
             }
-
-            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
-            if (typeof window.renderRecipeBuilderContainer === 'function') window.renderRecipeBuilderContainer();
-            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
-            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
-            if (typeof window.renderDashboard === 'function') window.renderDashboard();
         } catch (e) {
             console.error('Toggle availability error:', e);
+        }
+    };
+
+    window.adjustMenuAddedStock = function (menuId, delta = 1, operator = 'Staff/Manager') {
+        try {
+            const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            const item = items.find(i => i && i.id === menuId);
+            if (!item) return null;
+
+            const rawList = getRawIngredients();
+            const rawMap = {};
+            rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = ing; });
+            const cap = computeRawCapacityPortions(item, rawMap);
+            if (item.total_stock === undefined || item.total_stock === null) {
+                item.total_stock = cap ? cap.minPossiblePortions : (Number(item.stock) || 0);
+            }
+            if (typeof item._lastRawPortions !== 'number') {
+                item._lastRawPortions = cap ? cap.minPossiblePortions : Number(item.total_stock) || 0;
+            }
+
+            const prevAdded = parseInt(item.added_stock, 10) || 0;
+            const d = parseInt(delta, 10) || 0;
+            item.added_stock = Math.max(0, prevAdded + d);
+            item.stockUpdatedAt = Date.now();
+            item.last_updated = new Date().toISOString();
+
+            const avail = calculateFoodAvailability(item, rawList);
+            item.stock = avail.availablePortions;
+            item.computedStatus = avail.status;
+            item.missingIngredients = avail.missingIngredients;
+
+            pushInventoryItemsCloudAndNotify(items);
+            logStockMovement({
+                action: 'ADJUSTMENT',
+                ingredientId: item.id,
+                ingredientName: item.title || item.id,
+                changeQty: item.added_stock - prevAdded,
+                newStock: item.stock,
+                unit: 'portions',
+                operator: operator,
+                notes: `Adjusted Added stock (${d >= 0 ? '+' : ''}${d}) → EOD: ${item.stock}`,
+                financialValue: 0
+            });
+            return item;
+        } catch (e) {
+            console.error('adjustMenuAddedStock error:', e);
+            return null;
+        }
+    };
+
+    window.adjustMenuTotalStock = function (menuId, delta = -1, operator = 'Staff/Manager') {
+        try {
+            const items = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            const item = items.find(i => i && i.id === menuId);
+            if (!item) return null;
+
+            const rawList = getRawIngredients();
+            const rawMap = {};
+            rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = ing; });
+            const cap = computeRawCapacityPortions(item, rawMap);
+            if (item.total_stock === undefined || item.total_stock === null) {
+                item.total_stock = cap ? cap.minPossiblePortions : (Number(item.stock) || 0);
+            }
+            item._lastRawPortions = cap ? cap.minPossiblePortions : Number(item.total_stock) || 0;
+
+            const prevTotal = Number(item.total_stock) || 0;
+            const d = parseInt(delta, 10) || 0;
+            item.total_stock = Math.max(0, prevTotal + d);
+            item.stockUpdatedAt = Date.now();
+            item.last_updated = new Date().toISOString();
+
+            const avail = calculateFoodAvailability(item, rawList);
+            item.stock = avail.availablePortions;
+            item.computedStatus = avail.status;
+            item.missingIngredients = avail.missingIngredients;
+
+            pushInventoryItemsCloudAndNotify(items);
+            logStockMovement({
+                action: 'ADJUSTMENT',
+                ingredientId: item.id,
+                ingredientName: item.title || item.id,
+                changeQty: item.total_stock - prevTotal,
+                newStock: item.stock,
+                unit: 'portions',
+                operator: operator,
+                notes: `Adjusted Total stock (${prevTotal} → ${item.total_stock}) → EOD: ${item.stock}`,
+                financialValue: 0
+            });
+            return item;
+        } catch (e) {
+            console.error('adjustMenuTotalStock error:', e);
+            return null;
         }
     };
 
@@ -967,9 +1181,9 @@
             if (typeof window.superModal === 'function') {
                 amountStr = await window.superModal({
                     title: `➖ Remove Portions — ${item.title}`,
-                    message: `Current Available Portions: <b>${currentPortions}</b>.<br>Enter how many portions to REMOVE (deducts corresponding raw ingredients):`,
+                    message: `Current Available Portions (EOD): <b>${currentPortions}</b> (Total: ${avail.rawPortions} | +${avail.addedStock} | -${avail.soldStock}).<br>Enter how many portions to REMOVE:`,
                     showInput: true,
-                    placeholder: 'e.g. 5',
+                    placeholder: 'e.g. 4',
                     inputType: 'number',
                     confirmText: 'Remove Portions',
                     cancelText: 'Cancel'
@@ -985,9 +1199,21 @@
                 return;
             }
 
+            const curTotal = (item.total_stock !== undefined && item.total_stock !== null && !isNaN(Number(item.total_stock)))
+                ? Math.max(0, Number(item.total_stock))
+                : avail.rawPortions;
+            const curAdded = parseInt(item.added_stock, 10) || 0;
+            if (curTotal >= qty) {
+                item.total_stock = curTotal - qty;
+            } else {
+                const rem = qty - curTotal;
+                item.total_stock = 0;
+                item.added_stock = Math.max(0, curAdded - rem);
+            }
+
             const recipe = getItemRecipe(item.id, item);
+            const rawList = getRawIngredients();
             if (recipe && recipe.length > 0) {
-                const rawList = getRawIngredients();
                 recipe.forEach(r => {
                     const ing = rawList.find(x => x.id === r.ingredientId);
                     if (ing) {
@@ -1007,18 +1233,26 @@
                     }
                 });
                 saveRawIngredients(rawList);
-            } else {
-                item.total_stock = Math.max(0, (Number(item.total_stock) || 0) - qty);
-                item.stock = item.total_stock;
-                item.last_updated = new Date().toISOString();
-                localStorage.setItem('inventoryItems', JSON.stringify(items));
             }
 
-            syncFoodMenuStockFromIngredients();
-            if (window.showToast) window.showToast(`Removed ${qty} portion(s) of ${item.title}.`, 'info');
-            if (typeof window.refreshActiveAdminInvTab === 'function') window.refreshActiveAdminInvTab();
-            if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
-            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            const rawMap = {};
+            rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = ing; });
+            // Keep all _lastRawPortions synchronized to the post-removal raw stock so total_stock does not double-drop
+            items.forEach(it => {
+                if (!it) return;
+                const c = computeRawCapacityPortions(it, rawMap);
+                if (c) it._lastRawPortions = c.minPossiblePortions;
+            });
+
+            const availAfter = calculateFoodAvailability(item, rawList);
+            item.stock = availAfter.availablePortions;
+            item.computedStatus = availAfter.status;
+            item.missingIngredients = availAfter.missingIngredients;
+            item.stockUpdatedAt = Date.now();
+            item.last_updated = new Date().toISOString();
+
+            pushInventoryItemsCloudAndNotify(items);
+            if (window.showToast) window.showToast(`Removed ${qty} portion(s) of ${item.title}. New EOD: ${item.stock}`, 'info');
         } catch (e) {
             console.error('Remove portions error:', e);
         }
@@ -1089,33 +1323,65 @@
     };
 
     let isSyncingStock = false;
-    function syncFoodMenuStockFromIngredients() {
+    function syncFoodMenuStockFromIngredients(options = {}) {
         if (isSyncingStock) return;
         isSyncingStock = true;
         try {
             const rawList = getRawIngredients();
             const invStr = localStorage.getItem('inventoryItems');
             let items = invStr ? JSON.parse(invStr) : [];
+            if (!Array.isArray(items) || items.length === 0) return;
 
             let mutated = false;
+            let cloudSyncNeeded = Boolean(options.applyRawDelta || options.resetFromRaw || options.pushToCloud);
             const menuStockChanges = [];
 
             items.forEach(item => {
-                const avail = calculateFoodAvailability(item, rawList);
-                const prevPortions = item.stock !== undefined ? Number(item.stock) : Number(item.total_stock || 0);
-                const newEodPortions = Number(avail.availablePortions);
-                const newRawPortions = Number(avail.rawPortions !== undefined ? avail.rawPortions : avail.availablePortions);
+                if (!item) return;
+                const prevStock = item.stock !== undefined ? Number(item.stock) : Number(item.total_stock || 0);
+                const availBefore = calculateFoodAvailability(item, rawList);
+                const possibleFromRaw = Number(availBefore.possibleFromRaw !== undefined ? availBefore.possibleFromRaw : availBefore.rawPortions);
 
-                if (prevPortions !== newEodPortions || item.total_stock !== newRawPortions) {
-                    if (!isNaN(prevPortions) && prevPortions !== newEodPortions) {
+                if (options.resetFromRaw) {
+                    if (item.total_stock !== possibleFromRaw || item._lastRawPortions !== possibleFromRaw || item.added_stock !== 0 || item.sold_stock !== 0 || item.manualUnavailable) {
+                        item.total_stock = possibleFromRaw;
+                        item._lastRawPortions = possibleFromRaw;
+                        item.added_stock = 0;
+                        item.sold_stock = 0;
+                        item.manualUnavailable = false;
+                        mutated = true;
+                    }
+                } else {
+                    if (item.total_stock === undefined || item.total_stock === null || isNaN(Number(item.total_stock))) {
+                        item.total_stock = possibleFromRaw;
+                        item._lastRawPortions = possibleFromRaw;
+                        mutated = true;
+                    } else if (options.applyRawDelta && typeof item._lastRawPortions === 'number') {
+                        const rawDiff = possibleFromRaw - item._lastRawPortions;
+                        if (rawDiff !== 0) {
+                            item.total_stock = Math.max(0, Number(item.total_stock) + rawDiff);
+                            item._lastRawPortions = possibleFromRaw;
+                            item.stockUpdatedAt = Date.now();
+                            mutated = true;
+                        }
+                    } else if (typeof item._lastRawPortions !== 'number') {
+                        item._lastRawPortions = possibleFromRaw;
+                        mutated = true;
+                    }
+                }
+
+                const avail = calculateFoodAvailability(item, rawList);
+                const newEodPortions = Number(avail.availablePortions);
+
+                if (prevStock !== newEodPortions || item.computedStatus !== avail.status) {
+                    if (!isNaN(prevStock) && prevStock !== newEodPortions) {
                         menuStockChanges.push({
                             itemName: item.title || item.name || item.id,
-                            previousStock: prevPortions,
+                            previousStock: prevStock,
                             newStock: newEodPortions
                         });
                     }
                     item.stock = newEodPortions;
-                    item.total_stock = newRawPortions;
                     item.computedStatus = avail.status;
                     item.missingIngredients = avail.missingIngredients;
                     mutated = true;
@@ -1123,21 +1389,15 @@
             });
 
             if (mutated) {
-                localStorage.setItem('inventoryItems', JSON.stringify(items));
-                window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
-                broadcastSync('inventoryUpdated', items);
-
-                // 👉 FIX: PUSH MENU INVENTORY TO CLOUD SO OTHER DEVICES SEE IT
-                window.__inventoryHoldUntil = Date.now() + 8000;
-                fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/inventory-items', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(items)
-                }).catch(() => { });
+                pushInventoryItemsCloudAndNotify(items, {
+                    skipCloud: !cloudSyncNeeded,
+                    skipRender: true
+                });
 
                 // Push menu portion changes to MySQL menu_stock_change_log!
-                if (menuStockChanges.length > 0) {
-                    fetch('https://rolands-steakhouse-vqtr.vercel.app/api/inventory/log-menu-stock', {
+                if (cloudSyncNeeded && menuStockChanges.length > 0) {
+                    const invBranch = getActiveInvBranchSafe();
+                    fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/inventory/log-menu-stock?branch=${encodeURIComponent(invBranch)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ changes: menuStockChanges, updatedBy: 1, timestamp: new Date().toISOString() })
@@ -1182,6 +1442,55 @@
         return [];
     }
 
+    // Helper: updates menu sold_stock, _lastRawPortions, and computed EOD stock after order deduction/restoration
+    function applyOrderSoldDeltaToMenuItems(normalizedItems, sign, postRawList) {
+        try {
+            const rawList = postRawList || getRawIngredients();
+            const rawMap = {};
+            rawList.forEach(ing => { if (ing && ing.id) rawMap[ing.id] = ing; });
+            const invItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+            if (!Array.isArray(invItems) || invItems.length === 0) return;
+
+            const nowIso = new Date().toISOString();
+            const nowMs = Date.now();
+            let invMutated = false;
+
+            normalizedItems.forEach(cartItem => {
+                const qtyOrdered = Number(cartItem.quantity) || 1;
+                if (qtyOrdered <= 0) return;
+                const normTitle = String(cartItem.title || cartItem.name || '').trim().toLowerCase();
+                const target = invItems.find(i => i && (
+                    (cartItem.id && i.id === cartItem.id) ||
+                    (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
+                ));
+                if (target) {
+                    const prevSold = Number(target.sold_stock) || 0;
+                    target.sold_stock = Math.max(0, prevSold + (sign * qtyOrdered));
+                    target.stockUpdatedAt = nowMs;
+                    target.last_updated = nowIso;
+                    invMutated = true;
+                }
+            });
+
+            invItems.forEach(it => {
+                if (!it) return;
+                const c = computeRawCapacityPortions(it, rawMap);
+                if (c) it._lastRawPortions = c.minPossiblePortions;
+                const av = calculateFoodAvailability(it, rawList);
+                if (it.stock !== av.availablePortions || it.computedStatus !== av.status) {
+                    it.stock = av.availablePortions;
+                    it.computedStatus = av.status;
+                    it.missingIngredients = av.missingIngredients;
+                    invMutated = true;
+                }
+            });
+
+            if (invMutated) {
+                pushInventoryItemsCloudAndNotify(invItems);
+            }
+        } catch (e) { }
+    }
+
     // ── PRE-CHECKOUT RAW INGREDIENT & SHARED BOTTLENECK VALIDATION ──
     function validateOrderIngredients(cartItems) {
         const normalized = normalizeCartItemsInput(cartItems);
@@ -1207,25 +1516,30 @@
             const qtyOrdered = Number(cartItem.quantity) || 1;
             if (qtyOrdered <= 0) return;
 
-            const recipe = getItemRecipe(itemId, cartItem);
-            if (recipe && recipe.length > 0) {
-                recipe.forEach(r => {
-                    const reqQty = Number(r.qty) || 0;
-                    requiredTotals[r.ingredientId] = (requiredTotals[r.ingredientId] || 0) + (reqQty * qtyOrdered);
-                });
-            } else if (itemId) {
-                const invItem = invItems.find(i => i.id === itemId);
-                if (invItem) {
-                    const avail = (invItem.total_stock !== undefined) ? invItem.total_stock : (invItem.stock || 0);
-                    if (avail < qtyOrdered) {
-                        shortages.push({
-                            ingredientId: itemId,
-                            ingredientName: invItem.title || invItem.name || itemId,
-                            available: avail,
-                            needed: qtyOrdered,
-                            unit: 'portion(s)'
-                        });
-                    }
+            const normTitle = String(cartItem.title || cartItem.name || '').trim().toLowerCase();
+            const invItem = invItems.find(i => i && (
+                (itemId && i.id === itemId) ||
+                (normTitle && String(i.title || i.name || '').trim().toLowerCase() === normTitle)
+            ));
+
+            if (invItem) {
+                const availObj = calculateFoodAvailability(invItem, rawList);
+                if (availObj.isManualUnavailable || availObj.availablePortions < qtyOrdered) {
+                    shortages.push({
+                        ingredientId: invItem.id || itemId,
+                        ingredientName: invItem.title || invItem.name || itemId,
+                        available: availObj.availablePortions,
+                        needed: qtyOrdered,
+                        unit: 'portion(s)'
+                    });
+                }
+            } else {
+                const recipe = getItemRecipe(itemId, cartItem);
+                if (recipe && recipe.length > 0) {
+                    recipe.forEach(r => {
+                        const reqQty = Number(r.qty) || 0;
+                        requiredTotals[r.ingredientId] = (requiredTotals[r.ingredientId] || 0) + (reqQty * qtyOrdered);
+                    });
                 }
             }
         });
@@ -1305,23 +1619,11 @@
             }
         });
 
-        // Increment sold_stock on the ordered menu dishes
-        try {
-            const invItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-            let invMutated = false;
-            normalized.forEach(cartItem => {
-                const target = invItems.find(i => i.id === cartItem.id || (i.title && i.title === cartItem.title));
-                if (target) {
-                    target.sold_stock = (Number(target.sold_stock) || 0) + (Number(cartItem.quantity) || 1);
-                    invMutated = true;
-                }
-            });
-            if (invMutated) localStorage.setItem('inventoryItems', JSON.stringify(invItems));
-        } catch (e) { }
+        const nextRawList = Object.values(rawMap);
         if (updatedAny) {
-            saveRawIngredients(Object.values(rawMap));
-            syncFoodMenuStockFromIngredients();
+            saveRawIngredients(nextRawList);
         }
+        applyOrderSoldDeltaToMenuItems(normalized, 1, nextRawList);
 
         return { success: true };
     }
@@ -1368,10 +1670,11 @@
             }
         });
 
+        const nextRawList = Object.values(rawMap);
         if (updatedAny) {
-            saveRawIngredients(Object.values(rawMap));
-            syncFoodMenuStockFromIngredients();
+            saveRawIngredients(nextRawList);
         }
+        applyOrderSoldDeltaToMenuItems(normalized, -1, nextRawList);
 
         return { success: true };
     }
@@ -1604,6 +1907,7 @@
     // ── SMART INVENTORY HEALTH & AUTO-RESTOCK ──
     function autoRestockAllLowStock(operator = 'Super Admin') {
         const list = getRawIngredients();
+        snapshotRawPortionsOnItems(list);
         let restockedCount = 0;
 
         list.forEach(ing => {
@@ -1634,7 +1938,7 @@
 
         if (restockedCount > 0) {
             saveRawIngredients(list);
-            syncFoodMenuStockFromIngredients();
+            syncFoodMenuStockFromIngredients({ applyRawDelta: true });
         }
         return restockedCount;
     }
@@ -2400,12 +2704,14 @@
 
     function resetToDefaultTestInventory() {
         try {
-            saveRawIngredients(DEFAULT_RAW_INGREDIENTS);
-            _cachedRawIngredients = null;
-            syncFoodMenuStockFromIngredients();
+            const freshRaw = getFreshDefaultRawIngredients();
+            saveRawIngredients(freshRaw);
+            _cachedRawIngredients = freshRaw;
+            syncFoodMenuStockFromIngredients({ resetFromRaw: true, pushToCloud: true });
             logStockMovement('SYS-RESET', 'SYSTEM', 'Re-seeded inventory raw materials to canonical test baseline', 0, 'Reset');
             if (typeof window.renderRawIngredientsContainer === 'function') window.renderRawIngredientsContainer();
             if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+            if (typeof window.renderInventory === 'function') window.renderInventory();
             if (typeof window.refreshActiveSuperAdminInvTab === 'function') window.refreshActiveSuperAdminInvTab();
         } catch (e) {
             console.error('Error resetting test inventory:', e);
@@ -2420,6 +2726,8 @@
     window.InventorySystem = {
         DEFAULT_RAW_INGREDIENTS: DEFAULT_RAW_INGREDIENTS,
         DEFAULT_FOOD_RECIPES: DEFAULT_FOOD_RECIPES,
+        getFreshDefaultRawIngredients: getFreshDefaultRawIngredients,
+        buildCleanBranchMenuItems: buildCleanBranchMenuItems,
         getRawIngredients: getRawIngredients,
         saveRawIngredients: saveRawIngredients,
         restockRawIngredient: restockRawIngredient,
@@ -2431,6 +2739,8 @@
         saveItemRecipe: saveItemRecipe,
         calculateFoodAvailability: calculateFoodAvailability,
         syncFoodMenuStockFromIngredients: syncFoodMenuStockFromIngredients,
+        adjustMenuAddedStock: window.adjustMenuAddedStock,
+        adjustMenuTotalStock: window.adjustMenuTotalStock,
         validateOrderIngredients: validateOrderIngredients,
         normalizeCartItemsInput: normalizeCartItemsInput,
         deductIngredientsForOrder: deductIngredientsForOrder,
@@ -2467,9 +2777,9 @@
         }, 100);
     } catch (e) { }
 
-    // ── 👉 UPGRADED: LIVE CLOUD INVENTORY SYNC (ANTI-REVERT & CACHE BUSTED) ──
+    // ── 👉 UPGRADED: LIVE CLOUD INVENTORY SYNC (BRANCH-ISOLATED, ANTI-REVERT & CACHE BUSTED) ──
     (function startInventoryCloudSync() {
-        const API = 'https://rolands-steakhouse-vqtr.vercel.app';
+        const API = 'https://rolands-steakhouse-jsoo.onrender.com';
 
         async function pullInventory() {
             // Pause polling for 8 seconds after you make a local change to prevent overriding your typing
@@ -2477,53 +2787,45 @@
             // Do not update UI if the manager is currently typing in an input box
             if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
 
+            const invBranch = getActiveInvBranchSafe();
             const fetchOpts = {
                 headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
             };
 
             try {
-                // 1. Sync Raw Ingredients
-                const rawRes = await fetch(`${API}/api/memory/raw-ingredients?nocache=${Date.now()}`, fetchOpts);
+                // Sync Raw Ingredients for active branch (menu items synced with photo preservation & timestamps in menuCloudSync)
+                const rawRes = await fetch(`${API}/api/memory/raw-ingredients?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`, fetchOpts);
                 if (rawRes.ok) {
                     const cloudRaw = await rawRes.json();
                     const localRawStr = localStorage.getItem('rawIngredients');
                     const localRaw = localRawStr ? JSON.parse(localRawStr) : [];
 
                     if (Array.isArray(cloudRaw)) {
-                        // Vercel Sleep Protection: If cloud is empty/reset, push local back to cloud instead of wiping local
-                        if (cloudRaw.length < localRaw.length - 2) {
-                            fetch(`${API}/api/memory/raw-ingredients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localRawStr }).catch(() => { });
-                        } else if (JSON.stringify(cloudRaw) !== localRawStr) {
+                        // Cloud sleep protection only when cloud actually holds partial/non-empty data; NEVER push Gensan/local into a fresh empty branch
+                        if (cloudRaw.length > 0 && cloudRaw.length < localRaw.length - 2) {
+                            fetch(`${API}/api/memory/raw-ingredients?branch=${encodeURIComponent(invBranch)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: localRawStr
+                            }).catch(() => { });
+                        } else if (cloudRaw.length > 0 && JSON.stringify(cloudRaw) !== localRawStr) {
                             if (typeof _cachedRawIngredients !== 'undefined') _cachedRawIngredients = cloudRaw;
                             localStorage.setItem('rawIngredients', JSON.stringify(cloudRaw));
+                            syncFoodMenuStockFromIngredients();
                             window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloudRaw }));
                             if (typeof broadcastSync === 'function') broadcastSync('rawIngredientsUpdated', cloudRaw);
-                        }
-                    }
-                }
-
-                // 2. Sync Menu/Inventory Items (Recipes, Portions, Added, Sold)
-                const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`, fetchOpts);
-                if (invRes.ok) {
-                    const cloudInv = await invRes.json();
-                    const localInvStr = localStorage.getItem('inventoryItems');
-                    const localInv = localInvStr ? JSON.parse(localInvStr) : [];
-
-                    if (Array.isArray(cloudInv)) {
-                        // Vercel Sleep Protection: Re-hydrate cloud if it lost data
-                        if (cloudInv.length > 0 && cloudInv.length < localInv.length - 2) {
-                            fetch(`${API}/api/memory/inventory-items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: localInvStr }).catch(() => { });
-                        } else if (cloudInv.length > 0 && JSON.stringify(cloudInv) !== localInvStr) {
-                            localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
-                            window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
-                            if (typeof broadcastSync === 'function') broadcastSync('inventoryUpdated', cloudInv);
+                            if (typeof window.renderRawIngredientsContainer === 'function') window.renderRawIngredientsContainer();
+                            if (typeof window.renderInventory === 'function') window.renderInventory();
+                            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                            if (typeof window.renderProducts === 'function') window.renderProducts();
+                            if (typeof window.renderMenu === 'function') window.renderMenu();
                         }
                     }
                 }
             } catch (e) { }
         }
 
-        setInterval(pullInventory, 45000); // Polls every 45s instead of 5s to save 90% bandwidth!
+        setInterval(pullInventory, 30000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pullInventory(); });
     })();
 })(window);
@@ -2536,13 +2838,15 @@
     if (!window.InventorySystem) return;
 
     async function syncRawIngredientsFromMySQL() {
-        // Shield: Don't overwrite local stock while a local deduction/restock is being pushed to MySQL
+        // Shield: Don't overwrite local stock while a local deduction/restock is being pushed
+        if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
         if (window.__lastLocalInventoryWrite && (Date.now() - window.__lastLocalInventoryWrite < 15000)) {
             return;
         }
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/inventory/raw?nocache=${Date.now()}`);
+            const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+            const res = await fetch(`${API_BASE_URL}/api/inventory/raw?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`);
             if (!res.ok) return;
             const liveData = await res.json();
             if (!Array.isArray(liveData) || liveData.length === 0) return;
@@ -2565,7 +2869,7 @@
                     const auditStock = latestAudit ? Number(latestAudit.newStock) : null;
 
                     if (auditStock !== null && Math.abs(auditStock - dbStockNum) > 0.001 && Math.abs(localStockNum - auditStock) < 0.001) {
-                        // Local has a recorded movement (e.g. 1:29 AM order deduction) that MySQL missed -> Push to MySQL!
+                        // Local has a recorded movement that MySQL missed -> Push to MySQL!
                         pushToCloudBatch.push({
                             action: latestAudit.action || 'SYNC',
                             ingredientId: localItem.id,
@@ -2602,9 +2906,8 @@
                 }
             });
 
-            // Also push any default/local ingredients whose category or threshold in MySQL is still 'General' / 10
             if (pushToCloudBatch.length > 0) {
-                fetch(`${API_BASE_URL}/api/inventory/sync-movement`, {
+                fetch(`${API_BASE_URL}/api/inventory/sync-movement?branch=${encodeURIComponent(invBranch)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ movements: pushToCloudBatch })
@@ -2612,7 +2915,7 @@
             }
 
             if (updatedLocal) {
-                window.InventorySystem.saveRawIngredients(rawList);
+                window.InventorySystem.saveRawIngredients(rawList, { skipCloud: true });
                 window.InventorySystem.syncFoodMenuStockFromIngredients();
             }
         } catch (e) { }
@@ -2622,57 +2925,111 @@
     setInterval(syncRawIngredientsFromMySQL, 60000);
 })();
 
-/* ── MENU ITEMS CLOUD SYNC (pull everywhere, push only from admin pages) ── */
+/* ── MENU ITEMS CLOUD SYNC (pull everywhere, push only from admin pages, strictly branch-isolated) ── */
 (function menuCloudSync() {
-    const API = 'https:' + '//rolands-steakhouse-vqtr.vercel.app';
+    const API = 'https:' + '//rolands-steakhouse-jsoo.onrender.com';
     const isAdminPage = /admin/i.test(location.pathname);
-    let initialPullDone = false;
+    const isSuperAdminPage = /\/superadmin\.html/i.test(location.pathname);
+    const initialPullDoneByBranch = {};
+    const lastPushedByBranch = {};
+
+    const getBranch = () => (window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City'));
+
+    // NOTE: Do NOT strip stock or total_stock — manual adjustments (e.g. 63 -> 59) & EOD must sync everywhere!
     const strip = arr => JSON.stringify((arr || []).map(i => {
         const c = { ...i };
-        delete c.stock; delete c.total_stock; delete c.computedStatus; delete c.missingIngredients;
+        delete c.computedStatus;
+        delete c.missingIngredients;
+        delete c.stockUpdatedAt;
+        delete c.last_updated;
         return c;
     }));
 
+    function preserveNewerLocalStock(merged, local) {
+        if (!Array.isArray(local) || local.length === 0) return merged;
+        const now = Date.now();
+        return merged.map(cloudItem => {
+            if (!cloudItem || !cloudItem.id) return cloudItem;
+            const localItem = local.find(l => l && l.id === cloudItem.id);
+            if (!localItem) return cloudItem;
+            const localTs = Number(localItem.stockUpdatedAt) || 0;
+            const cloudTs = Number(cloudItem.stockUpdatedAt) || 0;
+            if (localTs > cloudTs && (now - localTs < 20000)) {
+                return {
+                    ...cloudItem,
+                    total_stock: localItem.total_stock,
+                    added_stock: localItem.added_stock,
+                    sold_stock: localItem.sold_stock,
+                    stock: localItem.stock,
+                    manualUnavailable: localItem.manualUnavailable,
+                    _lastRawPortions: localItem._lastRawPortions,
+                    stockUpdatedAt: localItem.stockUpdatedAt,
+                    last_updated: localItem.last_updated
+                };
+            }
+            return cloudItem;
+        });
+    }
+
     async function pull() {
+        if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
         if (Date.now() - (window.__lastMenuPush || 0) < 8000) return;
+        const pullBranch = getBranch();
         try {
-            const r = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`);
-            if (!r.ok) { initialPullDone = true; return; }
+            const r = await fetch(`${API}/api/memory/inventory-items?branch=${encodeURIComponent(pullBranch)}&nocache=${Date.now()}`);
+            if (!r.ok) { initialPullDoneByBranch[pullBranch] = true; return; }
             const cloud = await r.json();
-            if (!Array.isArray(cloud) || cloud.length === 0) { initialPullDone = true; return; }
+            if (!Array.isArray(cloud) || cloud.length === 0) {
+                initialPullDoneByBranch[pullBranch] = true;
+                return;
+            }
+            // Abort if active inventory branch changed mid-flight
+            if (getBranch() !== pullBranch) return;
             const local = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-            const merged = typeof window.mergeInventoryWithSharedPhotos === 'function'
+            const withPhotos = typeof window.mergeInventoryWithSharedPhotos === 'function'
                 ? window.mergeInventoryWithSharedPhotos(cloud, local)
                 : cloud;
-            initialPullDone = true;
-            if (strip(local) === strip(merged)) return;
-            localStorage.setItem('inventoryItems', JSON.stringify(merged));
+            const merged = preserveNewerLocalStock(withPhotos, local);
+            initialPullDoneByBranch[pullBranch] = true;
+            if (strip(local) === strip(merged)) {
+                lastPushedByBranch[pullBranch] = localStorage.getItem('inventoryItems') || '[]';
+                return;
+            }
+            const nextStr = JSON.stringify(merged);
+            localStorage.setItem('inventoryItems', nextStr);
+            lastPushedByBranch[pullBranch] = nextStr;
             window.InventorySystem?.syncFoodMenuStockFromIngredients?.();
+            lastPushedByBranch[pullBranch] = localStorage.getItem('inventoryItems') || nextStr;
             window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: merged }));
             if (typeof window.renderInventory === 'function') window.renderInventory();
             if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
             if (typeof window.renderProducts === 'function') window.renderProducts();
             if (typeof window.renderMenu === 'function') window.renderMenu();
         } catch (e) {
-            initialPullDone = true;
+            initialPullDoneByBranch[pullBranch] = true;
         }
     }
+
+    window.syncMenuCloudNow = pull;
     setTimeout(pull, 400);
-    setInterval(pull, 15000);
+    setInterval(pull, 10000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 
-    // 👉 Push immediately whenever the menu changes from an admin page.
-    //    Waits for initialPullDone so fresh/Incognito tabs never overwrite cloud photos with empty defaults.
-    if (isAdminPage || /\/superadmin\.html/i.test(location.pathname)) {
-        let lastPushed = '';
+    // 👉 Push whenever menu/stock changes from Admin or SuperAdmin, keyed PER BRANCH so switching branches never overwrites another branch!
+    if (isAdminPage || isSuperAdminPage) {
         setInterval(() => {
-            if (!initialPullDone) return;
+            const curBranch = getBranch();
+            if (!initialPullDoneByBranch[curBranch]) return;
+            if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
             const local = localStorage.getItem('inventoryItems') || '[]';
-            if (!lastPushed) { lastPushed = local; return; }
-            if (local === lastPushed) return;
-            lastPushed = local;
+            if (!lastPushedByBranch[curBranch]) {
+                lastPushedByBranch[curBranch] = local;
+                return;
+            }
+            if (local === lastPushedByBranch[curBranch]) return;
+            lastPushedByBranch[curBranch] = local;
             window.__lastMenuPush = Date.now();
-            fetch(`${API}/api/memory/inventory-items`, {
+            fetch(`${API}/api/memory/inventory-items?branch=${encodeURIComponent(curBranch)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: local
@@ -3463,9 +3820,42 @@
             const scopedKey = resolveScopedKey(key);
             let val = rawGet(scopedKey);
 
-            // NEVER fallback floorPlanConfig or liveChats to Gensan — each branch has its own independent Floor Plan & Live Chat!
-            if (val === null && scopedKey !== key && ['inventoryItems', 'rawIngredients'].includes(key)) {
-                return rawGet(key);
+            // Brand-new branch isolation: NEVER inherit Gensan's sold_stock, added_stock, or manual adjustments!
+            if (val === null && scopedKey !== key) {
+                const sepIdx = scopedKey.indexOf('__');
+                const branchPrefix = sepIdx > 0 ? scopedKey.slice(0, sepIdx) : '';
+                if (key === 'rawIngredients') {
+                    const freshRaw = (window.InventorySystem && typeof window.InventorySystem.getFreshDefaultRawIngredients === 'function')
+                        ? window.InventorySystem.getFreshDefaultRawIngredients()
+                        : (Array.isArray(window.__DEFAULT_RAW_INGREDIENTS_TEMPLATE)
+                            ? window.__DEFAULT_RAW_INGREDIENTS_TEMPLATE.map(i => ({ ...i, lastRestocked: new Date().toISOString() }))
+                            : []);
+                    if (freshRaw.length > 0) {
+                        const serialized = JSON.stringify(freshRaw);
+                        safeRawSet(scopedKey, serialized);
+                        return serialized;
+                    }
+                } else if (key === 'inventoryItems') {
+                    const gensanRawStr = rawGet('inventoryItems');
+                    if (gensanRawStr) {
+                        try {
+                            const gensanItems = JSON.parse(gensanRawStr);
+                            if (Array.isArray(gensanItems) && gensanItems.length > 0 && window.InventorySystem && typeof window.InventorySystem.buildCleanBranchMenuItems === 'function') {
+                                const branchRawKey = branchPrefix ? `${branchPrefix}__rawIngredients` : 'rawIngredients';
+                                let branchRawList = null;
+                                try {
+                                    const bRawStr = rawGet(branchRawKey);
+                                    if (bRawStr) branchRawList = JSON.parse(bRawStr);
+                                } catch (e) { }
+                                if (!branchRawList) branchRawList = window.InventorySystem.getFreshDefaultRawIngredients();
+                                const cleaned = window.InventorySystem.buildCleanBranchMenuItems(gensanItems, branchRawList);
+                                const serialized = JSON.stringify(cleaned);
+                                safeRawSet(scopedKey, serialized);
+                                return serialized;
+                            }
+                        } catch (e) { }
+                    }
+                }
             }
             return val;
         }
@@ -3921,16 +4311,18 @@
             const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : branch;
             const baseUrl = 'https://rolands-steakhouse-jsoo.onrender.com';
 
-            const [cfgRes, ovrRes, promoRes, holRes, rawRes, menuRes] = await Promise.all([
+            const [cfgRes, ovrRes, promoRes, holRes, rawMemRes, rawRes, menuRes] = await Promise.all([
                 fetch(`${baseUrl}/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/holidays?branch=${encodeURIComponent(holBranch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/raw-ingredients?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/inventory/raw?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`)
             ]);
             let changed = false;
             let menuChanged = false;
+            const holdInventoryPull = (Date.now() < (window.__inventoryHoldUntil || 0)) || (Date.now() - (window.__lastMenuPush || 0) < 8000);
 
             if (cfgRes.ok) {
                 const cloudCfg = await cfgRes.json();
@@ -3984,7 +4376,19 @@
                     }
                 }
             }
-            if (rawRes.ok) {
+            let adoptedMemRaw = false;
+            if (!holdInventoryPull && rawMemRes && rawMemRes.ok) {
+                const cloudMemRaw = await rawMemRes.json();
+                if (Array.isArray(cloudMemRaw) && cloudMemRaw.length > 0) {
+                    const nextMemRaw = JSON.stringify(cloudMemRaw);
+                    if (localStorage.getItem('rawIngredients') !== nextMemRaw) {
+                        localStorage.setItem('rawIngredients', nextMemRaw);
+                        menuChanged = true;
+                    }
+                    adoptedMemRaw = true;
+                }
+            }
+            if (!holdInventoryPull && !adoptedMemRaw && rawRes.ok) {
                 const dbRaw = await rawRes.json();
                 if (Array.isArray(dbRaw) && dbRaw.length > 0) {
                     const existingRaw = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
@@ -3999,7 +4403,7 @@
                     }
                 }
             }
-            if (menuRes.ok) {
+            if (!holdInventoryPull && menuRes.ok) {
                 const cloudInv = await menuRes.json();
                 if (Array.isArray(cloudInv) && cloudInv.length > 0) {
                     let existingLocalInv = [];
@@ -4241,7 +4645,14 @@
                 try {
                     const key = bName === 'General Santos City' ? 'inventoryItems' : `${bName}__inventoryItems`;
                     const rawStr = rawGet(key);
-                    let list = rawStr ? JSON.parse(rawStr) : (templateItems.length ? JSON.parse(JSON.stringify(templateItems)) : []);
+                    const rawKey = bName === 'General Santos City' ? 'rawIngredients' : `${bName}__rawIngredients`;
+                    let branchRawList = null;
+                    try { const brs = rawGet(rawKey); if (brs) branchRawList = JSON.parse(brs); } catch (e) { }
+                    let list = rawStr
+                        ? JSON.parse(rawStr)
+                        : (templateItems.length && window.InventorySystem?.buildCleanBranchMenuItems
+                            ? window.InventorySystem.buildCleanBranchMenuItems(templateItems, branchRawList)
+                            : []);
                     if (Array.isArray(list) && list.length > 0) {
                         let changed = false;
                         list.forEach(item => {
@@ -4272,7 +4683,12 @@
                             if (Array.isArray(cloudArr) && cloudArr.length > 0) branchList = cloudArr;
                         }
                         if (branchList.length === 0 && templateItems.length > 0) {
-                            branchList = JSON.parse(JSON.stringify(templateItems));
+                            const rawKey = bName === 'General Santos City' ? 'rawIngredients' : `${bName}__rawIngredients`;
+                            let branchRawList = null;
+                            try { const brs = rawGet(rawKey); if (brs) branchRawList = JSON.parse(brs); } catch (e) { }
+                            branchList = window.InventorySystem?.buildCleanBranchMenuItems
+                                ? window.InventorySystem.buildCleanBranchMenuItems(templateItems, branchRawList)
+                                : [];
                         }
                     }
                     if (branchList.length > 0) {
