@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/superadmin.css?v=2.1">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.1"></script>
+    <script src="js/inventory-system.js?v=7.2"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         input[type="checkbox"] {
@@ -3709,8 +3709,13 @@
                             // Merge saved item over default to preserve image and status
                             return { ...def, ...savedMap[def.id] };
                         }
-                        // Default item not yet in storage — create with 100 stock
-                        return { ...def, total_stock: 100, added_stock: 0, sold_stock: 0 };
+                        // Default item not yet in storage — derive clean capacity from raw ingredients if available
+                        let baseCap = 100;
+                        if (window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function') {
+                            const av = window.InventorySystem.calculateFoodAvailability(def);
+                            if (av && av.possibleFromRaw !== undefined) baseCap = Number(av.possibleFromRaw) || 0;
+                        }
+                        return { ...def, total_stock: baseCap, _lastRawPortions: baseCap, added_stock: 0, sold_stock: 0, stock: baseCap, manualUnavailable: false };
                     });
 
                     // Append any custom items added by admin that aren't in defaults
@@ -3730,6 +3735,7 @@
                     return seedInventoryFromMenu(true);
                 }
             }
+            window.getInventory = getInventory;
 
             // Proper function declaration for HOISTING reliability
             async function seedInventoryFromMenu(isAuto = false) {
@@ -3834,35 +3840,58 @@
                     window.InventorySystem.invalidateInventoryCache();
                 }
 
+                const targetInvBranch = window.__invBranchOverride;
                 try {
-                    const [rawRes, invRes, audRes] = await Promise.all([
-                        fetch(`${API_BASE_URL}/api/inventory/raw?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`),
-                        fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`),
-                        fetch(`${API_BASE_URL}/api/inventory/audit-log?branch=${encodeURIComponent(window.__invBranchOverride)}&nocache=${Date.now()}`)
+                    const [rawMemRes, rawRes, invRes, audRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(targetInvBranch)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/inventory/raw?branch=${encodeURIComponent(targetInvBranch)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(targetInvBranch)}&nocache=${Date.now()}`),
+                        fetch(`${API_BASE_URL}/api/inventory/audit-log?branch=${encodeURIComponent(targetInvBranch)}&nocache=${Date.now()}`)
                     ]);
-                    if (rawRes.ok) {
+                    let resolvedRawList = null;
+                    if (rawMemRes && rawMemRes.ok) {
+                        const cloudMemRaw = await rawMemRes.json();
+                        if (Array.isArray(cloudMemRaw) && cloudMemRaw.length > 0) {
+                            resolvedRawList = cloudMemRaw;
+                        }
+                    }
+                    if (!resolvedRawList && rawRes && rawRes.ok) {
                         const dbRaw = await rawRes.json();
                         if (Array.isArray(dbRaw) && dbRaw.length > 0) {
-                            const existingRaw = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
-                            const mergedRaw = existingRaw.map(loc => {
+                            const existingRaw = window.InventorySystem?.getFreshDefaultRawIngredients
+                                ? window.InventorySystem.getFreshDefaultRawIngredients()
+                                : (window.InventorySystem ? window.InventorySystem.getRawIngredients() : []);
+                            resolvedRawList = existingRaw.map(loc => {
                                 const found = dbRaw.find(d => d.id === loc.id || d.name === loc.name);
                                 return found ? { ...loc, stock: Number(found.stock) || 0, minThreshold: Number(found.minThreshold) || loc.minThreshold } : loc;
                             });
-                            localStorage.setItem('rawIngredients', JSON.stringify(mergedRaw));
-                            if (window.InventorySystem) window.InventorySystem.invalidateInventoryCache();
                         }
                     }
-                    if (invRes.ok) {
+                    if (!resolvedRawList && window.InventorySystem?.getFreshDefaultRawIngredients) {
+                        resolvedRawList = window.InventorySystem.getFreshDefaultRawIngredients();
+                    }
+                    if (resolvedRawList) {
+                        localStorage.setItem('rawIngredients', JSON.stringify(resolvedRawList));
+                        if (window.InventorySystem) window.InventorySystem.invalidateInventoryCache();
+                    }
+
+                    if (invRes && invRes.ok) {
                         const cloudInv = await invRes.json();
+                        const localBranchInv = getInventory();
                         if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                            const existingInv = getInventory();
                             const mergedInv = typeof window.mergeInventoryWithSharedPhotos === 'function'
-                                ? window.mergeInventoryWithSharedPhotos(cloudInv, existingInv)
+                                ? window.mergeInventoryWithSharedPhotos(cloudInv, localBranchInv)
                                 : cloudInv;
                             localStorage.setItem('inventoryItems', JSON.stringify(mergedInv));
+                        } else if (Array.isArray(cloudInv) && cloudInv.length === 0 && targetInvBranch !== 'General Santos City') {
+                            // Fresh empty cloud branch: initialize clean zero-sold items (with shared photos) without inheriting Gensan counts
+                            const cleanInv = window.InventorySystem?.buildCleanBranchMenuItems
+                                ? window.InventorySystem.buildCleanBranchMenuItems(localBranchInv, resolvedRawList)
+                                : localBranchInv.map(i => ({ ...i, added_stock: 0, sold_stock: 0, manualUnavailable: false }));
+                            localStorage.setItem('inventoryItems', JSON.stringify(cleanInv));
                         }
                     }
-                    if (audRes.ok) {
+                    if (audRes && audRes.ok) {
                         const cloudAud = await audRes.json();
                         if (Array.isArray(cloudAud)) {
                             localStorage.setItem('inventory_audit_logs', JSON.stringify(cloudAud));
@@ -5039,54 +5068,79 @@
                 const item = items.find(i => i.id === id);
                 if (!item) return;
 
-                item[field] = (parseInt(item[field] || 0)) + delta;
-                item.stock = Math.max(0, (parseInt(item.total_stock || 0)) + (parseInt(item.added_stock || 0)) - (parseInt(item.sold_stock || 0)));
+                item[field] = Math.max(0, (parseInt(item[field] || 0)) + delta);
+                const avail = window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function'
+                    ? window.InventorySystem.calculateFoodAvailability(item)
+                    : null;
+                item.stock = avail
+                    ? avail.availablePortions
+                    : (item.manualUnavailable ? 0 : Math.max(0, (parseInt(item.total_stock || 0)) + (parseInt(item.added_stock || 0)) - (parseInt(item.sold_stock || 0))));
+                if (avail && avail.possibleFromRaw !== undefined) item._lastRawPortions = avail.possibleFromRaw;
+                item.stockUpdatedAt = Date.now();
                 item.last_updated = new Date().toISOString();
+
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
+                const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                window.__inventoryHoldUntil = Date.now() + 8000;
                 window.__lastMenuPush = Date.now();
-                fetch(`${API_BASE_URL}/api/memory/inventory-items`, {
+                fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(items)
                 }).catch(() => { });
 
                 // Visual feedback
-                const target = event.currentTarget.parentElement;
-                target.classList.add('stock-val-pop');
-                setTimeout(() => target.classList.remove('stock-val-pop'), 400);
+                const target = event?.currentTarget?.parentElement;
+                if (target) {
+                    target.classList.add('stock-val-pop');
+                    setTimeout(() => target.classList.remove('stock-val-pop'), 400);
+                }
 
                 renderInventory();
                 window.dispatchEvent(new Event('storage'));
+                window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
             };
 
             window.saveBulkInventory = async function () {
                 const items = getInventory();
                 const inputs = document.querySelectorAll('.inv-bulk-input');
                 let mutated = false;
+                const nowMs = Date.now();
+                const nowIso = new Date().toISOString();
 
                 inputs.forEach(input => {
                     const id = input.dataset.id;
                     const field = input.dataset.field;
-                    const val = parseInt(input.value) || 0;
+                    const val = Math.max(0, parseInt(input.value) || 0);
 
                     const item = items.find(i => i.id === id);
-                    if (item && item[field] !== val) {
+                    if (item && Number(item[field] || 0) !== val) {
                         item[field] = val;
-                        item.stock = Math.max(0, (parseInt(item.total_stock || 0)) + (parseInt(item.added_stock || 0)) - (parseInt(item.sold_stock || 0)));
-                        item.last_updated = new Date().toISOString();
+                        const avail = window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function'
+                            ? window.InventorySystem.calculateFoodAvailability(item)
+                            : null;
+                        item.stock = avail
+                            ? avail.availablePortions
+                            : (item.manualUnavailable ? 0 : Math.max(0, (parseInt(item.total_stock || 0)) + (parseInt(item.added_stock || 0)) - (parseInt(item.sold_stock || 0))));
+                        if (avail && avail.possibleFromRaw !== undefined) item._lastRawPortions = avail.possibleFromRaw;
+                        item.stockUpdatedAt = nowMs;
+                        item.last_updated = nowIso;
                         mutated = true;
                     }
                 });
 
                 if (mutated) {
                     localStorage.setItem('inventoryItems', JSON.stringify(items));
+                    const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                    window.__inventoryHoldUntil = Date.now() + 8000;
                     window.__lastMenuPush = Date.now();
-                    fetch(`${API_BASE_URL}/api/memory/inventory-items`, {
+                    await fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(items)
                     }).catch(() => { });
                     window.dispatchEvent(new Event('storage'));
+                    window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
                     await superModal({
                         title: 'Bulk Update Success! 🚀',
                         message: 'All inventory changes have been saved across the system.'
@@ -5094,6 +5148,7 @@
                 }
 
                 toggleBulkEdit(); // Exit mode
+                renderInventory();
             };
 
             function refreshInvStats() {
@@ -5433,9 +5488,16 @@
                     ? document.getElementById('inv-sync-photo-branches').checked
                     : true;
                 const nowMs = Date.now();
+                const existingTarget = id ? items.find(i => i.id === id) : null;
+                const availCap = window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function'
+                    ? window.InventorySystem.calculateFoodAvailability({ ...(existingTarget || {}), id: id || ('itm_' + nowMs), title, total_stock, added_stock, sold_stock })
+                    : null;
+                const isManualOff = Boolean(existingTarget?.manualUnavailable);
                 const itemData = {
                     title, category, total_stock, added_stock, sold_stock,
-                    stock: Math.max(0, total_stock + added_stock - sold_stock),
+                    stock: isManualOff ? 0 : Math.max(0, total_stock + added_stock - sold_stock),
+                    _lastRawPortions: availCap && availCap.possibleFromRaw !== undefined ? availCap.possibleFromRaw : (existingTarget?._lastRawPortions ?? total_stock),
+                    stockUpdatedAt: nowMs,
                     image,
                     syncPhotoBranches,
                     imageUpdatedAt: nowMs,
@@ -5456,6 +5518,14 @@
                 }
 
                 localStorage.setItem('inventoryItems', JSON.stringify(items));
+                const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                window.__inventoryHoldUntil = Date.now() + 8000;
+                window.__lastMenuPush = Date.now();
+                await fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                }).catch(() => { });
                 if (typeof window.syncMenuItemPhotoAcrossBranches === 'function') {
                     await window.syncMenuItemPhotoAcrossBranches({
                         id: savedId,
@@ -5467,6 +5537,7 @@
                 document.getElementById('inv-modal').classList.add('hidden');
                 renderInventory();
                 window.dispatchEvent(new Event('storage'));
+                window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
 
                 await superModal({
                     title: id ? 'Item Updated! ✨' : 'Item Added! 🎉',
@@ -7582,6 +7653,45 @@
                     if (typeof window.setPosBranchPin === 'function') {
                         await window.setPosBranchPin(rawName, branchPin);
                     }
+                    // Pre-seed clean isolated stock (zero sold, zero added, fresh raw ingredients + synced menu photos) for the new branch
+                    try {
+                        const freshRaw = window.InventorySystem?.getFreshDefaultRawIngredients
+                            ? window.InventorySystem.getFreshDefaultRawIngredients()
+                            : [];
+                        let templateMenu = [];
+                        try {
+                            const origMenuStr = window.__origGetItem ? window.__origGetItem('inventoryItems') : localStorage.getItem('inventoryItems');
+                            if (origMenuStr) templateMenu = JSON.parse(origMenuStr);
+                        } catch (e) { }
+                        if (!Array.isArray(templateMenu) || templateMenu.length === 0) {
+                            templateMenu = typeof window.getInventory === 'function'
+                                ? window.getInventory()
+                                : (typeof getInventory === 'function' ? getInventory() : []);
+                        }
+                        const cleanMenu = window.InventorySystem?.buildCleanBranchMenuItems
+                            ? window.InventorySystem.buildCleanBranchMenuItems(templateMenu, freshRaw)
+                            : [];
+                        const [chkRawRes, chkMenuRes] = await Promise.all([
+                            fetch(`${DEFAULT_API_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(rawName)}&nocache=${Date.now()}`).catch(() => null),
+                            fetch(`${DEFAULT_API_URL}/api/memory/inventory-items?branch=${encodeURIComponent(rawName)}&nocache=${Date.now()}`).catch(() => null)
+                        ]);
+                        const curCloudRaw = (chkRawRes && chkRawRes.ok) ? await chkRawRes.json().catch(() => []) : [];
+                        const curCloudMenu = (chkMenuRes && chkMenuRes.ok) ? await chkMenuRes.json().catch(() => []) : [];
+                        if ((!Array.isArray(curCloudRaw) || curCloudRaw.length === 0) && freshRaw.length > 0) {
+                            await fetch(`${DEFAULT_API_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(rawName)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(freshRaw)
+                            }).catch(() => { });
+                        }
+                        if ((!Array.isArray(curCloudMenu) || curCloudMenu.length === 0) && cleanMenu.length > 0) {
+                            await fetch(`${DEFAULT_API_URL}/api/memory/inventory-items?branch=${encodeURIComponent(rawName)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(cleanMenu)
+                            }).catch(() => { });
+                        }
+                    } catch (seedErr) { console.warn('Branch inventory pre-seed skipped:', seedErr); }
                     if (typeof window.syncAllBranchSelects === 'function') {
                         window.syncAllBranchSelects();
                     }
