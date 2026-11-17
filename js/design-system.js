@@ -60,7 +60,7 @@
                         </div>
                         <div class="super-modal-body">
                             <p>${message}</p>
-                            ${showInput ? `<div style="margin-top:15px;"><input type="${inputType}" id="ds-modal-input" class="super-modal-input" placeholder="${placeholder}" autocomplete="off"></div>` : ''}
+                            ${showInput ? `<div style="margin-top:15px;"><input type="${inputType}" ${inputType === 'number' ? 'step="any" min="0"' : ''} id="ds-modal-input" class="super-modal-input" placeholder="${placeholder}" autocomplete="off"></div>` : ''}
                         </div>
                         <div class="super-modal-footer">
                             ${(type === 'confirm' || showInput) ? `<button class="super-modal-btn cancel" id="ds-modal-cancel">${cancelText}</button>` : ''}
