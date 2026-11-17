@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.2"></script>
+    <script src="js/inventory-system.js?v=7.3"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
@@ -5419,7 +5419,13 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
             // Utility removed (consolidated at top)
 
             // ── LIVE INVENTORY & RAW INGREDIENT MANAGEMENT ──
-            window.activeAdminInvSubTab = 'food';
+            if (!window.activeAdminInvSubTab) {
+                try {
+                    window.activeAdminInvSubTab = localStorage.getItem('adminActiveInvSubTab') || 'food';
+                } catch (e) {
+                    window.activeAdminInvSubTab = 'food';
+                }
+            }
 
             window.switchAdminInvSubTab = function (tabName) {
                 window.activeAdminInvSubTab = tabName;
@@ -5804,39 +5810,46 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
 
             let isRefreshingInvTab = false;
             let refreshInvTimer = null;
-            function refreshActiveAdminInvTab() {
-                if (refreshInvTimer) clearTimeout(refreshInvTimer);
-                refreshInvTimer = setTimeout(() => {
-                    if (isRefreshingInvTab) return;
-                    isRefreshingInvTab = true;
-                    try {
-                        if (window.activeAdminInvSubTab === 'raw') {
-                            renderRawIngredientsContainer();
-                        } else if (window.activeAdminInvSubTab === 'recipe') {
-                            renderRecipeBuilderContainer();
-                        } else if (window.activeAdminInvSubTab === 'wastage') {
-                            if (window.InventorySystem) window.InventorySystem.renderWastageLogUI(document.getElementById('admin-wastage-container'), 'Admin');
-                        } else if (window.activeAdminInvSubTab === 'audit') {
-                            if (window.InventorySystem) window.InventorySystem.renderAuditLogUI(document.getElementById('admin-audit-container'), 'Admin');
-                        } else {
-                            renderMenuManagement();
-                        }
-                        // 👉 FIX: re-apply button highlight + guard the scroll position
-                        if (window.activeAdminInvTab) {
-                            const map = { food: 'inv-subtab-food', raw: 'inv-subtab-raw', recipe: 'inv-subtab-recipe',
-                                            wastage: 'inv-subtab-wastage', audit: 'inv-subtab-audit' };
-                            Object.values(map).forEach(id => {
-                                const b = document.getElementById(id);
-                                if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
-                            });
-                            const activeBtn = document.getElementById(map[window.activeAdminInvTab]);
-                        if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
-                        }
-                    } finally {
-                        isRefreshingInvTab = false;
+            function executeRefreshAdminInvTab() {
+                if (isRefreshingInvTab) return;
+                isRefreshingInvTab = true;
+                try {
+                    const tab = window.activeAdminInvSubTab || 'food';
+                    if (tab === 'raw') {
+                        renderRawIngredientsContainer();
+                    } else if (tab === 'recipe') {
+                        renderRecipeBuilderContainer();
+                    } else if (tab === 'wastage') {
+                        if (window.InventorySystem) window.InventorySystem.renderWastageLogUI(document.getElementById('admin-wastage-container'), 'Admin');
+                    } else if (tab === 'audit') {
+                        if (window.InventorySystem) window.InventorySystem.renderAuditLogUI(document.getElementById('admin-audit-container'), 'Admin');
+                    } else {
+                        renderMenuManagement();
                     }
-                }, 1500);
+                    const map = { food: 'inv-subtab-food', raw: 'inv-subtab-raw', recipe: 'inv-subtab-recipe',
+                                    wastage: 'inv-subtab-wastage', audit: 'inv-subtab-audit' };
+                    Object.values(map).forEach(id => {
+                        const b = document.getElementById(id);
+                        if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+                    });
+                    const activeBtn = document.getElementById(map[tab]);
+                    if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+                } finally {
+                    isRefreshingInvTab = false;
+                }
             }
+            function refreshActiveAdminInvTab(immediate = false) {
+                if (refreshInvTimer) clearTimeout(refreshInvTimer);
+                if (immediate) {
+                    executeRefreshAdminInvTab();
+                    return;
+                }
+                refreshInvTimer = setTimeout(executeRefreshAdminInvTab, 60);
+            }
+            window.refreshActiveAdminInvTab = refreshActiveAdminInvTab;
+            window.renderRawIngredientsContainer = renderRawIngredientsContainer;
+            window.renderRecipeBuilderContainer = renderRecipeBuilderContainer;
+            window.renderMenuManagement = renderMenuManagement;
 
             // ── LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS FOR STAFF ADMIN ──
             try {
@@ -5875,17 +5888,18 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                 if (window.InventorySystem) {
                     const count = window.InventorySystem.autoRestockAllLowStock();
                     alert(`⚡ Smart Restock Complete! Restocked ${count} low-stock ingredient(s) back to safe operational levels.`);
-                    if (window.activeAdminInvSubTab === 'raw') renderRawIngredientsContainer();
-                    else renderMenuManagement();
+                    refreshActiveAdminInvTab(true);
                 }
             };
 
             window.quickRestockIngredientInline = function (ingId, amount) {
                 if (window.InventorySystem) {
-                    const item = window.InventorySystem.restockRawIngredient(ingId, amount);
+                    const item = window.InventorySystem.restockRawIngredient(ingId, amount, 'Staff');
                     if (item) {
-                        if (window.activeAdminInvSubTab === 'raw') renderRawIngredientsContainer();
-                        else renderMenuManagement();
+                        if (window.showToast) {
+                            window.showToast(`Restocked ${item.name} (+${amount} ${item.unit}). New stock: ${item.stock} ${item.unit}`, 'success');
+                        }
+                        refreshActiveAdminInvTab(true);
                     }
                 }
             };
@@ -5994,10 +6008,11 @@ window.adminRawFilter = 'all';
                                     const statusColor = isCritical ? '#ef4444' : (isLow ? '#f59e0b' : '#16a34a');
                                     const statusText = isCritical ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'OK');
 
-                                    let pill1 = 1000, pill1Label = '+1 kg';
-                                    let pill2 = 5000, pill2Label = '+5 kg';
-                                    if (ing.unit === 'ml' || ing.unit === 'L') { pill1 = 1000; pill1Label = '+1 L'; pill2 = 5000; pill2Label = '+5 L'; }
-                                    else if (ing.unit === 'pcs' || ing.unit === 'slices') { pill1 = 10; pill1Label = '+10 pcs'; pill2 = 50; pill2Label = '+50 pcs'; }
+                                    const pills = window.InventorySystem?.getQuickRestockOptions
+                                        ? window.InventorySystem.getQuickRestockOptions(ing.unit)
+                                        : [{ amount: 1, label: `+1 ${ing.unit || ''}` }, { amount: 5, label: `+5 ${ing.unit || ''}` }];
+                                    const pill1 = pills[0].amount, pill1Label = pills[0].label;
+                                    const pill2 = pills[1].amount, pill2Label = pills[1].label;
 
                                     return `
                                         <tr style="border-bottom:1px solid #f1f5f9;">
@@ -6441,13 +6456,17 @@ window.adminRawFilter = 'all';
                 const ing = rawList.find(i => i.id === ingId);
                 if (!ing) return;
 
+                const suggestedAdd = window.InventorySystem?.getSuggestedInputQty
+                    ? window.InventorySystem.getSuggestedInputQty(ing.unit, 'add')
+                    : 1000;
+
                 let addAmt = null;
                 if (typeof window.superModal === 'function') {
                     const amountStr = await window.superModal({
                         title: `📦 Custom Restock - ${ing.name}`,
-                        message: `Current Stock: <b>${ing.stock.toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to ADD:`,
+                        message: `Current Stock: <b>${ing.stock.toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to ADD (in <b>${ing.unit}</b>):`,
                         showInput: true,
-                        placeholder: `e.g. 1000 (${ing.unit})`,
+                        placeholder: `e.g. ${suggestedAdd} (${ing.unit})`,
                         inputType: 'number',
                         confirmText: 'Restock Ingredient',
                         cancelText: 'Cancel'
@@ -6455,7 +6474,7 @@ window.adminRawFilter = 'all';
                     if (amountStr === null || amountStr === undefined || String(amountStr).trim() === '') return;
                     addAmt = Number(amountStr);
                 } else {
-                    const amountStr = prompt(`Restock ${ing.name} (Current Stock: ${ing.stock} ${ing.unit}):\nEnter amount to ADD:`, '1000');
+                    const amountStr = prompt(`Restock ${ing.name} (Current Stock: ${ing.stock} ${ing.unit}):\nEnter amount to ADD (in ${ing.unit}):`, String(suggestedAdd));
                     if (!amountStr) return;
                     addAmt = Number(amountStr);
                 }
@@ -6469,7 +6488,7 @@ window.adminRawFilter = 'all';
                     return;
                 }
 
-                const updatedItem = window.InventorySystem.restockRawIngredient(ingId, addAmt);
+                const updatedItem = window.InventorySystem.restockRawIngredient(ingId, addAmt, 'Staff');
                 const newStock = updatedItem ? updatedItem.stock : ing.stock + addAmt;
 
                 if (typeof window.superModal === 'function') {
@@ -6481,8 +6500,7 @@ window.adminRawFilter = 'all';
                     alert(`✅ Successfully restocked ${ing.name}! New Stock: ${newStock} ${ing.unit}`);
                 }
 
-                if (typeof renderRawIngredientsContainer === 'function') renderRawIngredientsContainer();
-                if (typeof refreshActiveAdminInvTab === 'function') refreshActiveAdminInvTab();
+                refreshActiveAdminInvTab(true);
             };
 
             window.openAddRawIngredientModal = function () {
@@ -6514,13 +6532,12 @@ window.adminRawFilter = 'all';
                     unit: unit,
                     stock: stock,
                     minThreshold: minThreshold
-                });
+                }, 'Staff');
 
                 closeRawIngredientModal();
                 alert(`✅ Raw ingredient "${name}" added!`);
 
-                if (window.activeAdminInvSubTab === 'raw') renderRawIngredientsContainer();
-                else renderMenuManagement();
+                refreshActiveAdminInvTab(true);
             };
 
             renderMenuManagement();
