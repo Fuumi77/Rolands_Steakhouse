@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/kitchen.css?v=2.0">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.4"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         /* 👉 Smart Priority & Reservation Details Styling */
@@ -130,7 +130,7 @@
             </div>
             <div id="kds-branch-pin-msg" style="min-height:18px; color:#ef4444; font-size:12.5px; font-weight:700; margin-bottom:12px;"></div>
             <div style="display:flex; gap:10px;">
-                <button type="button" onclick="lockKitchen()"
+                <button type="button" id="kds-branch-secondary-btn" onclick="handleKitchenBranchSecondaryAction()"
                     style="flex:1; padding:12px; border:1px solid #284c35; border-radius:12px; background:#182e20; color:#e2e8f0; font-size:13px; font-weight:800; cursor:pointer;">🔒 Lock Kitchen</button>
                 <button type="button" id="kds-branch-unlock-btn" onclick="verifyKitchenBranchGate()"
                     style="flex:1.4; padding:12px; border:none; border-radius:12px; background:#16a34a; color:#ffffff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(22,163,74,0.35);">Verify & Unlock</button>
@@ -229,12 +229,12 @@
             }
         }
 
-        function showKitchenBranchGate() {
+        function showKitchenBranchGate(branchOverride) {
             const gate = document.getElementById('kds-branch-gate');
             const msgEl = document.getElementById('kds-branch-pin-msg');
             const pinInput = document.getElementById('kds-branch-pin-input');
             if (typeof window.syncAllBranchSelects === 'function') window.syncAllBranchSelects();
-            updateKitchenBranchGateLabels(getActiveKitchenBranch());
+            updateKitchenBranchGateLabels(branchOverride || getActiveKitchenBranch());
             if (msgEl) msgEl.textContent = '';
             if (pinInput) {
                 pinInput.value = '';
@@ -253,6 +253,80 @@
             } else {
                 inp.type = 'password';
                 if (btnEl) btnEl.textContent = 'Reveal';
+            }
+        };
+
+        let kitchenSwitchOriginBranch = null;
+
+        function syncKitchenBranchSecondaryButton() {
+            const btn = document.getElementById('kds-branch-secondary-btn');
+            if (!btn) return;
+            btn.textContent = (kitchenSwitchOriginBranch && kitchenTerminalUnlocked)
+                ? '✕ Cancel Switch'
+                : '🔒 Lock Kitchen';
+        }
+
+        window.handleKitchenBranchSecondaryAction = function () {
+            if (kitchenSwitchOriginBranch && kitchenTerminalUnlocked) {
+                return window.cancelKitchenBranchSwitch();
+            } else {
+                kitchenSwitchOriginBranch = null;
+                syncKitchenBranchSecondaryButton();
+                lockKitchen();
+            }
+        };
+
+        window.requestKitchenBranchSwitch = async function (targetBranch, previousBranch) {
+            if (!kitchenTerminalUnlocked) {
+                kitchenSwitchOriginBranch = null;
+                syncKitchenBranchSecondaryButton();
+                lockKitchen();
+                return;
+            }
+            const origin = previousBranch || getActiveKitchenBranch();
+            if (!kitchenSwitchOriginBranch) {
+                kitchenSwitchOriginBranch = origin;
+            }
+            kitchenBranchUnlocked = false;
+            setKitchenInterfaceLocked(true);
+            syncKitchenBranchSecondaryButton();
+            showKitchenBranchGate(targetBranch);
+            await handleKitchenBranchGateSwitch(targetBranch);
+        };
+
+        window.cancelKitchenBranchSwitch = async function () {
+            const origin = kitchenSwitchOriginBranch;
+            kitchenSwitchOriginBranch = null;
+            syncKitchenBranchSecondaryButton();
+            if (origin) {
+                try {
+                    if (typeof window.__rawSetStorage === 'function') {
+                        window.__rawSetStorage('adminSelectedBranch', origin);
+                    } else {
+                        localStorage.setItem('adminSelectedBranch', origin);
+                    }
+                } catch (e) {}
+                const topSel = document.getElementById('rsh-staff-branch-select');
+                if (topSel) topSel.value = origin;
+                const gateSel = document.getElementById('kds-branch-gate-select');
+                if (gateSel) gateSel.value = origin;
+                updateKitchenBranchGateLabels(origin);
+                if (typeof window.syncBranchFloorPlanFromCloud === 'function') {
+                    await window.syncBranchFloorPlanFromCloud();
+                }
+            }
+            if (!kitchenTerminalUnlocked) {
+                lockKitchen();
+                return;
+            }
+            kitchenBranchUnlocked = true;
+            const gate = document.getElementById('kds-branch-gate');
+            if (gate) gate.style.display = 'none';
+            setKitchenInterfaceLocked(false);
+            knownActiveTicketIds = null;
+            initKitchen();
+            if (typeof showToast === 'function' && origin) {
+                showToast(`Returned to ${origin}`, 'info');
             }
         };
 
@@ -314,10 +388,13 @@
                 return;
             }
 
+            kitchenSwitchOriginBranch = null;
+            syncKitchenBranchSecondaryButton();
             kitchenBranchUnlocked = true;
             const gate = document.getElementById('kds-branch-gate');
             if (gate) gate.style.display = 'none';
             setKitchenInterfaceLocked(false);
+            knownActiveTicketIds = null;
             initKitchen();
             if (typeof showToast === 'function') {
                 showToast(`Kitchen unlocked for ${targetBranch}`, 'success');
@@ -417,6 +494,8 @@
         }
 
         function lockKitchen() {
+            kitchenSwitchOriginBranch = null;
+            syncKitchenBranchSecondaryButton();
             kitchenTerminalUnlocked = false;
             kitchenBranchUnlocked = false;
             try { sessionStorage.removeItem('kitchenAuthenticated'); } catch (e) {}
