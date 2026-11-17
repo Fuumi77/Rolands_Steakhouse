@@ -6,7 +6,7 @@
     <title>Pre-Order | Roland's Steak House</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=2.1">
-    <link rel="stylesheet" href="css/preorder.css?v=2.1">
+    <link rel="stylesheet" href="css/preorder.css?v=2.2">
     <link rel="stylesheet" href="css/design-system.css?v=2.1">
     <script src="js/design-system.js?v=2.0"></script>
     <script src="js/inventory-system.js?v=7.2"></script>
@@ -131,7 +131,15 @@
         .cart-reduce-btn:active {
             transform: scale(0.95);
         }
-        /* Sheet and its dim overlay must sit ABOVE the fixed header */
+        /* Ensure header never overlaps Priority Pre-Order hero even before external CSS refresh */
+        header#main-header {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            z-index: 1000;
+        }
+        /* Sheet and its dim overlay must sit ABOVE the header */
 #cart-sheet-overlay { z-index: 1100 !important; }
 #cart-sheet {
     z-index: 1101 !important;
@@ -161,7 +169,11 @@
     <!-- Hero Banner -->
     <div class="preorder-hero">
         <h1>Priority Pre-Order</h1>
-        <p>Table Selected: <strong id="table-display-badge" style="color:white;">None</strong></p>
+        <div class="preorder-meta-row">
+            <span class="preorder-meta-pill preorder-branch-pill">📍 Branch: <strong id="branch-display-badge">General Santos City</strong></span>
+            <span class="preorder-meta-pill preorder-table-pill">🪑 Table Selected: <strong id="table-display-badge">None</strong></span>
+        </div>
+        <div id="branch-address-sub" class="preorder-branch-address"></div>
     </div>
 
     <!-- ══ PAYMENT FAILED BANNER ══ -->
@@ -221,6 +233,10 @@
                     <span class="cart-clear-btn" style="color: #1b5e20; background: #f0fdf4;" onclick="refreshOrder()">Refresh</span>
                     <span class="cart-clear-btn" onclick="clearCart()">Clear</span>
                 </div>
+            </div>
+            <div class="preorder-processing-branch-box">
+                <span>📍 Processing Branch:</span>
+                <strong id="preorder-processing-branch">General Santos City</strong>
             </div>
             <div class="cart-items-container" id="cart-items"></div>
 
@@ -327,6 +343,10 @@
                     <span class="cart-clear-btn" style="color: #1b5e20; background: #f0fdf4;" onclick="refreshOrder()">Refresh</span>
                     <span class="cart-clear-btn" onclick="clearCart()">Clear</span>
                 </div>
+            </div>
+            <div class="preorder-processing-branch-box">
+                <span>📍 Processing Branch:</span>
+                <strong id="preorder-processing-branch-sheet">General Santos City</strong>
             </div>
             <div class="cart-items-container" id="cart-items-sheet"></div>
 
@@ -1477,10 +1497,34 @@
         window.addEventListener('rawIngredientsUpdated', () => refreshMenuDataAndClampCart(true));
 
         // ─────────────────────────────────────────────────────────
-        // INIT
+        // INIT & BRANCH DETAILS
         // ─────────────────────────────────────────────────────────
+        function syncPreOrderBranchDetails() {
+            const branchName = window.getEffectiveBranch
+                ? window.getEffectiveBranch()
+                : (localStorage.getItem('selectedBranch') || 'General Santos City');
+            const bInfo = window.getBranchInfo ? window.getBranchInfo(branchName) : null;
+            const addrParts = [];
+            if (bInfo && bInfo.address) addrParts.push(bInfo.address);
+            if (bInfo && bInfo.tel) addrParts.push(bInfo.tel);
+
+            const heroBranchEl = document.getElementById('branch-display-badge');
+            const heroAddrEl = document.getElementById('branch-address-sub');
+            const cartBranchEl = document.getElementById('preorder-processing-branch');
+            const sheetBranchEl = document.getElementById('preorder-processing-branch-sheet');
+
+            if (heroBranchEl) heroBranchEl.textContent = branchName;
+            if (cartBranchEl) cartBranchEl.textContent = branchName;
+            if (sheetBranchEl) sheetBranchEl.textContent = branchName;
+            if (heroAddrEl) heroAddrEl.textContent = addrParts.join(' · ');
+        }
+        window.syncPreOrderBranchDetails = syncPreOrderBranchDetails;
+        window.addEventListener('branchChanged', syncPreOrderBranchDetails);
+        window.addEventListener('branchesUpdated', syncPreOrderBranchDetails);
+
         document.getElementById('table-display-badge').textContent =
             localStorage.getItem('bookedTable') || 'None Selected';
+        syncPreOrderBranchDetails();
 
         renderMenu();
         renderCart();
