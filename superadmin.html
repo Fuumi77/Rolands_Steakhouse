@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/superadmin.css?v=2.1">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.2"></script>
+    <script src="js/inventory-system.js?v=7.3"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         input[type="checkbox"] {
@@ -2675,7 +2675,12 @@
             }
             if (window.renderGlobalSuperAdminStoreStatusBanner) window.renderGlobalSuperAdminStoreStatusBanner();
             if (typeof window.switchSuperAdminInvSubTab === 'function') {
-                window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
+                if (!window.__saInvSubTabBooted) {
+                    window.__saInvSubTabBooted = true;
+                    window.switchSuperAdminInvSubTab(window.activeSuperAdminInvSubTab || 'valuation');
+                } else if (typeof window.refreshActiveSuperAdminInvTab === 'function') {
+                    window.refreshActiveSuperAdminInvTab(true);
+                }
             }
 
             // --- Branding Sync ---
@@ -3907,9 +3912,16 @@
                 if (window.showToast) window.showToast(`Viewing Inventory for ${window.__invBranchOverride}`, 'info');
             };
 
-            window.activeSuperAdminInvSubTab = 'valuation';
+            if (!window.activeSuperAdminInvSubTab) {
+                try {
+                    window.activeSuperAdminInvSubTab = localStorage.getItem('superActiveInvSubTab') || 'valuation';
+                } catch (e) {
+                    window.activeSuperAdminInvSubTab = 'valuation';
+                }
+            }
 
             window.switchSuperAdminInvSubTab = function (tabName) {
+                window.__saInvSubTabBooted = true;
                 window.activeSuperAdminInvSubTab = tabName;
                 // 👉 FIX: remember the tab across re-renders
                 try { localStorage.setItem('superActiveInvSubTab', tabName); } catch (e) { }
@@ -4107,15 +4119,18 @@
                 if (window.InventorySystem) {
                     const count = window.InventorySystem.autoRestockAllLowStock();
                     alert(`Smart Restock Complete! Restocked ${count} low-stock ingredient(s) back to safe operational levels.`);
-                    refreshActiveSuperAdminInvTab();
+                    refreshActiveSuperAdminInvTab(true);
                 }
             };
 
             window.quickRestockIngredientInline = function (ingId, amount) {
                 if (window.InventorySystem) {
-                    const item = window.InventorySystem.restockRawIngredient(ingId, amount);
+                    const item = window.InventorySystem.restockRawIngredient(ingId, amount, 'Super Admin');
                     if (item) {
-                        refreshActiveSuperAdminInvTab();
+                        if (window.showToast) {
+                            window.showToast(`Restocked ${item.name} (+${amount} ${item.unit}). New stock: ${item.stock} ${item.unit}`, 'success');
+                        }
+                        refreshActiveSuperAdminInvTab(true);
                     }
                 }
             };
@@ -4125,13 +4140,17 @@
                 const ing = rawList.find(i => i.id === ingId);
                 if (!ing) return;
 
+                const suggestedAdd = window.InventorySystem?.getSuggestedInputQty
+                    ? window.InventorySystem.getSuggestedInputQty(ing.unit, 'add')
+                    : 1000;
+
                 let addAmt = null;
                 if (typeof window.superModal === 'function') {
                     const amountStr = await window.superModal({
                         title: `📦 Custom Restock - ${ing.name}`,
-                        message: `Current Stock: <b>${ing.stock.toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to ADD:`,
+                        message: `Current Stock: <b>${ing.stock.toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to ADD (in <b>${ing.unit}</b>):`,
                         showInput: true,
-                        placeholder: `e.g. 1000 (${ing.unit})`,
+                        placeholder: `e.g. ${suggestedAdd} (${ing.unit})`,
                         inputType: 'number',
                         confirmText: 'Restock Ingredient',
                         cancelText: 'Cancel'
@@ -4139,7 +4158,7 @@
                     if (amountStr === null || amountStr === undefined || String(amountStr).trim() === '') return;
                     addAmt = Number(amountStr);
                 } else {
-                    const amountStr = prompt(`Restock ${ing.name} (Current Stock: ${ing.stock} ${ing.unit}):\nEnter amount to ADD:`, '1000');
+                    const amountStr = prompt(`Restock ${ing.name} (Current Stock: ${ing.stock} ${ing.unit}):\nEnter amount to ADD (in ${ing.unit}):`, String(suggestedAdd));
                     if (!amountStr) return;
                     addAmt = Number(amountStr);
                 }
@@ -4153,7 +4172,7 @@
                     return;
                 }
 
-                const updatedItem = window.InventorySystem.restockRawIngredient(ingId, addAmt);
+                const updatedItem = window.InventorySystem.restockRawIngredient(ingId, addAmt, 'Super Admin');
                 const newStock = updatedItem ? updatedItem.stock : ing.stock + addAmt;
 
                 if (typeof window.superModal === 'function') {
@@ -4165,8 +4184,7 @@
                     alert(`✅ Successfully restocked ${ing.name}! New Stock: ${newStock} ${ing.unit}`);
                 }
 
-                if (typeof refreshActiveSuperAdminInvTab === 'function') refreshActiveSuperAdminInvTab();
-                if (typeof renderRawIngredientsContainer === 'function') renderRawIngredientsContainer();
+                refreshActiveSuperAdminInvTab(true);
             };
 
             window.openAddRawIngredientModal = function () {
@@ -4204,7 +4222,7 @@
 
                 closeRawIngredientModal();
                 alert(`✅ Raw ingredient "${name}" added!`);
-                refreshActiveSuperAdminInvTab();
+                refreshActiveSuperAdminInvTab(true);
             };
 
             // ── RECIPE EDITOR MODAL CONTROLLERS FOR SUPER ADMIN ──
@@ -4314,7 +4332,7 @@
                 }
                 closeRecipeEditorModal();
                 alert('Food Recipe saved successfully!');
-                refreshActiveSuperAdminInvTab();
+                refreshActiveSuperAdminInvTab(true);
             };
 
             window.applyQuickRecipePreset = function (presetKey) {
@@ -4522,60 +4540,51 @@
 
             let isRefreshingSuperInvTab = false;
             let refreshSuperInvTimer = null;
-            function refreshActiveSuperAdminInvTab() {
-                if (refreshSuperInvTimer) clearTimeout(refreshSuperInvTimer);
-                refreshSuperInvTimer = setTimeout(() => {
-                    if (isRefreshingSuperInvTab) return;
-                    isRefreshingSuperInvTab = true;
-                    try {
-                        if (window.activeSuperAdminInvSubTab === 'raw') {
-                            renderSuperAdminRawIngredients();
-                        } else if (window.activeSuperAdminInvSubTab === 'recipe') {
-                            renderSuperAdminRecipeBuilder();
-                        } else if (window.activeSuperAdminInvSubTab === 'valuation') {
-                            if (window.InventorySystem) window.InventorySystem.renderValuationUI(document.getElementById('superadmin-valuation-container'));
-                        } else if (window.activeSuperAdminInvSubTab === 'wastage') {
-                            if (window.InventorySystem) window.InventorySystem.renderWastageLogUI(document.getElementById('superadmin-wastage-container'), 'Super Admin');
-                        } else if (window.activeSuperAdminInvSubTab === 'audit') {
-                            if (window.InventorySystem) window.InventorySystem.renderAuditLogUI(document.getElementById('superadmin-audit-container'), 'Super Admin');
-                        } else {
-                            renderInventory();
-                        }
-                        // 👉 FIX: re-apply button highlight so the tab doesn't visibly reset
-                        if (window.activeSuperAdminInvSubTab) {
-                            const map = {
-                                valuation: 'sa-inv-subtab-valuation', food: 'sa-inv-subtab-food',
-                                raw: 'sa-inv-subtab-raw', recipe: 'sa-inv-subtab-recipe',
-                                wastage: 'sa-inv-subtab-wastage', audit: 'sa-inv-subtab-audit'
-                            };
-                            Object.values(map).forEach(id => {
-                                const b = document.getElementById(id);
-                                if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
-                            });
-                            const activeBtn = document.getElementById(map[window.activeSuperAdminInvSubTab]);
-                            if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
-                        }
-
-                    } finally {
-                        isRefreshingSuperInvTab = false;
+            function executeRefreshSuperAdminInvTab() {
+                if (isRefreshingSuperInvTab) return;
+                isRefreshingSuperInvTab = true;
+                try {
+                    const tab = window.activeSuperAdminInvSubTab || 'valuation';
+                    if (tab === 'raw') {
+                        renderSuperAdminRawIngredients();
+                    } else if (tab === 'recipe') {
+                        renderSuperAdminRecipeBuilder();
+                    } else if (tab === 'valuation') {
+                        if (window.InventorySystem) window.InventorySystem.renderValuationUI(document.getElementById('superadmin-valuation-container'));
+                    } else if (tab === 'wastage') {
+                        if (window.InventorySystem) window.InventorySystem.renderWastageLogUI(document.getElementById('superadmin-wastage-container'), 'Manager');
+                    } else if (tab === 'audit') {
+                        if (window.InventorySystem) window.InventorySystem.renderAuditLogUI(document.getElementById('superadmin-audit-container'), 'Manager');
+                    } else {
+                        renderInventory();
                     }
-
-                    // 👉 Re-apply the active subtab highlight so it never resets
-                    if (window.activeSuperAdminInvSubTab) {
-                        const map = {
-                            valuation: 'sa-inv-subtab-valuation', food: 'sa-inv-subtab-food',
-                            raw: 'sa-inv-subtab-raw', recipe: 'sa-inv-subtab-recipe',
-                            wastage: 'sa-inv-subtab-wastage', audit: 'sa-inv-subtab-audit'
-                        };
-                        Object.values(map).forEach(id => {
-                            const b = document.getElementById(id);
-                            if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
-                        });
-                        const activeBtn = document.getElementById(map[window.activeSuperAdminInvSubTab]);
-                        if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
-                    }
-                }, 10000);
+                    const map = {
+                        valuation: 'sa-inv-subtab-valuation', food: 'sa-inv-subtab-food',
+                        raw: 'sa-inv-subtab-raw', recipe: 'sa-inv-subtab-recipe',
+                        wastage: 'sa-inv-subtab-wastage', audit: 'sa-inv-subtab-audit'
+                    };
+                    Object.values(map).forEach(id => {
+                        const b = document.getElementById(id);
+                        if (b) { b.style.background = '#f1f5f9'; b.style.color = '#475569'; }
+                    });
+                    const activeBtn = document.getElementById(map[tab]);
+                    if (activeBtn) { activeBtn.style.background = '#2e7d32'; activeBtn.style.color = 'white'; }
+                } finally {
+                    isRefreshingSuperInvTab = false;
+                }
             }
+            function refreshActiveSuperAdminInvTab(immediate = false) {
+                if (refreshSuperInvTimer) clearTimeout(refreshSuperInvTimer);
+                if (immediate) {
+                    executeRefreshSuperAdminInvTab();
+                    return;
+                }
+                refreshSuperInvTimer = setTimeout(executeRefreshSuperAdminInvTab, 80);
+            }
+            window.refreshActiveSuperAdminInvTab = refreshActiveSuperAdminInvTab;
+            window.renderSuperAdminRawIngredients = renderSuperAdminRawIngredients;
+            window.renderSuperAdminRecipeBuilder = renderSuperAdminRecipeBuilder;
+            window.renderInventory = renderInventory;
 
             // ── LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS ──
             try {
@@ -4726,10 +4735,11 @@
                     const statusColor = isCritical ? '#ef4444' : (isLow ? '#f59e0b' : '#16a34a');
                     const statusText = isCritical ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'OK');
 
-                    let pill1 = 1000, pill1Label = '+1 kg';
-                    let pill2 = 5000, pill2Label = '+5 kg';
-                    if (ing.unit === 'ml' || ing.unit === 'L') { pill1 = 1000; pill1Label = '+1 L'; pill2 = 5000; pill2Label = '+5 L'; }
-                    else if (ing.unit === 'pcs' || ing.unit === 'slices') { pill1 = 10; pill1Label = '+10 pcs'; pill2 = 50; pill2Label = '+50 pcs'; }
+                    const pills = window.InventorySystem?.getQuickRestockOptions
+                        ? window.InventorySystem.getQuickRestockOptions(ing.unit)
+                        : [{ amount: 1, label: `+1 ${ing.unit || ''}` }, { amount: 5, label: `+5 ${ing.unit || ''}` }];
+                    const pill1 = pills[0].amount, pill1Label = pills[0].label;
+                    const pill2 = pills[1].amount, pill2Label = pills[1].label;
 
                     return `
                                         <tr style="border-bottom:1px solid #f1f5f9;">
@@ -6912,13 +6922,15 @@
     <!-- CLOUD PRODUCT PHOTO & INVENTORY SYNC ENGINE (MANAGER) -->
     <script>
         (function initManagerInventoryCloudSync() {
-            const CLOUD_URL = `${API_BASE_URL}/api/memory/inventory-items`;
+            const getInvBranch = () => (window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City'));
 
             async function pushInventoryToCloud(items) {
                 try {
+                    const invBranch = getInvBranch();
                     const list = items || JSON.parse(localStorage.getItem('inventoryItems') || '[]');
                     if (!Array.isArray(list) || list.length === 0) return;
-                    await fetch(CLOUD_URL, {
+                    window.__lastMenuPush = Date.now();
+                    await fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(list)
@@ -6929,19 +6941,22 @@
             }
 
             async function pullAndMergeInventoryFromCloud() {
+                if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
+                if (Date.now() - (window.__lastMenuPush || 0) < 8000) return;
+                const invBranch = getInvBranch();
                 try {
-                    const res = await fetch(`${CLOUD_URL}?nocache=${Date.now()}`);
+                    const res = await fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`);
                     if (!res.ok) return;
                     const cloudItems = await res.json();
+                    if (!Array.isArray(cloudItems) || cloudItems.length === 0) return;
+                    if (getInvBranch() !== invBranch) return;
                     const localItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
 
                     // If cloud is empty or missing photos that exist locally, push merged state to cloud
                     const cloudMap = {};
-                    if (Array.isArray(cloudItems)) {
-                        cloudItems.forEach(c => { if (c && c.id) cloudMap[c.id] = c; });
-                    }
+                    cloudItems.forEach(c => { if (c && c.id) cloudMap[c.id] = c; });
 
-                    let needsCloudPush = !Array.isArray(cloudItems) || cloudItems.length === 0;
+                    let needsCloudPush = false;
                     let localChanged = false;
 
                     const merged = localItems.map(loc => {
@@ -6951,11 +6966,11 @@
                             return loc;
                         }
 
-                        const locTime = loc.last_updated ? new Date(loc.last_updated).getTime() : 0;
-                        const cldTime = cld.last_updated ? new Date(cld.last_updated).getTime() : 0;
+                        const locTs = Number(loc.stockUpdatedAt) || (loc.last_updated ? new Date(loc.last_updated).getTime() : 0);
+                        const cldTs = Number(cld.stockUpdatedAt) || (cld.last_updated ? new Date(cld.last_updated).getTime() : 0);
 
                         // If local item was edited more recently, or has a local photo not yet in cloud
-                        if (locTime > cldTime || (loc.image && !cld.image && cldTime === 0)) {
+                        if (locTs > cldTs || (loc.image && !cld.image && cldTs === 0)) {
                             needsCloudPush = true;
                             return { ...cld, ...loc };
                         }
@@ -6968,21 +6983,24 @@
                     });
 
                     // Append any custom items created on another device
-                    if (Array.isArray(cloudItems)) {
-                        cloudItems.forEach(cld => {
-                            if (cld && cld.id && !merged.find(m => m.id === cld.id)) {
-                                merged.push(cld);
-                                localChanged = true;
-                            }
-                        });
-                    }
+                    cloudItems.forEach(cld => {
+                        if (cld && cld.id && !merged.find(m => m.id === cld.id)) {
+                            merged.push(cld);
+                            localChanged = true;
+                        }
+                    });
 
                     if (localChanged) {
                         localStorage.setItem('inventoryItems', JSON.stringify(merged));
-                        if (typeof renderDashboard === 'function') renderDashboard();
+                        if (window.InventorySystem?.syncFoodMenuStockFromIngredients) {
+                            window.InventorySystem.syncFoodMenuStockFromIngredients();
+                        }
+                        if (typeof window.refreshActiveSuperAdminInvTab === 'function') {
+                            window.refreshActiveSuperAdminInvTab(true);
+                        }
                     }
 
-                    if (needsCloudPush && merged.length > 0) {
+                    if (needsCloudPush && merged.length > 0 && Date.now() >= (window.__inventoryHoldUntil || 0)) {
                         await pushInventoryToCloud(merged);
                     }
                 } catch (err) {
