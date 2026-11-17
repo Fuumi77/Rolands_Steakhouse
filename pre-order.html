@@ -552,20 +552,25 @@
 
                 // Build a map of IDs present in the admin inventory
                 const invMap = {};
-                syncedInvItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem(i); });
+                syncedInvItems.forEach(i => { if (i.id) invMap[i.id] = normalizeItem({ ...i }); });
 
-                // Merge property by property to ensure image is kept
+                // Merge property by property so live inventory & EOD stock always govern
                 const merged = defaultMenuData.map(def => {
-                    const saved = invMap[def.id] || {};
-                    const mergedItem = { ...normalizeItem(def), ...saved };
-                    if (!mergedItem.image && saved.image) mergedItem.image = saved.image;
-                    return mergedItem;
+                    const saved = invMap[def.id];
+                    if (saved) {
+                        const combined = { ...def, ...saved };
+                        if (!combined.image && saved.image) combined.image = saved.image;
+                        return normalizeItem(combined);
+                    }
+                    const defClone = { ...def, total_stock: undefined, added_stock: 0, sold_stock: 0 };
+                    const normDef = normalizeItem(defClone);
+                    return normDef;
                 });
 
                 // Append any inventory-only items that don't exist in the defaults (custom items)
                 syncedInvItems.forEach(i => {
                     if (i.id && !merged.find(m => m.id === i.id)) {
-                        merged.push(normalizeItem(i));
+                        merged.push(normalizeItem({ ...i }));
                     }
                 });
 
@@ -624,54 +629,64 @@
         const menuGrid = document.getElementById('menu-grid');
         const categoryTitle = document.getElementById('current-category-title');
 
+        function buildMenuCardElement(item) {
+            const isSoldOut = item.stock <= 0;
+            const threshold = item.threshold || 5;
+            const isLow = item.stock > 0 && item.stock <= threshold;
+            const qty = cart[item.id]?.qty || 0;
+
+            const card = document.createElement('div');
+            card.className = 'menu-card' + (isSoldOut ? ' sold-out' : '');
+
+            if (isSoldOut) {
+                card.style.opacity = '0.5';
+                card.style.filter = 'grayscale(100%)';
+            }
+
+            let controlsHtml = '';
+            if (isSoldOut) {
+                controlsHtml = `<div style="font-weight: 800; color: #d32f2f; padding: 10px 0; text-align:center;">SOLD OUT</div>`;
+            } else {
+                controlsHtml = `
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="updateQty('${item.id}',-1)" aria-label="Remove">−</button>
+                        <span class="qty-display">${qty}</span>
+                        <button class="qty-btn add" onclick="updateQty('${item.id}',1)" aria-label="Add">+</button>
+                    </div>
+                `;
+            }
+
+            const badgeHtml = isSoldOut
+                ? ''
+                : (isLow
+                    ? `<div style="position:absolute; top:8px; left:8px; background:#ef4444; color:white; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.2);">Only ${item.stock} left!</div>`
+                    : `<div style="position:absolute; top:8px; left:8px; background:rgba(15, 23, 42, 0.78); color:white; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.18);">${item.stock} left</div>`);
+
+            card.innerHTML = `
+                <div style="position:relative; overflow:hidden; cursor: zoom-in; transition: transform 0.3s;" 
+                     onclick="openLightbox('${item.image || `https://placehold.co/800x600/f0fdf4/2e7d32?text=${encodeURIComponent(item.title)}`}', '${item.title}')"
+                     onmouseover="this.style.transform='scale(1.02)'" 
+                     onmouseout="this.style.transform='scale(1)'">
+                    ${badgeHtml}
+                    <img class="menu-img" src="${item.image ? item.image : `https://placehold.co/400x300/f0fdf4/2e7d32?text=${encodeURIComponent(item.title.split(' ')[0])}`}" alt="${item.title}" style="object-fit:cover; width:100%; height:150px; display: block;">
+                    <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); color:white; font-size:10px; padding:4px; text-align:center; opacity:0; transition: opacity 0.2s;" class="zoom-hint">Click to enlarge</div>
+                </div>
+                <div class="menu-info">
+                    <div class="menu-title">${item.title}</div>
+                    <div class="menu-price">${fmt(item.price)}</div>
+                </div>
+                ${controlsHtml}
+            `;
+            return card;
+        }
+
         function renderMenu() {
             menuGrid.innerHTML = '';
 
             menuData.filter(i => i.category === currentCategory).forEach(item => {
-                const isSoldOut = item.stock <= 0;
-                const isLow = item.stock > 0 && item.stock <= (item.threshold || 5);
-                const qty = cart[item.id]?.qty || 0;
-                
-                const card = document.createElement('div');
-                card.className = 'menu-card' + (isSoldOut ? ' sold-out' : '');
-                
-                if(isSoldOut) {
-                    card.style.opacity = '0.5';
-                    card.style.filter = 'grayscale(100%)';
-                }
-                
-                let controlsHtml = '';
-                if(isSoldOut) {
-                    controlsHtml = `<div style="font-weight: 800; color: #d32f2f; padding: 10px 0; text-align:center;">SOLD OUT</div>`;
-                } else {
-                    controlsHtml = `
-                        <div class="qty-controls">
-                            <button class="qty-btn" onclick="updateQty('${item.id}',-1)" aria-label="Remove">−</button>
-                            <span class="qty-display">${qty}</span>
-                            <button class="qty-btn add" onclick="updateQty('${item.id}',1)" aria-label="Add">+</button>
-                        </div>
-                    `;
-                }
-
-                const badgeHtml = isLow ? `<div style="position:absolute; top:8px; left:8px; background:#ef4444; color:white; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.2);">Only ${item.stock} left!</div>` : '';
-
-                card.innerHTML = `
-                    <div style="position:relative; overflow:hidden; cursor: zoom-in; transition: transform 0.3s;" 
-                         onclick="openLightbox('${item.image || `https://placehold.co/800x600/f0fdf4/2e7d32?text=${encodeURIComponent(item.title)}`}', '${item.title}')"
-                         onmouseover="this.style.transform='scale(1.02)'" 
-                         onmouseout="this.style.transform='scale(1)'">
-                        ${badgeHtml}
-                        <img class="menu-img" src="${item.image ? item.image : `https://placehold.co/400x300/f0fdf4/2e7d32?text=${encodeURIComponent(item.title.split(' ')[0])}`}" alt="${item.title}" style="object-fit:cover; width:100%; height:150px; display: block;">
-                        <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); color:white; font-size:10px; padding:4px; text-align:center; opacity:0; transition: opacity 0.2s;" class="zoom-hint">Click to enlarge</div>
-                    </div>
-                    <div class="menu-info">
-                        <div class="menu-title">${item.title}</div>
-                        <div class="menu-price">${fmt(item.price)}</div>
-                    </div>
-                    ${controlsHtml}
-                `;
-                menuGrid.appendChild(card);
+                menuGrid.appendChild(buildMenuCardElement(item));
             });
+            syncMenuCardsInCart();
         }
 
         window.filterFood = function() {
@@ -702,50 +717,9 @@
                 }
 
                 filtered.forEach(item => {
-                    const isSoldOut = item.stock <= 0;
-                    const isLow = item.stock > 0 && item.stock <= (item.threshold || 5);
-                    const qty = cart[item.id]?.qty || 0;
-                    
-                    const card = document.createElement('div');
-                    card.className = 'menu-card' + (isSoldOut ? ' sold-out' : '');
-                    
-                    if(isSoldOut) {
-                        card.style.opacity = '0.5';
-                        card.style.filter = 'grayscale(100%)';
-                    }
-                    
-                    let controlsHtml = '';
-                    if(isSoldOut) {
-                        controlsHtml = `<div style="font-weight: 800; color: #d32f2f; padding: 10px 0; text-align:center;">SOLD OUT</div>`;
-                    } else {
-                        controlsHtml = `
-                            <div class="qty-controls">
-                                <button class="qty-btn" onclick="updateQty('${item.id}',-1)" aria-label="Remove">−</button>
-                                <span class="qty-display">${qty}</span>
-                                <button class="qty-btn add" onclick="updateQty('${item.id}',1)" aria-label="Add">+</button>
-                            </div>
-                        `;
-                    }
-
-                    const badgeHtml = isLow ? `<div style="position:absolute; top:8px; left:8px; background:#ef4444; color:white; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:800; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.2);">Only ${item.stock} left!</div>` : '';
-
-                    card.innerHTML = `
-                        <div style="position:relative; overflow:hidden; cursor: zoom-in; transition: transform 0.3s;" 
-                             onclick="openLightbox('${item.image || `https://placehold.co/800x600/f0fdf4/2e7d32?text=${encodeURIComponent(item.title)}`}', '${item.title}')"
-                             onmouseover="this.style.transform='scale(1.02)'" 
-                             onmouseout="this.style.transform='scale(1)'">
-                            ${badgeHtml}
-                            <img class="menu-img" src="${item.image ? item.image : `https://placehold.co/400x300/f0fdf4/2e7d32?text=${encodeURIComponent(item.title.split(' ')[0])}`}" alt="${item.title}" style="object-fit:cover; width:100%; height:150px; display: block;">
-                            <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); color:white; font-size:10px; padding:4px; text-align:center; opacity:0; transition: opacity 0.2s;" class="zoom-hint">Click to enlarge</div>
-                        </div>
-                        <div class="menu-info">
-                            <div class="menu-title">${item.title}</div>
-                            <div class="menu-price">${fmt(item.price)}</div>
-                        </div>
-                        ${controlsHtml}
-                    `;
-                    menuGrid.appendChild(card);
+                    menuGrid.appendChild(buildMenuCardElement(item));
                 });
+                syncMenuCardsInCart();
             }
         }
 
@@ -1458,34 +1432,49 @@
         };
 
         // ─────────────────────────────────────────────────────────
-        // REAL-TIME SYNC FOR INVENTORY ITEMS
+        // REAL-TIME SYNC FOR INVENTORY ITEMS & RAW INGREDIENTS
         // ─────────────────────────────────────────────────────────
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'inventoryItems') {
-                menuData = getMenuData();
-                let cartChanged = false;
-                let alertMsg = "";
-                
-                for (let id in cart) {
-                    const latestItemInfo = menuData.find(i => i.id === id);
-                    if (!latestItemInfo || latestItemInfo.stock <= 0) {
-                        delete cart[id];
-                        cartChanged = true;
-                        alertMsg += `- An item was removed (no longer available)\n`;
-                    } else if (cart[id].qty > latestItemInfo.stock) {
-                        cart[id].qty = latestItemInfo.stock;
-                        cartChanged = true;
-                        alertMsg += `- ${latestItemInfo.title} quantity reduced to ${latestItemInfo.stock} (stock went down)\n`;
-                    }
+        function refreshMenuDataAndClampCart(notifyOnChange = true) {
+            menuData = getMenuData();
+            let cartChanged = false;
+            let alertMsg = '';
+
+            for (let id in cart) {
+                const latestItemInfo = menuData.find(i => i.id === id);
+                if (!latestItemInfo || latestItemInfo.stock <= 0) {
+                    const lostTitle = latestItemInfo ? latestItemInfo.title : id;
+                    delete cart[id];
+                    cartChanged = true;
+                    alertMsg += `- ${lostTitle} was removed (sold out / unavailable)\n`;
+                } else if (cart[id].qty > latestItemInfo.stock) {
+                    cart[id].qty = latestItemInfo.stock;
+                    cartChanged = true;
+                    alertMsg += `- ${latestItemInfo.title} quantity reduced to ${latestItemInfo.stock} (stock updated)\n`;
                 }
-                
+            }
+
+            const searchInput = document.getElementById('food-search-input');
+            if (searchInput && searchInput.value.trim() !== '' && typeof window.filterFood === 'function') {
+                window.filterFood();
+            } else {
                 renderMenu();
-                if (cartChanged) {
-                    renderCart();
+            }
+            if (cartChanged) {
+                renderCart();
+                if (notifyOnChange) {
                     superModal({ title: 'Menu Updated 🔄', message: 'Stock levels have changed:\n' + alertMsg });
                 }
             }
+        }
+        window.refreshPreOrderMenuFromInventory = refreshMenuDataAndClampCart;
+
+        window.addEventListener('storage', (e) => {
+            if (!e.key || e.key === 'inventoryItems' || e.key === 'rawIngredients') {
+                refreshMenuDataAndClampCart(true);
+            }
         });
+        window.addEventListener('inventoryUpdated', () => refreshMenuDataAndClampCart(true));
+        window.addEventListener('rawIngredientsUpdated', () => refreshMenuDataAndClampCart(true));
 
         // ─────────────────────────────────────────────────────────
         // INIT
@@ -1583,35 +1572,64 @@
         }
     </script>
 
-    <!-- CLOUD PRODUCT PHOTO & MENU SYNC (CUSTOMER PRE-ORDER) -->
+    <!-- UNIFIED BRANCH-SCOPED CLOUD INVENTORY & MENU SYNC (CUSTOMER PRE-ORDER) -->
     <script>
         (function initPreOrderCloudMenuSync() {
-            const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
+            const API_BASE = 'https://rolands-steakhouse-jsoo.onrender.com';
+            const getBranch = () => (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+            const hdrs = { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' };
             let lastCloudJson = '';
+            let lastRawJson = '';
 
             window.syncMenuFromCloud = async function () {
                 try {
-                    const res = await fetch(`${API_BASE}/api/memory/inventory-items?nocache=${Date.now()}`);
-                    if (!res.ok) return;
-                    const cloudItems = await res.json();
-                    if (!Array.isArray(cloudItems) || cloudItems.length === 0) return;
+                    const branch = getBranch();
+                    const [res, rawRes] = await Promise.all([
+                        fetch(`${API_BASE}/api/memory/inventory-items?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
+                        fetch(`${API_BASE}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs })
+                    ]);
 
-                    const currentJson = JSON.stringify(cloudItems);
-                    if (currentJson !== lastCloudJson) {
-                        lastCloudJson = currentJson;
-                        localStorage.setItem('inventoryItems', currentJson);
+                    let changed = false;
 
-                        if (typeof getMenuData === 'function') {
-                            menuData = getMenuData();
+                    if (rawRes.ok) {
+                        const cloudRaw = await rawRes.json();
+                        if (Array.isArray(cloudRaw) && cloudRaw.length > 0) {
+                            const rawJson = JSON.stringify(cloudRaw);
+                            if (rawJson !== lastRawJson && rawJson !== localStorage.getItem('rawIngredients')) {
+                                lastRawJson = rawJson;
+                                localStorage.setItem('rawIngredients', rawJson);
+                                if (window.InventorySystem?.invalidateInventoryCache) window.InventorySystem.invalidateInventoryCache();
+                                changed = true;
+                            } else {
+                                lastRawJson = rawJson;
+                            }
                         }
-                        const searchInput = document.getElementById('food-search-input');
-                        if (searchInput && searchInput.value.trim() !== '' && typeof window.filterFood === 'function') {
-                            window.filterFood();
-                        } else if (typeof renderMenu === 'function') {
-                            renderMenu();
+                    }
+
+                    if (res.ok) {
+                        const cloudItems = await res.json();
+                        if (Array.isArray(cloudItems) && cloudItems.length > 0) {
+                            const localInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                            const mergedItems = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                                ? window.mergeInventoryWithSharedPhotos(cloudItems, localInv)
+                                : cloudItems;
+                            const currentJson = JSON.stringify(mergedItems);
+                            if (currentJson !== lastCloudJson && currentJson !== localStorage.getItem('inventoryItems')) {
+                                lastCloudJson = currentJson;
+                                localStorage.setItem('inventoryItems', currentJson);
+                                changed = true;
+                            } else {
+                                lastCloudJson = currentJson;
+                            }
                         }
-                        if (typeof renderCart === 'function') {
-                            renderCart();
+                    }
+
+                    if (changed) {
+                        if (window.InventorySystem?.syncFoodMenuStockFromIngredients) {
+                            window.InventorySystem.syncFoodMenuStockFromIngredients();
+                        }
+                        if (typeof window.refreshPreOrderMenuFromInventory === 'function') {
+                            window.refreshPreOrderMenuFromInventory(true);
                         }
                     }
                 } catch (e) {
@@ -1619,7 +1637,6 @@
                 }
             };
 
-            // Also upgrade the "Refresh" button in the cart to pull fresh data from MySQL
             const origRefresh = window.refreshOrder;
             window.refreshOrder = async function () {
                 await window.syncMenuFromCloud();
@@ -1628,36 +1645,9 @@
 
             document.addEventListener('DOMContentLoaded', window.syncMenuFromCloud);
             window.addEventListener('load', window.syncMenuFromCloud);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) window.syncMenuFromCloud(); });
             setInterval(window.syncMenuFromCloud, 8000);
         })();
     </script>
-    <script>
-// ── 👉 STAFF/PRE-ORDER CLOUD INVENTORY RECEIVER ──
-(function startStaffInventorySync() {
-    const API = 'https://rolands-steakhouse-vqtr.vercel.app';
-    
-    async function checkCloudInventory() {
-        try {
-            const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`, {
-                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-            });
-            if (invRes.ok) {
-                const cloudInv = await invRes.json();
-                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                    const localInv = localStorage.getItem('inventoryItems');
-                    if (JSON.stringify(cloudInv) !== localInv) {
-                        localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
-                        // Trigger a page refresh or UI update function depending on how your staff app works
-                        if (typeof renderMenu === 'function') renderMenu();
-                        window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
-                    }
-                }
-            }
-        } catch (e) {}
-    }
-    
-    setInterval(checkCloudInventory, 6000);
-})();
-</script>
 </body>
 </html>
