@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.4"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/pos.css">
     <style>
@@ -117,7 +117,7 @@
             </div>
             <div id="pos-branch-pin-msg" style="min-height:18px; color:#dc2626; font-size:12.5px; font-weight:700; margin-bottom:12px;"></div>
             <div style="display:flex; gap:10px;">
-                <button type="button" onclick="lockPosTerminal()"
+                <button type="button" id="pos-branch-secondary-btn" onclick="handlePosBranchSecondaryAction()"
                     style="flex:1; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#f1f5f9; color:#334155; font-size:13px; font-weight:800; cursor:pointer;">🔒 Lock POS</button>
                 <button type="button" id="pos-branch-unlock-btn" onclick="verifyPosBranchGate()"
                     style="flex:1.4; padding:12px; border:none; border-radius:12px; background:#155e2b; color:#ffffff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(21,94,43,0.3);">Verify & Unlock</button>
@@ -435,12 +435,12 @@
             }
         }
 
-        function showPosBranchGate() {
+        function showPosBranchGate(branchOverride) {
             const branchGate = document.getElementById('pos-branch-gate');
             const msgEl = document.getElementById('pos-branch-pin-msg');
             const pinInput = document.getElementById('pos-branch-pin-input');
             if (typeof window.syncAllBranchSelects === 'function') window.syncAllBranchSelects();
-            updatePosBranchGateLabels(getActivePosBranch());
+            updatePosBranchGateLabels(branchOverride || getActivePosBranch());
             if (msgEl) msgEl.textContent = '';
             if (pinInput) {
                 pinInput.value = '';
@@ -459,6 +459,86 @@
             } else {
                 inp.type = 'password';
                 if (btnEl) btnEl.textContent = 'Reveal';
+            }
+        };
+
+        let posSwitchOriginBranch = null;
+
+        function syncPosBranchSecondaryButton() {
+            const btn = document.getElementById('pos-branch-secondary-btn');
+            if (!btn) return;
+            btn.textContent = (posSwitchOriginBranch && posTerminalUnlocked)
+                ? '✕ Cancel Switch'
+                : '🔒 Lock POS';
+        }
+
+        window.handlePosBranchSecondaryAction = function () {
+            if (posSwitchOriginBranch && posTerminalUnlocked) {
+                return window.cancelPosBranchSwitch();
+            } else {
+                posSwitchOriginBranch = null;
+                syncPosBranchSecondaryButton();
+                lockPosTerminal();
+            }
+        };
+
+        window.requestPosBranchSwitch = async function (targetBranch, previousBranch) {
+            if (!posTerminalUnlocked) {
+                posSwitchOriginBranch = null;
+                syncPosBranchSecondaryButton();
+                lockPosTerminal();
+                return;
+            }
+            const origin = previousBranch || getActivePosBranch();
+            if (!posSwitchOriginBranch) {
+                posSwitchOriginBranch = origin;
+            }
+            posBranchUnlocked = false;
+            setPosInterfaceLocked(true);
+            syncPosBranchSecondaryButton();
+            showPosBranchGate(targetBranch);
+            await handlePosBranchGateSwitch(targetBranch);
+        };
+
+        window.cancelPosBranchSwitch = async function () {
+            const origin = posSwitchOriginBranch;
+            posSwitchOriginBranch = null;
+            syncPosBranchSecondaryButton();
+            if (origin) {
+                try {
+                    if (typeof window.__rawSetStorage === 'function') {
+                        window.__rawSetStorage('adminSelectedBranch', origin);
+                    } else {
+                        localStorage.setItem('adminSelectedBranch', origin);
+                    }
+                } catch (e) { }
+                const topSel = document.getElementById('rsh-staff-branch-select');
+                if (topSel) topSel.value = origin;
+                const gateSel = document.getElementById('pos-branch-gate-select');
+                if (gateSel) gateSel.value = origin;
+                updatePosBranchGateLabels(origin);
+                if (typeof window.syncBranchFloorPlanFromCloud === 'function') {
+                    await window.syncBranchFloorPlanFromCloud();
+                }
+            }
+            if (!posTerminalUnlocked) {
+                lockPosTerminal();
+                return;
+            }
+            posBranchUnlocked = true;
+            const branchGate = document.getElementById('pos-branch-gate');
+            if (branchGate) branchGate.style.display = 'none';
+            setPosInterfaceLocked(false);
+            if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                window.InventorySystem.syncFoodMenuStockFromIngredients();
+            }
+            renderCategories();
+            renderProducts();
+            renderPosTableSelect();
+            renderOrderStatus();
+            updateCartUI();
+            if (typeof showToast === 'function' && origin) {
+                showToast(`Returned to ${origin}`, 'info');
             }
         };
 
@@ -483,6 +563,9 @@
             }
             if (typeof window.syncBranchFloorPlanFromCloud === 'function') {
                 await window.syncBranchFloorPlanFromCloud();
+            }
+            if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                window.InventorySystem.syncFoodMenuStockFromIngredients();
             }
             renderCategories();
             renderProducts();
@@ -521,15 +604,27 @@
                 return;
             }
 
+            const switchedFromBranch = posSwitchOriginBranch;
+            posSwitchOriginBranch = null;
+            syncPosBranchSecondaryButton();
             posBranchUnlocked = true;
             const branchGate = document.getElementById('pos-branch-gate');
             if (branchGate) branchGate.style.display = 'none';
             setPosInterfaceLocked(false);
 
+            if (switchedFromBranch && targetBranch !== switchedFromBranch) {
+                cart = {};
+                editingTransactionId = null;
+                lastTransactionId = null;
+            }
+
             await Promise.all([
                 syncPosInventoryFromCloud(),
                 syncPosReservationsFromCloud(true)
             ]);
+            if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') {
+                window.InventorySystem.syncFoodMenuStockFromIngredients();
+            }
             renderCategories();
             renderProducts();
             renderPosTableSelect();
@@ -540,6 +635,8 @@
         };
 
         function lockPosTerminal() {
+            posSwitchOriginBranch = null;
+            syncPosBranchSecondaryButton();
             posTerminalUnlocked = false;
             posBranchUnlocked = false;
             try { sessionStorage.removeItem('posAuthenticated'); } catch (e) { }
