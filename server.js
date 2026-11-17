@@ -1201,7 +1201,7 @@ app.get('/api/inventory/raw', async (req, res) => {
                 name: r.item_name,
                 category: (r.category && r.category !== 'General') ? r.category : (meta.category || 'General'),
                 stock: parseFloat(r.current_stock) || 0,
-                minThreshold: parseFloat(r.min_threshold) > 10 ? parseFloat(r.min_threshold) : (meta.minThreshold || 10),
+                minThreshold: (r.min_threshold !== null && r.min_threshold !== undefined && parseFloat(r.min_threshold) > 0) ? parseFloat(r.min_threshold) : (meta.minThreshold || 10),
                 unit: meta.unit || r.unit_of_measurement || 'g',
                 branch: r.branch_location || branch
             };
@@ -1294,7 +1294,7 @@ app.post('/api/inventory/sync-movement', async (req, res) => {
             const meta = MASTER_INGREDIENT_META[ingredientId] || {};
             const finalUnit = meta.unit || unit || 'g';
             const finalCat = (category && category !== 'General') ? category : (meta.category || 'General');
-            const finalThresh = (minThreshold && minThreshold > 10) ? minThreshold : (meta.minThreshold || 100);
+            const finalThresh = (minThreshold !== undefined && minThreshold !== null && Number(minThreshold) > 0) ? Number(minThreshold) : (meta.minThreshold || 100);
             const phNow = toPhilippineTimeSQL(timestamp);
 
             const [current] = await db.query(
