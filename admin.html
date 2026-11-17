@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.1"></script>
+    <script src="js/inventory-system.js?v=7.2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
@@ -1652,16 +1652,26 @@ window.readReservationHistory = function () {
                         combined.total_stock = combined.stock;
                         mutated = true;
                     }
-                    // Virtual stock for legacy UI display
-                    combined.stock = (combined.total_stock || 0) + (combined.added_stock || 0) - (combined.sold_stock || 0);
+                    if (combined.added_stock === undefined) combined.added_stock = 0;
+                    if (combined.sold_stock === undefined) combined.sold_stock = 0;
+                    if (window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function') {
+                        const avail = window.InventorySystem.calculateFoodAvailability(combined);
+                        combined.stock = avail.availablePortions;
+                    } else {
+                        combined.stock = combined.manualUnavailable ? 0 : Math.max(0, (combined.total_stock || 0) + (combined.added_stock || 0) - (combined.sold_stock || 0));
+                    }
                     return combined;
                 });
 
                 // Append custom items
                 savedItems.forEach(i => {
                     if (i.id && !merged.find(m => m.id === i.id)) {
-                        const copy = { ...i };
-                        copy.stock = (copy.total_stock || 0) + (copy.added_stock || 0) - (copy.sold_stock || 0);
+                        const copy = { added_stock: 0, sold_stock: 0, ...i };
+                        if (window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function') {
+                            copy.stock = window.InventorySystem.calculateFoodAvailability(copy).availablePortions;
+                        } else {
+                            copy.stock = copy.manualUnavailable ? 0 : Math.max(0, (copy.total_stock || 0) + (copy.added_stock || 0) - (copy.sold_stock || 0));
+                        }
                         merged.push(copy);
                     }
                 });
@@ -5599,18 +5609,21 @@ sessions.sort((a, b) => chatLastActivity[b] - chatLastActivity[a]);
                                 <div style="font-size: 14px; font-weight: 800; margin-bottom: 2px; color:#0f172a;">
                                     Portions: <span style="color: ${statusColor}; font-size:16px;">${avail.availablePortions}</span>
                                 </div>
-                                ${(avail.addedStock || avail.soldStock) ? `<div style="font-size:10.5px; color:#64748b; font-weight:700; margin-bottom:2px;">Total: ${avail.rawPortions ?? avail.availablePortions} | +${avail.addedStock || 0} | -${avail.soldStock || 0} (EOD)</div>` : ''}
+                                <div style="font-size:10.5px; color:#64748b; font-weight:700; margin-bottom:2px;">Total: ${avail.rawPortions ?? 0} | +${avail.addedStock || 0} | -${avail.soldStock || 0} (EOD)</div>
                                 <button type="button" onclick="window.toggleItemManualAvailability('${item.id}', 'Admin Staff')" style="width:100%; padding:7px; border-radius:6px; border:1px solid ${item.manualUnavailable ? '#86efac' : '#fca5a5'}; background:${item.manualUnavailable ? '#f0fdf4' : '#fef2f2'}; color:${item.manualUnavailable ? '#166534' : '#dc2626'}; font-size:11.5px; font-weight:800; cursor:pointer;">
                                     ${item.manualUnavailable ? '🟢 Set Available' : '🚫 Set Unavailable'}
                                 </button>
-                                <div style="display:flex; gap:6px;">
-                                    <button type="button" onclick="window.promptRemoveMenuPortions('${item.id}', 'Admin Staff')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:10.5px; font-weight:800; cursor:pointer;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                                    <button type="button" onclick="window.adjustMenuAddedStock('${item.id}', 1, 'Admin Staff')" style="padding:7px 4px; border-radius:6px; border:1px solid #bbf7d0; background:#f0fdf4; color:#15803d; font-size:10.5px; font-weight:800; cursor:pointer;">
+                                        ➕ Add Stock
+                                    </button>
+                                    <button type="button" onclick="window.promptRemoveMenuPortions('${item.id}', 'Admin Staff')" style="padding:7px 4px; border-radius:6px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:10.5px; font-weight:800; cursor:pointer;">
                                         ➖ Portions
                                     </button>
-                                    <button type="button" onclick="openRecipeEditorModal('${item.id}')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:10.5px; font-weight:700; cursor:pointer;">
+                                    <button type="button" onclick="openRecipeEditorModal('${item.id}')" style="padding:7px 4px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; font-size:10.5px; font-weight:700; cursor:pointer;">
                                         ✏️ Recipe
                                     </button>
-                                    <button type="button" onclick="window.openAdminPhotoEditModal('${item.id}')" style="flex:1; padding:7px 4px; border-radius:6px; border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; font-size:10.5px; font-weight:800; cursor:pointer;">
+                                    <button type="button" onclick="window.openAdminPhotoEditModal('${item.id}')" style="padding:7px 4px; border-radius:6px; border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; font-size:10.5px; font-weight:800; cursor:pointer;">
                                         📷 Photo
                                     </button>
                                 </div>
@@ -7814,39 +7827,87 @@ window.adminRawFilter = 'all';
         </div>
     </div>
 
-    <!-- CLOUD PRODUCT PHOTO & MENU SYNC (STAFF PORTAL) -->
+    <!-- UNIFIED BRANCH-SCOPED CLOUD INVENTORY & RAW INGREDIENTS SYNC (STAFF PORTAL) -->
     <script>
         (function initStaffCloudInventorySync() {
-            const CLOUD_URL = `${API_BASE_URL}/api/memory/inventory-items`;
+            const getBranch = () => (window.getInventoryBranch ? window.getInventoryBranch() : (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City'));
             let lastStaffCloudJson = '';
+            let lastStaffRawJson = '';
 
             async function syncStaffInventoryFromCloud() {
+                if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
+                if (Date.now() - (window.__lastMenuPush || 0) < 8000) return;
+                const branch = getBranch();
+                const hdrs = { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' };
                 try {
-                    const res = await fetch(`${CLOUD_URL}?nocache=${Date.now()}`);
-                    if (!res.ok) return;
-                    const cloudItems = await res.json();
-                    if (!Array.isArray(cloudItems) || cloudItems.length === 0) return;
+                    const [invRes, rawRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
+                        fetch(`${API_BASE_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs })
+                    ]);
+                    if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
+                    let changed = false;
 
-                    const jsonStr = JSON.stringify(cloudItems);
-                    if (jsonStr !== lastStaffCloudJson) {
-                        lastStaffCloudJson = jsonStr;
-                        localStorage.setItem('inventoryItems', jsonStr);
-                        window.dispatchEvent(new Event('inventoryUpdated'));
+                    if (rawRes.ok) {
+                        const cloudRaw = await rawRes.json();
+                        if (Array.isArray(cloudRaw) && cloudRaw.length > 0) {
+                            const rawJson = JSON.stringify(cloudRaw);
+                            if (rawJson !== lastStaffRawJson && rawJson !== localStorage.getItem('rawIngredients')) {
+                                lastStaffRawJson = rawJson;
+                                localStorage.setItem('rawIngredients', rawJson);
+                                if (window.InventorySystem?.invalidateInventoryCache) window.InventorySystem.invalidateInventoryCache();
+                                window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloudRaw }));
+                                changed = true;
+                            } else {
+                                lastStaffRawJson = rawJson;
+                            }
+                        }
+                    }
+
+                    if (invRes.ok) {
+                        const cloudItems = await invRes.json();
+                        if (Array.isArray(cloudItems) && cloudItems.length > 0) {
+                            const localItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                            const mergedItems = typeof window.mergeInventoryWithSharedPhotos === 'function'
+                                ? window.mergeInventoryWithSharedPhotos(cloudItems, localItems)
+                                : cloudItems;
+                            const jsonStr = JSON.stringify(mergedItems);
+                            if (jsonStr !== lastStaffCloudJson && jsonStr !== localStorage.getItem('inventoryItems')) {
+                                lastStaffCloudJson = jsonStr;
+                                localStorage.setItem('inventoryItems', jsonStr);
+                                window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: mergedItems }));
+                                changed = true;
+                            } else {
+                                lastStaffCloudJson = jsonStr;
+                            }
+                        }
+                    }
+
+                    if (changed) {
+                        if (window.InventorySystem?.syncFoodMenuStockFromIngredients) {
+                            window.InventorySystem.syncFoodMenuStockFromIngredients();
+                        }
+                        if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                        if (typeof window.renderRawIngredientsContainer === 'function') window.renderRawIngredientsContainer();
+                        if (typeof window.renderMenu === 'function') window.renderMenu();
                     }
                 } catch (e) {}
             }
 
-            // If staff deletes a photo, push that update to the cloud too
+            // If staff deletes a photo, push that update to the branch-scoped cloud cleanly
             window.addEventListener('load', () => {
                 syncStaffInventoryFromCloud();
                 setInterval(syncStaffInventoryFromCloud, 8000);
+                document.addEventListener('visibilitychange', () => { if (!document.hidden) syncStaffInventoryFromCloud(); });
 
                 if (typeof window.deleteInventoryPhoto === 'function' && !window.deleteInventoryPhoto.__cloudWrapped) {
                     const origDel = window.deleteInventoryPhoto;
                     window.deleteInventoryPhoto = async function (...args) {
                         const r = await origDel.apply(this, args);
+                        const branch = getBranch();
                         const updated = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-                        await fetch(CLOUD_URL, {
+                        window.__inventoryHoldUntil = Date.now() + 8000;
+                        window.__lastMenuPush = Date.now();
+                        await fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(branch)}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(updated)
@@ -8382,63 +8443,6 @@ window.adminRawFilter = 'all';
             }
         })();
     </script>
-    <script>
-// ── 👉 STAFF/PRE-ORDER CLOUD INVENTORY RECEIVER ──
-(function startStaffInventorySync() {
-    const API = 'https://rolands-steakhouse-vqtr.vercel.app';
-    
-    async function checkCloudInventory() {
-        try {
-            const invRes = await fetch(`${API}/api/memory/inventory-items?nocache=${Date.now()}`, {
-                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-            });
-            if (invRes.ok) {
-                const cloudInv = await invRes.json();
-                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                    const localInv = localStorage.getItem('inventoryItems');
-                    if (JSON.stringify(cloudInv) !== localInv) {
-                        localStorage.setItem('inventoryItems', JSON.stringify(cloudInv));
-                        // Trigger a page refresh or UI update function depending on how your staff app works
-                        if (typeof renderMenu === 'function') renderMenu();
-                        window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: cloudInv }));
-                    }
-                }
-            }
-        } catch (e) {}
-    }
-    
-    setInterval(checkCloudInventory, 6000);
-})();
-</script>
-
-    <script>
-// ── 👉 RAW INGREDIENTS RECEIVER (so Portion Availability matches Manager) ──
-(function rawIngredientSync() {
-    const RAW_URL = 'https://rolands-steakhouse-vqtr.vercel.app/api/memory/raw-ingredients';
-    let lastRawJson = '';
-
-    async function pullRaw() {
-        try {
-            const r = await fetch(`${RAW_URL}?nocache=${Date.now()}`, {
-                headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-            });
-            if (!r.ok) return;
-            const cloud = await r.json();
-            if (!Array.isArray(cloud) || cloud.length === 0) return;
-            const json = JSON.stringify(cloud);
-            if (json === lastRawJson) return;
-            lastRawJson = json;
-            localStorage.setItem('rawIngredients', json);
-            if (window.InventorySystem) window.InventorySystem._cachedRawIngredients = null;
-            window.dispatchEvent(new CustomEvent('rawIngredientsUpdated', { detail: cloud }));
-        } catch (e) {}
-    }
-
-    pullRaw();
-    setInterval(pullRaw, 20000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) pullRaw(); });
-})();
-</script>
 </body>
 
 </html>
