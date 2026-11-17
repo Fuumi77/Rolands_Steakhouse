@@ -72,6 +72,10 @@
             <div class="order-summary">
                 <div class="order-summary-title">Booking Summary</div>
                 <div class="order-row">
+                    <span>Branch</span>
+                    <span id="summary-branch" style="font-weight:700; color:#1b5e20; text-align:right;">—</span>
+                </div>
+                <div class="order-row">
                     <span>Customer</span>
                     <span id="summary-name">—</span>
                 </div>
@@ -188,7 +192,14 @@
         const bookedTable  = localStorage.getItem('bookedTable') || 'TBD';
         const orderSummary = localStorage.getItem('orderSummary') || '';
 
-        // Display amounts
+        // Display amounts & processing branch
+        const summaryBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : (localStorage.getItem('selectedBranch') || 'General Santos City');
+        const summaryBranchInfo = window.getBranchInfo ? window.getBranchInfo(summaryBranchName) : null;
+        const summaryBranchEl = document.getElementById('summary-branch');
+        if (summaryBranchEl) {
+            summaryBranchEl.textContent = summaryBranchName;
+            if (summaryBranchInfo && summaryBranchInfo.address) summaryBranchEl.title = summaryBranchInfo.address;
+        }
         document.getElementById('display-amt').textContent = Number(total).toLocaleString();
         document.getElementById('summary-name').textContent  = customerName;
         document.getElementById('summary-table').textContent = bookedTable;
