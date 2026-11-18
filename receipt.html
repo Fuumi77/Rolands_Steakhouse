@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/receipt.css">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.5"></script>
     <link rel="stylesheet" href="css/responsive.css">
 </head>
 
@@ -420,13 +420,19 @@
                 }
 
                 // Update branch label & header address for multi-branch receipts
-                if (found.branch && typeof window.getBranchInfo === 'function') {
-                    const bInfo = window.getBranchInfo(found.branch);
+                const resolvedReceiptBranch = found.branch || urlParams.get('branch') || '';
+                if (resolvedReceiptBranch) {
+                    if (typeof window.syncBranchesFromCloud === 'function') {
+                        await window.syncBranchesFromCloud().catch(() => {});
+                    }
+                    const bInfo = typeof window.getBranchInfo === 'function'
+                        ? window.getBranchInfo(resolvedReceiptBranch)
+                        : { name: resolvedReceiptBranch };
                     const bEl = document.getElementById('receipt-branch-id');
-                    if (bEl) bEl.textContent = bInfo.name;
+                    if (bEl) bEl.textContent = bInfo.name || resolvedReceiptBranch;
                     const centerPs = document.querySelectorAll('#receipt-capture-area .center p');
-                    if (centerPs.length >= 2) {
-                        centerPs[1].innerHTML = `${bInfo.address}<br>Tel: ${bInfo.tel}`;
+                    if (centerPs.length >= 2 && bInfo.address) {
+                        centerPs[1].innerHTML = `${bInfo.address}<br>Tel: ${bInfo.tel || ''}`;
                     }
                 }
 
