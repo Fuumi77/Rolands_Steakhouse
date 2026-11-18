@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.4"></script>
+    <script src="js/inventory-system.js?v=7.5"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/pos.css">
     <style>
@@ -2145,12 +2145,75 @@
             if (stopBtn) stopBtn.classList.add('hidden');
         }
 
-        function onScanSuccess(decodedText) {
-            stopScanner();
-            const resNo = decodedText.trim();
-            const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
-            const resIndex = history.findIndex(r => r.reservationNumber === resNo);
-            const res = resIndex !== -1 ? history[resIndex] : null;
+        function escapePosHtml(str) {
+            if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function extractQrVerificationPayload(decodedText) {
+            const raw = String(decodedText || '').trim();
+            if (!raw) return { resNo: '', branchHint: '' };
+
+            let resNo = '';
+            let branchHint = '';
+
+            // 1. Structured refund QR: ROLANDS-REFUND|RES:RES-70|...|URL:https://.../receipt.html?res=RES-70&branch=...
+            if (/ROLANDS-REFUND\|/i.test(raw)) {
+                const resMatch = raw.match(/(?:^|\|)RES:([^|\s]+)/i);
+                if (resMatch && resMatch[1]) resNo = resMatch[1].trim();
+                const urlPart = raw.match(/(?:^|\|)URL:([^|\s]+)/i);
+                if (urlPart && urlPart[1]) {
+                    try {
+                        const parsed = new URL(urlPart[1], window.location.origin);
+                        if (!resNo) resNo = (parsed.searchParams.get('res') || parsed.searchParams.get('resno') || '').trim();
+                        branchHint = (parsed.searchParams.get('branch') || '').trim();
+                    } catch (e) { }
+                }
+            }
+
+            // 2. Digital Receipt URL: https://rolandssteakhouse.com/receipt.html?res=RES-70(&branch=Surigao%20City)
+            if (!resNo && (/^https?:\/\//i.test(raw) || /receipt\.html|[?&](?:res|resno)=/i.test(raw))) {
+                try {
+                    const parsed = new URL(raw, window.location.origin);
+                    resNo = (parsed.searchParams.get('res') || parsed.searchParams.get('resno') || '').trim();
+                    if (!branchHint) branchHint = (parsed.searchParams.get('branch') || '').trim();
+                } catch (e) { }
+                if (!resNo) {
+                    const qRes = raw.match(/[?&](?:res|resno)=([^&#\s]+)/i);
+                    if (qRes && qRes[1]) {
+                        try { resNo = decodeURIComponent(qRes[1]).trim(); } catch (e) { resNo = qRes[1].trim(); }
+                    }
+                }
+                if (!branchHint) {
+                    const qBr = raw.match(/[?&]branch=([^&#\s]+)/i);
+                    if (qBr && qBr[1]) {
+                        try { branchHint = decodeURIComponent(qBr[1]).trim(); } catch (e) { branchHint = qBr[1].trim(); }
+                    }
+                }
+            }
+
+            // 3. Fallback reservation ID token anywhere in raw payload (RES-#, VIP-#, WI-#, POS-#)
+            if (!resNo) {
+                const tokenMatch = raw.match(/\b((?:RES|VIP|WI|POS)-\d+)\b/i);
+                resNo = tokenMatch ? tokenMatch[1] : raw;
+            }
+
+            if (/^(res|vip|wi|pos)-\d+$/i.test(resNo)) {
+                resNo = resNo.toUpperCase();
+            }
+            return { resNo, branchHint };
+        }
+        window.extractQrVerificationPayload = extractQrVerificationPayload;
+
+        async function onScanSuccess(decodedText) {
+            await stopScanner();
+            const { resNo, branchHint } = extractQrVerificationPayload(decodedText);
+            const lookupKey = resNo.toLowerCase();
 
             const modal = document.getElementById('modal-verify');
             const icon = document.getElementById('verify-icon');
@@ -2159,7 +2222,74 @@
 
             modal.style.display = 'flex';
 
+            const findInLocalHistory = (list) => {
+                if (!lookupKey || !Array.isArray(list)) return -1;
+                return list.findIndex(r => r && r.reservationNumber && String(r.reservationNumber).trim().toLowerCase() === lookupKey);
+            };
+
+            let history = [];
+            try { history = JSON.parse(localStorage.getItem('reservationHistory') || '[]'); } catch (e) { history = []; }
+            let resIndex = findInLocalHistory(history);
+
+            if (resIndex === -1 && lookupKey) {
+                icon.textContent = '⏳';
+                title.textContent = 'Verifying Receipt...';
+                body.innerHTML = `<div style="text-align:center; padding:20px; color:#475569;">Checking cloud records for <b>${escapePosHtml(resNo)}</b>...</div>`;
+                try {
+                    await syncPosReservationsFromCloud(true);
+                    history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+                    resIndex = findInLocalHistory(history);
+                } catch (e) { }
+            }
+
+            if (resIndex === -1 && lookupKey) {
+                try {
+                    const allRes = await fetch(`${API_BASE_URL}/reservations?branch=ALL&nocache=${Date.now()}`);
+                    if (allRes && allRes.ok) {
+                        const allList = await allRes.json();
+                        const remote = Array.isArray(allList)
+                            ? allList.find(r => r && r.reservationNumber && String(r.reservationNumber).trim().toLowerCase() === lookupKey)
+                            : null;
+                        if (remote) {
+                            const currentPosBranch = getActivePosBranch();
+                            const remoteBranch = String(remote.branch || 'General Santos City').trim();
+                            if (remoteBranch.toLowerCase() !== currentPosBranch.toLowerCase()) {
+                                icon.textContent = '⚠️';
+                                title.textContent = 'Wrong Branch Receipt';
+                                body.innerHTML = `
+                                    <div style="text-align:center; margin-bottom:15px; background:#fff7ed; padding:12px; border-radius:8px; border:1px solid #fed7aa; color:#9a3412; font-weight:700;">
+                                        Reservation <b>${escapePosHtml(remote.reservationNumber)}</b> belongs to <b>📍 ${escapePosHtml(remoteBranch)}</b>, not <b>${escapePosHtml(currentPosBranch)}</b>.
+                                    </div>
+                                    <div style="margin-bottom:8px;">👤 <b>Customer:</b> ${escapePosHtml(remote.customerName || 'Guest')}</div>
+                                    <div style="margin-bottom:8px;">🪑 <b>Table:</b> ${escapePosHtml(remote.bookedTable || 'TBD')}</div>
+                                    <div style="margin-bottom:8px;">🕒 <b>Arrival:</b> ${escapePosHtml([remote.arrivalDate, remote.arrivalTime].filter(Boolean).join(' ') || 'Scheduled')}</div>
+                                    <div style="font-size:12px; color:#9a3412; font-weight:600; margin-top:14px; text-align:center;">
+                                        Switch POS branch to <b>${escapePosHtml(remoteBranch)}</b> to verify or claim this booking.
+                                    </div>
+                                `;
+                                return;
+                            }
+                            const unpacked = typeof window.unpackCloudFoodsAndNote === 'function'
+                                ? window.unpackCloudFoodsAndNote(remote.foods || [], remote.beefNote || remote.notes || '')
+                                : { foods: Array.isArray(remote.foods) ? remote.foods : [], beefNote: remote.beefNote || '' };
+                            history.push({
+                                ...remote,
+                                foods: unpacked.foods,
+                                beefNote: unpacked.beefNote,
+                                approvalStatus: String(remote.status || 'pending').toLowerCase().trim(),
+                                branch: remoteBranch
+                            });
+                            localStorage.setItem('reservationHistory', JSON.stringify(history));
+                            resIndex = history.length - 1;
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            const res = resIndex !== -1 ? history[resIndex] : null;
+
             if (res) {
+                const resBranchLabel = escapePosHtml(res.branch || branchHint || getActivePosBranch());
                 // Check if reservation is cancelled or rejected
                 const isCancelled = res.approvalStatus === 'cancelled' ||
                     res.approvalStatus === 'rejected' ||
@@ -2177,14 +2307,15 @@
                         <div style="text-align:center; margin-bottom:15px; background:${isRefunded ? '#eff6ff' : '#fef2f2'}; padding:12px; border-radius:8px; border:1.5px solid ${isRefunded ? '#bfdbfe' : '#fca5a5'}; color:${isRefunded ? '#1e40af' : '#991b1b'}; font-weight:800; font-size:14px; letter-spacing:0.5px;">
                             ${isRefunded ? `💸 CANCELLED & REFUNDED (₱${refundAmt.toLocaleString()})` : '🚫 RESERVATION CANCELLED (INVALID)'}
                         </div>
-                        <div style="margin-bottom:8px;">👤 <b>Customer:</b> ${res.customerName || 'N/A'}</div>
-                        <div style="margin-bottom:8px;">🪑 <b>Table:</b> ${res.bookedTable || 'None'}</div>
-                        <div style="margin-bottom:8px;">🕒 <b>Date & Time:</b> ${res.arrivalDateTimeDisplay || res.arrivalDate || 'N/A'}</div>
+                        <div style="margin-bottom:8px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:8px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName || 'N/A')}</div>
+                        <div style="margin-bottom:8px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable || 'None')}</div>
+                        <div style="margin-bottom:8px;">🕒 <b>Date & Time:</b> ${escapePosHtml(res.arrivalDateTimeDisplay || res.arrivalDate || 'N/A')}</div>
                         ${isRefunded ? `
-                            <div style="margin-bottom:8px; color:#1e40af;">💰 <b>Refunded:</b> ₱${refundAmt.toLocaleString()} via ${(res.refundMethod || 'GCash').toUpperCase()}</div>
-                            ${res.refundRef ? `<div style="margin-bottom:8px; color:#1e40af;">🔖 <b>Ref #:</b> ${res.refundRef}</div>` : ''}
+                            <div style="margin-bottom:8px; color:#1e40af;">💰 <b>Refunded:</b> ₱${refundAmt.toLocaleString()} via ${escapePosHtml((res.refundMethod || 'GCash').toUpperCase())}</div>
+                            ${res.refundRef ? `<div style="margin-bottom:8px; color:#1e40af;">🔖 <b>Ref #:</b> ${escapePosHtml(res.refundRef)}</div>` : ''}
                         ` : ''}
-                        ${res.cancellationReason || res.cancelReason ? `<div style="margin-bottom:8px; color:#b91c1c;">⚠️ <b>Reason:</b> ${res.cancellationReason || res.cancelReason}</div>` : ''}
+                        ${res.cancellationReason || res.cancelReason ? `<div style="margin-bottom:8px; color:#b91c1c;">⚠️ <b>Reason:</b> ${escapePosHtml(res.cancellationReason || res.cancelReason)}</div>` : ''}
                         <div style="font-size:12px; color:#991b1b; font-weight:800; margin-top:15px; text-align:center; background:#fff1f2; padding:8px; border-radius:6px;">
                             ❌ VOID: THIS RESERVATION IS CANCELLED & CANNOT BE CLAIMED
                         </div>
@@ -2199,9 +2330,10 @@
                         <div style="text-align:center; margin-bottom:15px; background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #ffedd5; color:#9a3412; font-weight:700;">
                             This QR code was already claimed.
                         </div>
-                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${res.customerName}</div>
-                        <div style="margin-bottom:10px;">🕒 <b>Verified At:</b> ${res.verifiedAt || 'Unknown'}</div>
-                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${res.bookedTable}</div>
+                        <div style="margin-bottom:10px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
+                        <div style="margin-bottom:10px;">🕒 <b>Verified At:</b> ${escapePosHtml(res.verifiedAt || 'Unknown')}</div>
+                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
                         <div style="font-size:12px; color:#9a3412; font-weight:600; margin-top:15px; text-align:center;">FRAUD PROTECTION ACTIVE</div>
                     `;
                 } else {
@@ -2216,9 +2348,11 @@
                     icon.textContent = '✅';
                     title.textContent = 'Valid Receipt';
                     body.innerHTML = `
-                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${res.customerName}</div>
-                        <div style="margin-bottom:10px;">🍽️ <b>Items:</b> ${res.foods?.join(', ') || 'None'}</div>
-                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${res.bookedTable}</div>
+                        <div style="margin-bottom:10px;">🔖 <b>Reservation #:</b> ${escapePosHtml(res.reservationNumber)}</div>
+                        <div style="margin-bottom:10px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
+                        <div style="margin-bottom:10px;">🍽️ <b>Items:</b> ${escapePosHtml(res.foods?.join(', ') || res.orderSummary || 'None')}</div>
+                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
                         <div style="margin-bottom:10px;">💰 <b>Paid:</b> ₱${paidAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div style="font-size:12px; color:var(--primary); font-weight:bold; margin-top:15px; text-align:center;">VERIFICATION COMPLETE</div>
                     `;
@@ -2226,7 +2360,7 @@
             } else {
                 icon.textContent = '❌';
                 title.textContent = 'Invalid Receipt';
-                body.innerHTML = `<div style="text-align:center; padding:20px;">No reservation found matching <b>${resNo}</b>.</div>`;
+                body.innerHTML = `<div style="text-align:center; padding:20px;">No reservation found matching <b>${escapePosHtml(resNo || decodedText.trim())}</b>${branchHint ? ` for <b>${escapePosHtml(branchHint)}</b>` : ''}.</div>`;
             }
         }
 
