@@ -3346,7 +3346,21 @@
     window.getBranchInfo = function (branchName) {
         const target = String(branchName || window.getEffectiveBranch() || 'General Santos City').trim();
         const lower = target.toLowerCase();
-        return BRANCHES.find(b => b.name.toLowerCase() === lower || String(b.id).toLowerCase() === lower) || BRANCHES[0];
+        const found = BRANCHES.find(b => b.name.toLowerCase() === lower || String(b.id).toLowerCase() === lower);
+        if (found) return found;
+        const fallback = BRANCHES[0] || { tel: '(083) 123-4567', apiUrl: DEFAULT_BACKEND_URL };
+        return {
+            id: target,
+            branchKey: target,
+            name: target,
+            shortName: target,
+            tagline: `Fine Dining Excellence in ${target}`,
+            address: `${target} Branch`,
+            tel: fallback.tel || '(083) 123-4567',
+            apiUrl: fallback.apiUrl || DEFAULT_BACKEND_URL,
+            isDefault: false,
+            mapEmbed: `https://maps.google.com/maps?q=${encodeURIComponent(target)}&output=embed`
+        };
     };
 
     window.getBranchApiUrl = function (branchName) {
@@ -4861,8 +4875,10 @@
         // Show Branch & Branch Address on receipt.html
         const receiptTableEl = document.getElementById('table-id');
         if (receiptTableEl && receiptTableEl.parentElement && !document.getElementById('receipt-branch-id')) {
-            const urlRes = new URLSearchParams(window.location.search).get('res');
-            let resBranch = effectiveInfo.name;
+            const receiptParams = new URLSearchParams(window.location.search);
+            const urlRes = receiptParams.get('res');
+            const urlBranch = (receiptParams.get('branch') || '').trim();
+            let resBranch = urlBranch || effectiveInfo.name;
             if (urlRes) {
                 try {
                     const allHist = JSON.parse(rawGet('reservationHistory') || '[]');
