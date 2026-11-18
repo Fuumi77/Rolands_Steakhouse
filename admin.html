@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.5"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
@@ -2721,10 +2721,11 @@ if (resKeyForBtn) {
 
                         // Kick off email sending in background so popup & closing never stall
                         if (email) {
-                            const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}`;
+                            const activeBranchName = (result.reservation && result.reservation.branch)
+                                || (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
+                            const receiptUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resNum)}&branch=${encodeURIComponent(activeBranchName)}`;
                             const qrPayload = `ROLANDS-REFUND|RES:${resNum}|AMT:PHP${amt.toFixed(2)}|METHOD:${method.toUpperCase()}|REF:${ref || 'N/A'}|URL:${receiptUrl}`;
                             const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrPayload)}`;
-                            const activeBranchName = window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City';
                             const safeBranch = (typeof window.escapeHtml === 'function') ? window.escapeHtml(activeBranchName) : activeBranchName;
 
                             (async () => {
@@ -2739,6 +2740,8 @@ if (resKeyForBtn) {
                                         signal: ctrl ? ctrl.signal : undefined,
                                         body: JSON.stringify({
                                             email: email,
+                                            reservationNumber: resNum,
+                                            branch: activeBranchName,
                                             subject: `💸 Official Refund Confirmation & QR Receipt (#${resNum}) - Roland's Steakhouse`,
                                             html: `
                                                 <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #ffffff;">
