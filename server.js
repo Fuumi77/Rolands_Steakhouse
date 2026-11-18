@@ -332,10 +332,24 @@ app.post('/api/send-receipt', emailLimiter, async (req, res) => {
     if (!email) return res.status(200).json({ success: false, message: 'No email provided' });
 
     const resCode = String(reservationNumber || 'N/A').trim();
-    const receiptVerifyUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resCode)}`;
+    let dbBranch = '';
+    const resNumMatch = resCode.match(/^(?:RES|VIP|WI|POS)-(\d+)$/i);
+    if (resNumMatch) {
+        try {
+            const [bRows] = await queryWithRetry(
+                'SELECT branch FROM reservation_log WHERE reservation_id = ? LIMIT 1',
+                [Number(resNumMatch[1])]
+            );
+            if (bRows && bRows.length && bRows[0].branch) {
+                dbBranch = String(bRows[0].branch).trim();
+            }
+        } catch (e) { }
+    }
+    const reqBranchClean = String(branch || (req.query && req.query.branch) || '').trim();
+    const branchLabel = dbBranch || reqBranchClean || 'General Santos City';
+    const receiptVerifyUrl = `https://rolandssteakhouse.com/receipt.html?res=${encodeURIComponent(resCode)}&branch=${encodeURIComponent(branchLabel)}`;
     // QR encodes the exact receipt verification URL & reservation ID scanned for payment proof
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(receiptVerifyUrl)}`;
-    const branchLabel = branch || global.__activeReqBranch || 'General Santos City';
     const discAmt = Number(discountAmount || 0);
     const discRowHtml = (discountType && discountType !== 'none' && discAmt > 0)
         ? `<div style="color:#c2410c;"><strong>Discount (${escapeHtml(String(discountType).toUpperCase())}):</strong> -₱${discAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>`
