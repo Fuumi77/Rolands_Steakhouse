@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.5"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/payment.css">
 </head>
@@ -431,7 +431,7 @@
                     body: JSON.stringify({
                         amount:        payAmt,
                         description:   `Priority Pre-Order (${bTable})`,
-                        successUrl:    window.location.origin + '/payment-success.html?source=paymongo',
+                        successUrl:    window.location.origin + '/payment-success.html?source=paymongo&branch=' + encodeURIComponent(activeBranch),
                         cancelUrl:     window.location.origin + '/pre-order.html?payment=failed',
                         customerName:  cName,
                         customerEmail: cEmail,
@@ -469,6 +469,7 @@
             const aDate = localStorage.getItem('arrivalDate') || '';
             const aTime = localStorage.getItem('arrivalTime') || '';
             const disp  = localStorage.getItem('arrivalDateTimeDisplay') || `${aDate} ${aTime}`;
+            const draftBranch = window.getEffectiveBranch ? window.getEffectiveBranch() : (localStorage.getItem('selectedBranch') || 'General Santos City');
 
             hist.push({
                 reservationNumber:      resNo,
@@ -491,6 +492,7 @@
                 paymentStatus:          status,
                 approvalStatus:         'pending',
                 paymentMethod:          'paymongo',
+                branch:                 draftBranch,
                 createdAt:              new Date().toISOString()
             });
             localStorage.setItem('reservationHistory', JSON.stringify(hist));
