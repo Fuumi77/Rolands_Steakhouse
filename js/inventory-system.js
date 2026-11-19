@@ -3074,10 +3074,24 @@
         if (Date.now() - (window.__lastMenuPush || 0) < 8000) return;
         const pullBranch = getBranch();
         try {
-            const r = await fetch(`${API}/api/memory/inventory-items?branch=${encodeURIComponent(pullBranch)}&nocache=${Date.now()}`);
+            const [r] = await Promise.all([
+                fetch(`${API}/api/memory/inventory-items?branch=${encodeURIComponent(pullBranch)}&nocache=${Date.now()}`),
+                typeof window.syncSharedPhotosFromCloud === 'function' ? window.syncSharedPhotosFromCloud().catch(() => null) : Promise.resolve(null)
+            ]);
             if (!r.ok) { initialPullDoneByBranch[pullBranch] = true; return; }
             const cloud = await r.json();
             if (!Array.isArray(cloud) || cloud.length === 0) {
+                if (typeof window.mergeInventoryWithSharedPhotos === 'function') {
+                    const localCur = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                    if (Array.isArray(localCur) && localCur.length > 0) {
+                        const healedLocal = window.mergeInventoryWithSharedPhotos(localCur, localCur);
+                        if (strip(localCur) !== strip(healedLocal)) {
+                            localStorage.setItem('inventoryItems', JSON.stringify(healedLocal));
+                            if (typeof window.renderWalkinFoodPicker === 'function') window.renderWalkinFoodPicker(document.getElementById('walkin-food-search')?.value?.toLowerCase() || '');
+                            if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                        }
+                    }
+                }
                 initialPullDoneByBranch[pullBranch] = true;
                 return;
             }
@@ -4025,7 +4039,7 @@
 
     const isBranchScopedEndpoint = (u) => {
         if (!u) return false;
-        if (u.includes('/api/memory/branches') || u.includes('/api/memory/pos-branch-pins')) return false;
+        if (u.includes('/api/memory/branches') || u.includes('/api/memory/pos-branch-pins') || u.includes('/api/memory/shared-photos') || u.includes('/api/memory/terminal-pins')) return false;
         return u.includes('/reservations') || u.includes('/reserve') || u.includes('/api/inventory/') || u.includes('/api/memory/');
     };
 
@@ -4058,7 +4072,8 @@
         }
 
         if (url && (url.includes('/api/memory/') || url.includes('/api/inventory/') || url.includes('/reservations'))) {
-            const skipBranchParam = isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations');
+            const isGlobalMemoryRoute = url.includes('/api/memory/branches') || url.includes('/api/memory/pos-branch-pins') || url.includes('/api/memory/shared-photos') || url.includes('/api/memory/terminal-pins');
+            const skipBranchParam = isGlobalMemoryRoute || (isSuperAdminPage && activeBranch === 'ALL' && url.includes('/reservations'));
             if (!skipBranchParam && !url.includes('branch=')) {
                 const sep = url.includes('?') ? '&' : '?';
                 url = `${url}${sep}branch=${encodeURIComponent(effectiveBranch)}`;
@@ -4403,15 +4418,22 @@
             const invBranch = window.getInventoryBranch ? window.getInventoryBranch() : branch;
             const baseUrl = 'https://rolands-steakhouse-jsoo.onrender.com';
 
-            const [cfgRes, ovrRes, promoRes, holRes, rawMemRes, rawRes, menuRes] = await Promise.all([
+            const [cfgRes, ovrRes, promoRes, holRes, rawMemRes, rawRes, menuRes, sharedPhotoRes] = await Promise.all([
                 fetch(`${baseUrl}/api/memory/floor-plan-config?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/table-overrides?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/promos?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/holidays?branch=${encodeURIComponent(holBranch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/memory/raw-ingredients?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
                 fetch(`${baseUrl}/api/inventory/raw?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
-                fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`)
+                fetch(`${baseUrl}/api/memory/inventory-items?branch=${encodeURIComponent(invBranch)}&nocache=${Date.now()}`),
+                fetch(`${baseUrl}/api/memory/shared-photos?nocache=${Date.now()}`).catch(() => null)
             ]);
+            if (sharedPhotoRes && sharedPhotoRes.ok && typeof window.mergeCloudSharedPhotoRegistry === 'function') {
+                const cloudShared = await sharedPhotoRes.json().catch(() => null);
+                if (cloudShared && typeof cloudShared === 'object') {
+                    window.mergeCloudSharedPhotoRegistry(cloudShared);
+                }
+            }
             let changed = false;
             let menuChanged = false;
             const holdInventoryPull = (Date.now() < (window.__inventoryHoldUntil || 0)) || (Date.now() - (window.__lastMenuPush || 0) < 8000);
@@ -4497,14 +4519,14 @@
             }
             if (!holdInventoryPull && menuRes.ok) {
                 const cloudInv = await menuRes.json();
-                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
-                    let existingLocalInv = [];
-                    try {
-                        existingLocalInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-                    } catch (e) { }
+                let existingLocalInv = [];
+                try {
+                    existingLocalInv = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
+                } catch (e) { }
 
+                if (Array.isArray(cloudInv) && cloudInv.length > 0) {
                     // Also harvest custom photos from other branches in cloud so cross-branch photos stay synced on Incognito/other devices
-                    const allBranches = (window.ROLANDS_BRANCHES || []).map(b => b.name).filter(Boolean);
+                    const allBranches = getAllKnownPhotoBranchNames();
                     const otherBranches = allBranches.filter(b => b !== invBranch);
                     const otherCloudArrays = [];
                     try {
@@ -4539,6 +4561,13 @@
                             body: nextInv
                         }).catch(() => { });
                     }
+                } else if (Array.isArray(existingLocalInv) && existingLocalInv.length > 0) {
+                    const healedLocal = window.mergeInventoryWithSharedPhotos(existingLocalInv, existingLocalInv);
+                    const nextLocal = JSON.stringify(healedLocal);
+                    if (localStorage.getItem('inventoryItems') !== nextLocal) {
+                        localStorage.setItem('inventoryItems', nextLocal);
+                        menuChanged = true;
+                    }
                 }
             }
 
@@ -4547,6 +4576,7 @@
                 if (window.InventorySystem && typeof window.InventorySystem.syncFoodMenuStockFromIngredients === 'function') window.InventorySystem.syncFoodMenuStockFromIngredients();
                 if (typeof window.renderMenu === 'function') window.renderMenu();
                 if (typeof window.renderMenuManagement === 'function') window.renderMenuManagement();
+                if (typeof window.renderWalkinFoodPicker === 'function') window.renderWalkinFoodPicker((document.getElementById('walkin-food-search')?.value || '').toLowerCase());
                 if (typeof window.renderInventory === 'function') window.renderInventory();
                 if (typeof window.renderProducts === 'function') window.renderProducts();
                 changed = true;
@@ -4590,6 +4620,93 @@
         } catch (e) { }
     }
 
+    function getAllKnownPhotoBranchNames() {
+        const storedBranches = (() => {
+            try {
+                const raw = rawGet('rolandsBranches');
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed.map(b => b && b.name).filter(Boolean) : [];
+            } catch (e) { return []; }
+        })();
+        return Array.from(new Set([
+            'General Santos City',
+            'Koronadal City',
+            ...((window.ROLANDS_BRANCHES || []).map(b => b && b.name).filter(Boolean)),
+            ...storedBranches
+        ]));
+    }
+
+    window.mergeCloudSharedPhotoRegistry = function (cloudReg) {
+        if (!cloudReg || typeof cloudReg !== 'object' || Array.isArray(cloudReg)) return false;
+        const localReg = getSharedPhotoRegistry();
+        let mutated = false;
+        const pushBack = {};
+        let needsPush = false;
+
+        Object.keys(cloudReg).forEach(k => {
+            if (!k || k === 'branch') return;
+            const cld = cloudReg[k];
+            if (!cld || typeof cld !== 'object') return;
+            const loc = localReg[k];
+            const cldImg = isValidCustomPhoto(cld.image) ? cld.image : '';
+            const cldUpd = Number(cld.updatedAt) || (cldImg ? 1 : 0);
+            const cldRem = Number(cld.removedAt) || 0;
+            const locImg = loc && isValidCustomPhoto(loc.image) ? loc.image : '';
+            const locUpd = Number(loc?.updatedAt) || (locImg ? 1 : 0);
+            const locRem = Number(loc?.removedAt) || 0;
+
+            if (cldRem > 0 && cldRem >= cldUpd && !cldImg) {
+                if (!loc || (cldRem >= locUpd && cldRem > locRem)) {
+                    localReg[k] = { image: '', updatedAt: cldRem, removedAt: cldRem };
+                    mutated = true;
+                }
+            } else if (cldImg) {
+                if (!loc || (cldUpd >= locUpd && cldUpd > locRem && (locImg !== cldImg || cldUpd > locUpd))) {
+                    localReg[k] = { image: cldImg, updatedAt: Math.max(cldUpd, 1), removedAt: 0 };
+                    mutated = true;
+                }
+            }
+        });
+
+        Object.keys(localReg).forEach(k => {
+            const loc = localReg[k];
+            const cld = cloudReg[k];
+            if (!loc || typeof loc !== 'object') return;
+            if (isValidCustomPhoto(loc.image) && (!cld || (!isValidCustomPhoto(cld.image) && (Number(cld.removedAt) || 0) < (Number(loc.updatedAt) || 1)))) {
+                pushBack[k] = loc;
+                needsPush = true;
+            }
+        });
+
+        if (mutated) saveSharedPhotoRegistry(localReg);
+        if (needsPush) {
+            fetch('https://rolands-steakhouse-jsoo.onrender.com/api/memory/shared-photos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pushBack)
+            }).catch(() => { });
+        }
+        return mutated;
+    };
+
+    let __sharedPhotosSyncInFlight = null;
+    window.syncSharedPhotosFromCloud = function () {
+        if (__sharedPhotosSyncInFlight) return __sharedPhotosSyncInFlight;
+        __sharedPhotosSyncInFlight = (async () => {
+            try {
+                const res = await fetch(`https://rolands-steakhouse-jsoo.onrender.com/api/memory/shared-photos?nocache=${Date.now()}`);
+                if (!res.ok) return false;
+                const cloudReg = await res.json();
+                return window.mergeCloudSharedPhotoRegistry(cloudReg);
+            } catch (e) {
+                return false;
+            } finally {
+                __sharedPhotosSyncInFlight = null;
+            }
+        })();
+        return __sharedPhotosSyncInFlight;
+    };
+
     // Merges cloud inventory items with local & cross-branch shared photos (when syncPhotoBranches !== false)
     window.mergeInventoryWithSharedPhotos = function (primaryItems, fallbackLocalItems = [], extraBranchArrays = []) {
         if (!Array.isArray(primaryItems)) return [];
@@ -4597,7 +4714,7 @@
         let regMutated = false;
 
         // Gather all local branch arrays to harvest any existing custom photos
-        const branchNames = (window.ROLANDS_BRANCHES || [{ name: 'General Santos City' }, { name: 'Koronadal City' }]).map(b => b.name);
+        const branchNames = getAllKnownPhotoBranchNames();
         const allLocalBranchArrays = [];
         branchNames.forEach(bName => {
             try {
@@ -4667,6 +4784,8 @@
 
             const itemRemAt = Math.max(Number(cloudItem.imageRemovedAt) || 0, Number(localMatch?.imageRemovedAt) || 0);
             const itemUpdAt = Math.max(Number(cloudItem.imageUpdatedAt) || 0, Number(localMatch?.imageUpdatedAt) || 0);
+            let resolvedUpdAt = isValidCustomPhoto(cloudItem.image) ? (Number(cloudItem.imageUpdatedAt) || itemUpdAt || 1) : itemUpdAt;
+            let resolvedRemAt = itemRemAt;
 
             if (syncEnabled) {
                 const idEntry = cloudItem.id ? reg[`id:${normMenuKey(cloudItem.id)}`] : null;
@@ -4676,11 +4795,16 @@
                     : (idEntry || titleEntry);
 
                 if (sharedEntry) {
-                    if ((Number(sharedEntry.removedAt) || 0) >= (Number(sharedEntry.updatedAt) || 0) && (Number(sharedEntry.removedAt) || 0) >= itemUpdAt) {
+                    const shUpd = Number(sharedEntry.updatedAt) || 0;
+                    const shRem = Number(sharedEntry.removedAt) || 0;
+                    if (shRem >= shUpd && shRem >= itemUpdAt) {
                         resolvedImage = '';
-                    } else if (isValidCustomPhoto(sharedEntry.image) && ((Number(sharedEntry.updatedAt) || 0) >= itemRemAt)) {
-                        if (!resolvedImage || (Number(sharedEntry.updatedAt) || 0) >= itemUpdAt) {
+                        resolvedRemAt = shRem;
+                    } else if (isValidCustomPhoto(sharedEntry.image) && (shUpd >= itemRemAt)) {
+                        if (!resolvedImage || shUpd >= itemUpdAt) {
                             resolvedImage = sharedEntry.image;
+                            resolvedUpdAt = Math.max(shUpd, resolvedUpdAt, 1);
+                            resolvedRemAt = 0;
                         }
                     }
                 }
@@ -4691,6 +4815,8 @@
             return {
                 ...cloudItem,
                 image: resolvedImage,
+                imageUpdatedAt: resolvedImage ? Math.max(resolvedUpdAt, 1) : (Number(cloudItem.imageUpdatedAt) || 0),
+                imageRemovedAt: resolvedImage ? 0 : resolvedRemAt,
                 syncPhotoBranches: syncEnabled
             };
         });
@@ -4717,15 +4843,20 @@
             const entry = cleanImg
                 ? { image: cleanImg, updatedAt: now, removedAt: 0 }
                 : { image: '', updatedAt: now, removedAt: now };
-            if (normId) reg[`id:${normId}`] = entry;
-            if (normTitle) reg[`title:${normTitle}`] = entry;
+            const cloudDelta = {};
+            if (normId) { reg[`id:${normId}`] = entry; cloudDelta[`id:${normId}`] = entry; }
+            if (normTitle) { reg[`title:${normTitle}`] = entry; cloudDelta[`title:${normTitle}`] = entry; }
             saveSharedPhotoRegistry(reg);
 
-            const branchNames = Array.from(new Set([
-                'General Santos City',
-                'Koronadal City',
-                ...((window.ROLANDS_BRANCHES || []).map(b => b.name).filter(Boolean))
-            ]));
+            if (Object.keys(cloudDelta).length > 0) {
+                fetch(`${baseUrl}/api/memory/shared-photos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cloudDelta)
+                }).catch(() => { });
+            }
+
+            const branchNames = getAllKnownPhotoBranchNames();
 
             // 1. Update all branch localStorage keys immediately
             let templateItems = [];
