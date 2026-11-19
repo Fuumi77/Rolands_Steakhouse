@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.5"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/standard-payment.css">
 </head>
@@ -169,7 +169,9 @@
         const arrivalDate   = localStorage.getItem('arrivalDate') || new Date().toISOString().split('T')[0];
         const arrivalTime   = localStorage.getItem('arrivalTime') || '12:00';
         const rawBookedTable = localStorage.getItem('bookedTable') || (isVip ? 'VIP Room' : 'Table 1');
-        const bookedTable    = (isVip || /vip/i.test(rawBookedTable)) ? 'VIP Room' : rawBookedTable;
+        const bookedTable    = isVip
+            ? ((rawBookedTable && rawBookedTable !== 'VIP Private Room') ? rawBookedTable : 'VIP Room')
+            : rawBookedTable;
         localStorage.setItem('bookedTable', bookedTable);
 
         const d = new Date(arrivalDate + 'T' + arrivalTime);
