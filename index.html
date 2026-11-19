@@ -60,7 +60,7 @@
             display: inline-block;
         }
 
-        /* ðŸ‘‰ FIX: Responsive Header Lock (Stops mobile overstretching) */
+        /* 👉 FIX: Responsive Header Lock (Stops mobile overstretching) */
         header#main-header,
         header {
             display: flex !important;
@@ -113,7 +113,7 @@
             }
         }
 
-        /* ðŸ‘‰ FIX: Kill the horizontal scroll white-space bug globally */
+        /* 👉 FIX: Kill the horizontal scroll white-space bug globally */
         html,
         body {
             overflow-x: hidden !important;
@@ -121,24 +121,24 @@
             width: 100% !important;
         }
 
-        /* ðŸ‘‰ FIX 1: Kill the horizontal scroll white-space bug globally */
+        /* 👉 FIX 1: Kill the horizontal scroll white-space bug globally */
         html,
         body {
             overflow-x: hidden !important;
             width: 100% !important;
-            /* ðŸ‘‰ FIX: Switched to 100% to prevent scrollbar overlap */
+            /* 👉 FIX: Switched to 100% to prevent scrollbar overlap */
             margin: 0 !important;
             padding: 0 !important;
         }
 
-        /* ðŸ‘‰ LOGO SCALER & HOVER/CLICK ANIMATION (index.html) */
+        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (index.html) */
         :root {
             --logo-scale: 1.75;
-            /* ðŸ‘ˆ Change this number to adjust normal size */
+            /* 👈 Change this number to adjust normal size */
             --logo-hover-scale: 1.95;
-            /* ðŸ‘ˆ Size when hovered */
+            /* 👈 Size when hovered */
             --logo-click-scale: 2.10;
-            /* ðŸ‘ˆ Size when clicked */
+            /* 👈 Size when clicked */
         }
 
         header#main-header .logo {
@@ -192,7 +192,7 @@
             }
         }
 
-        /* ðŸ‘‰ FIX 1: Elegant Form Styling to match the screenshot */
+        /* 👉 FIX 1: Elegant Form Styling to match the screenshot */
         #login-area.login-prompt {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -299,7 +299,7 @@
         #booking-form .phone-input-group input {
             border-radius: 0 8px 8px 0;
             flex: 1;
-            /* ðŸ‘‰ FIX: Forces the phone input to fill the remaining space */
+            /* 👉 FIX: Forces the phone input to fill the remaining space */
             min-width: 0;
         }
 
@@ -310,7 +310,7 @@
             margin-bottom: 16px;
         }
 
-        /* ðŸ‘‰ FIX: On mobile phones, stack the inputs top-to-bottom so they don't squish! */
+        /* 👉 FIX: On mobile phones, stack the inputs top-to-bottom so they don't squish! */
         @media (max-width: 600px) {
             #booking-form .form-row {
                 grid-template-columns: 1fr !important;
@@ -343,7 +343,7 @@
 
         @media (max-width: 600px) {
 
-            /* ðŸ‘‰ Full-width mobile chat window with equal 12px side margins */
+            /* 👉 Full-width mobile chat window with equal 12px side margins */
             .chat-popup,
             #chat-popup,
             .chat-window,
@@ -371,7 +371,7 @@
                 <li>
                     <div class="nav-manage-pill"
                         style="padding: 4px 12px !important; display:inline-flex; align-items:center; gap:6px;">
-                        <span>ðŸ“</span>
+                        <span>📍</span>
                         <select id="customer-branch-select" onchange="window.setActiveBranch(this.value)"
                             title="Select Branch"
                             style="background:transparent; border:none; color:inherit; font-weight:800; font-size:13px; cursor:pointer; outline:none;">
@@ -386,11 +386,11 @@
                 <li><a href="#menu" class="nav-link">Menu</a></li>
                 <li><a href="javascript:void(0)" onclick="openManageBookingModal()" class="nav-manage-pill"><span
                             class="pill-dot"></span><span>My Booking</span></a></li>
-                <!-- ðŸ‘‰ NEW: Profile Button (Hidden by default until logged in) -->
+                <!-- 👉 NEW: Profile Button (Hidden by default until logged in) -->
                 <li><a href="javascript:void(0)" id="header-profile-btn" onclick="openProfileModal()"
                         class="nav-manage-pill"
                         style="display:none; background:#1b5e20; color:white; border-color:#1b5e20;"><span
-                            style="font-size:16px; margin-top:-2px;">â˜°</span></a></li>
+                            style="font-size:16px; margin-top:-2px;">☰</span></a></li>
             </ul>
         </nav>
     </header>
@@ -479,7 +479,7 @@
         </div>
     </section>
 
-    <!-- ðŸ‘‰ NEW: RESERVATION POP-UP MODAL -->
+    <!-- 👉 NEW: RESERVATION POP-UP MODAL -->
     <div id="reservation-modal-overlay"
         style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
         onclick="if(event.target === this) closeReservationModal()">
@@ -497,7 +497,7 @@
                 <button type="button" onclick="closeReservationModal()"
                     style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;"
                     onmouseover="this.style.background='rgba(255,255,255,0.35)'"
-                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
             </div>
 
             <!-- Scrollable Form Body -->
@@ -565,7 +565,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>â†’</span></button>
+                    <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>→</span></button>
                     <div
                         style="text-align:center; margin-top:16px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif; line-height:1.6;">
                         Already have a reservation?<br>
@@ -578,10 +578,10 @@
         </div>
     </div>
 
-    <!-- ðŸŽ FLOATING PROMOTION MODAL -->
+    <!-- 🎁 FLOATING PROMOTION MODAL -->
     <div class="promo-modal-overlay" id="promo-modal">
         <div class="promo-modal-card">
-            <button class="promo-modal-close" onclick="closePromoModal()" aria-label="Close promotion">âœ•</button>
+            <button class="promo-modal-close" onclick="closePromoModal()" aria-label="Close promotion">✕</button>
             <img src="" id="promo-modal-img" class="promo-modal-img" alt="Promotion">
             <div class="promo-modal-content">
                 <span class="promo-modal-badge" id="promo-modal-badge">Limited Offer</span>
@@ -620,7 +620,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            Â© 2024 Roland's Steak House. All rights reserved.
+            © 2024 Roland's Steak House. All rights reserved.
         </div>
     </footer>
 
@@ -702,7 +702,7 @@
                     const holidayCheck = window.checkHolidayOrBlockedDate(selectedDate);
                     if (holidayCheck.isBlocked) {
                         superModal({
-                            title: 'Holiday / Restaurant Closed ðŸš«',
+                            title: 'Holiday / Restaurant Closed 🚫',
                             message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${selectedDate}). Please choose an available non-holiday date.`
                         });
                         arrivalDateInput.value = '';
@@ -711,7 +711,7 @@
                 }
 
                 if (selectedTime < "10:30" || selectedTime > "21:00") {
-                    superModal({ title: 'Invalid Time ðŸ•’', message: 'Please select an arrival time between 10:30 AM and 9:00 PM.' });
+                    superModal({ title: 'Invalid Time 🕒', message: 'Please select an arrival time between 10:30 AM and 9:00 PM.' });
                     return;
                 }
 
@@ -727,7 +727,7 @@
                 }
             }
 
-            // ðŸ‘‰ NEW: Save all fields to browser memory
+            // 👉 NEW: Save all fields to browser memory
             localStorage.setItem('customerName', (nameInput?.value || '').trim());
             localStorage.setItem('customerEmail', (emailInput?.value || '').trim());
             localStorage.setItem('customerPhone', (phoneInput?.value || '').trim());
@@ -1006,7 +1006,7 @@
                 if (btn) {
                     btn.classList.add('copied');
                     const prevText = btn.getAttribute('data-label') || 'Claim / Copy';
-                    btn.textContent = 'âœ“ Claimed!';
+                    btn.textContent = '✓ Claimed!';
                     setTimeout(() => {
                         btn.classList.remove('copied');
                         btn.textContent = prevText;
@@ -1075,7 +1075,7 @@
                         const rowsHtml = matchedVouchers.map(v => {
                             const dTxt = v.discountMode === 'pct'
                                 ? `${v.value}% OFF`
-                                : `â‚±${Number(v.value).toLocaleString()} OFF`;
+                                : `₱${Number(v.value).toLocaleString()} OFF`;
                             const reqTxt = window.VoucherSystem.formatRequirementSummary(v);
                             const safeCode = escPromo(v.code);
                             return `
@@ -1088,7 +1088,7 @@
                                     <button type="button" class="promo-voucher-copy-btn" data-label="Claim / Copy" onclick="copyPromoPopupVoucher('${safeCode}', this)">Claim / Copy</button>
                                 </div>`;
                         }).join('');
-                        vBox.innerHTML = `<div class="promo-modal-vouchers-heading">ðŸŽŸï¸ Available Pre-Order Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>${rowsHtml}`;
+                        vBox.innerHTML = `<div class="promo-modal-vouchers-heading">🎟️ Available Pre-Order Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>${rowsHtml}`;
                         vBox.style.display = 'block';
                     } else {
                         vBox.innerHTML = '';
@@ -1259,7 +1259,7 @@
                     if (holidayCheck.isBlocked) {
                         if (typeof superModal === 'function') {
                             superModal({
-                                title: 'Holiday / Restaurant Closed ðŸš«',
+                                title: 'Holiday / Restaurant Closed 🚫',
                                 message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${val}). Please select an available non-holiday date.`
                             });
                         } else {
@@ -1355,7 +1355,7 @@
             panel.classList.toggle('active');
             const bubbleIcon = document.getElementById('chat-bubble-icon');
             if (bubbleIcon) {
-                bubbleIcon.textContent = panel.classList.contains('active') ? 'âœ•' : 'ðŸ’¬';
+                bubbleIcon.textContent = panel.classList.contains('active') ? '✕' : '💬';
             }
             if (panel.classList.contains('active')) {
                 document.getElementById('chatResInfo').style.display = 'block';
@@ -1369,7 +1369,7 @@
             }
         }
 
-        // ðŸ‘‰ NEW: Global Chat Notification Poller (Triggers red badge and sound)
+        // 👉 NEW: Global Chat Notification Poller (Triggers red badge and sound)
         setInterval(() => {
             const panel = document.getElementById('chatPanel');
             if (panel && panel.classList.contains('active')) return;
@@ -1564,7 +1564,10 @@
                     const canvas = document.createElement('canvas');
                     canvas.width = Math.round(img.width * scale);
                     canvas.height = Math.round(img.height * scale);
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     dispatchPhoto(canvas.toDataURL('image/jpeg', 0.75));
                 };
                 img.onerror = function () { dispatchPhoto(e.target.result); };
@@ -1732,16 +1735,16 @@
                 if (myRes.reservationType === 'standard') { foodText = 'None (Standard Reservation)'; }
                 else if (myRes.foods && myRes.foods.length > 0) {
                     foodText = myRes.foods.join(', ');
-                    if (myRes.beefNote) foodText += ` | ðŸ¥© ${myRes.beefNote}`;
+                    if (myRes.beefNote) foodText += ` | 🥩 ${myRes.beefNote}`;
                 } else { foodText = 'None'; }
 
                 const kds = myRes.kdsStatus || 'pending';
                 const kdsConfig = {
-                    pending: { icon: 'â³', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-                    cooking: { icon: 'ðŸ‘¨â€ðŸ³', label: 'Now Cookingâ€¦', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
-                    ready: { icon: 'ðŸ½ï¸', label: 'Food is Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
-                    served: { icon: 'âœ…', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
-                    cancelled: { icon: 'ðŸš«', label: 'Order Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                    pending: { icon: '⏳', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                    cooking: { icon: '👨‍🍳', label: 'Now Cooking…', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                    ready: { icon: '🍽️', label: 'Food is Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
+                    served: { icon: '✅', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+                    cancelled: { icon: '🚫', label: 'Order Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
                 };
                 const cfg = kdsConfig[kds] || kdsConfig.pending;
 
@@ -1751,13 +1754,13 @@
                 const isCancelled = myRes.approvalStatus === 'rejected' || myRes.approvalStatus === 'cancelled' || myRes.kdsStatus === 'cancelled';
                 const isServed = myRes.kdsStatus === 'served' || myRes.approvalStatus === 'completed';
 
-                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">ðŸŽ« Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#dc2626; font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">ðŸ‘¤ ${myRes.customerName || getActiveCustomerName()} &nbsp;â€¢&nbsp; ðŸª‘ ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">ðŸ“… ${myRes.arrivalDate || 'â€”'} &nbsp; â° ${myRes.arrivalTime || 'â€”'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">ðŸ´ Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>ðŸš«</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">ðŸš« Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
+                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#dc2626; font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || getActiveCustomerName()} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
                 return;
             }
             resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span><a href="javascript:void(0)" onclick="openManageBookingModal()" style="font-size:11px; color:#1b5e20; font-weight:700; text-decoration:underline;">Find Booking</a></div>`;
         }
 
-        // Payment status polling (Verified/Rejected â€” for manual payments only)
+        // Payment status polling (Verified/Rejected — for manual payments only)
         setInterval(() => {
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             const myName = localStorage.getItem('customerName');
@@ -1771,7 +1774,7 @@
             hist.forEach(r => {
                 if (r.customerName !== myName) return;
 
-                // Skip PayMongo-processed payments â€” they are handled by payment-success.html
+                // Skip PayMongo-processed payments — they are handled by payment-success.html
                 if (r.paymentMethod === 'paymongo' || r.paymentStatus === 'paid' || r.paymentStatus === 'pending_paymongo') return;
 
                 // Only show "Verified" popup for admin-verified MANUAL payments not yet acknowledged
@@ -1802,13 +1805,13 @@
                 const resNo = verifiedRes ? verifiedRes.reservationNumber : '';
                 overlay.innerHTML = style + `
                     <div class="pay-popup-card">
-                        <div class="pay-popup-icon">âœ…</div>
+                        <div class="pay-popup-icon">✅</div>
                         <h2 class="pay-popup-title" style="color:#1b5e20;">Payment Verified!</h2>
                         <p class="pay-popup-msg">Your payment has been confirmed by our team. Your reservation is now secured!</p>
                         ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
                         <button class="pay-popup-btn" style="background:#1b5e20; color:white;" 
                             onclick="closeStatusPopup(this.closest('[style*=fixed]'), true)">
-                            ðŸ’¬ View Receipt in Chat
+                            💬 View Receipt in Chat
                         </button>
                     </div>`;
 
@@ -1816,7 +1819,7 @@
                 const resNo = rejectedRes ? rejectedRes.reservationNumber : '';
                 overlay.innerHTML = style + `
                     <div class="pay-popup-card">
-                        <div class="pay-popup-icon">âš ï¸</div>
+                        <div class="pay-popup-icon">⚠️</div>
                         <h2 class="pay-popup-title" style="color:#b91c1c;">Payment Invalid</h2>
                         <p class="pay-popup-msg">Sorry, your payment could not be verified. Please check your transaction details and re-upload your proof of payment.</p>
                         ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
@@ -1838,11 +1841,11 @@
             };
         }, 3000);
 
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // ðŸ½ï¸  FOOD-READY ALERT SYSTEM (Kitchen â†’ Customer)
+        // ══════════════════════════════════════════════
+        // 🍽️  FOOD-READY ALERT SYSTEM (Kitchen → Customer)
         // Polls every 5s. When kitchen marks order as 'ready',
         // fires a popup and badges the chat bubble.
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ══════════════════════════════════════════════
         (function initFoodReadyPolling() {
             let lastSeenKdsStatus = sessionStorage.getItem('lastKdsStatus') || null;
 
@@ -1903,7 +1906,7 @@
                     }
                 }
 
-                // Track cooking â†’ ready transition
+                // Track cooking → ready transition
                 if (currentKds !== lastSeenKdsStatus && currentKds !== 'ready') {
                     lastSeenKdsStatus = currentKds;
                     sessionStorage.setItem('lastKdsStatus', currentKds);
@@ -1919,12 +1922,12 @@
 
                 overlay.innerHTML = `
                     <div class="food-ready-card">
-                        <span class="food-ready-icon">ðŸ½ï¸</span>
+                        <span class="food-ready-icon">🍽️</span>
                         <h2 class="food-ready-title">Your Food is Ready!</h2>
                         <p class="food-ready-sub">Our kitchen has finished preparing your order. Please proceed to your table to enjoy your meal.</p>
                         <ul class="food-ready-list">${foodList}</ul>
-                        ${res.reservationNumber ? `<div class="food-ready-res">Reservation #${res.reservationNumber} &nbsp;Â·&nbsp; Table: ${res.bookedTable || 'Assigned at door'}</div>` : ''}
-                        <button class="food-ready-btn-primary" onclick="closeFoodReadyPopup(true)">ðŸ’¬ Open Live Support</button>
+                        ${res.reservationNumber ? `<div class="food-ready-res">Reservation #${res.reservationNumber} &nbsp;·&nbsp; Table: ${res.bookedTable || 'Assigned at door'}</div>` : ''}
+                        <button class="food-ready-btn-primary" onclick="closeFoodReadyPopup(true)">💬 Open Live Support</button>
                         <button class="food-ready-btn-secondary" onclick="closeFoodReadyPopup(false)">Got it, Thank you!</button>
                     </div>
                 `;
@@ -1996,9 +1999,9 @@
                 }
 
                 const kdsMap = {
-                    pending: { icon: 'â³', label: 'Kitchen Status', status: 'Order Received', cls: 'kds-pending' },
-                    cooking: { icon: 'ðŸ‘¨â€ðŸ³', label: 'Kitchen Status', status: 'Now Cookingâ€¦', cls: 'kds-cooking' },
-                    ready: { icon: 'ðŸ½ï¸', label: 'ðŸ”” Food Ready!', status: 'Tap to view', cls: 'kds-ready' },
+                    pending: { icon: '⏳', label: 'Kitchen Status', status: 'Order Received', cls: 'kds-pending' },
+                    cooking: { icon: '👨‍🍳', label: 'Kitchen Status', status: 'Now Cooking…', cls: 'kds-cooking' },
+                    ready: { icon: '🍽️', label: '🔔 Food Ready!', status: 'Tap to view', cls: 'kds-ready' },
                 };
                 const cfg = kdsMap[kdsStatus] || kdsMap.pending;
 
@@ -2017,7 +2020,7 @@
             setInterval(checkFoodReady, 5000);
         })();
 
-        // â”€â”€â”€ Chat Tab Switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Chat Tab Switcher ───────────────────────────────────────
         let _currentChatView = 'chat'; // 'chat' | 'history'
 
         function switchChatTab(tab) {
@@ -2057,7 +2060,7 @@
 
             let myRes = [];
 
-            // ðŸ‘‰ NEW: Device-Based Tracking & Staff Filter
+            // 👉 NEW: Device-Based Tracking & Staff Filter
             hist.forEach(r => {
                 // 1. NEVER show staff walk-ins to online customers
                 if (r.bookedBy === 'staff') return;
@@ -2090,20 +2093,20 @@
             }
 
             const kdsConfig = {
-                pending: { icon: 'â³', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-                cooking: { icon: 'ðŸ‘¨\u200dðŸ³', label: 'Now Cookingâ€¦', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
-                ready: { icon: 'ðŸ½ï¸', label: 'Food Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
-                served: { icon: 'âœ…', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
-                cancelled: { icon: 'ðŸš«', label: 'Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                pending: { icon: '⏳', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                cooking: { icon: '👨\u200d🍳', label: 'Now Cooking…', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                ready: { icon: '🍽️', label: 'Food Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
+                served: { icon: '✅', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+                cancelled: { icon: '🚫', label: 'Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
             };
 
             const payConfig = {
-                verified: { icon: 'âœ…', label: 'Verified', color: '#166534' },
-                paid: { icon: 'ðŸ’³', label: 'Paid', color: '#166534' },
-                pending_check: { icon: 'â³', label: 'Pending Review', color: '#92400e' },
-                pending_paymongo: { icon: 'â³', label: 'Processing', color: '#1e40af' },
-                rejected: { icon: 'âš ï¸', label: 'Rejected', color: '#991b1b' },
-                'walk-in': { icon: 'ðŸš¶', label: 'Walk-in', color: '#475569' },
+                verified: { icon: '✅', label: 'Verified', color: '#166534' },
+                paid: { icon: '💳', label: 'Paid', color: '#166534' },
+                pending_check: { icon: '⏳', label: 'Pending Review', color: '#92400e' },
+                pending_paymongo: { icon: '⏳', label: 'Processing', color: '#1e40af' },
+                rejected: { icon: '⚠️', label: 'Rejected', color: '#991b1b' },
+                'walk-in': { icon: '🚶', label: 'Walk-in', color: '#475569' },
             };
 
             let html = `<div style="padding:12px 12px 6px; font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;">Your Reservations (${myRes.length})</div>`;
@@ -2112,7 +2115,7 @@
                 const kds = r.kdsStatus || 'pending';
                 const kCfg = kdsConfig[kds] || kdsConfig.pending;
                 const pay = r.paymentStatus || '';
-                const pCfg = payConfig[pay] || { icon: 'â€”', label: pay || 'Unknown', color: '#64748b' };
+                const pCfg = payConfig[pay] || { icon: '—', label: pay || 'Unknown', color: '#64748b' };
 
                 const hasFoods = r.foods && r.foods.length > 0;
                 const foodHtml = hasFoods
@@ -2139,10 +2142,10 @@
                         font-family:'Roboto',sans-serif;
                     ">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-                            <div style="font-size:12px;font-weight:800;color:#1b5e20;">ðŸŽ« ${r.reservationNumber || 'N/A'}</div>
+                            <div style="font-size:12px;font-weight:800;color:#1b5e20;">🎫 ${r.reservationNumber || 'N/A'}</div>
                             <div style="font-size:10px;color:${pCfg.color};font-weight:700;">${pCfg.icon} ${pCfg.label}</div>
                         </div>
-                        <div style="font-size:11px;color:#64748b;margin-bottom:6px;">ðŸ“… ${r.arrivalDate || 'â€”'} &nbsp; â° ${r.arrivalTime || 'â€”'} &nbsp; ðŸª‘ ${r.bookedTable || 'TBD'}</div>
+                        <div style="font-size:11px;color:#64748b;margin-bottom:6px;">📅 ${r.arrivalDate || '—'} &nbsp; ⏰ ${r.arrivalTime || '—'} &nbsp; 🪑 ${r.bookedTable || 'TBD'}</div>
                         <div style="margin-bottom:4px;">${foodHtml}</div>
                         ${kitchenBadgeHtml}
                     </div>
@@ -2162,7 +2165,7 @@
         <div class="chat-panel" id="chatPanel">
             <div class="chat-header">
                 <h4>Live Support</h4>
-                <button class="chat-close" onclick="toggleChat()">Ã—</button>
+                <button class="chat-close" onclick="toggleChat()">×</button>
             </div>
 
             <div class="chat-res-info" id="chatResInfo" style="cursor:default;">Loading reservation...</div>
@@ -2175,24 +2178,24 @@
             </div>
             <div class="chat-footer" id="chatFooter" style="display: flex;">
                 <label for="chatAttach"
-                    style="cursor:pointer; font-size:20px; color:#1b5e20; display:flex; align-items:center;">ðŸ“·</label>
+                    style="cursor:pointer; font-size:20px; color:#1b5e20; display:flex; align-items:center;">📷</label>
                 <input type="file" id="chatAttach" accept="image/*" style="display:none;"
                     onchange="sendChatPhoto(this)">
                 <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..."
                     onkeypress="if(event.key === 'Enter') sendChatMessage()">
-                <button class="chat-submit-btn" onclick="sendChatMessage()">âž¤</button>
+                <button class="chat-submit-btn" onclick="sendChatMessage()">➤</button>
             </div>
         </div>
         <!-- FLOATING LIVE CHAT LAUNCHER BUTTON -->
         <button class="chat-bubble-btn" id="chat-bubble-trigger" onclick="toggleChat()" title="Chat with Live Support"
             aria-label="Open Live Support">
-            <span id="chat-bubble-icon" style="pointer-events: none; font-size: 26px; line-height: 1;">ðŸ’¬</span>
+            <span id="chat-bubble-icon" style="pointer-events: none; font-size: 26px; line-height: 1;">💬</span>
         </button>
     </div> <!-- Close .chat-widget-container -->
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-    <!-- ðŸŽ« UNIFIED LUXURY GUEST RESERVATION MANAGER   -->
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- 🎫 UNIFIED LUXURY GUEST RESERVATION MANAGER   -->
+    <!-- ══════════════════════════════════════════════ -->
     <div id="manage-booking-modal"
         style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
         onclick="if(event.target === this) closeManageBookingModal()">
@@ -2204,19 +2207,19 @@
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div
                         style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">
-                        ðŸŽ«</div>
+                        🎫</div>
                     <div>
                         <h3
                             style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; letter-spacing:0.3px;">
                             Guest Portal</h3>
                         <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;">
-                            Roland's Steakhouse Â· Table & Pre-Orders</p>
+                            Roland's Steakhouse · Table & Pre-Orders</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeManageBookingModal()" aria-label="Close"
                     style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; pointer-events:auto;"
                     onmouseover="this.style.background='rgba(255,255,255,0.35)'"
-                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
             </div>
 
             <!-- Modal Body (Stages) -->
@@ -2240,7 +2243,7 @@
                                 style="width:100%; padding:12px 14px 12px 40px; border:1.5px solid #cbd5e1; border-radius:12px; font-size:14px; box-sizing:border-box; outline:none; transition:border-color 0.2s;"
                                 onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'"
                                 onkeypress="if(event.key==='Enter') executeManageSearch()">
-                            <span style="position:absolute; left:14px; top:12px; font-size:16px; opacity:0.6;">ðŸ”</span>
+                            <span style="position:absolute; left:14px; top:12px; font-size:16px; opacity:0.6;">🔍</span>
                         </div>
                     </div>
                     <div id="manage-search-error"
@@ -2316,11 +2319,11 @@
                         <div style="display:flex; gap:10px;">
                             <button type="button" id="det-btn-receipt" onclick="viewReceiptFromModal()"
                                 style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:11px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>ðŸ“„</span> View Receipt
+                                <span>📄</span> View Receipt
                             </button>
                             <button type="button" onclick="goToCancelStage()"
                                 style="flex:1; background:#fee2e2; border:1.5px solid #f87171; color:#991b1b; padding:11px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>ðŸš«</span> Cancel Reservation
+                                <span>🚫</span> Cancel Reservation
                             </button>
                         </div>
                     </div>
@@ -2329,7 +2332,7 @@
                     <div id="det-actions-completed" style="display:none; flex-direction:column; gap:10px;">
                         <div
                             style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 14px; font-size:13px; color:#166534; display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:22px;">ðŸ½ï¸</span>
+                            <span style="font-size:22px;">🍽️</span>
                             <div>
                                 <strong style="display:block; font-size:13.5px;">Dining Completed</strong>
                                 <span style="font-size:12px; color:#15803d;">This reservation was successfully served.
@@ -2339,11 +2342,11 @@
                         <div style="display:flex; gap:10px;">
                             <button type="button" onclick="viewReceiptFromModal()"
                                 style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>ðŸ“„</span> View Receipt
+                                <span>📄</span> View Receipt
                             </button>
                             <button type="button" onclick="bookAnotherTable()"
                                 style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
-                                <span>ðŸ“…</span> Book Table Again
+                                <span>📅</span> Book Table Again
                             </button>
                         </div>
                     </div>
@@ -2352,7 +2355,7 @@
                     <div id="det-actions-cancelled" style="display:none; flex-direction:column; gap:10px;">
                         <div
                             style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; color:#991b1b; font-size:13px; display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:22px;">ðŸš«</span>
+                            <span style="font-size:22px;">🚫</span>
                             <div>
                                 <strong style="display:block; font-size:13.5px;">Reservation Cancelled</strong>
                                 <span id="det-cancel-reason-text" style="font-size:12px; color:#b91c1c;">Table released
@@ -2362,11 +2365,11 @@
                         <div style="display:flex; gap:10px;">
                             <button type="button" onclick="viewReceiptFromModal()"
                                 style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>ðŸ“„</span> View Receipt
+                                <span>📄</span> View Receipt
                             </button>
                             <button type="button" onclick="bookAnotherTable()"
                                 style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
-                                <span>ðŸ“…</span> Make New Reservation
+                                <span>📅</span> Make New Reservation
                             </button>
                         </div>
                     </div>
@@ -2376,9 +2379,9 @@
                         <a href="javascript:void(0)" onclick="goToSearchStage()"
                             style="font-size:12px; color:#64748b; text-decoration:underline;">Looking for another
                             reservation? Search here</a>
-                        <span style="color:#cbd5e1;">â€¢</span>
+                        <span style="color:#cbd5e1;">•</span>
                         <a href="javascript:void(0)" onclick="closeManageBookingModal()"
-                            style="font-size:12px; color:#64748b; font-weight:700; text-decoration:none; cursor:pointer;">âœ•
+                            style="font-size:12px; color:#64748b; font-weight:700; text-decoration:none; cursor:pointer;">✕
                             Close Window</a>
                     </div>
                 </div>
@@ -2388,7 +2391,7 @@
                     <div style="text-align:center; margin-bottom:16px;">
                         <div
                             style="width:48px; height:48px; border-radius:50%; background:#fee2e2; color:#dc2626; font-size:24px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px auto;">
-                            âš ï¸</div>
+                            ⚠️</div>
                         <h4 style="margin:0 0 4px 0; font-size:18px; color:#0f172a; font-weight:800;">Cancel This
                             Reservation?</h4>
                         <p style="margin:0; font-size:13px; color:#64748b;">Please review what happens before confirming
@@ -2433,7 +2436,7 @@
                     <div style="display:flex; gap:10px;">
                         <button type="button" onclick="goToDetailsStage()"
                             style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">
-                            â† Keep Reservation
+                            ← Keep Reservation
                         </button>
                         <button type="button" id="btn-final-cancel" onclick="executeFinalCancellation()"
                             style="flex:1; background:linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 14px rgba(220,38,38,0.3);">
@@ -2446,7 +2449,7 @@
                 <div id="manage-stage-success" style="display:none; text-align:center; padding:16px 8px;">
                     <div
                         style="width:64px; height:64px; border-radius:50%; background:#dcfce7; color:#166534; font-size:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto; box-shadow:0 0 0 8px rgba(34,197,94,0.15);">
-                        âœ“</div>
+                        ✓</div>
                     <h3 style="margin:0 0 6px 0; font-family:'Playfair Display',serif; color:#166534; font-size:22px;">
                         Reservation Cancelled</h3>
                     <p style="margin:0 0 16px 0; font-size:13.5px; color:#475569; line-height:1.5;">
@@ -2455,8 +2458,8 @@
                     </p>
                     <div
                         style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:20px; font-size:12px; color:#1e293b; text-align:left; display:flex; flex-direction:column; gap:4px;">
-                        <div>ðŸª‘ <strong>Table Status:</strong> Released to ðŸŸ¢ Available</div>
-                        <div id="succ-food-impact">ðŸ² <strong>Inventory:</strong> Raw ingredients restored to warehouse
+                        <div>🪑 <strong>Table Status:</strong> Released to 🟢 Available</div>
+                        <div id="succ-food-impact">🍲 <strong>Inventory:</strong> Raw ingredients restored to warehouse
                             stock</div>
                     </div>
                     <button type="button" onclick="closeManageBookingModal()"
@@ -2470,9 +2473,9 @@
     </div>
 
     <script>
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-        // ðŸŽ« UNIFIED GUEST BOOKING & CANCELLATION ENGINE
-        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ══════════════════════════════════════════════
+        // 🎫 UNIFIED GUEST BOOKING & CANCELLATION ENGINE
+        // ══════════════════════════════════════════════
         let activeManageRes = null;
 
         window.openManageBookingModal = async function (specificResNum) {
@@ -2594,17 +2597,17 @@
                 guardEl.style.background = '#f0fdf4';
                 guardEl.style.border = '1px solid #86efac';
                 guardEl.style.color = '#166534';
-                guardEl.innerHTML = `<strong>ðŸŸ¢ Standard Table Booking:</strong> Your table reservation will be released back to <em>Available</em> immediately.`;
+                guardEl.innerHTML = `<strong>🟢 Standard Table Booking:</strong> Your table reservation will be released back to <em>Available</em> immediately.`;
             } else if (kds === 'cooking' || kds === 'ready') {
                 guardEl.style.background = '#fffbeb';
                 guardEl.style.border = '1px solid #fde68a';
                 guardEl.style.color = '#92400e';
-                guardEl.innerHTML = `<strong>ðŸ‘¨â€ðŸ³ Kitchen Prep Underway:</strong> Our chefs have already fired up the grill! Confirming will alert the kitchen immediately to stop cooking.`;
+                guardEl.innerHTML = `<strong>👨‍🍳 Kitchen Prep Underway:</strong> Our chefs have already fired up the grill! Confirming will alert the kitchen immediately to stop cooking.`;
             } else {
                 guardEl.style.background = '#f0fdf4';
                 guardEl.style.border = '1px solid #86efac';
                 guardEl.style.color = '#166534';
-                guardEl.innerHTML = `<strong>ðŸŸ¢ Ingredients Restored:</strong> Your order has not reached the grill yet. All raw meat cuts, sauces, and seasonings will be returned directly to inventory stock.`;
+                guardEl.innerHTML = `<strong>🟢 Ingredients Restored:</strong> Your order has not reached the grill yet. All raw meat cuts, sauces, and seasonings will be returned directly to inventory stock.`;
             }
         };
 
@@ -2613,7 +2616,7 @@
             document.getElementById('det-res-num').textContent = '#' + res.reservationNumber;
             document.getElementById('det-guest-name').textContent = res.customerName || 'Valued Guest';
             document.getElementById('det-table').textContent = res.bookedTable || 'Assigned Table';
-            document.getElementById('det-schedule').textContent = (res.arrivalDate || 'â€”') + ' @ ' + (res.arrivalTime || 'â€”');
+            document.getElementById('det-schedule').textContent = (res.arrivalDate || '—') + ' @ ' + (res.arrivalTime || '—');
 
             const isCancelled = res.approvalStatus === 'rejected' || res.approvalStatus === 'cancelled' || res.kdsStatus === 'cancelled';
             const isCompleted = !isCancelled && Boolean(res.approvalStatus === 'completed' || res.kdsStatus === 'served');
@@ -2622,11 +2625,11 @@
             // Approval / Status Badge
             const badgeEl = document.getElementById('det-approval-badge');
             if (isCancelled) {
-                badgeEl.innerHTML = `<span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">ðŸš« CANCELLED</span>`;
+                badgeEl.innerHTML = `<span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🚫 CANCELLED</span>`;
             } else if (isCompleted) {
-                badgeEl.innerHTML = `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">âœ“ COMPLETED</span>`;
+                badgeEl.innerHTML = `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">✓ COMPLETED</span>`;
             } else {
-                badgeEl.innerHTML = `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">ðŸŸ¢ CONFIRMED</span>`;
+                badgeEl.innerHTML = `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🟢 CONFIRMED</span>`;
             }
 
             // Payment badge
@@ -2641,7 +2644,7 @@
                 foodListEl.innerHTML = res.foods.map(f => `<span style="background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:600; color:#1e293b;">${f}</span>`).join('');
                 if (res.beefNote) {
                     const cleanNote = res.beefNote.replace(/^Doneness:\s*/i, '');
-                    foodListEl.innerHTML += `<span style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; color:#92400e;">ðŸ”¥ ${cleanNote}</span>`;
+                    foodListEl.innerHTML += `<span style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; color:#92400e;">🔥 ${cleanNote}</span>`;
                 }
             } else {
                 foodListEl.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Standard table booking (No pre-ordered food)</span>`;
@@ -2652,18 +2655,18 @@
             if (isCompleted) {
                 kdsEl.innerHTML = `
                     <div style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:16px;">âœ…</span>
+                        <span style="font-size:16px;">✅</span>
                         <span>Kitchen Queue: Order Served & Completed</span>
                     </div>
                 `;
             } else {
                 const kds = res.kdsStatus || 'pending';
                 const kdsMap = {
-                    pending: { bg: '#fef3c7', color: '#92400e', icon: 'â³', text: 'Kitchen Queue: Order Received (Not Cooking Yet)' },
-                    cooking: { bg: '#dbeafe', color: '#1e40af', icon: 'ðŸ‘¨â€ðŸ³', text: 'Kitchen Queue: Cooking on Grill' },
-                    ready: { bg: '#dcfce7', color: '#14532d', icon: 'ðŸ½ï¸', text: 'Kitchen Queue: Food Ready for Service' },
-                    served: { bg: '#f0fdf4', color: '#166534', icon: 'âœ…', text: 'Kitchen Queue: Served' },
-                    cancelled: { bg: '#fee2e2', color: '#991b1b', icon: 'ðŸš«', text: 'Order Cancelled' }
+                    pending: { bg: '#fef3c7', color: '#92400e', icon: '⏳', text: 'Kitchen Queue: Order Received (Not Cooking Yet)' },
+                    cooking: { bg: '#dbeafe', color: '#1e40af', icon: '👨‍🍳', text: 'Kitchen Queue: Cooking on Grill' },
+                    ready: { bg: '#dcfce7', color: '#14532d', icon: '🍽️', text: 'Kitchen Queue: Food Ready for Service' },
+                    served: { bg: '#f0fdf4', color: '#166534', icon: '✅', text: 'Kitchen Queue: Served' },
+                    cancelled: { bg: '#fee2e2', color: '#991b1b', icon: '🚫', text: 'Order Cancelled' }
                 };
                 const kCfg = kdsMap[kds] || kdsMap.pending;
                 kdsEl.innerHTML = `
@@ -2789,7 +2792,7 @@
                     }
                 }
 
-                // ðŸ‘‰ FIX: Permanently sync the customer's cancellation to the MySQL Cloud Database!
+                // 👉 FIX: Permanently sync the customer's cancellation to the MySQL Cloud Database!
                 await Promise.all([
                     fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
                         method: 'POST',
@@ -2815,7 +2818,7 @@
                         const cancelMsg = {
                             sender: 'staff',
                             name: 'System',
-                            text: `ðŸš« Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
+                            text: `🚫 Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                             iso: new Date().toISOString()
                         };
@@ -2837,8 +2840,8 @@
                     const succFood = document.getElementById('succ-food-impact');
                     if (succFood) {
                         succFood.innerHTML = res.stockAction === 'restored_to_stock'
-                            ? 'ðŸ² <strong>Inventory:</strong> Raw cuts and ingredients restored to warehouse stock'
-                            : 'ðŸ² <strong>Kitchen Status:</strong> Food preparation halted';
+                            ? '🍲 <strong>Inventory:</strong> Raw cuts and ingredients restored to warehouse stock'
+                            : '🍲 <strong>Kitchen Status:</strong> Food preparation halted';
                     }
                 } else {
                     alert('Could not cancel: ' + (res?.error || 'Unknown error'));
@@ -2873,7 +2876,7 @@
             if (e.key === 'Escape') closeManageBookingModal();
         });
 
-        // ðŸ“± Smooth Header Glassmorphism on Scroll
+        // 📱 Smooth Header Glassmorphism on Scroll
         function updateHeaderScroll() {
             const header = document.getElementById('main-header');
             if (!header) return;
@@ -2890,7 +2893,7 @@
     <!-- STORE STATUS (OPEN / CLOSED) CUSTOMER PROTECTION -->
     <div id="store-closed-banner"
         style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
-        ðŸ”’ NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check
+        🔒 NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check
         back during opening hours.
     </div>
 
@@ -2931,7 +2934,7 @@
                 };
             } catch (err) { }
         }
-        // ðŸ‘‰ NEW: Reservation Modal Triggers
+        // 👉 NEW: Reservation Modal Triggers
         window.openReservationModal = function () {
             if (typeof window.syncBookingFormAutofill === 'function') {
                 window.syncBookingFormAutofill();
@@ -2943,7 +2946,7 @@
         };
     </script>
 
-    <!-- ðŸ‘¤ CUSTOMER PROFILE MODAL -->
+    <!-- 👤 CUSTOMER PROFILE MODAL -->
     <div id="profile-modal-overlay"
         style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
         onclick="if(event.target === this) closeProfileModal()">
@@ -2955,7 +2958,7 @@
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div
                         style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">
-                        ðŸ‘¤</div>
+                        👤</div>
                     <div>
                         <h2 style="margin:0; font-family:'Playfair Display',serif; font-size:20px;"
                             id="profile-greet-name">My Profile</h2>
@@ -2966,16 +2969,16 @@
                 <button type="button" onclick="closeProfileModal()"
                     style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;"
                     onmouseover="this.style.background='rgba(255,255,255,0.35)'"
-                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
             </div>
 
             <div
                 style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc; padding: 0 10px; font-family:'Roboto',sans-serif;">
                 <button id="prof-tab-history" onclick="switchProfileTab('history')"
-                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">ðŸ“‹
+                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">📋
                     Reservation History</button>
                 <button id="prof-tab-security" onclick="switchProfileTab('security')"
-                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">ðŸ‘¤
+                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">👤
                     Account & Security</button>
             </div>
 
@@ -2985,10 +2988,10 @@
                 </div>
 
                 <div id="profile-view-security" style="display:none; flex-direction:column; gap:16px;">
-                    <!-- ðŸ‘‰ Full Name Management Card -->
+                    <!-- 👉 Full Name Management Card -->
                     <div
                         style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
-                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ‘¤ Full Name</h4>
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">👤 Full Name</h4>
                         <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Update your account name across all
                             your past and active reservation records.</p>
                         <form onsubmit="handleProfileUpdateName(event)">
@@ -3011,10 +3014,10 @@
                         </form>
                     </div>
 
-                    <!-- ðŸ‘‰ NEW: Mobile Number Management Card -->
+                    <!-- 👉 NEW: Mobile Number Management Card -->
                     <div
                         style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
-                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ“± Mobile Number
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">📱 Mobile Number
                         </h4>
                         <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Save your number to automatically
                             fill in your details when booking a table.</p>
@@ -3045,7 +3048,7 @@
                     <!-- Change Password Card -->
                     <div
                         style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ”’ Change
+                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">🔒 Change
                             Password</h4>
                         <form onsubmit="handleProfileChangePassword(event)">
                             <div style="margin-bottom:14px;">
@@ -3091,7 +3094,7 @@
                 <button type="button" onclick="executeProfileLogout()"
                     style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:10px 18px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:0.2s;"
                     onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                    <span>ðŸšª</span> Log Out
+                    <span>🚪</span> Log Out
                 </button>
             </div>
         </div>
@@ -3103,7 +3106,7 @@
 
             if (!isLoggedIn) {
                 const goToLogin = await superModal({
-                    title: 'Account Required ðŸ”’',
+                    title: 'Account Required 🔒',
                     message: 'To view your complete reservation history, manage your security settings, and unlock exclusive dining privileges, please create a free account or sign in.',
                     type: 'confirm',
                     confirmText: 'Sign Up / Log In',
@@ -3280,13 +3283,13 @@
             const btn = document.getElementById('prof-name-btn');
 
             if (rawInput.length < 2) {
-                msg.textContent = 'âŒ Please enter a valid name (at least 2 characters).';
+                msg.textContent = '❌ Please enter a valid name (at least 2 characters).';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
             }
             if (!email) {
-                msg.textContent = 'âŒ Please sign in again to update your account name.';
+                msg.textContent = '❌ Please sign in again to update your account name.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
@@ -3320,16 +3323,16 @@
                     if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                     if (typeof syncCustomerReservationsFromCloud === 'function') syncCustomerReservationsFromCloud();
 
-                    msg.textContent = 'âœ… Name updated! Your account and reservation records are now updated.';
+                    msg.textContent = '✅ Name updated! Your account and reservation records are now updated.';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                 } else {
-                    msg.textContent = 'âŒ ' + ((data && data.error) || 'Failed to update name.');
+                    msg.textContent = '❌ ' + ((data && data.error) || 'Failed to update name.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
-                msg.textContent = 'âŒ Connection error while saving your name.';
+                msg.textContent = '❌ Connection error while saving your name.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
             } finally {
@@ -3346,7 +3349,7 @@
             const btn = document.getElementById('prof-phone-btn');
 
             if (phone.length !== 10 || !phone.startsWith('9')) {
-                msg.textContent = 'âŒ Please enter a valid 10-digit mobile number starting with 9.';
+                msg.textContent = '❌ Please enter a valid 10-digit mobile number starting with 9.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
@@ -3366,18 +3369,18 @@
                 if (data.success) {
                     localStorage.setItem('loggedInUserPhone', phone);
                     if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
-                    msg.textContent = 'âœ… Mobile number saved! It will now auto-fill when you book.';
+                    msg.textContent = '✅ Mobile number saved! It will now auto-fill when you book.';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                 } else {
-                    msg.textContent = 'âŒ ' + (data.error || 'Failed to save mobile number.');
+                    msg.textContent = '❌ ' + (data.error || 'Failed to save mobile number.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
                 localStorage.setItem('loggedInUserPhone', phone);
                 if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
-                msg.textContent = 'âœ… Mobile number saved to this device!';
+                msg.textContent = '✅ Mobile number saved to this device!';
                 msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                 msg.style.display = 'block';
             } finally {
@@ -3441,12 +3444,12 @@
                 return `
                     <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
-                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">ðŸŽ« ${escProf(r.reservationNumber)}</div>
+                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">🎫 ${escProf(r.reservationNumber)}</div>
                             <div style="font-size:10px; font-weight:800; color:${statusColor}; background:${statusBg}; padding:3px 8px; border-radius:8px;">${escProf(status)}</div>
                         </div>
-                        <div style="font-size:12px; color:#1e293b; font-weight:700; margin-bottom:4px;">ðŸ‘¤ ${escProf(r.customerName || cName || 'Guest')} ${r.branch ? `<span style="color:#64748b; font-weight:600;">â€¢ ðŸ“ ${escProf(r.branch)}</span>` : ''}</div>
-                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">ðŸ“… ${escProf(r.arrivalDate)} &nbsp; â° ${escProf(r.arrivalTime)} &nbsp; ðŸª‘ ${escProf(r.bookedTable || 'TBD')}</div>
-                        <div style="font-size:12px; color:#475569; font-weight:600;">ðŸ’° Paid: â‚±${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                        <div style="font-size:12px; color:#1e293b; font-weight:700; margin-bottom:4px;">👤 ${escProf(r.customerName || cName || 'Guest')} ${r.branch ? `<span style="color:#64748b; font-weight:600;">• 📍 ${escProf(r.branch)}</span>` : ''}</div>
+                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">📅 ${escProf(r.arrivalDate)} &nbsp; ⏰ ${escProf(r.arrivalTime)} &nbsp; 🪑 ${escProf(r.bookedTable || 'TBD')}</div>
+                        <div style="font-size:12px; color:#475569; font-weight:600;">💰 Paid: ₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                     </div>
                 `;
             }).join('');
@@ -3481,19 +3484,19 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    msg.textContent = 'âœ… Password successfully updated!';
+                    msg.textContent = '✅ Password successfully updated!';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                     document.getElementById('prof-curr-pass').value = '';
                     document.getElementById('prof-new-pass').value = '';
                     document.getElementById('prof-confirm-pass').value = '';
                 } else {
-                    msg.textContent = 'âŒ ' + (data.error || 'Failed to update.');
+                    msg.textContent = '❌ ' + (data.error || 'Failed to update.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
-                msg.textContent = 'âŒ Connection error.';
+                msg.textContent = '❌ Connection error.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
             } finally {
@@ -3515,7 +3518,7 @@
             closeProfileModal();
 
             if (typeof superModal === 'function') {
-                await superModal({ title: 'Logged Out ðŸ‘‹', message: 'You have successfully signed out of your account.' });
+                await superModal({ title: 'Logged Out 👋', message: 'You have successfully signed out of your account.' });
             } else {
                 alert('You have successfully signed out.');
             }
