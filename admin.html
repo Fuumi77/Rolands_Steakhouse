@@ -8,7 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="css/admin.css?v=2.1">
+    <link rel="stylesheet" href="css/admin.css?v=2.2">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
@@ -3266,7 +3266,8 @@ window.rejectReservation = async function (resNum) {
                     const opt = document.createElement('option');
                     opt.value = tId;
                     const desc = (t && t.description) ? String(t.description).trim() : '';
-                    opt.textContent = desc ? `${tId} (${desc})` : tId;
+                    const isVip = typeof window.isVipFloorTable === 'function' ? window.isVipFloorTable(t) : (typeof t.isVip === 'boolean' ? t.isVip : /\bvip\b/i.test(tId));
+                    opt.textContent = `${isVip ? '👑 ' : ''}${tId}${desc ? ` (${desc})` : ''}${isVip ? ' [VIP]' : ''}`;
                     selectEl.appendChild(opt);
                 });
 
@@ -3322,10 +3323,16 @@ window.rejectReservation = async function (resNum) {
 
             let currentFloorConfig = [];
             let floorEditorSelectedId = null;
+            window.isVipFloorTable = function (t) {
+                if (!t) return false;
+                if (typeof t.isVip === 'boolean') return t.isVip;
+                return /\bvip\b/i.test(String(t.id || t.name || ''));
+            };
+
             let floorEditorDraggedId = null;
 
             window.openFloorPlanEditor = function () {
-                currentFloorConfig = getFloorPlanConfig();
+                currentFloorConfig = getFloorPlanConfig().map(t => (t && typeof t === 'object') ? ({ ...t, isVip: window.isVipFloorTable(t) }) : t);
                 floorEditorSelectedId = currentFloorConfig[0]?.id || null;
                 renderFloorEditorCanvas();
                 renderFloorEditorProps();
@@ -3349,29 +3356,32 @@ function renderFloorEditorCanvas() {
                 canvas.innerHTML = '';
                 canvas.classList.add('floor-editor-grid');
                 canvas.classList.remove('floor-editor-canvas');
-                // Make the table list smoothly scrollable with roomy, readable cards!
-                canvas.style.cssText = 'flex:1; max-height:56vh; overflow-y:auto; padding:12px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; display:grid; grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:10px; align-content:start; -webkit-overflow-scrolling:touch;';
+                canvas.style.cssText = 'flex:1; max-height:56vh; overflow-y:auto; padding:12px; border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; display:flex; flex-direction:column; gap:14px; -webkit-overflow-scrolling:touch;';
 
                 const makeNode = (t) => {
                     const node = document.createElement('div');
                     const isSelected = t.id === floorEditorSelectedId;
-                    node.className = 'floor-editor-tile' + (isSelected ? ' selected' : '');
+                    const isVip = window.isVipFloorTable(t);
+                    node.className = 'floor-editor-tile' + (isSelected ? ' selected' : '') + (isVip ? ' is-vip-tile' : '');
                     node.setAttribute('data-table-id', t.id);
                     node.setAttribute('draggable', 'true');
-                    node.style.cssText = `min-height:66px; padding:10px 12px; border-radius:12px; border:2px solid ${isSelected ? '#16a34a' : '#e2e8f0'}; background:${isSelected ? '#f0fdf4' : '#ffffff'}; display:flex; align-items:center; gap:10px; cursor:pointer; box-sizing:border-box; transition:all 0.15s ease; box-shadow:0 2px 5px rgba(0,0,0,0.03);`;
+                    const borderCol = isVip ? (isSelected ? '#b45309' : '#f59e0b') : (isSelected ? '#16a34a' : '#e2e8f0');
+                    const bgCol = isVip ? (isSelected ? '#fef3c7' : '#fffbeb') : (isSelected ? '#f0fdf4' : '#ffffff');
+                    node.style.cssText = `min-height:66px; padding:10px 12px; border-radius:12px; border:2px solid ${borderCol}; background:${bgCol}; display:flex; align-items:center; gap:10px; cursor:pointer; box-sizing:border-box; transition:all 0.15s ease; box-shadow:${isVip ? '0 3px 10px rgba(245,158,11,0.14)' : '0 2px 5px rgba(0,0,0,0.03)'};`;
 
                     const seatLine = t.description ? `🪑 ${t.description}` : 'Tap to edit';
+                    const fallbackIcon = isVip ? '👑' : '🪑';
                     const thumbHtml = t.image
-                        ? `<div style="width:42px; height:42px; border-radius:8px; background-image:url('${String(t.image).replace(/'/g, "\\'")}'); background-size:cover; background-position:center; flex-shrink:0; border:1px solid #cbd5e1;"></div>`
-                        : `<div style="width:42px; height:42px; border-radius:8px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; border:1px solid #e2e8f0;">🪑</div>`;
+                        ? `<div style="width:42px; height:42px; border-radius:8px; background-image:url('${String(t.image).replace(/'/g, "\\'")}'); background-size:cover; background-position:center; flex-shrink:0; border:1px solid ${isVip ? '#f59e0b' : '#cbd5e1'};"></div>`
+                        : `<div style="width:42px; height:42px; border-radius:8px; background:${isVip ? '#fef3c7' : '#f1f5f9'}; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; border:1px solid ${isVip ? '#f59e0b' : '#e2e8f0'};">${fallbackIcon}</div>`;
 
                     node.innerHTML = `
                         ${thumbHtml}
                         <div style="flex:1; min-width:0; overflow:hidden;">
-                            <div style="font-weight:800; font-size:13.5px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${(t.name || t.id || '').toString()}</div>
-                            <div style="font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${seatLine}</div>
+                            <div style="font-weight:800; font-size:13.5px; color:${isVip ? '#92400e' : '#0f172a'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${(t.name || t.id || '').toString()}</div>
+                            <div style="font-size:11px; color:${isVip ? '#b45309' : '#64748b'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${seatLine}</div>
                         </div>
-                        ${t.isVip ? '<span style="font-size:9px; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px;">VIP</span>' : ''}
+                        ${isVip ? '<span style="font-size:9px; font-weight:800; background:linear-gradient(135deg,#f59e0b,#d97706); color:#ffffff; padding:3px 7px; border-radius:999px; letter-spacing:0.4px;">👑 VIP</span>' : ''}
                     `;
 
                     node.addEventListener('click', () => selectFloorTable(t.id));
@@ -3402,7 +3412,32 @@ function renderFloorEditorCanvas() {
                     return node;
                 };
 
-currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
+                const regularTables = currentFloorConfig.filter(t => t && !window.isVipFloorTable(t));
+                const vipRooms = currentFloorConfig.filter(t => t && window.isVipFloorTable(t));
+
+                const buildSection = (labelText, badgeColor, list) => {
+                    const sec = document.createElement('div');
+                    const hdr = document.createElement('div');
+                    hdr.style.cssText = `font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:${badgeColor}; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;`;
+                    hdr.innerHTML = `<span>${labelText}</span><span style="font-size:10px; font-weight:700; opacity:0.85;">${list.length}</span>`;
+                    sec.appendChild(hdr);
+
+                    const grid = document.createElement('div');
+                    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:10px; align-content:start;';
+                    if (list.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.style.cssText = 'grid-column:1 / -1; padding:10px 12px; border-radius:10px; border:1px dashed #cbd5e1; color:#94a3b8; font-size:12px; font-weight:600; text-align:center;';
+                        empty.textContent = 'None marked in this group yet.';
+                        grid.appendChild(empty);
+                    } else {
+                        list.forEach(t => grid.appendChild(makeNode(t)));
+                    }
+                    sec.appendChild(grid);
+                    return sec;
+                };
+
+                canvas.appendChild(buildSection('🪑 Regular Floor Tables (Standard & Priority)', '#475569', regularTables));
+                canvas.appendChild(buildSection('👑 VIP Rooms (VIP Room Selection Only)', '#b45309', vipRooms));
             }
 
             function renderFloorEditorProps() {
@@ -3417,12 +3452,15 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                     return;
                 }
 
-                if (sub) sub.textContent = t.id;
+                const isVip = window.isVipFloorTable(t);
+                const vipCount = currentFloorConfig.filter(x => window.isVipFloorTable(x)).length;
+                const canDelete = currentFloorConfig.length > 1 && (!isVip || vipCount > 1);
+                if (sub) sub.textContent = isVip ? `${t.id} • 👑 VIP Room` : t.id;
                 const idx = currentFloorConfig.findIndex(x => x.id === t.id);
                 const imgPreview = t.image
                     ? `<img src="${t.image}" onclick="window.openImagePreview('${String(t.image).replace(/'/g, "\\'")}')" title="Click to enlarge"
-                        style="width:100%; height:140px; object-fit:cover; border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; cursor: zoom-in;">`
-                    : `<div style="width:100%; height:120px; border-radius:10px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-weight:900;">No image</div>`;
+                        style="width:100%; height:140px; object-fit:cover; border-radius:10px; border:1px solid ${isVip ? '#f59e0b' : '#e2e8f0'}; background:#f8fafc; cursor: zoom-in;">`
+                    : `<div style="width:100%; height:120px; border-radius:10px; border:1px dashed ${isVip ? '#f59e0b' : '#cbd5e1'}; background:${isVip ? '#fffbeb' : '#f8fafc'}; display:flex; align-items:center; justify-content:center; color:${isVip ? '#b45309' : '#94a3b8'}; font-weight:900;">${isVip ? '👑 No VIP image' : 'No image'}</div>`;
 
                 body.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -3430,27 +3468,34 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                         <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
                             Name / ID
                             <input id="fp-prop-name" type="text" value="${(t.name || t.id || '').toString().replace(/"/g, '&quot;')}"
-                                ${t.isVip ? 'readonly' : ''} 
                                 style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
                         </label>
                         <label style="font-size:11px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">
                             Seats / Description
                             <input id="fp-prop-desc" type="text" value="${(t.description || '').toString().replace(/"/g, '&quot;')}"
-                                placeholder="e.g. 4 Seats"
+                                placeholder="${isVip ? 'e.g. Up to 20 Guests, Smart TV' : 'e.g. 4 Seats'}"
                                 style="margin-top:6px; width:100%; padding:10px 10px; border:1px solid #cbd5e1; border-radius:10px; font-weight:800; font-size:14px; box-sizing:border-box;">
+                        </label>
+                        <label style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; border:1.5px solid ${isVip ? '#f59e0b' : '#cbd5e1'}; background:${isVip ? '#fffbeb' : '#f8fafc'}; cursor:pointer;">
+                            <input id="fp-prop-vip" type="checkbox" ${isVip ? 'checked' : ''} style="margin-top:2px; width:16px; height:16px; accent-color:#d97706; cursor:pointer; flex-shrink:0;">
+                            <div>
+                                <div style="font-size:12px; font-weight:800; color:${isVip ? '#92400e' : '#1e293b'};">👑 Mark as VIP Room</div>
+                                <div style="font-size:11px; color:#64748b; line-height:1.35; margin-top:2px;">Shown differently on Floor Plan &amp; appears only under VIP Room in Seat Selection.</div>
+                            </div>
                         </label>
                         <label style="display:block; background:#e2e8f0; color:#334155; text-align:center; padding:10px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:900;">
                             Upload picture
                             <input type="file" style="display:none;" accept="image/*" onchange="window.handleTableImageUpload(event, ${idx})">
                         </label>
-                        ${!t.isVip ? `<button type="button" onclick="window.removeTable(${idx})" style="background:#fee2e2; color:#ef4444; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:900;">Delete table</button>` : ''}
+                        ${canDelete ? `<button type="button" onclick="window.removeTable(${idx})" style="background:#fee2e2; color:#ef4444; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:900;">Delete table</button>` : ''}
                     </div>
                 `;
 
                 const nameEl = document.getElementById('fp-prop-name');
                 const descEl = document.getElementById('fp-prop-desc');
+                const vipEl = document.getElementById('fp-prop-vip');
 
-                if (nameEl && !t.isVip) {
+                if (nameEl) {
                     nameEl.addEventListener('change', () => {
                         const newName = (nameEl.value || '').toString().trim();
                         if (!newName) {
@@ -3471,6 +3516,13 @@ currentFloorConfig.forEach(t => canvas.appendChild(makeNode(t)));
                     descEl.addEventListener('change', () => {
                         t.description = (descEl.value || '').toString();
                         renderFloorEditorCanvas();
+                    });
+                }
+                if (vipEl) {
+                    vipEl.addEventListener('change', () => {
+                        t.isVip = Boolean(vipEl.checked);
+                        renderFloorEditorCanvas();
+                        renderFloorEditorProps();
                     });
                 }
             }
@@ -3712,8 +3764,9 @@ window.resetFloor = async function () {
                     const nextRes = tableReservations.find(r => !r.completedAt);
                     const metaText = nextRes ? `${nextRes.arrivalDate || ''} @ ${nextRes.arrivalTime || '?'}` : '';
 
+                    const isVip = typeof window.isVipFloorTable === 'function' ? window.isVipFloorTable(t) : Boolean(t.isVip);
                     const card = document.createElement('div');
-                    card.className = `table-card card-${status}`;
+                    card.className = `table-card card-${status}${isVip ? ' vip-room-card' : ''}`;
                     card.style.cursor = 'pointer';
                     card.setAttribute('draggable', 'true');
 
@@ -3745,10 +3798,11 @@ window.resetFloor = async function () {
                     });
 
                     card.innerHTML = `
+                        ${isVip ? `<div class="vip-floor-badge">👑 VIP Room</div>` : ''}
                         ${t.image ? `<div class="floor-table-photo" style="background-image:url('${String(t.image).replace(/'/g, "\\'")}')"></div>` : ''}
-                        <div class="table-name">${tId}</div>
+                        <div class="table-name" style="${isVip ? 'color:#92400e;' : ''}">${tId}</div>
                         <div class="table-status">${status}</div>
-                        <div style="font-size:11px; color:#475569; margin-top:2px;">${t.description ? `🪑 ${t.description}` : ''}</div>
+                        <div style="font-size:11px; color:${isVip ? '#b45309' : '#475569'}; margin-top:2px;">${t.description ? `🪑 ${t.description}` : ''}</div>
                         <div class="table-meta" style="font-size:11px; color:#666; margin-top:4px;">${status === 'reserved' && metaText ? metaText : ''}</div>
                         <div style="font-size:11px; color:#2e7d32; margin-top:2px;">${tableReservations.length > 0 ? `📋 ${tableReservations.length} Reservation${tableReservations.length > 1 ? 's' : ''}` : ''}</div>
                     `;
