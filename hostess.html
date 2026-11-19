@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/hostess.css">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
@@ -52,11 +52,15 @@
             try {
                 const cfg = JSON.parse(localStorage.getItem('floorPlanConfig') || '[]');
                 if (Array.isArray(cfg) && cfg.length > 0) {
-                    const list = cfg.map(t => String((t && (t.id || t.name)) || '').trim()).filter(Boolean);
+                    const list = cfg.map(t => ({
+                        id: String((t && (t.id || t.name)) || '').trim(),
+                        isVip: typeof t?.isVip === 'boolean' ? t.isVip : /\bvip\b/i.test(String(t?.id || t?.name || '')),
+                        description: t?.description || ''
+                    })).filter(t => t.id);
                     if (list.length > 0) return list;
                 }
             } catch (e) {}
-            return DEFAULT_HOSTESS_TABLES;
+            return DEFAULT_HOSTESS_TABLES.map(id => ({ id, isVip: /\bvip\b/i.test(id), description: '' }));
         }
 
         // Status flow: available -> reserved -> seated -> cleaning -> available
@@ -78,7 +82,8 @@
             const fp = document.getElementById('floor-plan');
             fp.innerHTML = '';
 
-            tables.forEach(tId => {
+            tables.forEach(tObj => {
+                const tId = tObj.id;
                 let status = overrides[tId] || 'available';
                 // Map legacy "unavailable" from master admin to "reserved" for hostess view
                 if (status === 'unavailable') status = 'reserved';
@@ -88,11 +93,16 @@
                 const metaText = reservation ? `booked for ${reservation.arrivalTime || 'today'}` : '';
 
                 const card = document.createElement('div');
-                card.className = `table-card card-${status}`;
+                card.className = `table-card card-${status}${tObj.isVip ? ' vip-room-card' : ''}`;
+                if (tObj.isVip) {
+                    card.style.boxShadow = '0 0 0 2px #f59e0b, 0 6px 16px rgba(245, 158, 11, 0.16)';
+                    if (status === 'available') card.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)';
+                }
                 card.onclick = () => updateTable(tId, status);
                 
                 card.innerHTML = `
-                    <div class="table-name">${tId}</div>
+                    ${tObj.isVip ? '<div style="display:inline-block; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; margin-bottom:6px; letter-spacing:0.5px;">👑 VIP ROOM</div>' : ''}
+                    <div class="table-name" style="${tObj.isVip ? 'color:#92400e;' : ''}">${tId}</div>
                     <div class="table-status">${status}</div>
                     <div class="table-meta">${status === 'reserved' && metaText ? metaText : ''}</div>
                 `;
