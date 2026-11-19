@@ -9,15 +9,15 @@
     <link rel="stylesheet" href="css/preorder.css?v=2.2">
     <link rel="stylesheet" href="css/design-system.css?v=2.1">
     <script src="js/design-system.js?v=2.0"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
 
     <style>
-        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (pre-order.html) */
+        /* ðŸ‘‰ LOGO SCALER & HOVER/CLICK ANIMATION (pre-order.html) */
         :root {
-            --logo-scale: 1.5;       /* 👈 Change this number to adjust normal size */
-            --logo-hover-scale: 1.6; /* 👈 Size when hovered */
-            --logo-click-scale: 1.75; /* 👈 Size when clicked */
+            --logo-scale: 1.5;       /* ðŸ‘ˆ Change this number to adjust normal size */
+            --logo-hover-scale: 1.6; /* ðŸ‘ˆ Size when hovered */
+            --logo-click-scale: 1.75; /* ðŸ‘ˆ Size when clicked */
         }
 
         header#main-header .logo {
@@ -52,7 +52,7 @@
                 transform-origin: center center !important;
             }
         }
-        /* 👉 1. Clean Static Card for Beef Preference (No Flash) */
+        /* ðŸ‘‰ 1. Clean Static Card for Beef Preference (No Flash) */
         .beef-pref-panel {
             background: #f8fafc !important;
             border: 1.5px solid #e2e8f0 !important;
@@ -62,7 +62,7 @@
             box-sizing: border-box !important;
         }
 
-        /* 👉 2. Highlight Effect for the Added Item (Cart Row & Menu Card) */
+        /* ðŸ‘‰ 2. Highlight Effect for the Added Item (Cart Row & Menu Card) */
         .cart-item {
             padding: 8px 10px !important;
             border-radius: 10px !important;
@@ -87,7 +87,7 @@
             transition: all 0.3s ease !important;
         }
 
-        /* 👉 3. Clear Active Highlight for Doneness Chips */
+        /* ðŸ‘‰ 3. Clear Active Highlight for Doneness Chips */
         .doneness-chip {
             transition: all 0.2s ease !important;
             cursor: pointer !important;
@@ -101,7 +101,7 @@
             box-shadow: 0 4px 10px rgba(27, 94, 32, 0.25) !important;
         }
 
-        /* 👉 4. Reduce (−) Button Beside Each Meal in the Cart */
+        /* ðŸ‘‰ 4. Reduce (âˆ’) Button Beside Each Meal in the Cart */
         .cart-reduce-btn {
             width: 26px;
             height: 26px;
@@ -161,7 +161,7 @@
         <nav>
             <ul>
                 <li><a href="index.html#home" onclick="handleBack(event, 'index.html#home')" class="nav-link">Home</a></li>
-                <li><a href="#" onclick="handleBack(event, 'seat-selection.html')" class="nav-link">← Back to Tables</a></li>
+                <li><a href="#" onclick="handleBack(event, 'seat-selection.html')" class="nav-link">â† Back to Tables</a></li>
             </ul>
         </nav>
     </header>
@@ -170,13 +170,13 @@
     <div class="preorder-hero">
         <h1>Priority Pre-Order</h1>
         <div class="preorder-meta-row">
-            <span class="preorder-meta-pill preorder-branch-pill">📍 Branch: <strong id="branch-display-badge">General Santos City</strong></span>
-            <span class="preorder-meta-pill preorder-table-pill">🪑 Table Selected: <strong id="table-display-badge">None</strong></span>
+            <span class="preorder-meta-pill preorder-branch-pill">ðŸ“ Branch: <strong id="branch-display-badge">General Santos City</strong></span>
+            <span class="preorder-meta-pill preorder-table-pill">ðŸª‘ Table Selected: <strong id="table-display-badge">None</strong></span>
         </div>
         <div id="branch-address-sub" class="preorder-branch-address"></div>
     </div>
 
-    <!-- ══ PAYMENT FAILED BANNER ══ -->
+    <!-- â•â• PAYMENT FAILED BANNER â•â• -->
     <div id="payment-failed-banner" style="display:none;">
         <div class="pfail-icon">&#x274C;</div>
         <div class="pfail-body">
@@ -192,20 +192,20 @@
         <div class="category-sidebar" id="category-sidebar">
             <button class="category-btn" onclick="handleBack(event, 'seat-selection.html')" 
                     style="margin-bottom: 25px; background: #f1f5f9; color: #475569; border: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                ← Back to Tables
+                â† Back to Tables
             </button>
         </div>
 
         <!-- Category Mobile Selector (mobile only) -->
         <div class="category-mobile-selector">
             <div class="mobile-cat-wrapper">
-                <span class="mobile-cat-icon">🍽️</span>
+                <span class="mobile-cat-icon">ðŸ½ï¸</span>
                 <label for="mobile-category-select" class="mobile-cat-label">Select Food Category</label>
                 <div class="mobile-cat-select-wrap">
                     <select id="mobile-category-select" class="mobile-cat-select" title="Select Food Category" aria-label="Select Food Category" onchange="switchCategory(this.value)">
                         <!-- Options populated by JS -->
                     </select>
-                    <span class="mobile-cat-arrow">▼</span>
+                    <span class="mobile-cat-arrow">â–¼</span>
                 </div>
             </div>
         </div>
@@ -219,7 +219,7 @@
                         style="width: 100%; padding: 12px 16px 12px 42px; border: 1.5px solid #cbd5e1; border-radius: 25px; font-size: 15px; outline: none; transition: all 0.2s; background: white;"
                         onfocus="this.style.borderColor='#2e7d32'; this.style.boxShadow='0 4px 12px rgba(46,125,50,0.15)'"
                         onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none'">
-                    <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; font-size: 16px;">🔍</span>
+                    <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; font-size: 16px;">ðŸ”</span>
                 </div>
             </div>
             <div class="menu-grid" id="menu-grid"></div>
@@ -235,21 +235,21 @@
                 </div>
             </div>
             <div class="preorder-processing-branch-box">
-                <span>📍 Processing Branch:</span>
+                <span>ðŸ“ Processing Branch:</span>
                 <strong id="preorder-processing-branch">General Santos City</strong>
             </div>
             <div class="cart-items-container" id="cart-items"></div>
 
-            <!-- 🎟️ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (DESKTOP) -->
+            <!-- ðŸŽŸï¸ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (DESKTOP) -->
             <div id="preorder-discount-box-desktop" style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px;">
                 <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">
-                    🏷️ Discount or Promo Voucher
+                    ðŸ·ï¸ Discount or Promo Voucher
                 </div>
                 <select id="preorder-disc-type" onchange="window.syncPreOrderDiscountUI('desktop')" style="width:100%; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; background:white; font-weight:700; font-size:13px; color:#0f172a; cursor:pointer; box-sizing:border-box;">
                     <option value="none">No Discount (Regular Price)</option>
-                    <option value="pwd">♿ PWD Discount (20% Off — ID Photo Required)</option>
-                    <option value="senior">👵 Senior Citizen (20% Off — ID Photo Required)</option>
-                    <option value="voucher">🎟️ Promo Voucher (Photo Required)</option>
+                    <option value="pwd">â™¿ PWD Discount (20% Off â€” ID Photo Required)</option>
+                    <option value="senior">ðŸ‘µ Senior Citizen (20% Off â€” ID Photo Required)</option>
+                    <option value="voucher">ðŸŽŸï¸ Promo Voucher (Photo Required)</option>
                 </select>
 
                 <!-- Voucher Selector -->
@@ -264,13 +264,13 @@
                 <!-- Mandatory Valid Picture Upload for PWD / Senior / Voucher -->
                 <div id="preorder-proof-upload-wrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
                     <label style="display:block; font-size:11.5px; font-weight:800; color:#b91c1c; margin-bottom:6px;">
-                        📷 Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
+                        ðŸ“· Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
                     </label>
                     <input type="file" id="preorder-disc-photo-input" accept="image/jpeg,image/png,image/webp" onchange="window.handlePreOrderDiscountPhoto(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
                     <div id="preorder-disc-photo-preview-wrap" style="display:none; align-items:center; justify-content:space-between; background:#f0fdf4; border:1px solid #86efac; padding:6px 10px; border-radius:8px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <img id="preorder-disc-photo-img" src="" alt="ID/Voucher Preview" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid #16a34a;">
-                            <span style="font-size:11.5px; font-weight:800; color:#166534;">✅ Valid Photo Attached</span>
+                            <span style="font-size:11.5px; font-weight:800; color:#166534;">âœ… Valid Photo Attached</span>
                         </div>
                         <button type="button" onclick="window.clearPreOrderDiscountPhoto()" style="background:#fee2e2; color:#dc2626; border:none; border-radius:6px; padding:4px 8px; font-size:11px; font-weight:800; cursor:pointer;">Remove</button>
                     </div>
@@ -278,15 +278,15 @@
             </div>
 
             <div class="cart-total-section">
-                <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal">₱0.00</span></div>
-                <div class="cart-total-row" id="cart-discount-row" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label">Discount</span><span id="cart-discount-val">-₱0.00</span></div>
+                <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal">â‚±0.00</span></div>
+                <div class="cart-total-row" id="cart-discount-row" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label">Discount</span><span id="cart-discount-val">-â‚±0.00</span></div>
                 <div class="cart-total-row"><span>VAT (12% incl.)</span><span>Included</span></div>
-                <div class="cart-total"><span>Total</span><span id="cart-total">₱0.00</span></div>
+                <div class="cart-total"><span>Total</span><span id="cart-total">â‚±0.00</span></div>
             </div>
 
             <!-- Beef Preference Panel -->
             <div class="beef-pref-panel" id="beef-pref-panel-desktop" style="display: block;">
-                <div class="beef-pref-label">📝 Special Requests</div>
+                <div class="beef-pref-label">ðŸ“ Special Requests</div>
                 <div class="doneness-row" id="doneness-chips" data-beef-only="1">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium Rare">Medium Rare</button>
@@ -294,7 +294,7 @@
                     <button type="button" class="doneness-chip" data-val="Well Done">Well Done</button>
                 </div>
                 <textarea id="beef-note-textarea" class="beef-note-input"
-                    placeholder="Special requests, allergies, or anything for the kitchen…"></textarea>
+                    placeholder="Special requests, allergies, or anything for the kitchenâ€¦"></textarea>
             </div>
 
             <div style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
@@ -302,11 +302,11 @@
                     Kitchen Timing <span style="color:#ef4444;">*</span></div>
                 <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">
                     <input type="radio" name="preorder-kitchen-timing" value="SERVE UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
-                    🍽️ Serve Upon Arrival
+                    ðŸ½ï¸ Serve Upon Arrival
                 </label>
                 <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569;">
                     <input type="radio" name="preorder-kitchen-timing" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
-                    🔥 Cook Upon Arrival
+                    ðŸ”¥ Cook Upon Arrival
                 </label>
             </div>
 
@@ -321,14 +321,14 @@
         </div>
     </div>
 
-    <!-- ══ FLOATING CART BUTTON (mobile/tablet) ══ -->
+    <!-- â•â• FLOATING CART BUTTON (mobile/tablet) â•â• -->
     <button id="floating-cart-btn" onclick="openCartSheet()">
-        <span style="font-size:20px;">🛒</span>
+        <span style="font-size:20px;">ðŸ›’</span>
         View Order
         <span id="cart-badge">0</span>
     </button>
 
-    <!-- ══ MOBILE CART SHEET ══ -->
+    <!-- â•â• MOBILE CART SHEET â•â• -->
     <div id="cart-sheet-overlay" onclick="closeCartSheet()"></div>
     <div id="cart-sheet">
         <!-- Swipe Handle Area -->
@@ -345,21 +345,21 @@
                 </div>
             </div>
             <div class="preorder-processing-branch-box">
-                <span>📍 Processing Branch:</span>
+                <span>ðŸ“ Processing Branch:</span>
                 <strong id="preorder-processing-branch-sheet">General Santos City</strong>
             </div>
             <div class="cart-items-container" id="cart-items-sheet"></div>
 
-            <!-- 🎟️ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (MOBILE SHEET) -->
+            <!-- ðŸŽŸï¸ PRE-ORDER DISCOUNT / VOUCHER & MANDATORY PHOTO UPLOAD (MOBILE SHEET) -->
             <div id="preorder-discount-box-sheet" style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px;">
                 <div style="font-weight:800; font-size:12px; color:#1b5e20; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">
-                    🏷️ Discount or Promo Voucher
+                    ðŸ·ï¸ Discount or Promo Voucher
                 </div>
                 <select id="preorder-disc-type-sheet" onchange="window.syncPreOrderDiscountUI('sheet')" style="width:100%; padding:9px 10px; border:1.5px solid #cbd5e1; border-radius:8px; background:white; font-weight:700; font-size:13px; color:#0f172a; cursor:pointer; box-sizing:border-box;">
                     <option value="none">No Discount (Regular Price)</option>
-                    <option value="pwd">♿ PWD Discount (20% Off — ID Photo Required)</option>
-                    <option value="senior">👵 Senior Citizen (20% Off — ID Photo Required)</option>
-                    <option value="voucher">🎟️ Promo Voucher (Photo Required)</option>
+                    <option value="pwd">â™¿ PWD Discount (20% Off â€” ID Photo Required)</option>
+                    <option value="senior">ðŸ‘µ Senior Citizen (20% Off â€” ID Photo Required)</option>
+                    <option value="voucher">ðŸŽŸï¸ Promo Voucher (Photo Required)</option>
                 </select>
                 <div id="preorder-voucher-wrap-sheet" style="display:none; flex-direction:column; gap:6px; margin-top:8px;">
                     <select id="preorder-voucher-select-sheet" onchange="window.onPreOrderVoucherPick(this.value)" style="width:100%; padding:8px 10px; border:1px solid #86efac; border-radius:8px; background:#f0fdf4; color:#166534; font-weight:800; font-size:12px; cursor:pointer; box-sizing:border-box;">
@@ -370,22 +370,22 @@
                 </div>
                 <div id="preorder-proof-upload-wrap-sheet" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
                     <label style="display:block; font-size:11.5px; font-weight:800; color:#b91c1c; margin-bottom:6px;">
-                        📷 Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
+                        ðŸ“· Upload Valid ID / Voucher Photo <span style="color:#ef4444;">* (Required)</span>
                     </label>
                     <input type="file" id="preorder-disc-photo-input-sheet" accept="image/jpeg,image/png,image/webp" onchange="window.handlePreOrderDiscountPhoto(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
                 </div>
             </div>
 
             <div class="cart-total-section">
-                <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal-sheet">₱0.00</span></div>
-                <div class="cart-total-row" id="cart-discount-row-sheet" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label-sheet">Discount</span><span id="cart-discount-val-sheet">-₱0.00</span></div>
+                <div class="cart-total-row"><span>Subtotal</span><span id="cart-subtotal-sheet">â‚±0.00</span></div>
+                <div class="cart-total-row" id="cart-discount-row-sheet" style="display:none; color:#c2410c; font-weight:800;"><span id="cart-discount-label-sheet">Discount</span><span id="cart-discount-val-sheet">-â‚±0.00</span></div>
                 <div class="cart-total-row"><span>VAT (12% incl.)</span><span>Included</span></div>
-                <div class="cart-total"><span>Total</span><span id="cart-total-sheet">₱0.00</span></div>
+                <div class="cart-total"><span>Total</span><span id="cart-total-sheet">â‚±0.00</span></div>
             </div>
 
             <!-- Beef Preference in sheet -->
             <div class="beef-pref-panel" id="beef-pref-panel-sheet" style="display: block;">
-                <div class="beef-pref-label">📝 Special Requests</div>
+                <div class="beef-pref-label">ðŸ“ Special Requests</div>
                 <div class="doneness-row" id="doneness-chips-sheet" data-beef-only="1">
                     <button type="button" class="doneness-chip" data-val="Rare">Rare</button>
                     <button type="button" class="doneness-chip" data-val="Medium Rare">Medium Rare</button>
@@ -393,7 +393,7 @@
                     <button type="button" class="doneness-chip" data-val="Well Done">Well Done</button>
                 </div>
                 <textarea id="beef-note-sheet" class="beef-note-input"
-                    placeholder="Special requests, allergies, or notes for the kitchen…"></textarea>
+                    placeholder="Special requests, allergies, or notes for the kitchenâ€¦"></textarea>
             </div>
 
             <div style="margin:12px 0; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px;">
@@ -401,11 +401,11 @@
                     Kitchen Timing <span style="color:#ef4444;">*</span></div>
                 <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">
                     <input type="radio" name="preorder-kitchen-timing-sheet" value="SERVE UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
-                    🍽️ Serve Upon Arrival
+                    ðŸ½ï¸ Serve Upon Arrival
                 </label>
                 <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; background:white; cursor:pointer; font-size:13px; font-weight:600; color:#475569;">
                     <input type="radio" name="preorder-kitchen-timing-sheet" value="COOK UPON ARRIVAL" style="accent-color:#1b5e20; width:16px; height:16px;">
-                    🔥 Cook Upon Arrival
+                    ðŸ”¥ Cook Upon Arrival
                 </label>
             </div>
 
@@ -433,9 +433,9 @@
     <div id="super-modal-root"></div>
 
     <script>
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // PAYMENT FAILURE BANNER DETECTION
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function() {
             const params = new URLSearchParams(window.location.search);
             if (params.get('payment') === 'failed') {
@@ -451,9 +451,9 @@
             }
         })();
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // MENU DATA
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         let defaultMenuData = [
             // Beef
             { id:'INV-B1', title:'Fillet Mignon', category:'Beef', price:935, stock: 100 },
@@ -606,18 +606,18 @@
 
         let menuData = getMenuData();
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // CATEGORY DEFINITIONS  (single source of truth)
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const CATEGORIES = [
-            { key: 'Beef',              label: '🥩 Beef' },
-            { key: 'T-Bone',            label: '🦴 T-Bone' },
-            { key: 'Sirloin Steak',     label: '🥩 Sirloin Steak' },
-            { key: 'Chicken & Fish',    label: '🍗 Chicken & Fish' },
-            { key: 'Sandwich',          label: '🍔 Sandwich' },
-            { key: 'Side Orders',       label: '🍟 Side Orders' },
-            { key: 'Drinks',            label: '🍹 Drinks' },
-            { key: 'Wines',             label: '🍷 Wines' }
+            { key: 'Beef',              label: 'ðŸ¥© Beef' },
+            { key: 'T-Bone',            label: 'ðŸ¦´ T-Bone' },
+            { key: 'Sirloin Steak',     label: 'ðŸ¥© Sirloin Steak' },
+            { key: 'Chicken & Fish',    label: 'ðŸ— Chicken & Fish' },
+            { key: 'Sandwich',          label: 'ðŸ” Sandwich' },
+            { key: 'Side Orders',       label: 'ðŸŸ Side Orders' },
+            { key: 'Drinks',            label: 'ðŸ¹ Drinks' },
+            { key: 'Wines',             label: 'ðŸ· Wines' }
         ];
 
         let cart = {};
@@ -631,10 +631,10 @@
         let currentCategory = CATEGORIES[0].key;  // start on Beef
         let selectedDoneness = '';
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // HELPERS
-        // ─────────────────────────────────────────────────────────
-        const fmt = n => '₱' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2 });
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        const fmt = n => 'â‚±' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
         function getTotal() {
             return Object.keys(cart).reduce((sum, id) => {
@@ -643,9 +643,9 @@
             }, 0);
         }
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // RENDER MENU GRID
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const menuGrid = document.getElementById('menu-grid');
         const categoryTitle = document.getElementById('current-category-title');
 
@@ -669,7 +669,7 @@
             } else {
                 controlsHtml = `
                     <div class="qty-controls">
-                        <button class="qty-btn" onclick="updateQty('${item.id}',-1)" aria-label="Remove">−</button>
+                        <button class="qty-btn" onclick="updateQty('${item.id}',-1)" aria-label="Remove">âˆ’</button>
                         <span class="qty-display">${qty}</span>
                         <button class="qty-btn add" onclick="updateQty('${item.id}',1)" aria-label="Add">+</button>
                     </div>
@@ -730,7 +730,7 @@
 
                 if (filtered.length === 0) {
                     menuGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 40px 0;">
-                        <span style="font-size: 40px; display: block; margin-bottom: 12px;">🍽️</span>
+                        <span style="font-size: 40px; display: block; margin-bottom: 12px;">ðŸ½ï¸</span>
                         No menu items match your search.
                     </div>`;
                     return;
@@ -743,9 +743,9 @@
             }
         }
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // RENDER CART  (updates both sidebar + sheet simultaneously)
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function buildCartItemsHTML() {
             const keys = Object.keys(cart);
             if (!keys.length) return '<div class="cart-empty">Cart is empty. Add items from the menu.</div>';
@@ -762,13 +762,13 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                             <div class="cart-item-price">${fmt(item.price * cart[id].qty)}</div>
-                            <button type="button" class="cart-reduce-btn" onclick="updateQty('${id}', -1)" title="Reduce quantity" aria-label="Reduce ${item.title}">−</button>
+                            <button type="button" class="cart-reduce-btn" onclick="updateQty('${id}', -1)" title="Reduce quantity" aria-label="Reduce ${item.title}">âˆ’</button>
                         </div>
                     </div>`;
             }).join('');
         }
 
-        // 👉 Only true beef cuts unlock the doneness chips
+        // ðŸ‘‰ Only true beef cuts unlock the doneness chips
         const BEEF_ITEM_WORDS = [
             'fillet mignon', 'tenderloin', 'rib eye', 'ribeye',
             't-bone', 'tbone', 'sirloin', 'new york strip', 'porterhouse'
@@ -823,9 +823,9 @@
             }
             const optsHtml = `<option value="">-- Select Available Voucher (${list.length}) --</option>` +
                 list.map(v => {
-                    const dTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `₱${v.value} OFF`;
+                    const dTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `â‚±${v.value} OFF`;
                     const rTxt = window.VoucherSystem.formatRequirementSummary(v);
-                    return `<option value="${v.code}">${v.code} — ${dTxt} (${rTxt})</option>`;
+                    return `<option value="${v.code}">${v.code} â€” ${dTxt} (${rTxt})</option>`;
                 }).join('');
 
             ['preorder-voucher-select', 'preorder-voucher-select-sheet'].forEach(id => {
@@ -887,7 +887,7 @@
             const file = input && input.files && input.files[0];
             if (!file) return;
             if (!/^image\/(jpeg|png|webp|jpg)$/i.test(file.type)) {
-                superModal({ title: 'Invalid File Format ⚠️', message: 'Please upload a valid image file (JPG, PNG, or WEBP) of your ID or Voucher.' });
+                superModal({ title: 'Invalid File Format âš ï¸', message: 'Please upload a valid image file (JPG, PNG, or WEBP) of your ID or Voucher.' });
                 input.value = '';
                 return;
             }
@@ -913,7 +913,7 @@
                     if (window.showToast) window.showToast('Valid ID / Voucher photo attached!', 'success');
                 };
                 img.onerror = function () {
-                    superModal({ title: 'Invalid Image ⚠️', message: 'Could not read the image file. Please upload a clear photo.' });
+                    superModal({ title: 'Invalid Image âš ï¸', message: 'Could not read the image file. Please upload a clear photo.' });
                 };
                 img.src = e.target.result;
             };
@@ -957,7 +957,7 @@
                 const check = window.VoucherSystem.validateVoucher(code, subtotal, cartArr);
                 msgEls.forEach(el => {
                     el.style.color = check.valid ? '#15803d' : '#dc2626';
-                    el.textContent = check.valid ? `✅ ${check.label} (-₱${check.discountAmount.toLocaleString()})` : `⚠️ ${check.reason}`;
+                    el.textContent = check.valid ? `âœ… ${check.label} (-â‚±${check.discountAmount.toLocaleString()})` : `âš ï¸ ${check.reason}`;
                 });
                 return {
                     type: 'voucher',
@@ -1006,7 +1006,7 @@
                 if (!rEl) return;
                 if (disc.amount > 0) {
                     rEl.style.display = 'flex';
-                    if (lEl) lEl.textContent = `🏷️ ${disc.label}`;
+                    if (lEl) lEl.textContent = `ðŸ·ï¸ ${disc.label}`;
                     if (vEl) vEl.textContent = `-${fmt(disc.amount)}`;
                 } else {
                     rEl.style.display = 'none';
@@ -1058,9 +1058,9 @@
             }
         }
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // CART ACTIONS
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         let itemHighlightTimeout = null;
 
         function syncMenuCardsInCart() {
@@ -1084,7 +1084,7 @@
             
             // Validate Stock Maximum limit before assigning
             if (newQty > item.stock) {
-                superModal({ title: 'Low Stock 📉', message: `Only ${item.stock} units of ${item.title} are available.` });
+                superModal({ title: 'Low Stock ðŸ“‰', message: `Only ${item.stock} units of ${item.title} are available.` });
                 newQty = item.stock; 
             }
 
@@ -1095,7 +1095,7 @@
             renderCart();
             syncMenuCardsInCart();
             
-            // 👉 Highlight ONLY the added item (both in the menu and in the cart)
+            // ðŸ‘‰ Highlight ONLY the added item (both in the menu and in the cart)
             if (delta > 0 && cart[id]) {
                 if (itemHighlightTimeout) clearTimeout(itemHighlightTimeout);
 
@@ -1132,7 +1132,7 @@
                 renderMenu();
                 renderCart();
                 btns.forEach(b => { if(b.textContent === '...') b.textContent = 'Refresh'; });
-                superModal({ title: 'Synced 🔄', message: 'Menu and stock levels have been refreshed successfully.' });
+                superModal({ title: 'Synced ðŸ”„', message: 'Menu and stock levels have been refreshed successfully.' });
             }, 500);
         };
 
@@ -1142,9 +1142,9 @@
             renderCart();
         };
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // LIGHTBOX
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         window.openLightbox = function(src, title) {
             const modal = document.getElementById('lightbox-modal');
             const img = document.getElementById('lightbox-img');
@@ -1173,9 +1173,9 @@
             document.body.style.overflow = '';
         };
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // BEEF PREFERENCE  (sync both desktop + sheet chips/textareas)
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function syncDoneness(chosenVal) {
             selectedDoneness = chosenVal;
             // Sync all chip groups
@@ -1188,7 +1188,7 @@
         function saveBeefNote() {
             const textarea  = document.getElementById('beef-note-textarea');
             const sheetArea = document.getElementById('beef-note-sheet');
-            // Keep both textareas in sync — plain text only, never the doneness
+            // Keep both textareas in sync â€” plain text only, never the doneness
             const note = textarea.value;
             sheetArea.value = note;
 
@@ -1207,7 +1207,7 @@
         const textareaDesktop = document.getElementById('beef-note-textarea');
         const textareaSheet   = document.getElementById('beef-note-sheet');
 
-        // 👉 Restore any note saved from a previous visit
+        // ðŸ‘‰ Restore any note saved from a previous visit
         (function restoreBeefNote() {
             const saved = localStorage.getItem('beefNote') || '';
             if (saved) { textareaDesktop.value = saved; textareaSheet.value = saved; }
@@ -1233,9 +1233,9 @@
             saveBeefNote();
         });
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // CHECKOUT
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         window.handleCheckout = function() {
             // 1. Validate Discount / Voucher Eligibility & Mandatory Photo Proof!
             const subtotalNow = getTotal();
@@ -1243,7 +1243,7 @@
 
             if (discCheck.type === 'voucher' && !discCheck.valid) {
                 superModal({
-                    title: 'Voucher Not Eligible 🎟️',
+                    title: 'Voucher Not Eligible ðŸŽŸï¸',
                     message: discCheck.reason || 'Your cart does not meet the eligibility requirements for this voucher yet.'
                 });
                 return;
@@ -1254,35 +1254,35 @@
                 if (!uploadedPhoto || !uploadedPhoto.startsWith('data:image/')) {
                     const idTypeLabel = discCheck.type === 'pwd' ? 'PWD ID Card' : (discCheck.type === 'senior' ? 'Senior Citizen ID Card' : 'Promo Voucher');
                     superModal({
-                        title: 'Valid Picture Required 📷',
+                        title: 'Valid Picture Required ðŸ“·',
                         message: `To claim your <b>${idTypeLabel}</b> discount, please upload a clear, valid photo of your <b>${idTypeLabel}</b> in the Discount/Voucher section before proceeding to payment.`
                     });
                     return;
                 }
             }
             
-            // 👉 Required: kitchen timing must be chosen
+            // ðŸ‘‰ Required: kitchen timing must be chosen
             const timingEl = document.querySelector('input[name="preorder-kitchen-timing"]:checked')
                           || document.querySelector('input[name="preorder-kitchen-timing-sheet"]:checked');
             const kitchenTiming = timingEl ? timingEl.value : '';
 
-            // 👉 Doneness required when a beef cut is in the cart
+            // ðŸ‘‰ Doneness required when a beef cut is in the cart
             const beefInCart = Object.keys(cart).some(id =>
                 isBeefItem((typeof menuData !== 'undefined' ? menuData : []).find(m => m.id === id))
             );
 
             if (beefInCart && !selectedDoneness) {
                 superModal({
-                    title: 'Doneness Required 🥩',
+                    title: 'Doneness Required ðŸ¥©',
                     message: 'Please choose a doneness for your steak: <b>Rare</b>, <b>Medium Rare</b>, <b>Medium</b>, or <b>Well Done</b>.'
                 });
                 return;
             }
 
             if (!kitchenTiming) {
-                // 👉 No openCartSheet() — the modal alone tells the user what to do
+                // ðŸ‘‰ No openCartSheet() â€” the modal alone tells the user what to do
                 superModal({
-                    title: 'Kitchen Timing Required 👨🍳',
+                    title: 'Kitchen Timing Required ðŸ‘¨ðŸ³',
                     message: 'Please choose <b>Serve Upon Arrival</b> or <b>Cook Upon Arrival</b> before proceeding to payment.'
                 });
                 return;
@@ -1303,7 +1303,7 @@
                 });
             }
 
-            // 👉 Attach doneness + kitchen timing so staff and kitchen can see them
+            // ðŸ‘‰ Attach doneness + kitchen timing so staff and kitchen can see them
             const donenessText = (typeof selectedDoneness !== 'undefined' && selectedDoneness) ? selectedDoneness : '';
             const beefNoteText = (() => {
                 const a = document.getElementById('beef-note-textarea');
@@ -1316,7 +1316,7 @@
             localStorage.setItem('kitchenTiming', kitchenTiming);
 
             if (itemsArray.length === 0) {
-                superModal({ title: 'Empty Cart 🛒', message: 'Please add items to your cart before proceeding to payment.' });
+                superModal({ title: 'Empty Cart ðŸ›’', message: 'Please add items to your cart before proceeding to payment.' });
                 return;
             }
 
@@ -1324,9 +1324,9 @@
             if (window.InventorySystem && typeof window.InventorySystem.validateOrderIngredients === 'function') {
                 const check = window.InventorySystem.validateOrderIngredients(itemsArray);
                 if (!check.isValid) {
-                    const list = check.shortages.map(s => `• <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} in kitchen`).join('<br>');
+                    const list = check.shortages.map(s => `â€¢ <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} in kitchen`).join('<br>');
                     superModal({
-                        title: 'Stock Shortage 📉',
+                        title: 'Stock Shortage ðŸ“‰',
                         message: `Sorry, we cannot fulfill this order due to insufficient kitchen ingredients:<br><br>${list}<br><br>Please adjust item quantities in your cart.`
                     });
                     return;
@@ -1335,7 +1335,7 @@
 
             localStorage.setItem('currentCartObj', JSON.stringify(cart));
 
-            // 👉 Persist the kitchen instructions with the order
+            // ðŸ‘‰ Persist the kitchen instructions with the order
             localStorage.setItem('orderKitchenMeta', JSON.stringify({
                 kitchenTiming: kitchenTiming,
                 kitchenTimingTag: `[[KITCHEN_TIMING: ${kitchenTiming}]]`,
@@ -1348,9 +1348,9 @@
         };
         document.getElementById('go-to-pay-btn').addEventListener('click', handleCheckout);
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // MOBILE SHEET OPEN / CLOSE
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         window.openCartSheet = function() {
             document.getElementById('cart-sheet-overlay').classList.add('open');
             document.getElementById('cart-sheet').classList.add('open');
@@ -1362,7 +1362,7 @@
             document.body.style.overflow = '';
         };
 
-        // ── Swipe-down-to-close gesture ──────────────────────────
+        // â”€â”€ Swipe-down-to-close gesture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function() {
             const sheet    = document.getElementById('cart-sheet');
             const dragZone = document.getElementById('sheet-drag-zone');
@@ -1389,7 +1389,7 @@
                 const delta = currentY - startY;
                 sheet.style.transition = '';
                 sheet.style.transform  = '';
-                // If dragged down more than 90px — close
+                // If dragged down more than 90px â€” close
                 if (delta > 90) {
                     closeCartSheet();
                 }
@@ -1400,9 +1400,9 @@
             dragZone.addEventListener('touchend',   onTouchEnd);
         })();
 
-        // ─────────────────────────────────────────────────────────
-        // CATEGORY TABS  — built from JS, no HTML-entity issues
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // CATEGORY TABS  â€” built from JS, no HTML-entity issues
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const sidebar = document.getElementById('category-sidebar');
         const mobileSelect = document.getElementById('mobile-category-select');
 
@@ -1451,9 +1451,9 @@
             renderMenu();
         };
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // REAL-TIME SYNC FOR INVENTORY ITEMS & RAW INGREDIENTS
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function refreshMenuDataAndClampCart(notifyOnChange = true) {
             menuData = getMenuData();
             let cartChanged = false;
@@ -1482,7 +1482,7 @@
             if (cartChanged) {
                 renderCart();
                 if (notifyOnChange) {
-                    superModal({ title: 'Menu Updated 🔄', message: 'Stock levels have changed:\n' + alertMsg });
+                    superModal({ title: 'Menu Updated ðŸ”„', message: 'Stock levels have changed:\n' + alertMsg });
                 }
             }
         }
@@ -1496,9 +1496,9 @@
         window.addEventListener('inventoryUpdated', () => refreshMenuDataAndClampCart(true));
         window.addEventListener('rawIngredientsUpdated', () => refreshMenuDataAndClampCart(true));
 
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // INIT & BRANCH DETAILS
-        // ─────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function syncPreOrderBranchDetails() {
             const branchName = window.getEffectiveBranch
                 ? window.getEffectiveBranch()
@@ -1516,7 +1516,7 @@
             if (heroBranchEl) heroBranchEl.textContent = branchName;
             if (cartBranchEl) cartBranchEl.textContent = branchName;
             if (sheetBranchEl) sheetBranchEl.textContent = branchName;
-            if (heroAddrEl) heroAddrEl.textContent = addrParts.join(' · ');
+            if (heroAddrEl) heroAddrEl.textContent = addrParts.join(' Â· ');
         }
         window.syncPreOrderBranchDetails = syncPreOrderBranchDetails;
         window.addEventListener('branchChanged', syncPreOrderBranchDetails);
@@ -1575,7 +1575,7 @@
 
     <!-- STORE STATUS (OPEN / CLOSED) CUSTOMER PROTECTION -->
     <div id="store-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
-        🔒 NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check back during opening hours.
+        ðŸ”’ NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check back during opening hours.
     </div>
 
     <script>
@@ -1630,7 +1630,8 @@
                     const branch = getBranch();
                     const [res, rawRes] = await Promise.all([
                         fetch(`${API_BASE}/api/memory/inventory-items?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
-                        fetch(`${API_BASE}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs })
+                        fetch(`${API_BASE}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
+                        typeof window.syncSharedPhotosFromCloud === 'function' ? window.syncSharedPhotosFromCloud().catch(() => null) : Promise.resolve(null)
                     ]);
 
                     let changed = false;
