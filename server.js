@@ -1991,6 +1991,11 @@ async function getHydratedSharedPhotoRegistry() {
     const reg = (raw && typeof raw === 'object' && !Array.isArray(raw))
         ? JSON.parse(JSON.stringify(raw))
         : {};
+    const now = Date.now();
+    const lastHydrated = Number(global.__sharedPhotosHydratedAt) || 0;
+    if (lastHydrated > 0 && (now - lastHydrated < 5 * 60 * 1000) && Object.keys(reg).length > 0) {
+        return reg;
+    }
     let mutated = false;
     try {
         const [rows] = await queryWithRetry(
@@ -2002,6 +2007,7 @@ async function getHydratedSharedPhotoRegistry() {
                 if (harvestInventoryListIntoSharedReg(arr, reg)) mutated = true;
             } catch (e) { }
         });
+        global.__sharedPhotosHydratedAt = now;
     } catch (e) { }
     if (mutated) {
         await setSystemMemoryKey('sharedMenuPhotos', reg, null).catch(() => { });
