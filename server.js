@@ -33,7 +33,6 @@ app.use((req, res, next) => {
     } else if (/\.(jpg|jpeg|png|gif|webp|svg|ico|woff2?|ttf|css)$/i.test(req.path)) {
         res.set('Cache-Control', 'public, max-age=604800'); // Cache static assets for 7 days!
     }
-    global.__activeReqBranch = (req.query.branch || (req.body && req.body.branch) || 'General Santos City').trim();
     next();
 });
 
@@ -1197,7 +1196,7 @@ setTimeout(async () => {
 }, 2000);
 
 function scopedInvItemId(id, req) {
-    const branch = (req.query.branch || (req.body && req.body.branch) || global.__activeReqBranch || 'General Santos City').trim();
+    const branch = (req.query.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || 'General Santos City').trim();
     if (!branch || branch === 'General Santos City' || branch === 'ALL') return { dbId: id, branch: 'General Santos City' };
     const prefix = branch.replace(/\s+/g, '_').toUpperCase() + '__';
     return { dbId: String(id).startsWith(prefix) ? id : `${prefix}${id}`, branch, prefix };
@@ -1586,7 +1585,7 @@ function scopedMemKey(baseKey, req) {
 
 function resolveBranchMemKey(key, req) {
     const reqBranch = req ? (req.query?.branch || (req.body && !Array.isArray(req.body) ? req.body.branch : '') || '') : '';
-    const branch = String(reqBranch || global.__activeReqBranch || 'General Santos City').trim();
+    const branch = String(reqBranch || 'General Santos City').trim();
     const branchScopedKeys = ['tableOverrides', 'floorPlanConfig', 'liveChats', 'inventoryItems', 'rawIngredients', 'inventoryAuditLog', 'activePromos', 'phHolidayConfig', 'vouchers'];
     if (branchScopedKeys.includes(key) && branch !== 'General Santos City' && branch !== 'ALL') {
         return `${key}__${branch.replace(/\s+/g, '_')}`;
@@ -1667,12 +1666,46 @@ app.post('/api/memory/floor-plan-config', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+function mergeLiveChatsNonDestructively(existingChats, incomingChats) {
+    const base = (existingChats && typeof existingChats === 'object' && !Array.isArray(existingChats))
+        ? JSON.parse(JSON.stringify(existingChats))
+        : {};
+    if (!incomingChats || typeof incomingChats !== 'object' || Array.isArray(incomingChats)) {
+        return base;
+    }
+    Object.keys(incomingChats).forEach(sId => {
+        if (sId === 'clearAll' || sId === 'branch') return;
+        const incMsgs = Array.isArray(incomingChats[sId]) ? incomingChats[sId] : null;
+        if (!incMsgs) return;
+        const existingMsgs = Array.isArray(base[sId]) ? base[sId] : [];
+        const seen = new Set(existingMsgs.map(m => `${m?.iso || m?.time || ''}|${m?.sender || ''}|${m?.text || ''}`));
+        incMsgs.forEach(m => {
+            if (!m || typeof m !== 'object') return;
+            const sig = `${m.iso || m.time || ''}|${m.sender || ''}|${m.text || ''}`;
+            if (!seen.has(sig)) {
+                seen.add(sig);
+                existingMsgs.push(m);
+            }
+        });
+        base[sId] = existingMsgs;
+    });
+    return base;
+}
+
 app.post('/api/memory/live-chats', async (req, res) => {
     try {
-        const payload = { ...(req.body || {}) };
-        delete payload.branch;
-        await setSystemMemoryKey('liveChats', payload, req);
-        res.json({ success: true });
+        const body = req.body || {};
+        if (body.clearAll === true) {
+            await setSystemMemoryKey('liveChats', {}, req);
+            return res.json({ success: true, cleared: true });
+        }
+        const incoming = { ...body };
+        delete incoming.branch;
+        delete incoming.clearAll;
+        const existing = await getSystemMemoryKey('liveChats', {}, req);
+        const merged = mergeLiveChatsNonDestructively(existing, incoming);
+        await setSystemMemoryKey('liveChats', merged, req);
+        res.json({ success: true, sessions: Object.keys(merged).length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1682,8 +1715,10 @@ app.post('/api/memory/live-chats/delete', async (req, res) => {
         const { sessionId } = req.body;
         if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
 
-        let chats = await getSystemMemoryKey('liveChats', {}, req);
-        if (!chats || typeof chats !== 'object') chats = {};
+        const rawChats = await getSystemMemoryKey('liveChats', {}, req);
+        const chats = (rawChats && typeof rawChats === 'object' && !Array.isArray(rawChats))
+            ? JSON.parse(JSON.stringify(rawChats))
+            : {};
         delete chats[sessionId];
 
         await setSystemMemoryKey('liveChats', chats, req);
@@ -1694,9 +1729,10 @@ app.post('/api/memory/live-chats/delete', async (req, res) => {
 app.get('/api/memory/live-chats', async (req, res) => {
     try {
         const data = await getSystemMemoryKey('liveChats', {}, req);
-        res.json(data || {});
+        const safe = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+        res.json(safe);
     } catch (err) {
-        res.json({});
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -1706,11 +1742,19 @@ app.post('/api/memory/live-chats/message', async (req, res) => {
         if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message required' });
 
         const reqBranch = (req.query.branch || req.body.branch || 'General Santos City').trim();
-        message.branch = reqBranch;
+        const nextMsg = { ...message, branch: reqBranch };
 
-        const allChats = await getSystemMemoryKey('liveChats', {}, req);
-        if (!allChats[sessionId]) allChats[sessionId] = [];
-        allChats[sessionId].push(message);
+        const existing = await getSystemMemoryKey('liveChats', {}, req);
+        const allChats = (existing && typeof existing === 'object' && !Array.isArray(existing))
+            ? JSON.parse(JSON.stringify(existing))
+            : {};
+        if (!Array.isArray(allChats[sessionId])) allChats[sessionId] = [];
+
+        const sig = `${nextMsg.iso || nextMsg.time || ''}|${nextMsg.sender || ''}|${nextMsg.text || ''}`;
+        const isDup = allChats[sessionId].some(m => m && `${m.iso || m.time || ''}|${m.sender || ''}|${m.text || ''}` === sig);
+        if (!isDup) {
+            allChats[sessionId].push(nextMsg);
+        }
 
         await setSystemMemoryKey('liveChats', allChats, req);
         res.json({ success: true, allChats });
@@ -1865,20 +1909,243 @@ app.post('/api/reservations/update-order', async (req, res) => {
 });
 
 /* CLOUD MENU & PRODUCT PHOTO SYNC ROUTES */
+function normPhotoMenuKey(val) {
+    return String(val || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isValidCustomPhotoServer(img) {
+    return Boolean(img && typeof img === 'string' && img.length > 50 && !img.includes('placehold.co'));
+}
+
+function mergeSharedPhotoRegistryServer(existingReg, incomingReg) {
+    const merged = (existingReg && typeof existingReg === 'object' && !Array.isArray(existingReg))
+        ? JSON.parse(JSON.stringify(existingReg))
+        : {};
+    let changed = false;
+    if (!incomingReg || typeof incomingReg !== 'object' || Array.isArray(incomingReg)) {
+        return { merged, changed };
+    }
+    Object.keys(incomingReg).forEach(k => {
+        if (!k || k === 'branch') return;
+        const inc = incomingReg[k];
+        if (!inc || typeof inc !== 'object') return;
+        const cur = merged[k];
+        const incImg = isValidCustomPhotoServer(inc.image) ? inc.image : '';
+        const incUpd = Number(inc.updatedAt) || (incImg ? 1 : 0);
+        const incRem = Number(inc.removedAt) || 0;
+        const curImg = cur && isValidCustomPhotoServer(cur.image) ? cur.image : '';
+        const curUpd = Number(cur?.updatedAt) || (curImg ? 1 : 0);
+        const curRem = Number(cur?.removedAt) || 0;
+
+        if (incRem > 0 && incRem >= incUpd && !incImg) {
+            if (!cur || (incRem >= curUpd && incRem > curRem)) {
+                merged[k] = { image: '', updatedAt: incRem, removedAt: incRem };
+                changed = true;
+            }
+        } else if (incImg) {
+            if (!cur || (incUpd >= curUpd && incUpd > curRem && (curImg !== incImg || incUpd > curUpd))) {
+                merged[k] = { image: incImg, updatedAt: Math.max(incUpd, 1), removedAt: 0 };
+                changed = true;
+            }
+        }
+    });
+    return { merged, changed };
+}
+
+function harvestInventoryListIntoSharedReg(items, sharedReg) {
+    if (!Array.isArray(items) || !sharedReg || typeof sharedReg !== 'object') return false;
+    let mutated = false;
+    items.forEach(item => {
+        if (!item || item.syncPhotoBranches === false) return;
+        const idKey = item.id ? `id:${normPhotoMenuKey(item.id)}` : '';
+        const titleKey = (item.title || item.name) ? `title:${normPhotoMenuKey(item.title || item.name)}` : '';
+        const itemUpd = Number(item.imageUpdatedAt) || 1;
+        const itemRem = Number(item.imageRemovedAt) || 0;
+        if (itemRem > 0 && !isValidCustomPhotoServer(item.image)) {
+            [idKey, titleKey].filter(Boolean).forEach(k => {
+                const cur = sharedReg[k];
+                if (!cur || itemRem >= (Number(cur.updatedAt) || 0)) {
+                    if (!cur || cur.image !== '' || Number(cur.removedAt) !== itemRem) {
+                        sharedReg[k] = { image: '', updatedAt: itemRem, removedAt: itemRem };
+                        mutated = true;
+                    }
+                }
+            });
+        } else if (isValidCustomPhotoServer(item.image)) {
+            [idKey, titleKey].filter(Boolean).forEach(k => {
+                const cur = sharedReg[k];
+                const curUpd = Number(cur?.updatedAt) || 0;
+                const curRem = Number(cur?.removedAt) || 0;
+                if (itemUpd >= curUpd && itemUpd > curRem && (!cur || cur.image !== item.image)) {
+                    sharedReg[k] = { image: item.image, updatedAt: itemUpd, removedAt: 0 };
+                    mutated = true;
+                }
+            });
+        }
+    });
+    return mutated;
+}
+
+async function getHydratedSharedPhotoRegistry() {
+    const raw = await getSystemMemoryKey('sharedMenuPhotos', {}, null);
+    const reg = (raw && typeof raw === 'object' && !Array.isArray(raw))
+        ? JSON.parse(JSON.stringify(raw))
+        : {};
+    let mutated = false;
+    try {
+        const [rows] = await queryWithRetry(
+            "SELECT mem_val FROM system_memory WHERE mem_key = 'inventoryItems' OR LEFT(mem_key, 16) = 'inventoryItems__'"
+        );
+        (rows || []).forEach(r => {
+            try {
+                const arr = typeof r.mem_val === 'string' ? JSON.parse(r.mem_val) : r.mem_val;
+                if (harvestInventoryListIntoSharedReg(arr, reg)) mutated = true;
+            } catch (e) { }
+        });
+    } catch (e) { }
+    if (mutated) {
+        await setSystemMemoryKey('sharedMenuPhotos', reg, null).catch(() => { });
+    }
+    return reg;
+}
+
+function protectIncomingItemsWithExistingPhotos(incomingItems, existingItems, sharedReg) {
+    const existingList = Array.isArray(existingItems) ? existingItems : [];
+    const byId = new Map();
+    const byTitle = new Map();
+    existingList.forEach(ex => {
+        if (!ex) return;
+        if (ex.id) byId.set(normPhotoMenuKey(ex.id), ex);
+        const t = normPhotoMenuKey(ex.title || ex.name);
+        if (t) byTitle.set(t, ex);
+    });
+
+    const nextShared = sharedReg ? JSON.parse(JSON.stringify(sharedReg)) : {};
+    let sharedMutated = false;
+
+    const protectedItems = (Array.isArray(incomingItems) ? incomingItems : []).map(rawItem => {
+        if (!rawItem || typeof rawItem !== 'object') return rawItem;
+        const item = { ...rawItem };
+        const nId = item.id ? normPhotoMenuKey(item.id) : '';
+        const nTitle = normPhotoMenuKey(item.title || item.name);
+        const existing = (nId && byId.get(nId)) || (nTitle && byTitle.get(nTitle)) || null;
+
+        const inImg = isValidCustomPhotoServer(item.image) ? item.image : '';
+        const inUpd = Number(item.imageUpdatedAt) || 0;
+        const inRem = Number(item.imageRemovedAt) || 0;
+
+        const exImg = (existing && isValidCustomPhotoServer(existing.image)) ? existing.image : '';
+        const exUpd = Number(existing?.imageUpdatedAt) || (exImg ? 1 : 0);
+        const exRem = Number(existing?.imageRemovedAt) || 0;
+
+        const syncEnabled = (item.syncPhotoBranches !== undefined)
+            ? (item.syncPhotoBranches !== false)
+            : (existing && existing.syncPhotoBranches !== undefined ? existing.syncPhotoBranches !== false : true);
+
+        const sharedId = nId ? nextShared[`id:${nId}`] : null;
+        const sharedTitle = nTitle ? nextShared[`title:${nTitle}`] : null;
+        const sharedEntry = (sharedId && sharedTitle)
+            ? ((Number(sharedId.updatedAt) || 0) >= (Number(sharedTitle.updatedAt) || 0) ? sharedId : sharedTitle)
+            : (sharedId || sharedTitle);
+        const shImg = (syncEnabled && sharedEntry && isValidCustomPhotoServer(sharedEntry.image)) ? sharedEntry.image : '';
+        const shUpd = Number(sharedEntry?.updatedAt) || (shImg ? 1 : 0);
+        const shRem = Number(sharedEntry?.removedAt) || 0;
+
+        const isExplicitRemove = inRem > 0 && inRem >= inUpd && !inImg && inRem >= exUpd && (!syncEnabled || inRem >= shUpd);
+
+        if (isExplicitRemove) {
+            item.image = '';
+            item.imageUpdatedAt = inUpd || inRem;
+            item.imageRemovedAt = inRem;
+            item.syncPhotoBranches = syncEnabled;
+            if (syncEnabled && harvestInventoryListIntoSharedReg([item], nextShared)) sharedMutated = true;
+        } else if (inImg) {
+            if (exRem > 0 && !exImg && inUpd > 0 && exRem > inUpd) {
+                item.image = '';
+                item.imageUpdatedAt = exUpd;
+                item.imageRemovedAt = exRem;
+            } else if (exImg && exUpd > inUpd && inUpd > 0 && exImg !== inImg) {
+                item.image = exImg;
+                item.imageUpdatedAt = exUpd;
+                item.imageRemovedAt = 0;
+            } else if (shImg && shUpd > Math.max(inUpd, exUpd) && shUpd > shRem && syncEnabled) {
+                item.image = shImg;
+                item.imageUpdatedAt = shUpd;
+                item.imageRemovedAt = 0;
+            } else {
+                if (exImg && exUpd > inUpd && inUpd === 0 && exImg === inImg) {
+                    item.imageUpdatedAt = exUpd;
+                } else {
+                    item.imageUpdatedAt = Math.max(inUpd, exUpd, 1);
+                }
+                item.image = inImg;
+                item.imageRemovedAt = 0;
+            }
+            item.syncPhotoBranches = syncEnabled;
+            if (item.image && syncEnabled && harvestInventoryListIntoSharedReg([item], nextShared)) sharedMutated = true;
+        } else {
+            // Preserve existing branch photo OR shared cloud photo when client sends a stock/status update without an image
+            if (exImg && exUpd >= exRem) {
+                item.image = exImg;
+                item.imageUpdatedAt = exUpd;
+                item.imageRemovedAt = 0;
+            } else if (shImg && shUpd > Math.max(shRem, inRem, exRem) && syncEnabled) {
+                item.image = shImg;
+                item.imageUpdatedAt = shUpd;
+                item.imageRemovedAt = 0;
+            }
+            item.syncPhotoBranches = syncEnabled;
+        }
+        return item;
+    });
+
+    return { protectedItems, nextShared, sharedMutated };
+}
+
+app.get('/api/memory/shared-photos', async (req, res) => {
+    try {
+        const reg = await getHydratedSharedPhotoRegistry();
+        res.json(reg || {});
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/memory/shared-photos', async (req, res) => {
+    try {
+        const incoming = { ...(req.body || {}) };
+        delete incoming.branch;
+        const existing = await getHydratedSharedPhotoRegistry();
+        const { merged, changed } = mergeSharedPhotoRegistryServer(existing, incoming);
+        if (changed) {
+            await setSystemMemoryKey('sharedMenuPhotos', merged, null);
+        }
+        res.json({ success: true, count: Object.keys(merged).length, registry: merged });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/memory/inventory-items', async (req, res) => {
     try {
         const data = await getSystemMemoryKey('inventoryItems', [], req);
         res.json(Array.isArray(data) ? data : []);
     } catch (err) {
-        res.json(memoryCache.inventoryItems?.data || []);
+        res.status(500).json({ error: err.message });
     }
 });
 
 app.post('/api/memory/inventory-items', async (req, res) => {
     try {
         const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
-        await setSystemMemoryKey('inventoryItems', items, req);
-        res.json({ success: true, count: items.length });
+        const [existing, sharedReg] = await Promise.all([
+            getSystemMemoryKey('inventoryItems', [], req),
+            getHydratedSharedPhotoRegistry()
+        ]);
+        const { protectedItems, nextShared, sharedMutated } = protectIncomingItemsWithExistingPhotos(items, existing, sharedReg);
+        await setSystemMemoryKey('inventoryItems', protectedItems, req);
+        if (sharedMutated) {
+            await setSystemMemoryKey('sharedMenuPhotos', nextShared, null).catch(() => { });
+        }
+        res.json({ success: true, count: protectedItems.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1886,14 +2153,20 @@ app.post('/api/memory/inventory-items/item', async (req, res) => {
     try {
         const { item, deleteId } = req.body;
         let items = await getSystemMemoryKey('inventoryItems', [], req);
-        if (!Array.isArray(items)) items = [];
+        items = Array.isArray(items) ? JSON.parse(JSON.stringify(items)) : [];
 
         if (deleteId) {
             items = items.filter(i => i && i.id !== deleteId);
         } else if (item && item.id) {
+            const sharedReg = await getHydratedSharedPhotoRegistry();
+            const { protectedItems, nextShared, sharedMutated } = protectIncomingItemsWithExistingPhotos([item], items, sharedReg);
+            const safeItem = protectedItems[0] || item;
             const idx = items.findIndex(i => i && i.id === item.id);
-            if (idx > -1) items[idx] = { ...items[idx], ...item };
-            else items.push(item);
+            if (idx > -1) items[idx] = { ...items[idx], ...safeItem };
+            else items.push(safeItem);
+            if (sharedMutated) {
+                await setSystemMemoryKey('sharedMenuPhotos', nextShared, null).catch(() => { });
+            }
         }
 
         await setSystemMemoryKey('inventoryItems', items, req);
