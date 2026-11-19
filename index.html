@@ -5,7 +5,8 @@
     <script>if (location.protocol === 'file:') location.replace('http://localhost:3000/index.html');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Roland's Steak House - Premium fine dining steakhouse offering artisanal steaks, online table reservations, pre-ordering, and seamless digital service.">
+    <meta name="description"
+        content="Roland's Steak House - Premium fine dining steakhouse offering artisanal steaks, online table reservations, pre-ordering, and seamless digital service.">
     <title>Roland's Steak House | Premium Fine Dining & Online Reservations</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;500;700&display=swap"
@@ -13,7 +14,7 @@
     <link rel="stylesheet" href="css/style.css?v=2.0">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css?v=2.0">
     <style>
         .nav-manage-pill {
@@ -31,12 +32,17 @@
             backdrop-filter: blur(8px);
             transition: all 0.25s ease !important;
         }
-        .nav-manage-pill::after { display: none !important; }
+
+        .nav-manage-pill::after {
+            display: none !important;
+        }
+
         header:not(.transparent) .nav-manage-pill {
             background: #f1f5f9 !important;
             color: #1b5e20 !important;
             border-color: #cbd5e1 !important;
         }
+
         .nav-manage-pill:hover {
             background: #1b5e20 !important;
             color: #ffffff !important;
@@ -44,6 +50,7 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 14px rgba(27, 94, 32, 0.28);
         }
+
         .nav-manage-pill .pill-dot {
             width: 7px;
             height: 7px;
@@ -52,15 +59,19 @@
             box-shadow: 0 0 6px #22c55e;
             display: inline-block;
         }
-        /* 👉 FIX: Responsive Header Lock (Stops mobile overstretching) */
-        header#main-header, header {
+
+        /* ðŸ‘‰ FIX: Responsive Header Lock (Stops mobile overstretching) */
+        header#main-header,
+        header {
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
             width: 100% !important;
-            max-width: 100vw !important; /* Strictly prevents horizontal scroll bugs */
+            max-width: 100vw !important;
+            /* Strictly prevents horizontal scroll bugs */
             box-sizing: border-box !important;
-            flex-wrap: wrap !important; /* Allows items to stack if they run out of space */
+            flex-wrap: wrap !important;
+            /* Allows items to stack if they run out of space */
         }
 
         header#main-header .logo {
@@ -72,7 +83,8 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            flex-wrap: wrap !important; /* Lets links wrap to a second line instead of stretching */
+            flex-wrap: wrap !important;
+            /* Lets links wrap to a second line instead of stretching */
             margin: 0 !important;
             padding: 0 !important;
             gap: 12px !important;
@@ -80,41 +92,53 @@
 
         /* Mobile Layout: Stack logo on top, menu below */
         @media (max-width: 768px) {
-            header#main-header, header {
+
+            header#main-header,
+            header {
                 flex-direction: column !important;
                 justify-content: center !important;
                 gap: 12px !important;
                 padding: 15px !important;
             }
+
             header#main-header nav ul li a.nav-link {
-                font-size: 13px !important; /* Shrinks text slightly to fit phone screens cleanly */
+                font-size: 13px !important;
+                /* Shrinks text slightly to fit phone screens cleanly */
                 padding: 4px 6px !important;
             }
+
             header#main-header nav ul li a.nav-manage-pill {
                 font-size: 12px !important;
                 padding: 6px 12px !important;
             }
         }
-        /* 👉 FIX: Kill the horizontal scroll white-space bug globally */
-        html, body {
+
+        /* ðŸ‘‰ FIX: Kill the horizontal scroll white-space bug globally */
+        html,
+        body {
             overflow-x: hidden !important;
             max-width: 100vw !important;
             width: 100% !important;
         }
 
-        /* 👉 FIX 1: Kill the horizontal scroll white-space bug globally */
-        html, body {
+        /* ðŸ‘‰ FIX 1: Kill the horizontal scroll white-space bug globally */
+        html,
+        body {
             overflow-x: hidden !important;
-            width: 100% !important; /* 👉 FIX: Switched to 100% to prevent scrollbar overlap */
+            width: 100% !important;
+            /* ðŸ‘‰ FIX: Switched to 100% to prevent scrollbar overlap */
             margin: 0 !important;
             padding: 0 !important;
         }
 
-        /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (index.html) */
+        /* ðŸ‘‰ LOGO SCALER & HOVER/CLICK ANIMATION (index.html) */
         :root {
-            --logo-scale: 1.75;       /* 👈 Change this number to adjust normal size */
-            --logo-hover-scale: 1.95; /* 👈 Size when hovered */
-            --logo-click-scale: 2.10; /* 👈 Size when clicked */
+            --logo-scale: 1.75;
+            /* ðŸ‘ˆ Change this number to adjust normal size */
+            --logo-hover-scale: 1.95;
+            /* ðŸ‘ˆ Size when hovered */
+            --logo-click-scale: 2.10;
+            /* ðŸ‘ˆ Size when clicked */
         }
 
         header#main-header .logo {
@@ -122,7 +146,7 @@
             align-items: center;
             justify-content: center;
         }
-        
+
         header#main-header .logo img {
             max-height: 90px !important;
             width: auto !important;
@@ -140,25 +164,35 @@
         header#main-header .logo img:active {
             transform: scale(var(--logo-click-scale)) !important;
         }
-        
+
         @media (max-width: 768px) {
             header#main-header .logo img {
-                max-height: 70px !important; 
+                max-height: 70px !important;
                 transform: scale(3.5) !important;
                 transform-origin: center center !important;
                 margin-top: 15px !important;
                 margin-bottom: 5px !important;
             }
+
             header#main-header .logo img:hover,
             header#main-header .logo img:active {
                 transform: scale(4.0) !important;
             }
         }
+
         @keyframes luxuryModalIn {
-            from { opacity: 0; transform: scale(0.96) translateY(8px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
-        /* 👉 FIX 1: Elegant Form Styling to match the screenshot */
+
+        /* ðŸ‘‰ FIX 1: Elegant Form Styling to match the screenshot */
         #login-area.login-prompt {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -169,13 +203,52 @@
             justify-content: space-between;
             align-items: center;
         }
-        .login-info { display: flex; flex-direction: column; gap: 4px; }
-        .muted-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-        .active-user { font-size: 14px; font-weight: 800; color: #1b5e20; }
-        .login-actions { display: flex; gap: 8px; }
-        .login-btn-small { padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .login-btn-small.outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
-        .login-btn-small:not(.outline) { background: #1b5e20; border: 1px solid #1b5e20; color: white; }
+
+        .login-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .muted-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .active-user {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1b5e20;
+        }
+
+        .login-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .login-btn-small {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .login-btn-small.outline {
+            background: transparent;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+        }
+
+        .login-btn-small:not(.outline) {
+            background: #1b5e20;
+            border: 1px solid #1b5e20;
+            color: white;
+        }
 
         #booking-form .form-group label {
             display: block;
@@ -186,7 +259,9 @@
             letter-spacing: 0.5px;
             margin-bottom: 6px;
         }
-        #booking-form input, #booking-form select {
+
+        #booking-form input,
+        #booking-form select {
             width: 100%;
             padding: 12px 14px;
             border: 1.5px solid #cbd5e1;
@@ -198,8 +273,16 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        #booking-form input:focus, #booking-form select:focus { border-color: #1b5e20; }
-        #booking-form .phone-input-group { display: flex; }
+
+        #booking-form input:focus,
+        #booking-form select:focus {
+            border-color: #1b5e20;
+        }
+
+        #booking-form .phone-input-group {
+            display: flex;
+        }
+
         #booking-form .phone-prefix {
             background: #f8fafc;
             border: 1.5px solid #cbd5e1;
@@ -212,36 +295,55 @@
             display: flex;
             align-items: center;
         }
-        #booking-form .phone-input-group input { 
-            border-radius: 0 8px 8px 0; 
-            flex: 1; /* 👉 FIX: Forces the phone input to fill the remaining space */
-            min-width: 0; 
+
+        #booking-form .phone-input-group input {
+            border-radius: 0 8px 8px 0;
+            flex: 1;
+            /* ðŸ‘‰ FIX: Forces the phone input to fill the remaining space */
+            min-width: 0;
         }
-        #booking-form .form-row { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 16px; 
-            margin-bottom: 16px; 
+
+        #booking-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
         }
-        
-        /* 👉 FIX: On mobile phones, stack the inputs top-to-bottom so they don't squish! */
+
+        /* ðŸ‘‰ FIX: On mobile phones, stack the inputs top-to-bottom so they don't squish! */
         @media (max-width: 600px) {
-            #booking-form .form-row { 
-                grid-template-columns: 1fr !important; 
+            #booking-form .form-row {
+                grid-template-columns: 1fr !important;
                 gap: 12px !important;
             }
         }
-        
-        #booking-form .form-group { margin-bottom: 16px; }
-        #booking-form .submit-booking-btn {
-            width: 100%; background: #1b5e20; color: white; border: none; padding: 14px;
-            border-radius: 10px; font-size: 14.5px; font-weight: 800; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(27, 94, 32, 0.25); transition: transform 0.2s; margin-top: 8px;
+
+        #booking-form .form-group {
+            margin-bottom: 16px;
         }
-        #booking-form .submit-booking-btn:hover { transform: translateY(-2px); }
+
+        #booking-form .submit-booking-btn {
+            width: 100%;
+            background: #1b5e20;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 14.5px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(27, 94, 32, 0.25);
+            transition: transform 0.2s;
+            margin-top: 8px;
+        }
+
+        #booking-form .submit-booking-btn:hover {
+            transform: translateY(-2px);
+        }
 
         @media (max-width: 600px) {
-            /* 👉 Full-width mobile chat window with equal 12px side margins */
+
+            /* ðŸ‘‰ Full-width mobile chat window with equal 12px side margins */
             .chat-popup,
             #chat-popup,
             .chat-window,
@@ -267,22 +369,28 @@
         <nav>
             <ul>
                 <li>
-    <div class="nav-manage-pill" style="padding: 4px 12px !important; display:inline-flex; align-items:center; gap:6px;">
-        <span>📍</span>
-        <select id="customer-branch-select" onchange="window.setActiveBranch(this.value)" title="Select Branch"
-            style="background:transparent; border:none; color:inherit; font-weight:800; font-size:13px; cursor:pointer; outline:none;">
-            <option value="General Santos City" style="color:#0f172a;">General Santos City</option>
-            <option value="Koronadal City" style="color:#0f172a;">Koronadal City</option>
-        </select>
-    </div>
-</li>
+                    <div class="nav-manage-pill"
+                        style="padding: 4px 12px !important; display:inline-flex; align-items:center; gap:6px;">
+                        <span>ðŸ“</span>
+                        <select id="customer-branch-select" onchange="window.setActiveBranch(this.value)"
+                            title="Select Branch"
+                            style="background:transparent; border:none; color:inherit; font-weight:800; font-size:13px; cursor:pointer; outline:none;">
+                            <option value="General Santos City" style="color:#0f172a;">General Santos City</option>
+                            <option value="Koronadal City" style="color:#0f172a;">Koronadal City</option>
+                        </select>
+                    </div>
+                </li>
                 <li><a href="#home" class="nav-link active">Home</a></li>
                 <li><a href="#about" class="nav-link">About</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
                 <li><a href="#menu" class="nav-link">Menu</a></li>
-                <li><a href="javascript:void(0)" onclick="openManageBookingModal()" class="nav-manage-pill"><span class="pill-dot"></span><span>My Booking</span></a></li>
-                    <!-- 👉 NEW: Profile Button (Hidden by default until logged in) -->
-                <li><a href="javascript:void(0)" id="header-profile-btn" onclick="openProfileModal()" class="nav-manage-pill" style="display:none; background:#1b5e20; color:white; border-color:#1b5e20;"><span style="font-size:16px; margin-top:-2px;">☰</span></a></li>
+                <li><a href="javascript:void(0)" onclick="openManageBookingModal()" class="nav-manage-pill"><span
+                            class="pill-dot"></span><span>My Booking</span></a></li>
+                <!-- ðŸ‘‰ NEW: Profile Button (Hidden by default until logged in) -->
+                <li><a href="javascript:void(0)" id="header-profile-btn" onclick="openProfileModal()"
+                        class="nav-manage-pill"
+                        style="display:none; background:#1b5e20; color:white; border-color:#1b5e20;"><span
+                            style="font-size:16px; margin-top:-2px;">â˜°</span></a></li>
             </ul>
         </nav>
     </header>
@@ -298,7 +406,8 @@
         <div class="reveal hero-content">
             <h1>Roland's Steak House</h1>
             <p style="font-size: 20px; margin-bottom: 40px;">Fine Dining Excellence in Gensan</p>
-            <button type="button" onclick="openReservationModal()" class="cta-btn" style="border:none; cursor:pointer; font-family:inherit;">Reserve Your Table</button>
+            <button type="button" onclick="openReservationModal()" class="cta-btn"
+                style="border:none; cursor:pointer; font-family:inherit;">Reserve Your Table</button>
             <div class="slide-dots">
                 <span class="slide-dot active"></span>
                 <span class="slide-dot"></span>
@@ -370,17 +479,25 @@
         </div>
     </section>
 
-    <!-- 👉 NEW: RESERVATION POP-UP MODAL -->
-    <div id="reservation-modal-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;" onclick="if(event.target === this) closeReservationModal()">
-        <div class="luxury-modal-card" style="background:#ffffff; border-radius:24px; width:100%; max-width:600px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
-            
+    <!-- ðŸ‘‰ NEW: RESERVATION POP-UP MODAL -->
+    <div id="reservation-modal-overlay"
+        style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
+        onclick="if(event.target === this) closeReservationModal()">
+        <div class="luxury-modal-card"
+            style="background:#ffffff; border-radius:24px; width:100%; max-width:600px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
+
             <!-- Header -->
-            <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div
+                style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <h2 style="margin:0; font-family:'Playfair Display',serif; font-size:22px;">Book Your Table</h2>
-                    <p style="margin:2px 0 0 0; font-size:13px; opacity:0.85;">Experience General Santos' finest fire-grilled steaks.</p>
+                    <p style="margin:2px 0 0 0; font-size:13px; opacity:0.85;">Experience General Santos' finest
+                        fire-grilled steaks.</p>
                 </div>
-                <button type="button" onclick="closeReservationModal()" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+                <button type="button" onclick="closeReservationModal()"
+                    style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
             </div>
 
             <!-- Scrollable Form Body -->
@@ -408,12 +525,13 @@
                             <label>Phone Number <span style="color:#ef4444;">*</span></label>
                             <div class="phone-input-group">
                                 <span class="phone-prefix">+63</span>
-                                <input type="tel" placeholder="9XX XXX XXXX" required maxlength="10" 
+                                <input type="tel" placeholder="9XX XXX XXXX" required maxlength="10"
                                     oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Email <span style="font-size:11px; color:#64748b; font-weight:normal;">(Optional - For Receipt)</span></label>
+                            <label>Email <span style="font-size:11px; color:#64748b; font-weight:normal;">(Optional -
+                                    For Receipt)</span></label>
                             <input type="email" id="customer-email-input" placeholder="example@email.com">
                         </div>
                     </div>
@@ -432,7 +550,8 @@
 
                     <div class="form-group">
                         <label for="party-size-select">Number of Guests <span style="color:#ef4444;">*</span></label>
-                        <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required onchange="toggleCustomPartySizeInput(this.value)">
+                        <select id="party-size-select" title="Number of Guests" aria-label="Number of Guests" required
+                            onchange="toggleCustomPartySizeInput(this.value)">
                             <option value="" disabled selected>Select party size</option>
                             <option value="1-2 Persons">1-2 Persons</option>
                             <option value="3-5 Persons">3-5 Persons</option>
@@ -440,25 +559,29 @@
                             <option value="custom">Custom (Enter Exact Number of Guests)...</option>
                         </select>
                         <div id="custom-party-size-wrap" style="display:none; margin-top:10px;">
-                            <input type="number" id="custom-party-size-input" min="1" max="50" placeholder="Enter exact number of guests (e.g. 8)"
+                            <input type="number" id="custom-party-size-input" min="1" max="50"
+                                placeholder="Enter exact number of guests (e.g. 8)"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         </div>
                     </div>
 
-                    <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>→</span></button>
-                    <div style="text-align:center; margin-top:16px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif; line-height:1.6;">
+                    <button type="submit" class="submit-booking-btn">Next: Choose Your Table <span>â†’</span></button>
+                    <div
+                        style="text-align:center; margin-top:16px; font-size:13px; color:#64748b; font-family:'Roboto',sans-serif; line-height:1.6;">
                         Already have a reservation?<br>
-                        <a href="javascript:void(0)" onclick="openManageBookingModal(); closeReservationModal();" style="color:#1b5e20; font-weight:700; text-decoration:underline; cursor:pointer;">Manage or Cancel Booking</a>
+                        <a href="javascript:void(0)" onclick="openManageBookingModal(); closeReservationModal();"
+                            style="color:#1b5e20; font-weight:700; text-decoration:underline; cursor:pointer;">Manage or
+                            Cancel Booking</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
-    <!-- 🎁 FLOATING PROMOTION MODAL -->
+
+    <!-- ðŸŽ FLOATING PROMOTION MODAL -->
     <div class="promo-modal-overlay" id="promo-modal">
         <div class="promo-modal-card">
-            <button class="promo-modal-close" onclick="closePromoModal()" aria-label="Close promotion">✕</button>
+            <button class="promo-modal-close" onclick="closePromoModal()" aria-label="Close promotion">âœ•</button>
             <img src="" id="promo-modal-img" class="promo-modal-img" alt="Promotion">
             <div class="promo-modal-content">
                 <span class="promo-modal-badge" id="promo-modal-badge">Limited Offer</span>
@@ -497,7 +620,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            © 2024 Roland's Steak House. All rights reserved.
+            Â© 2024 Roland's Steak House. All rights reserved.
         </div>
     </footer>
 
@@ -544,7 +667,7 @@
         }, observerOptions);
         document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => observer.observe(el));
 
-        window.toggleCustomPartySizeInput = function(val) {
+        window.toggleCustomPartySizeInput = function (val) {
             const wrap = document.getElementById('custom-party-size-wrap');
             const customInput = document.getElementById('custom-party-size-input');
             if (!wrap || !customInput) return;
@@ -579,7 +702,7 @@
                     const holidayCheck = window.checkHolidayOrBlockedDate(selectedDate);
                     if (holidayCheck.isBlocked) {
                         superModal({
-                            title: 'Holiday / Restaurant Closed 🚫',
+                            title: 'Holiday / Restaurant Closed ðŸš«',
                             message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${selectedDate}). Please choose an available non-holiday date.`
                         });
                         arrivalDateInput.value = '';
@@ -588,15 +711,15 @@
                 }
 
                 if (selectedTime < "10:30" || selectedTime > "21:00") {
-                    superModal({ title: 'Invalid Time 🕒', message: 'Please select an arrival time between 10:30 AM and 9:00 PM.' });
+                    superModal({ title: 'Invalid Time ðŸ•’', message: 'Please select an arrival time between 10:30 AM and 9:00 PM.' });
                     return;
                 }
 
                 // If today is selected, block past times
                 const now = new Date();
-                const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 if (selectedDate === todayStr) {
-                    const nowTimeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                    const nowTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                     if (selectedTime <= nowTimeStr) {
                         superModal({ title: 'Time Already Passed \uD83D\uDD52', message: 'The selected time has already passed. Please choose a later time for today.' });
                         return;
@@ -604,13 +727,13 @@
                 }
             }
 
-            // 👉 NEW: Save all fields to browser memory
+            // ðŸ‘‰ NEW: Save all fields to browser memory
             localStorage.setItem('customerName', (nameInput?.value || '').trim());
             localStorage.setItem('customerEmail', (emailInput?.value || '').trim());
-            localStorage.setItem('customerPhone', (phoneInput?.value || '').trim()); 
+            localStorage.setItem('customerPhone', (phoneInput?.value || '').trim());
             localStorage.setItem('arrivalDate', arrivalDateInput?.value || '');
             localStorage.setItem('arrivalTime', arrivalTimeInput?.value || '');
-            localStorage.setItem('partySize', partySizeInput?.value || ''); 
+            localStorage.setItem('partySize', partySizeInput?.value || '');
 
             // Clear any stale cart/pre-order data for a fresh start
             localStorage.removeItem('preOrderCart');
@@ -622,12 +745,12 @@
             window.location.href = "seat-selection.html";
         }
 
-        window.syncBookingFormAutofill = function() {
-            const storedName  = (localStorage.getItem('loggedInUserName') || '').trim();
+        window.syncBookingFormAutofill = function () {
+            const storedName = (localStorage.getItem('loggedInUserName') || '').trim();
             const storedEmail = (localStorage.getItem('loggedInUserEmail') || '').trim();
             const storedPhone = (localStorage.getItem('loggedInUserPhone') || '').replace(/^(\+?63|0)/, '').trim();
 
-            const nameInput  = document.getElementById('customer-name-input');
+            const nameInput = document.getElementById('customer-name-input');
             const emailInput = document.getElementById('customer-email-input');
             const phoneInput = document.querySelector('#booking-form input[type="tel"]');
 
@@ -645,17 +768,17 @@
         };
 
         (function initLocalLogin() {
-            const storedName  = localStorage.getItem('loggedInUserName');
+            const storedName = localStorage.getItem('loggedInUserName');
             const storedEmail = localStorage.getItem('loggedInUserEmail');
-            const nameInput      = document.getElementById('customer-name-input');
-            const loggedInLabel  = document.getElementById('logged-in-user');
-            const logoutBtn      = document.getElementById('logout-btn');
+            const nameInput = document.getElementById('customer-name-input');
+            const loggedInLabel = document.getElementById('logged-in-user');
+            const logoutBtn = document.getElementById('logout-btn');
             const goLoginPageBtn = document.getElementById('go-login-page-btn');
 
             if (!nameInput || !loggedInLabel || !logoutBtn || !goLoginPageBtn) return;
 
             window.applyLoginState = (name, email) => {
-                const cleanName  = (name  || '').trim();
+                const cleanName = (name || '').trim();
                 const cleanEmail = (email || '').trim();
                 const profBtn = document.getElementById('header-profile-btn');
                 const profName = document.getElementById('header-profile-name');
@@ -663,10 +786,10 @@
                 if (cleanName || cleanEmail) {
                     loggedInLabel.textContent = cleanEmail || cleanName;
                     logoutBtn.disabled = false;
-                    logoutBtn.style.display = 'inline-block'; 
+                    logoutBtn.style.display = 'inline-block';
                     goLoginPageBtn.disabled = true;
-                    goLoginPageBtn.style.display = 'none'; 
-                    
+                    goLoginPageBtn.style.display = 'none';
+
                     if (profBtn) profBtn.style.display = 'inline-flex';
                     if (profName) profName.textContent = cleanName ? cleanName.split(' ')[0] : 'Profile';
 
@@ -689,15 +812,15 @@
                                     window.syncBookingFormAutofill();
                                     if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                                 }
-                            }).catch(() => {});
+                            }).catch(() => { });
                     }
                 } else {
                     loggedInLabel.textContent = 'Guest';
                     logoutBtn.disabled = true;
-                    logoutBtn.style.display = 'none'; 
+                    logoutBtn.style.display = 'none';
                     goLoginPageBtn.disabled = false;
-                    goLoginPageBtn.style.display = 'inline-block'; 
-                    
+                    goLoginPageBtn.style.display = 'inline-block';
+
                     if (profBtn) profBtn.style.display = 'inline-flex';
                     if (profName) profName.textContent = 'Profile';
                 }
@@ -883,7 +1006,7 @@
                 if (btn) {
                     btn.classList.add('copied');
                     const prevText = btn.getAttribute('data-label') || 'Claim / Copy';
-                    btn.textContent = '✓ Claimed!';
+                    btn.textContent = 'âœ“ Claimed!';
                     setTimeout(() => {
                         btn.classList.remove('copied');
                         btn.textContent = prevText;
@@ -952,7 +1075,7 @@
                         const rowsHtml = matchedVouchers.map(v => {
                             const dTxt = v.discountMode === 'pct'
                                 ? `${v.value}% OFF`
-                                : `₱${Number(v.value).toLocaleString()} OFF`;
+                                : `â‚±${Number(v.value).toLocaleString()} OFF`;
                             const reqTxt = window.VoucherSystem.formatRequirementSummary(v);
                             const safeCode = escPromo(v.code);
                             return `
@@ -965,7 +1088,7 @@
                                     <button type="button" class="promo-voucher-copy-btn" data-label="Claim / Copy" onclick="copyPromoPopupVoucher('${safeCode}', this)">Claim / Copy</button>
                                 </div>`;
                         }).join('');
-                        vBox.innerHTML = `<div class="promo-modal-vouchers-heading">🎟️ Available Pre-Order Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>${rowsHtml}`;
+                        vBox.innerHTML = `<div class="promo-modal-vouchers-heading">ðŸŽŸï¸ Available Pre-Order Voucher${matchedVouchers.length > 1 ? 's' : ''}</div>${rowsHtml}`;
                         vBox.style.display = 'block';
                     } else {
                         vBox.innerHTML = '';
@@ -1080,7 +1203,7 @@
 
             // Format HH:MM
             const formatTime = (date) => {
-                return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
             };
 
             const now = new Date();
@@ -1136,7 +1259,7 @@
                     if (holidayCheck.isBlocked) {
                         if (typeof superModal === 'function') {
                             superModal({
-                                title: 'Holiday / Restaurant Closed 🚫',
+                                title: 'Holiday / Restaurant Closed ðŸš«',
                                 message: `Sorry, Roland's Steak House is closed on <b>${holidayCheck.name}</b> (${val}). Please select an available non-holiday date.`
                             });
                         } else {
@@ -1227,39 +1350,39 @@
             return id;
         }
 
-function toggleChat() {
+        function toggleChat() {
             const panel = document.getElementById('chatPanel');
             panel.classList.toggle('active');
             const bubbleIcon = document.getElementById('chat-bubble-icon');
             if (bubbleIcon) {
-                bubbleIcon.textContent = panel.classList.contains('active') ? '✕' : '💬';
+                bubbleIcon.textContent = panel.classList.contains('active') ? 'âœ•' : 'ðŸ’¬';
             }
             if (panel.classList.contains('active')) {
                 document.getElementById('chatResInfo').style.display = 'block';
                 document.getElementById('chatFooter').style.display = 'flex';
                 loadChatMessages();
                 checkActiveReservation();
-                
+
                 // Clear the unread notification badge
                 const unread = document.getElementById('chat-unread-badge');
                 if (unread) unread.remove();
             }
         }
 
-        // 👉 NEW: Global Chat Notification Poller (Triggers red badge and sound)
+        // ðŸ‘‰ NEW: Global Chat Notification Poller (Triggers red badge and sound)
         setInterval(() => {
             const panel = document.getElementById('chatPanel');
             if (panel && panel.classList.contains('active')) return;
-            
+
             const sId = getChatId();
             fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now())
-                .then(r => r.json())
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(cloudChats => {
-                    if (cloudChats && cloudChats[sId]) {
+                    if (cloudChats && typeof cloudChats === 'object' && !Array.isArray(cloudChats) && !cloudChats.error && Array.isArray(cloudChats[sId])) {
                         const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
                         const localLen = localChats[sId] ? localChats[sId].length : 0;
                         const cloudLen = cloudChats[sId].length;
-                        
+
                         if (cloudLen > localLen) {
                             const bubble = document.querySelector('.chat-bubble-btn');
                             if (bubble && !document.getElementById('chat-unread-badge')) {
@@ -1269,7 +1392,7 @@ function toggleChat() {
                                 badge.textContent = '1';
                                 bubble.style.position = 'relative';
                                 bubble.appendChild(badge);
-                                
+
                                 // Play soft ding
                                 try {
                                     const actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1279,13 +1402,38 @@ function toggleChat() {
                                     osc.frequency.setValueAtTime(800, actx.currentTime);
                                     gain.gain.setValueAtTime(0.1, actx.currentTime);
                                     osc.start(); osc.stop(actx.currentTime + 0.15);
-                                } catch(e) {}
+                                } catch (e) { }
                             }
                             localStorage.setItem('liveChats', JSON.stringify(cloudChats));
                         }
                     }
-                }).catch(()=>{});
+                }).catch(() => { });
         }, 5000);
+
+        function mergeLocalCustomerChatSessions(cloudChats) {
+            const safeCloud = (cloudChats && typeof cloudChats === 'object' && !Array.isArray(cloudChats) && !cloudChats.error) ? { ...cloudChats } : null;
+            if (!safeCloud) return null;
+            try {
+                const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                const sId = getChatId();
+                const localArr = Array.isArray(localChats[sId]) ? localChats[sId] : [];
+                const cloudArr = Array.isArray(safeCloud[sId]) ? [...safeCloud[sId]] : [];
+                const seen = new Set(cloudArr.map(m => `${m?.iso || m?.time || ''}|${m?.sender || ''}|${m?.text || ''}`));
+                const nowMs = Date.now();
+                localArr.forEach(m => {
+                    if (!m) return;
+                    const msgMs = m.iso ? new Date(m.iso).getTime() : 0;
+                    const sig = `${m.iso || m.time || ''}|${m.sender || ''}|${m.text || ''}`;
+                    // Keep any freshly sent local message (<20s old) until cloud reflects it
+                    if (msgMs && (nowMs - msgMs < 20000) && !seen.has(sig)) {
+                        seen.add(sig);
+                        cloudArr.push(m);
+                    }
+                });
+                if (cloudArr.length > 0 || safeCloud[sId]) safeCloud[sId] = cloudArr;
+            } catch (e) { }
+            return safeCloud;
+        }
 
         function renderChatMessagesUI(allChats) {
             const sId = getChatId();
@@ -1308,16 +1456,19 @@ function toggleChat() {
         }
 
         function loadChatMessages() {
+            const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+            renderChatMessagesUI(localChats);
             fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats?nocache=' + Date.now())
-                .then(r => r.json())
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(cloudChats => {
-                    const validChats = (cloudChats && typeof cloudChats === 'object') ? cloudChats : {};
+                    const validChats = mergeLocalCustomerChatSessions(cloudChats);
+                    if (!validChats) return;
                     localStorage.setItem('liveChats', JSON.stringify(validChats));
                     renderChatMessagesUI(validChats);
                 })
                 .catch(() => {
-                    const localChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
-                    renderChatMessagesUI(localChats);
+                    const fallbackChats = JSON.parse(localStorage.getItem('liveChats') || '{}');
+                    renderChatMessagesUI(fallbackChats);
                 });
         }
 
@@ -1329,10 +1480,12 @@ function toggleChat() {
 
             const sId = getChatId();
             const cName = getActiveCustomerName();
+            const curBranch = (typeof window.getEffectiveBranch === 'function') ? window.getEffectiveBranch() : 'General Santos City';
 
             const message = {
                 sender: 'customer',
                 name: cName,
+                branch: curBranch,
                 text: text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 iso: new Date().toISOString()
@@ -1348,32 +1501,33 @@ function toggleChat() {
             fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: sId, message })
+                body: JSON.stringify({ sessionId: sId, branch: curBranch, message })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data && data.allChats) {
-                    localStorage.setItem('liveChats', JSON.stringify(data.allChats));
-                    renderChatMessagesUI(data.allChats);
-                }
-            })
-            .catch(() => {});
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(data => {
+                    if (data && data.allChats && typeof data.allChats === 'object' && !data.allChats.error) {
+                        const merged = mergeLocalCustomerChatSessions(data.allChats) || data.allChats;
+                        localStorage.setItem('liveChats', JSON.stringify(merged));
+                        renderChatMessagesUI(merged);
+                    }
+                })
+                .catch(() => { });
         }
 
         function sendChatPhoto(input) {
             const file = input.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const b64 = e.target.result;
-                const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open('${b64}')">`;
+            const dispatchPhoto = (b64) => {
+                const txt = `<img src="${b64}" style="max-width:100%; border-radius:8px; margin-top:5px; cursor:pointer;" onclick="window.open(this.src)">`;
 
                 const sId = getChatId();
                 const cName = getActiveCustomerName();
+                const curBranch = (typeof window.getEffectiveBranch === 'function') ? window.getEffectiveBranch() : 'General Santos City';
 
                 const message = {
                     sender: 'customer',
                     name: cName,
+                    branch: curBranch,
                     text: txt,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     iso: new Date().toISOString()
@@ -1389,16 +1543,32 @@ function toggleChat() {
                 fetch('https://rolands-steakhouse-vqtr.vercel.app/api/memory/live-chats/message', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId: sId, message })
+                    body: JSON.stringify({ sessionId: sId, branch: curBranch, message })
                 })
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.allChats) {
-                        localStorage.setItem('liveChats', JSON.stringify(data.allChats));
-                        renderChatMessagesUI(data.allChats);
-                    }
-                })
-                .catch(() => {});
+                    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                    .then(data => {
+                        if (data && data.allChats && typeof data.allChats === 'object' && !data.allChats.error) {
+                            const merged = mergeLocalCustomerChatSessions(data.allChats) || data.allChats;
+                            localStorage.setItem('liveChats', JSON.stringify(merged));
+                            renderChatMessagesUI(merged);
+                        }
+                    })
+                    .catch(() => { });
+            };
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const maxW = 720;
+                    const scale = img.width > maxW ? (maxW / img.width) : 1;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    dispatchPhoto(canvas.toDataURL('image/jpeg', 0.75));
+                };
+                img.onerror = function () { dispatchPhoto(e.target.result); };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -1470,7 +1640,7 @@ function toggleChat() {
                 if (typeof checkActiveReservation === 'function') {
                     checkActiveReservation();
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         syncCustomerReservationsFromCloud();
         setInterval(syncCustomerReservationsFromCloud, 8000);
@@ -1496,7 +1666,7 @@ function toggleChat() {
             return Boolean(tabResNo && rNum === tabResNo);
         }
 
-        window.exitGuestChat = function() {
+        window.exitGuestChat = function () {
             sessionStorage.removeItem('guestChatRes');
             sessionStorage.removeItem('currentSessionResNo');
             sessionStorage.removeItem('currentSessionResOwner');
@@ -1559,19 +1729,19 @@ function toggleChat() {
 
             if (myRes) {
                 let foodText = '';
-                if (myRes.reservationType === 'standard') { foodText = 'None (Standard Reservation)'; } 
+                if (myRes.reservationType === 'standard') { foodText = 'None (Standard Reservation)'; }
                 else if (myRes.foods && myRes.foods.length > 0) {
                     foodText = myRes.foods.join(', ');
-                    if (myRes.beefNote) foodText += ` | 🥩 ${myRes.beefNote}`;
+                    if (myRes.beefNote) foodText += ` | ðŸ¥© ${myRes.beefNote}`;
                 } else { foodText = 'None'; }
 
                 const kds = myRes.kdsStatus || 'pending';
                 const kdsConfig = {
-                    pending:  { icon: '⏳', label: 'Order Received',  bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-                    cooking:  { icon: '👨‍🍳', label: 'Now Cooking…',    bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
-                    ready:    { icon: '🍽️', label: 'Food is Ready!',   bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
-                    served:   { icon: '✅', label: 'Served',           bg: '#f0fdf4', color: '#166534', border: '#86efac' },
-                    cancelled:{ icon: '🚫', label: 'Order Cancelled',  bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                    pending: { icon: 'â³', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                    cooking: { icon: 'ðŸ‘¨â€ðŸ³', label: 'Now Cookingâ€¦', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                    ready: { icon: 'ðŸ½ï¸', label: 'Food is Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
+                    served: { icon: 'âœ…', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+                    cancelled: { icon: 'ðŸš«', label: 'Order Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
                 };
                 const cfg = kdsConfig[kds] || kdsConfig.pending;
 
@@ -1581,13 +1751,13 @@ function toggleChat() {
                 const isCancelled = myRes.approvalStatus === 'rejected' || myRes.approvalStatus === 'cancelled' || myRes.kdsStatus === 'cancelled';
                 const isServed = myRes.kdsStatus === 'served' || myRes.approvalStatus === 'completed';
 
-                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">🎫 Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#dc2626; font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">👤 ${myRes.customerName || getActiveCustomerName()} &nbsp;•&nbsp; 🪑 ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">📅 ${myRes.arrivalDate || '—'} &nbsp; ⏰ ${myRes.arrivalTime || '—'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">🍴 Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>🚫</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">🚫 Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
+                resInfo.innerHTML = `<div style="text-align:left; line-height:1.4;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><div style="font-size:13px; font-weight:700; color:#1b5e20;">ðŸŽ« Reservation #${(myRes.reservationNumber || '').toString().replace(/^#/, '')}</div><button type="button" onclick="exitGuestChat()" style="background:none; border:none; color:#dc2626; font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer;">Reset Session</button></div><div style="font-size:11px; color:#555; margin-bottom:4px;">ðŸ‘¤ ${myRes.customerName || getActiveCustomerName()} &nbsp;â€¢&nbsp; ðŸª‘ ${myRes.bookedTable || 'TBD'}</div><div style="font-size:11px; color:#555; margin-bottom:4px;">ðŸ“… ${myRes.arrivalDate || 'â€”'} &nbsp; â° ${myRes.arrivalTime || 'â€”'}</div><div style="font-size:11px; font-weight:600; color:#1b5e20;">ðŸ´ Order: <span style="font-weight:500; color:#333;">${foodText}</span></div>${kitchenBadge}${!isCancelled && !isServed ? `<button type="button" onclick="openCustomerCancelModal('${myRes.reservationNumber}')" style="margin-top:10px; width:100%; background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; padding:8px 12px; border-radius:8px; font-weight:800; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 6px rgba(239,68,68,0.12); transition:all 0.2s;"><span>ðŸš«</span> Cancel My Reservation & Food</button>` : (isCancelled ? `<div style="margin-top:8px; padding:6px 10px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; text-align:center; color:#991b1b; font-size:11.5px; font-weight:bold;">ðŸš« Reservation Cancelled ${myRes.cancellationReason ? `("${myRes.cancellationReason}")` : ''}</div>` : '')}</div>`;
                 return;
             }
             resInfo.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>Chatting as: <strong style="color:#1b5e20;">${getActiveCustomerName()}</strong></span><a href="javascript:void(0)" onclick="openManageBookingModal()" style="font-size:11px; color:#1b5e20; font-weight:700; text-decoration:underline;">Find Booking</a></div>`;
         }
 
-        // Payment status polling (Verified/Rejected — for manual payments only)
+        // Payment status polling (Verified/Rejected â€” for manual payments only)
         setInterval(() => {
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             const myName = localStorage.getItem('customerName');
@@ -1601,7 +1771,7 @@ function toggleChat() {
             hist.forEach(r => {
                 if (r.customerName !== myName) return;
 
-                // Skip PayMongo-processed payments — they are handled by payment-success.html
+                // Skip PayMongo-processed payments â€” they are handled by payment-success.html
                 if (r.paymentMethod === 'paymongo' || r.paymentStatus === 'paid' || r.paymentStatus === 'pending_paymongo') return;
 
                 // Only show "Verified" popup for admin-verified MANUAL payments not yet acknowledged
@@ -1632,13 +1802,13 @@ function toggleChat() {
                 const resNo = verifiedRes ? verifiedRes.reservationNumber : '';
                 overlay.innerHTML = style + `
                     <div class="pay-popup-card">
-                        <div class="pay-popup-icon">✅</div>
+                        <div class="pay-popup-icon">âœ…</div>
                         <h2 class="pay-popup-title" style="color:#1b5e20;">Payment Verified!</h2>
                         <p class="pay-popup-msg">Your payment has been confirmed by our team. Your reservation is now secured!</p>
                         ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
                         <button class="pay-popup-btn" style="background:#1b5e20; color:white;" 
                             onclick="closeStatusPopup(this.closest('[style*=fixed]'), true)">
-                            💬 View Receipt in Chat
+                            ðŸ’¬ View Receipt in Chat
                         </button>
                     </div>`;
 
@@ -1646,7 +1816,7 @@ function toggleChat() {
                 const resNo = rejectedRes ? rejectedRes.reservationNumber : '';
                 overlay.innerHTML = style + `
                     <div class="pay-popup-card">
-                        <div class="pay-popup-icon">⚠️</div>
+                        <div class="pay-popup-icon">âš ï¸</div>
                         <h2 class="pay-popup-title" style="color:#b91c1c;">Payment Invalid</h2>
                         <p class="pay-popup-msg">Sorry, your payment could not be verified. Please check your transaction details and re-upload your proof of payment.</p>
                         ${resNo ? `<div class="pay-popup-resno">Reservation #${resNo}</div>` : ''}
@@ -1659,7 +1829,7 @@ function toggleChat() {
 
             document.body.appendChild(overlay);
 
-            window.closeStatusPopup = function(el, openChat) {
+            window.closeStatusPopup = function (el, openChat) {
                 if (el) el.remove();
                 if (openChat) {
                     const panel = document.getElementById('chatPanel');
@@ -1668,11 +1838,11 @@ function toggleChat() {
             };
         }, 3000);
 
-        // ══════════════════════════════════════════════
-        // 🍽️  FOOD-READY ALERT SYSTEM (Kitchen → Customer)
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ðŸ½ï¸  FOOD-READY ALERT SYSTEM (Kitchen â†’ Customer)
         // Polls every 5s. When kitchen marks order as 'ready',
         // fires a popup and badges the chat bubble.
-        // ══════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         (function initFoodReadyPolling() {
             let lastSeenKdsStatus = sessionStorage.getItem('lastKdsStatus') || null;
 
@@ -1733,7 +1903,7 @@ function toggleChat() {
                     }
                 }
 
-                // Track cooking → ready transition
+                // Track cooking â†’ ready transition
                 if (currentKds !== lastSeenKdsStatus && currentKds !== 'ready') {
                     lastSeenKdsStatus = currentKds;
                     sessionStorage.setItem('lastKdsStatus', currentKds);
@@ -1749,19 +1919,19 @@ function toggleChat() {
 
                 overlay.innerHTML = `
                     <div class="food-ready-card">
-                        <span class="food-ready-icon">🍽️</span>
+                        <span class="food-ready-icon">ðŸ½ï¸</span>
                         <h2 class="food-ready-title">Your Food is Ready!</h2>
                         <p class="food-ready-sub">Our kitchen has finished preparing your order. Please proceed to your table to enjoy your meal.</p>
                         <ul class="food-ready-list">${foodList}</ul>
-                        ${res.reservationNumber ? `<div class="food-ready-res">Reservation #${res.reservationNumber} &nbsp;·&nbsp; Table: ${res.bookedTable || 'Assigned at door'}</div>` : ''}
-                        <button class="food-ready-btn-primary" onclick="closeFoodReadyPopup(true)">💬 Open Live Support</button>
+                        ${res.reservationNumber ? `<div class="food-ready-res">Reservation #${res.reservationNumber} &nbsp;Â·&nbsp; Table: ${res.bookedTable || 'Assigned at door'}</div>` : ''}
+                        <button class="food-ready-btn-primary" onclick="closeFoodReadyPopup(true)">ðŸ’¬ Open Live Support</button>
                         <button class="food-ready-btn-secondary" onclick="closeFoodReadyPopup(false)">Got it, Thank you!</button>
                     </div>
                 `;
 
                 document.body.appendChild(overlay);
 
-                window.closeFoodReadyPopup = function(openChat) {
+                window.closeFoodReadyPopup = function (openChat) {
                     const el = document.getElementById('food-ready-overlay');
                     if (el) el.remove();
                     if (openChat) {
@@ -1826,9 +1996,9 @@ function toggleChat() {
                 }
 
                 const kdsMap = {
-                    pending:  { icon: '⏳', label: 'Kitchen Status', status: 'Order Received',  cls: 'kds-pending'  },
-                    cooking:  { icon: '👨‍🍳', label: 'Kitchen Status', status: 'Now Cooking…',   cls: 'kds-cooking'  },
-                    ready:    { icon: '🍽️', label: '🔔 Food Ready!',  status: 'Tap to view',    cls: 'kds-ready'    },
+                    pending: { icon: 'â³', label: 'Kitchen Status', status: 'Order Received', cls: 'kds-pending' },
+                    cooking: { icon: 'ðŸ‘¨â€ðŸ³', label: 'Kitchen Status', status: 'Now Cookingâ€¦', cls: 'kds-cooking' },
+                    ready: { icon: 'ðŸ½ï¸', label: 'ðŸ”” Food Ready!', status: 'Tap to view', cls: 'kds-ready' },
                 };
                 const cfg = kdsMap[kdsStatus] || kdsMap.pending;
 
@@ -1847,50 +2017,50 @@ function toggleChat() {
             setInterval(checkFoodReady, 5000);
         })();
 
-        // ─── Chat Tab Switcher ───────────────────────────────────────
+        // â”€â”€â”€ Chat Tab Switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         let _currentChatView = 'chat'; // 'chat' | 'history'
 
         function switchChatTab(tab) {
             _currentChatView = tab;
-            const tabChat    = document.getElementById('tabChat');
+            const tabChat = document.getElementById('tabChat');
             const tabHistory = document.getElementById('tabHistory');
-            const activeStyle   = 'color:#1b5e20; border-bottom:2.5px solid #1b5e20; background:transparent;';
+            const activeStyle = 'color:#1b5e20; border-bottom:2.5px solid #1b5e20; background:transparent;';
             const inactiveStyle = 'color:#94a3b8; border-bottom:2.5px solid transparent; background:transparent;';
 
             if (tab === 'chat') {
-                tabChat.style.cssText    += activeStyle;
+                tabChat.style.cssText += activeStyle;
                 tabHistory.style.cssText += inactiveStyle;
                 // Re-apply active styles (override specificity)
-                tabChat.style.color    = '#1b5e20'; tabChat.style.borderBottom    = '2.5px solid #1b5e20';
+                tabChat.style.color = '#1b5e20'; tabChat.style.borderBottom = '2.5px solid #1b5e20';
                 tabHistory.style.color = '#94a3b8'; tabHistory.style.borderBottom = '2.5px solid transparent';
                 renderChatContent();
                 loadChatMessages();
                 checkActiveReservation();
             } else {
                 tabHistory.style.color = '#1b5e20'; tabHistory.style.borderBottom = '2.5px solid #1b5e20';
-                tabChat.style.color    = '#94a3b8'; tabChat.style.borderBottom    = '2.5px solid transparent';
+                tabChat.style.color = '#94a3b8'; tabChat.style.borderBottom = '2.5px solid transparent';
                 // Hide footer & resInfo while in history view
-                const footer  = document.getElementById('chatFooter');
+                const footer = document.getElementById('chatFooter');
                 const resInfo = document.getElementById('chatResInfo');
-                if (footer)  footer.style.display  = 'none';
-                if (resInfo) resInfo.style.display  = 'none';
+                if (footer) footer.style.display = 'none';
+                if (resInfo) resInfo.style.display = 'none';
                 showReservationHistory();
             }
         }
 
         function showReservationHistory() {
-            const body  = document.getElementById('chatBody');
+            const body = document.getElementById('chatBody');
             const guestRes = JSON.parse(sessionStorage.getItem('guestChatRes') || 'null');
             const savedName = localStorage.getItem('customerName');
             const savedPhone = localStorage.getItem('customerPhone'); // The phone number we saved earlier!
-            const hist  = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+            const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
             let myRes = [];
 
-            // 👉 NEW: Device-Based Tracking & Staff Filter
+            // ðŸ‘‰ NEW: Device-Based Tracking & Staff Filter
             hist.forEach(r => {
                 // 1. NEVER show staff walk-ins to online customers
-                if (r.bookedBy === 'staff') return; 
+                if (r.bookedBy === 'staff') return;
 
                 let isMatch = false;
 
@@ -1900,7 +2070,7 @@ function toggleChat() {
                 } else if (savedName && savedName !== 'Guest' && r.customerName === savedName) {
                     isMatch = true;
                 }
-                
+
                 // 3. Keep manual chat code entries visible
                 if (guestRes && guestRes.reservationNumber) {
                     const gNum = guestRes.reservationNumber.toString().toUpperCase().replace(/^#/, '');
@@ -1920,20 +2090,20 @@ function toggleChat() {
             }
 
             const kdsConfig = {
-                pending:  { icon:'⏳', label:'Order Received', bg:'#fef3c7', color:'#92400e', border:'#fcd34d' },
-                cooking:  { icon:'👨\u200d🍳', label:'Now Cooking…',  bg:'#dbeafe', color:'#1e40af', border:'#93c5fd' },
-                ready:    { icon:'🍽️', label:'Food Ready!',   bg:'#dcfce7', color:'#14532d', border:'#4ade80' },
-                served:   { icon:'✅', label:'Served',         bg:'#f0fdf4', color:'#166534', border:'#86efac' },
-                cancelled:{ icon:'🚫', label:'Cancelled',      bg:'#fee2e2', color:'#991b1b', border:'#fca5a5' },
+                pending: { icon: 'â³', label: 'Order Received', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                cooking: { icon: 'ðŸ‘¨\u200dðŸ³', label: 'Now Cookingâ€¦', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                ready: { icon: 'ðŸ½ï¸', label: 'Food Ready!', bg: '#dcfce7', color: '#14532d', border: '#4ade80' },
+                served: { icon: 'âœ…', label: 'Served', bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+                cancelled: { icon: 'ðŸš«', label: 'Cancelled', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
             };
 
             const payConfig = {
-                verified:    { icon:'✅', label:'Verified',     color:'#166534' },
-                paid:        { icon:'💳', label:'Paid',         color:'#166534' },
-                pending_check:{ icon:'⏳', label:'Pending Review', color:'#92400e' },
-                pending_paymongo:{ icon:'⏳', label:'Processing', color:'#1e40af' },
-                rejected:    { icon:'⚠️', label:'Rejected',     color:'#991b1b' },
-                'walk-in':   { icon:'🚶', label:'Walk-in',      color:'#475569' },
+                verified: { icon: 'âœ…', label: 'Verified', color: '#166534' },
+                paid: { icon: 'ðŸ’³', label: 'Paid', color: '#166534' },
+                pending_check: { icon: 'â³', label: 'Pending Review', color: '#92400e' },
+                pending_paymongo: { icon: 'â³', label: 'Processing', color: '#1e40af' },
+                rejected: { icon: 'âš ï¸', label: 'Rejected', color: '#991b1b' },
+                'walk-in': { icon: 'ðŸš¶', label: 'Walk-in', color: '#475569' },
             };
 
             let html = `<div style="padding:12px 12px 6px; font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;">Your Reservations (${myRes.length})</div>`;
@@ -1942,7 +2112,7 @@ function toggleChat() {
                 const kds = r.kdsStatus || 'pending';
                 const kCfg = kdsConfig[kds] || kdsConfig.pending;
                 const pay = r.paymentStatus || '';
-                const pCfg = payConfig[pay] || { icon:'—', label: pay || 'Unknown', color:'#64748b' };
+                const pCfg = payConfig[pay] || { icon: 'â€”', label: pay || 'Unknown', color: '#64748b' };
 
                 const hasFoods = r.foods && r.foods.length > 0;
                 const foodHtml = hasFoods
@@ -1950,7 +2120,7 @@ function toggleChat() {
                     : `<span style="color:#94a3b8;font-size:11px;">No food pre-ordered</span>`;
 
                 const kitchenBadgeHtml = hasFoods ? `
-                    <div style="display:flex;align-items:center;gap:6px;background:${kCfg.bg};border:1px solid ${kCfg.border};border-radius:8px;padding:6px 10px;margin-top:8px;${kds==='ready'?'animation:kdsReadyPulse 1.8s infinite;':''} ">
+                    <div style="display:flex;align-items:center;gap:6px;background:${kCfg.bg};border:1px solid ${kCfg.border};border-radius:8px;padding:6px 10px;margin-top:8px;${kds === 'ready' ? 'animation:kdsReadyPulse 1.8s infinite;' : ''} ">
                         <span style="font-size:15px;">${kCfg.icon}</span>
                         <div>
                             <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:${kCfg.color};letter-spacing:0.5px;">Kitchen Status</div>
@@ -1969,10 +2139,10 @@ function toggleChat() {
                         font-family:'Roboto',sans-serif;
                     ">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-                            <div style="font-size:12px;font-weight:800;color:#1b5e20;">🎫 ${r.reservationNumber || 'N/A'}</div>
+                            <div style="font-size:12px;font-weight:800;color:#1b5e20;">ðŸŽ« ${r.reservationNumber || 'N/A'}</div>
                             <div style="font-size:10px;color:${pCfg.color};font-weight:700;">${pCfg.icon} ${pCfg.label}</div>
                         </div>
-                        <div style="font-size:11px;color:#64748b;margin-bottom:6px;">📅 ${r.arrivalDate||'—'} &nbsp; ⏰ ${r.arrivalTime||'—'} &nbsp; 🪑 ${r.bookedTable||'TBD'}</div>
+                        <div style="font-size:11px;color:#64748b;margin-bottom:6px;">ðŸ“… ${r.arrivalDate || 'â€”'} &nbsp; â° ${r.arrivalTime || 'â€”'} &nbsp; ðŸª‘ ${r.bookedTable || 'TBD'}</div>
                         <div style="margin-bottom:4px;">${foodHtml}</div>
                         ${kitchenBadgeHtml}
                     </div>
@@ -1992,9 +2162,9 @@ function toggleChat() {
         <div class="chat-panel" id="chatPanel">
             <div class="chat-header">
                 <h4>Live Support</h4>
-                <button class="chat-close" onclick="toggleChat()">×</button>
+                <button class="chat-close" onclick="toggleChat()">Ã—</button>
             </div>
-            
+
             <div class="chat-res-info" id="chatResInfo" style="cursor:default;">Loading reservation...</div>
 
             <div class="chat-body" id="chatBody">
@@ -2004,94 +2174,135 @@ function toggleChat() {
                 </div>
             </div>
             <div class="chat-footer" id="chatFooter" style="display: flex;">
-                <label for="chatAttach" style="cursor:pointer; font-size:20px; color:#1b5e20; display:flex; align-items:center;">📷</label>
-                <input type="file" id="chatAttach" accept="image/*" style="display:none;" onchange="sendChatPhoto(this)">
-                <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
-                <button class="chat-submit-btn" onclick="sendChatMessage()">➤</button>
+                <label for="chatAttach"
+                    style="cursor:pointer; font-size:20px; color:#1b5e20; display:flex; align-items:center;">ðŸ“·</label>
+                <input type="file" id="chatAttach" accept="image/*" style="display:none;"
+                    onchange="sendChatPhoto(this)">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..."
+                    onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                <button class="chat-submit-btn" onclick="sendChatMessage()">âž¤</button>
             </div>
         </div>
         <!-- FLOATING LIVE CHAT LAUNCHER BUTTON -->
-        <button class="chat-bubble-btn" id="chat-bubble-trigger" onclick="toggleChat()" title="Chat with Live Support" aria-label="Open Live Support">
-            <span id="chat-bubble-icon" style="pointer-events: none; font-size: 26px; line-height: 1;">💬</span>
+        <button class="chat-bubble-btn" id="chat-bubble-trigger" onclick="toggleChat()" title="Chat with Live Support"
+            aria-label="Open Live Support">
+            <span id="chat-bubble-icon" style="pointer-events: none; font-size: 26px; line-height: 1;">ðŸ’¬</span>
         </button>
     </div> <!-- Close .chat-widget-container -->
 
-    <!-- ══════════════════════════════════════════════ -->
-    <!-- 🎫 UNIFIED LUXURY GUEST RESERVATION MANAGER   -->
-    <!-- ══════════════════════════════════════════════ -->
-    <div id="manage-booking-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;" onclick="if(event.target === this) closeManageBookingModal()">
-        <div class="luxury-modal-card" style="background:#ffffff; border-radius:24px; width:100%; max-width:540px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); pointer-events:auto;">
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- ðŸŽ« UNIFIED LUXURY GUEST RESERVATION MANAGER   -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <div id="manage-booking-modal"
+        style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
+        onclick="if(event.target === this) closeManageBookingModal()">
+        <div class="luxury-modal-card"
+            style="background:#ffffff; border-radius:24px; width:100%; max-width:540px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); pointer-events:auto;">
             <!-- Modal Header -->
-            <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center; position:relative;">
+            <div
+                style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center; position:relative;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">🎫</div>
+                    <div
+                        style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">
+                        ðŸŽ«</div>
                     <div>
-                        <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; letter-spacing:0.3px;">Guest Portal</h3>
-                        <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;">Roland's Steakhouse · Table & Pre-Orders</p>
+                        <h3
+                            style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; letter-spacing:0.3px;">
+                            Guest Portal</h3>
+                        <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;">
+                            Roland's Steakhouse Â· Table & Pre-Orders</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeManageBookingModal()" aria-label="Close" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; pointer-events:auto;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+                <button type="button" onclick="closeManageBookingModal()" aria-label="Close"
+                    style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s; pointer-events:auto;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
             </div>
 
             <!-- Modal Body (Stages) -->
-            <div class="modal-scroll-body" style="padding:22px 24px; overflow-y:auto; flex:1; font-family:'Roboto',sans-serif;">
-                
+            <div class="modal-scroll-body"
+                style="padding:22px 24px; overflow-y:auto; flex:1; font-family:'Roboto',sans-serif;">
+
                 <!-- STAGE 1: SEARCH / LOOKUP -->
                 <div id="manage-stage-search" style="display:none;">
                     <div style="text-align:center; margin-bottom:20px;">
-                        <h4 style="margin:0 0 6px 0; font-size:17px; color:#1e293b; font-weight:800;">Find Your Reservation</h4>
-                        <p style="margin:0; font-size:13px; color:#64748b;">Enter your Reservation Number or customer name to view details or cancel.</p>
+                        <h4 style="margin:0 0 6px 0; font-size:17px; color:#1e293b; font-weight:800;">Find Your
+                            Reservation</h4>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Enter your Reservation Number or customer
+                            name to view details or cancel.</p>
                     </div>
                     <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Reservation # or Name</label>
+                        <label
+                            style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Reservation
+                            # or Name</label>
                         <div style="position:relative;">
-                            <input type="text" id="manage-search-input" placeholder="Reservation #" style="width:100%; padding:12px 14px 12px 40px; border:1.5px solid #cbd5e1; border-radius:12px; font-size:14px; box-sizing:border-box; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'" onkeypress="if(event.key==='Enter') executeManageSearch()">
-                            <span style="position:absolute; left:14px; top:12px; font-size:16px; opacity:0.6;">🔍</span>
+                            <input type="text" id="manage-search-input" placeholder="Reservation #"
+                                style="width:100%; padding:12px 14px 12px 40px; border:1.5px solid #cbd5e1; border-radius:12px; font-size:14px; box-sizing:border-box; outline:none; transition:border-color 0.2s;"
+                                onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'"
+                                onkeypress="if(event.key==='Enter') executeManageSearch()">
+                            <span style="position:absolute; left:14px; top:12px; font-size:16px; opacity:0.6;">ðŸ”</span>
                         </div>
                     </div>
-                    <div id="manage-search-error" style="display:none; color:#dc2626; background:#fee2e2; padding:10px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px; font-weight:600;"></div>
-                    <button type="button" onclick="executeManageSearch()" style="width:100%; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(27,94,32,0.3); transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div id="manage-search-error"
+                        style="display:none; color:#dc2626; background:#fee2e2; padding:10px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px; font-weight:600;">
+                    </div>
+                    <button type="button" onclick="executeManageSearch()"
+                        style="width:100%; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:13px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(27,94,32,0.3); transition:transform 0.15s;"
+                        onmouseover="this.style.transform='translateY(-1px)'"
+                        onmouseout="this.style.transform='translateY(0)'">
                         View Reservation Details
                     </button>
                 </div>
 
                 <!-- STAGE 2: DETAILS & QUICK ACTIONS -->
                 <div id="manage-stage-details" style="display:none;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
                         <div>
-                            <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Reservation Reference</span>
+                            <span
+                                style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Reservation
+                                Reference</span>
                             <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-                                <strong id="det-res-num" style="font-size:18px; color:#0f172a; font-weight:800;"></strong>
-                                <button type="button" onclick="copyResNumberToClipboard()" style="background:#f1f5f9; border:none; padding:3px 8px; border-radius:6px; font-size:11px; color:#475569; font-weight:700; cursor:pointer;">Copy</button>
+                                <strong id="det-res-num"
+                                    style="font-size:18px; color:#0f172a; font-weight:800;"></strong>
+                                <button type="button" onclick="copyResNumberToClipboard()"
+                                    style="background:#f1f5f9; border:none; padding:3px 8px; border-radius:6px; font-size:11px; color:#475569; font-weight:700; cursor:pointer;">Copy</button>
                             </div>
                         </div>
                         <div id="det-approval-badge"></div>
                     </div>
 
                     <!-- Booking Summary Ticket -->
-                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:16px;">
+                    <div
+                        style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px; margin-bottom:16px;">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                             <div>
-                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Guest Name</span>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Guest
+                                    Name</span>
                                 <strong id="det-guest-name" style="font-size:14px; color:#1e293b;"></strong>
                             </div>
                             <div>
-                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Booked Table</span>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Booked
+                                    Table</span>
                                 <strong id="det-table" style="font-size:14px; color:#166534;"></strong>
                             </div>
                             <div>
-                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Arrival Schedule</span>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Arrival
+                                    Schedule</span>
                                 <span id="det-schedule" style="font-size:13px; font-weight:700; color:#334155;"></span>
                             </div>
                             <div>
-                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Payment Status</span>
+                                <span style="font-size:11px; color:#64748b; font-weight:600; display:block;">Payment
+                                    Status</span>
                                 <span id="det-payment-status" style="font-size:13px; font-weight:700;"></span>
                             </div>
                         </div>
 
                         <!-- Pre-ordered Dishes -->
                         <div style="border-top:1px dashed #cbd5e1; padding-top:10px; margin-top:6px;">
-                            <span style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px;">Pre-Ordered Dishes:</span>
+                            <span
+                                style="font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px;">Pre-Ordered
+                                Dishes:</span>
                             <div id="det-food-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
                         </div>
                     </div>
@@ -2103,78 +2314,104 @@ function toggleChat() {
                     <!-- Active Booking Actions (Cancel allowed) -->
                     <div id="det-actions-active" style="display:flex; flex-direction:column; gap:8px;">
                         <div style="display:flex; gap:10px;">
-                            <button type="button" id="det-btn-receipt" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:11px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>📄</span> View Receipt
+                            <button type="button" id="det-btn-receipt" onclick="viewReceiptFromModal()"
+                                style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:11px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>ðŸ“„</span> View Receipt
                             </button>
-                            <button type="button" onclick="goToCancelStage()" style="flex:1; background:#fee2e2; border:1.5px solid #f87171; color:#991b1b; padding:11px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>🚫</span> Cancel Reservation
+                            <button type="button" onclick="goToCancelStage()"
+                                style="flex:1; background:#fee2e2; border:1.5px solid #f87171; color:#991b1b; padding:11px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>ðŸš«</span> Cancel Reservation
                             </button>
                         </div>
                     </div>
 
                     <!-- Completed Dining Actions (No cancel allowed) -->
                     <div id="det-actions-completed" style="display:none; flex-direction:column; gap:10px;">
-                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 14px; font-size:13px; color:#166534; display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:22px;">🍽️</span>
+                        <div
+                            style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 14px; font-size:13px; color:#166534; display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:22px;">ðŸ½ï¸</span>
                             <div>
                                 <strong style="display:block; font-size:13.5px;">Dining Completed</strong>
-                                <span style="font-size:12px; color:#15803d;">This reservation was successfully served. Thank you for dining with us!</span>
+                                <span style="font-size:12px; color:#15803d;">This reservation was successfully served.
+                                    Thank you for dining with us!</span>
                             </div>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button type="button" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>📄</span> View Receipt
+                            <button type="button" onclick="viewReceiptFromModal()"
+                                style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>ðŸ“„</span> View Receipt
                             </button>
-                            <button type="button" onclick="bookAnotherTable()" style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
-                                <span>📅</span> Book Table Again
+                            <button type="button" onclick="bookAnotherTable()"
+                                style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                                <span>ðŸ“…</span> Book Table Again
                             </button>
                         </div>
                     </div>
 
                     <!-- Cancelled Booking Actions (No cancel allowed) -->
                     <div id="det-actions-cancelled" style="display:none; flex-direction:column; gap:10px;">
-                        <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; color:#991b1b; font-size:13px; display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:22px;">🚫</span>
+                        <div
+                            style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:12px 14px; color:#991b1b; font-size:13px; display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:22px;">ðŸš«</span>
                             <div>
                                 <strong style="display:block; font-size:13.5px;">Reservation Cancelled</strong>
-                                <span id="det-cancel-reason-text" style="font-size:12px; color:#b91c1c;">Table released to available and pre-orders refunded.</span>
+                                <span id="det-cancel-reason-text" style="font-size:12px; color:#b91c1c;">Table released
+                                    to available and pre-orders refunded.</span>
                             </div>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button type="button" onclick="viewReceiptFromModal()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                <span>📄</span> View Receipt
+                            <button type="button" onclick="viewReceiptFromModal()"
+                                style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span>ðŸ“„</span> View Receipt
                             </button>
-                            <button type="button" onclick="bookAnotherTable()" style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
-                                <span>📅</span> Make New Reservation
+                            <button type="button" onclick="bookAnotherTable()"
+                                style="flex:1; background:linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                                <span>ðŸ“…</span> Make New Reservation
                             </button>
                         </div>
                     </div>
 
-                    <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; align-items:center; gap:16px;">
-                        <a href="javascript:void(0)" onclick="goToSearchStage()" style="font-size:12px; color:#64748b; text-decoration:underline;">Looking for another reservation? Search here</a>
-                        <span style="color:#cbd5e1;">•</span>
-                        <a href="javascript:void(0)" onclick="closeManageBookingModal()" style="font-size:12px; color:#64748b; font-weight:700; text-decoration:none; cursor:pointer;">✕ Close Window</a>
+                    <div
+                        style="text-align:center; margin-top:16px; display:flex; justify-content:center; align-items:center; gap:16px;">
+                        <a href="javascript:void(0)" onclick="goToSearchStage()"
+                            style="font-size:12px; color:#64748b; text-decoration:underline;">Looking for another
+                            reservation? Search here</a>
+                        <span style="color:#cbd5e1;">â€¢</span>
+                        <a href="javascript:void(0)" onclick="closeManageBookingModal()"
+                            style="font-size:12px; color:#64748b; font-weight:700; text-decoration:none; cursor:pointer;">âœ•
+                            Close Window</a>
                     </div>
                 </div>
 
                 <!-- STAGE 3: CANCELLATION CONFIRMATION -->
                 <div id="manage-stage-confirm" style="display:none;">
                     <div style="text-align:center; margin-bottom:16px;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:#fee2e2; color:#dc2626; font-size:24px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px auto;">⚠️</div>
-                        <h4 style="margin:0 0 4px 0; font-size:18px; color:#0f172a; font-weight:800;">Cancel This Reservation?</h4>
-                        <p style="margin:0; font-size:13px; color:#64748b;">Please review what happens before confirming your cancellation.</p>
+                        <div
+                            style="width:48px; height:48px; border-radius:50%; background:#fee2e2; color:#dc2626; font-size:24px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px auto;">
+                            âš ï¸</div>
+                        <h4 style="margin:0 0 4px 0; font-size:18px; color:#0f172a; font-weight:800;">Cancel This
+                            Reservation?</h4>
+                        <p style="margin:0; font-size:13px; color:#64748b;">Please review what happens before confirming
+                            your cancellation.</p>
                     </div>
 
                     <!-- Impact Guard Alert -->
-                    <div id="cancel-guard-box" style="border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; line-height:1.45;"></div>
+                    <div id="cancel-guard-box"
+                        style="border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:12.5px; line-height:1.45;">
+                    </div>
 
                     <!-- Reason Selector -->
                     <div style="margin-bottom:14px;">
-                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Reason for Cancellation <span style="color:#ef4444;">*</span></label>
-                        <select id="cancel-reason-select" style="width:100%; padding:10px 12px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13.5px; background:white; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#cbd5e1'">
+                        <label
+                            style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Reason
+                            for Cancellation <span style="color:#ef4444;">*</span></label>
+                        <select id="cancel-reason-select"
+                            style="width:100%; padding:10px 12px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13.5px; background:white; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;"
+                            onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#cbd5e1'">
                             <option value="Change of Schedule / Travel Plans">Change of Schedule / Travel Plans</option>
                             <option value="Family or Personal Emergency">Family or Personal Emergency</option>
-                            <option value="Booked by Mistake / Duplicate Booking">Booked by Mistake / Duplicate Booking</option>
+                            <option value="Booked by Mistake / Duplicate Booking">Booked by Mistake / Duplicate Booking
+                            </option>
                             <option value="Found Alternative Dining Venue">Found Alternative Dining Venue</option>
                             <option value="Health or Medical Reasons">Health or Medical Reasons</option>
                             <option value="Other Reason">Other Reason</option>
@@ -2183,15 +2420,23 @@ function toggleChat() {
 
                     <!-- Optional Notes -->
                     <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Additional Notes (Optional)</label>
-                        <textarea id="cancel-notes-input" rows="2" placeholder="Let our team know if you'd like to reschedule for another day..." style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13px; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;" onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#cbd5e1'"></textarea>
+                        <label
+                            style="display:block; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">Additional
+                            Notes (Optional)</label>
+                        <textarea id="cancel-notes-input" rows="2"
+                            placeholder="Let our team know if you'd like to reschedule for another day..."
+                            style="width:100%; padding:10px; border-radius:10px; border:1.5px solid #cbd5e1; font-size:13px; font-family:'Roboto',sans-serif; box-sizing:border-box; outline:none;"
+                            onfocus="this.style.borderColor='#dc2626'"
+                            onblur="this.style.borderColor='#cbd5e1'"></textarea>
                     </div>
 
                     <div style="display:flex; gap:10px;">
-                        <button type="button" onclick="goToDetailsStage()" style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">
-                            ← Keep Reservation
+                        <button type="button" onclick="goToDetailsStage()"
+                            style="flex:1; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:12px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer;">
+                            â† Keep Reservation
                         </button>
-                        <button type="button" id="btn-final-cancel" onclick="executeFinalCancellation()" style="flex:1; background:linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 14px rgba(220,38,38,0.3);">
+                        <button type="button" id="btn-final-cancel" onclick="executeFinalCancellation()"
+                            style="flex:1; background:linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color:white; border:none; padding:12px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 14px rgba(220,38,38,0.3);">
                             Confirm Cancellation
                         </button>
                     </div>
@@ -2199,16 +2444,23 @@ function toggleChat() {
 
                 <!-- STAGE 4: SUCCESS CONFIRMATION -->
                 <div id="manage-stage-success" style="display:none; text-align:center; padding:16px 8px;">
-                    <div style="width:64px; height:64px; border-radius:50%; background:#dcfce7; color:#166534; font-size:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto; box-shadow:0 0 0 8px rgba(34,197,94,0.15);">✓</div>
-                    <h3 style="margin:0 0 6px 0; font-family:'Playfair Display',serif; color:#166534; font-size:22px;">Reservation Cancelled</h3>
+                    <div
+                        style="width:64px; height:64px; border-radius:50%; background:#dcfce7; color:#166534; font-size:32px; display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto; box-shadow:0 0 0 8px rgba(34,197,94,0.15);">
+                        âœ“</div>
+                    <h3 style="margin:0 0 6px 0; font-family:'Playfair Display',serif; color:#166534; font-size:22px;">
+                        Reservation Cancelled</h3>
                     <p style="margin:0 0 16px 0; font-size:13.5px; color:#475569; line-height:1.5;">
-                        Your reservation has been cancelled. Your table has been released and all pre-ordered foods have been safely cancelled.
+                        Your reservation has been cancelled. Your table has been released and all pre-ordered foods have
+                        been safely cancelled.
                     </p>
-                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:20px; font-size:12px; color:#1e293b; text-align:left; display:flex; flex-direction:column; gap:4px;">
-                        <div>🪑 <strong>Table Status:</strong> Released to 🟢 Available</div>
-                        <div id="succ-food-impact">🍲 <strong>Inventory:</strong> Raw ingredients restored to warehouse stock</div>
+                    <div
+                        style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:20px; font-size:12px; color:#1e293b; text-align:left; display:flex; flex-direction:column; gap:4px;">
+                        <div>ðŸª‘ <strong>Table Status:</strong> Released to ðŸŸ¢ Available</div>
+                        <div id="succ-food-impact">ðŸ² <strong>Inventory:</strong> Raw ingredients restored to warehouse
+                            stock</div>
                     </div>
-                    <button type="button" onclick="closeManageBookingModal()" style="background:#1b5e20; color:white; border:none; padding:12px 28px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
+                    <button type="button" onclick="closeManageBookingModal()"
+                        style="background:#1b5e20; color:white; border:none; padding:12px 28px; border-radius:10px; font-weight:800; font-size:13.5px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">
                         Done
                     </button>
                 </div>
@@ -2218,12 +2470,12 @@ function toggleChat() {
     </div>
 
     <script>
-        // ══════════════════════════════════════════════
-        // 🎫 UNIFIED GUEST BOOKING & CANCELLATION ENGINE
-        // ══════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ðŸŽ« UNIFIED GUEST BOOKING & CANCELLATION ENGINE
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         let activeManageRes = null;
 
-        window.openManageBookingModal = async function(specificResNum) {
+        window.openManageBookingModal = async function (specificResNum) {
             const modal = document.getElementById('manage-booking-modal');
             if (!modal) return;
             modal.style.display = 'flex';
@@ -2259,7 +2511,7 @@ function toggleChat() {
             }
             // 4. Logged-in account's newest active reservation
             if (!targetRes && !isDetached) {
-                targetRes = sortedHist.find(r => 
+                targetRes = sortedHist.find(r =>
                     r.bookedBy !== 'staff' &&
                     isReservationOwnedByCurrentSession(r) &&
                     r.approvalStatus !== 'rejected' && r.approvalStatus !== 'cancelled' &&
@@ -2276,8 +2528,8 @@ function toggleChat() {
         };
 
         // Alias for backwards compatibility
-        window.openLookupCancelModal = function() { window.openManageBookingModal(); };
-        window.openCustomerCancelModal = function(resNum) {
+        window.openLookupCancelModal = function () { window.openManageBookingModal(); };
+        window.openCustomerCancelModal = function (resNum) {
             window.openManageBookingModal(resNum);
             if (activeManageRes) {
                 const isCanc = activeManageRes.approvalStatus === 'rejected' || activeManageRes.approvalStatus === 'cancelled' || activeManageRes.kdsStatus === 'cancelled';
@@ -2286,13 +2538,13 @@ function toggleChat() {
             }
         };
 
-        window.closeManageBookingModal = function() {
+        window.closeManageBookingModal = function () {
             const modal = document.getElementById('manage-booking-modal');
             if (!modal) return;
             modal.style.display = 'none';
         };
 
-        window.bookAnotherTable = function() {
+        window.bookAnotherTable = function () {
             window.closeManageBookingModal();
             const sec = document.getElementById('reservations');
             if (sec) {
@@ -2320,7 +2572,7 @@ function toggleChat() {
             document.getElementById('manage-stage-success').style.display = 'none';
         }
 
-        window.goToCancelStage = function() {
+        window.goToCancelStage = function () {
             if (!activeManageRes) return;
             const isCancelled = activeManageRes.approvalStatus === 'rejected' || activeManageRes.approvalStatus === 'cancelled' || activeManageRes.kdsStatus === 'cancelled';
             const isCompleted = Boolean(activeManageRes.approvalStatus === 'completed' || activeManageRes.kdsStatus === 'served');
@@ -2342,17 +2594,17 @@ function toggleChat() {
                 guardEl.style.background = '#f0fdf4';
                 guardEl.style.border = '1px solid #86efac';
                 guardEl.style.color = '#166534';
-                guardEl.innerHTML = `<strong>🟢 Standard Table Booking:</strong> Your table reservation will be released back to <em>Available</em> immediately.`;
+                guardEl.innerHTML = `<strong>ðŸŸ¢ Standard Table Booking:</strong> Your table reservation will be released back to <em>Available</em> immediately.`;
             } else if (kds === 'cooking' || kds === 'ready') {
                 guardEl.style.background = '#fffbeb';
                 guardEl.style.border = '1px solid #fde68a';
                 guardEl.style.color = '#92400e';
-                guardEl.innerHTML = `<strong>👨‍🍳 Kitchen Prep Underway:</strong> Our chefs have already fired up the grill! Confirming will alert the kitchen immediately to stop cooking.`;
+                guardEl.innerHTML = `<strong>ðŸ‘¨â€ðŸ³ Kitchen Prep Underway:</strong> Our chefs have already fired up the grill! Confirming will alert the kitchen immediately to stop cooking.`;
             } else {
                 guardEl.style.background = '#f0fdf4';
                 guardEl.style.border = '1px solid #86efac';
                 guardEl.style.color = '#166534';
-                guardEl.innerHTML = `<strong>🟢 Ingredients Restored:</strong> Your order has not reached the grill yet. All raw meat cuts, sauces, and seasonings will be returned directly to inventory stock.`;
+                guardEl.innerHTML = `<strong>ðŸŸ¢ Ingredients Restored:</strong> Your order has not reached the grill yet. All raw meat cuts, sauces, and seasonings will be returned directly to inventory stock.`;
             }
         };
 
@@ -2361,7 +2613,7 @@ function toggleChat() {
             document.getElementById('det-res-num').textContent = '#' + res.reservationNumber;
             document.getElementById('det-guest-name').textContent = res.customerName || 'Valued Guest';
             document.getElementById('det-table').textContent = res.bookedTable || 'Assigned Table';
-            document.getElementById('det-schedule').textContent = (res.arrivalDate || '—') + ' @ ' + (res.arrivalTime || '—');
+            document.getElementById('det-schedule').textContent = (res.arrivalDate || 'â€”') + ' @ ' + (res.arrivalTime || 'â€”');
 
             const isCancelled = res.approvalStatus === 'rejected' || res.approvalStatus === 'cancelled' || res.kdsStatus === 'cancelled';
             const isCompleted = !isCancelled && Boolean(res.approvalStatus === 'completed' || res.kdsStatus === 'served');
@@ -2370,11 +2622,11 @@ function toggleChat() {
             // Approval / Status Badge
             const badgeEl = document.getElementById('det-approval-badge');
             if (isCancelled) {
-                badgeEl.innerHTML = `<span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🚫 CANCELLED</span>`;
+                badgeEl.innerHTML = `<span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">ðŸš« CANCELLED</span>`;
             } else if (isCompleted) {
-                badgeEl.innerHTML = `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">✓ COMPLETED</span>`;
+                badgeEl.innerHTML = `<span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">âœ“ COMPLETED</span>`;
             } else {
-                badgeEl.innerHTML = `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">🟢 CONFIRMED</span>`;
+                badgeEl.innerHTML = `<span style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">ðŸŸ¢ CONFIRMED</span>`;
             }
 
             // Payment badge
@@ -2389,7 +2641,7 @@ function toggleChat() {
                 foodListEl.innerHTML = res.foods.map(f => `<span style="background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:600; color:#1e293b;">${f}</span>`).join('');
                 if (res.beefNote) {
                     const cleanNote = res.beefNote.replace(/^Doneness:\s*/i, '');
-                    foodListEl.innerHTML += `<span style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; color:#92400e;">🔥 ${cleanNote}</span>`;
+                    foodListEl.innerHTML += `<span style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:700; color:#92400e;">ðŸ”¥ ${cleanNote}</span>`;
                 }
             } else {
                 foodListEl.innerHTML = `<span style="color:#94a3b8; font-size:12px;">Standard table booking (No pre-ordered food)</span>`;
@@ -2400,18 +2652,18 @@ function toggleChat() {
             if (isCompleted) {
                 kdsEl.innerHTML = `
                     <div style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:16px;">✅</span>
+                        <span style="font-size:16px;">âœ…</span>
                         <span>Kitchen Queue: Order Served & Completed</span>
                     </div>
                 `;
             } else {
                 const kds = res.kdsStatus || 'pending';
                 const kdsMap = {
-                    pending:   { bg:'#fef3c7', color:'#92400e', icon:'⏳', text:'Kitchen Queue: Order Received (Not Cooking Yet)' },
-                    cooking:   { bg:'#dbeafe', color:'#1e40af', icon:'👨‍🍳', text:'Kitchen Queue: Cooking on Grill' },
-                    ready:     { bg:'#dcfce7', color:'#14532d', icon:'🍽️', text:'Kitchen Queue: Food Ready for Service' },
-                    served:    { bg:'#f0fdf4', color:'#166534', icon:'✅', text:'Kitchen Queue: Served' },
-                    cancelled: { bg:'#fee2e2', color:'#991b1b', icon:'🚫', text:'Order Cancelled' }
+                    pending: { bg: '#fef3c7', color: '#92400e', icon: 'â³', text: 'Kitchen Queue: Order Received (Not Cooking Yet)' },
+                    cooking: { bg: '#dbeafe', color: '#1e40af', icon: 'ðŸ‘¨â€ðŸ³', text: 'Kitchen Queue: Cooking on Grill' },
+                    ready: { bg: '#dcfce7', color: '#14532d', icon: 'ðŸ½ï¸', text: 'Kitchen Queue: Food Ready for Service' },
+                    served: { bg: '#f0fdf4', color: '#166534', icon: 'âœ…', text: 'Kitchen Queue: Served' },
+                    cancelled: { bg: '#fee2e2', color: '#991b1b', icon: 'ðŸš«', text: 'Order Cancelled' }
                 };
                 const kCfg = kdsMap[kds] || kdsMap.pending;
                 kdsEl.innerHTML = `
@@ -2446,7 +2698,7 @@ function toggleChat() {
             }
         }
 
-        window.executeManageSearch = async function() {
+        window.executeManageSearch = async function () {
             const rawQuery = (document.getElementById('manage-search-input')?.value || '').trim();
             const err = document.getElementById('manage-search-error');
             if (err) err.style.display = 'none';
@@ -2504,7 +2756,7 @@ function toggleChat() {
             checkActiveReservation();
         };
 
-        window.executeFinalCancellation = async function() {
+        window.executeFinalCancellation = async function () {
             if (!activeManageRes) return;
             const resNum = activeManageRes.reservationNumber;
             const reason = document.getElementById('cancel-reason-select')?.value || 'Customer Requested Cancellation';
@@ -2537,18 +2789,18 @@ function toggleChat() {
                     }
                 }
 
-                // 👉 FIX: Permanently sync the customer's cancellation to the MySQL Cloud Database!
+                // ðŸ‘‰ FIX: Permanently sync the customer's cancellation to the MySQL Cloud Database!
                 await Promise.all([
                     fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-status', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: resNum, status: 'Cancelled' })
-                    }).catch(() => {}),
+                    }).catch(() => { }),
                     fetch('https://rolands-steakhouse-vqtr.vercel.app/api/reservations/update-kds', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: resNum, kdsStatus: 'cancelled' })
-                    }).catch(() => {})
+                    }).catch(() => { })
                 ]);
 
                 if (res && res.success) {
@@ -2563,7 +2815,7 @@ function toggleChat() {
                         const cancelMsg = {
                             sender: 'staff',
                             name: 'System',
-                            text: `🚫 Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
+                            text: `ðŸš« Reservation #${resNum} has been cancelled. Reason: "${reason}". Table released & pre-orders refunded.`,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                             iso: new Date().toISOString()
                         };
@@ -2574,8 +2826,8 @@ function toggleChat() {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ sessionId: sId, message: cancelMsg })
-                        }).catch(() => {});
-                    } catch (e) {}
+                        }).catch(() => { });
+                    } catch (e) { }
 
                     checkActiveReservation();
                     if (typeof showReservationHistory === 'function') showReservationHistory();
@@ -2584,9 +2836,9 @@ function toggleChat() {
                     document.getElementById('manage-stage-success').style.display = 'block';
                     const succFood = document.getElementById('succ-food-impact');
                     if (succFood) {
-                        succFood.innerHTML = res.stockAction === 'restored_to_stock' 
-                            ? '🍲 <strong>Inventory:</strong> Raw cuts and ingredients restored to warehouse stock'
-                            : '🍲 <strong>Kitchen Status:</strong> Food preparation halted';
+                        succFood.innerHTML = res.stockAction === 'restored_to_stock'
+                            ? 'ðŸ² <strong>Inventory:</strong> Raw cuts and ingredients restored to warehouse stock'
+                            : 'ðŸ² <strong>Kitchen Status:</strong> Food preparation halted';
                     }
                 } else {
                     alert('Could not cancel: ' + (res?.error || 'Unknown error'));
@@ -2600,7 +2852,7 @@ function toggleChat() {
             }
         };
 
-        window.copyResNumberToClipboard = function() {
+        window.copyResNumberToClipboard = function () {
             if (!activeManageRes) return;
             navigator.clipboard?.writeText(activeManageRes.reservationNumber).then(() => {
                 const badge = document.getElementById('det-res-num');
@@ -2609,10 +2861,10 @@ function toggleChat() {
                     badge.textContent = 'Copied!';
                     setTimeout(() => badge.textContent = original, 1200);
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         };
 
-        window.viewReceiptFromModal = function() {
+        window.viewReceiptFromModal = function () {
             if (!activeManageRes) return;
             window.open(`receipt.html?res=${encodeURIComponent(activeManageRes.reservationNumber)}`, '_blank');
         };
@@ -2621,7 +2873,7 @@ function toggleChat() {
             if (e.key === 'Escape') closeManageBookingModal();
         });
 
-        // 📱 Smooth Header Glassmorphism on Scroll
+        // ðŸ“± Smooth Header Glassmorphism on Scroll
         function updateHeaderScroll() {
             const header = document.getElementById('main-header');
             if (!header) return;
@@ -2636,8 +2888,10 @@ function toggleChat() {
     </script>
 
     <!-- STORE STATUS (OPEN / CLOSED) CUSTOMER PROTECTION -->
-    <div id="store-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
-        🔒 NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check back during opening hours.
+    <div id="store-closed-banner"
+        style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%); color:white; padding:12px 20px; text-align:center; font-family:'Inter', sans-serif; font-size:14px; font-weight:700; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+        ðŸ”’ NOTICE: Roland's Steakhouse is currently CLOSED and not accepting online orders or reservations. Please check
+        back during opening hours.
     </div>
 
     <script>
@@ -2675,38 +2929,54 @@ function toggleChat() {
                 bc.onmessage = (e) => {
                     if (e.data && e.data.action === 'storeStatusUpdated') checkCustomerStoreStatus();
                 };
-            } catch (err) {}
+            } catch (err) { }
         }
-        // 👉 NEW: Reservation Modal Triggers
-        window.openReservationModal = function() {
+        // ðŸ‘‰ NEW: Reservation Modal Triggers
+        window.openReservationModal = function () {
             if (typeof window.syncBookingFormAutofill === 'function') {
                 window.syncBookingFormAutofill();
             }
             document.getElementById('reservation-modal-overlay').style.display = 'flex';
         };
-        window.closeReservationModal = function() {
+        window.closeReservationModal = function () {
             document.getElementById('reservation-modal-overlay').style.display = 'none';
         };
     </script>
-        
-    <!-- 👤 CUSTOMER PROFILE MODAL -->
-    <div id="profile-modal-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;" onclick="if(event.target === this) closeProfileModal()">
-        <div class="luxury-modal-card" style="background:#ffffff; border-radius:24px; width:100%; max-width:540px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
-            
-            <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center;">
+
+    <!-- ðŸ‘¤ CUSTOMER PROFILE MODAL -->
+    <div id="profile-modal-overlay"
+        style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; pointer-events:auto;"
+        onclick="if(event.target === this) closeProfileModal()">
+        <div class="luxury-modal-card"
+            style="background:#ffffff; border-radius:24px; width:100%; max-width:540px; box-shadow:0 30px 60px -15px rgba(0,0,0,0.5); overflow:hidden; border:1px solid rgba(0,0,0,0.08); display:flex; flex-direction:column; max-height:90vh; animation:luxuryModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
+
+            <div
+                style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); padding:20px 24px; color:white; display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">👤</div>
+                    <div
+                        style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:22px;">
+                        ðŸ‘¤</div>
                     <div>
-                        <h2 style="margin:0; font-family:'Playfair Display',serif; font-size:20px;" id="profile-greet-name">My Profile</h2>
-                        <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;" id="profile-greet-email">Manage your account</p>
+                        <h2 style="margin:0; font-family:'Playfair Display',serif; font-size:20px;"
+                            id="profile-greet-name">My Profile</h2>
+                        <p style="margin:2px 0 0 0; font-size:12px; opacity:0.85; font-family:'Roboto',sans-serif;"
+                            id="profile-greet-email">Manage your account</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeProfileModal()" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+                <button type="button" onclick="closeProfileModal()"
+                    style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:20px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.2)'">âœ•</button>
             </div>
 
-            <div style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc; padding: 0 10px; font-family:'Roboto',sans-serif;">
-                <button id="prof-tab-history" onclick="switchProfileTab('history')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">📋 Reservation History</button>
-                <button id="prof-tab-security" onclick="switchProfileTab('security')" style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">👤 Account & Security</button>
+            <div
+                style="display: flex; border-bottom: 1.5px solid #e2e8f0; background: #f8fafc; padding: 0 10px; font-family:'Roboto',sans-serif;">
+                <button id="prof-tab-history" onclick="switchProfileTab('history')"
+                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#1b5e20; border-bottom: 2.5px solid #1b5e20; transition: background 0.15s;">ðŸ“‹
+                    Reservation History</button>
+                <button id="prof-tab-security" onclick="switchProfileTab('security')"
+                    style="flex:1; padding:12px 4px; font-size:13px; font-weight:700; border:none; cursor:pointer; background:transparent; color:#94a3b8; border-bottom: 2.5px solid transparent; transition: background 0.15s;">ðŸ‘¤
+                    Account & Security</button>
             </div>
 
             <div style="padding:24px; overflow-y:auto; flex:1; background:#f8fafc; font-family:'Roboto',sans-serif;">
@@ -2715,81 +2985,131 @@ function toggleChat() {
                 </div>
 
                 <div id="profile-view-security" style="display:none; flex-direction:column; gap:16px;">
-                    <!-- 👉 Full Name Management Card -->
-                    <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
-                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">👤 Full Name</h4>
-                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Update your account name across all your past and active reservation records.</p>
+                    <!-- ðŸ‘‰ Full Name Management Card -->
+                    <div
+                        style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ‘¤ Full Name</h4>
+                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Update your account name across all
+                            your past and active reservation records.</p>
                         <form onsubmit="handleProfileUpdateName(event)">
                             <div style="margin-bottom:14px;">
-                                <label for="prof-name-input" style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Customer Name</label>
-                                <input type="text" id="prof-name-input" placeholder="Enter your full name" minlength="2" maxlength="80" required style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                <label for="prof-name-input"
+                                    style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Customer
+                                    Name</label>
+                                <input type="text" id="prof-name-input" placeholder="Enter your full name" minlength="2"
+                                    maxlength="80" required
+                                    style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#1b5e20'"
+                                    onblur="this.style.borderColor='#cbd5e1'">
                             </div>
-                            <div id="prof-name-msg" style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;"></div>
-                            <button type="submit" id="prof-name-btn" style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save Name</button>
+                            <div id="prof-name-msg"
+                                style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;">
+                            </div>
+                            <button type="submit" id="prof-name-btn"
+                                style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save
+                                Name</button>
                         </form>
                     </div>
 
-                    <!-- 👉 NEW: Mobile Number Management Card -->
-                    <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
-                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">📱 Mobile Number</h4>
-                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Save your number to automatically fill in your details when booking a table.</p>
+                    <!-- ðŸ‘‰ NEW: Mobile Number Management Card -->
+                    <div
+                        style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02); margin-bottom:16px;">
+                        <h4 style="margin:0 0 6px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ“± Mobile Number
+                        </h4>
+                        <p style="margin:0 0 14px 0; font-size:12px; color:#64748b;">Save your number to automatically
+                            fill in your details when booking a table.</p>
                         <form onsubmit="handleProfileUpdatePhone(event)">
                             <div style="margin-bottom:14px;">
-                                <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Phone Number</label>
+                                <label
+                                    style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Phone
+                                    Number</label>
                                 <div style="display:flex;">
-                                    <span style="background:#f8fafc; border:1.5px solid #cbd5e1; border-right:none; border-radius:8px 0 0 8px; padding:10px 14px; font-size:14px; font-weight:600; color:#64748b; display:flex; align-items:center;">+63</span>
-                                    <input type="tel" id="prof-phone-input" placeholder="9XX XXX XXXX" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex:1; min-width:0; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:0 8px 8px 0; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                    <span
+                                        style="background:#f8fafc; border:1.5px solid #cbd5e1; border-right:none; border-radius:8px 0 0 8px; padding:10px 14px; font-size:14px; font-weight:600; color:#64748b; display:flex; align-items:center;">+63</span>
+                                    <input type="tel" id="prof-phone-input" placeholder="9XX XXX XXXX" maxlength="10"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')" required
+                                        style="flex:1; min-width:0; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:0 8px 8px 0; font-size:14px; outline:none; box-sizing:border-box;"
+                                        onfocus="this.style.borderColor='#1b5e20'"
+                                        onblur="this.style.borderColor='#cbd5e1'">
                                 </div>
                             </div>
-                            <div id="prof-phone-msg" style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;"></div>
-                            <button type="submit" id="prof-phone-btn" style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save Mobile Number</button>
+                            <div id="prof-phone-msg"
+                                style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;">
+                            </div>
+                            <button type="submit" id="prof-phone-btn"
+                                style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Save
+                                Mobile Number</button>
                         </form>
                     </div>
 
                     <!-- Change Password Card -->
-                    <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">🔒 Change Password</h4>
+                    <div
+                        style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+                        <h4 style="margin:0 0 16px 0; color:#1e293b; font-size:15px; font-weight:800;">ðŸ”’ Change
+                            Password</h4>
                         <form onsubmit="handleProfileChangePassword(event)">
                             <div style="margin-bottom:14px;">
-                                <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Current Password</label>
-                                <input type="password" id="prof-curr-pass" required style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                <label
+                                    style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Current
+                                    Password</label>
+                                <input type="password" id="prof-curr-pass" required
+                                    style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#1b5e20'"
+                                    onblur="this.style.borderColor='#cbd5e1'">
                             </div>
                             <div style="margin-bottom:14px;">
-                                <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">New Password</label>
-                                <input type="password" id="prof-new-pass" required style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                <label
+                                    style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">New
+                                    Password</label>
+                                <input type="password" id="prof-new-pass" required
+                                    style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#1b5e20'"
+                                    onblur="this.style.borderColor='#cbd5e1'">
                             </div>
                             <div style="margin-bottom:18px;">
-                                <label style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Confirm New Password</label>
-                                <input type="password" id="prof-confirm-pass" required style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;" onfocus="this.style.borderColor='#1b5e20'" onblur="this.style.borderColor='#cbd5e1'">
+                                <label
+                                    style="display:block; font-size:11px; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:6px;">Confirm
+                                    New Password</label>
+                                <input type="password" id="prof-confirm-pass" required
+                                    style="width:100%; padding:10px 14px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#1b5e20'"
+                                    onblur="this.style.borderColor='#cbd5e1'">
                             </div>
-                            <div id="prof-pass-msg" style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;"></div>
-                            <button type="submit" id="prof-pass-btn" style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Update Password</button>
+                            <div id="prof-pass-msg"
+                                style="margin-bottom:14px; font-size:12.5px; font-weight:600; display:none; padding:10px; border-radius:8px;">
+                            </div>
+                            <button type="submit" id="prof-pass-btn"
+                                style="width:100%; background:#1b5e20; color:white; border:none; padding:12px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.2);">Update
+                                Password</button>
                         </form>
                     </div>
                 </div>
             </div>
-            
-            <div style="padding:16px 24px; border-top:1px solid #e2e8f0; background:white; display:flex; justify-content:flex-end;">
-                <button type="button" onclick="executeProfileLogout()" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:10px 18px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                    <span>🚪</span> Log Out
+
+            <div
+                style="padding:16px 24px; border-top:1px solid #e2e8f0; background:white; display:flex; justify-content:flex-end;">
+                <button type="button" onclick="executeProfileLogout()"
+                    style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:10px 18px; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:0.2s;"
+                    onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                    <span>ðŸšª</span> Log Out
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        window.openProfileModal = async function() {
+        window.openProfileModal = async function () {
             const isLoggedIn = localStorage.getItem('loggedInUserName') || localStorage.getItem('loggedInUserEmail');
-            
+
             if (!isLoggedIn) {
                 const goToLogin = await superModal({
-                    title: 'Account Required 🔒',
+                    title: 'Account Required ðŸ”’',
                     message: 'To view your complete reservation history, manage your security settings, and unlock exclusive dining privileges, please create a free account or sign in.',
                     type: 'confirm',
                     confirmText: 'Sign Up / Log In',
                     cancelText: 'Maybe Later'
                 });
-                
+
                 if (goToLogin) {
                     window.location.href = 'login.html';
                 }
@@ -2830,7 +3150,7 @@ function toggleChat() {
                             if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
                             if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                         }
-                    }).catch(() => {});
+                    }).catch(() => { });
             }
             fetch(`https://rolands-steakhouse-vqtr.vercel.app/reservations?branch=ALL&nocache=${Date.now()}`)
                 .then(r => r.ok ? r.json() : null)
@@ -2857,14 +3177,14 @@ function toggleChat() {
                         });
                         if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                     }
-                }).catch(() => {});
+                }).catch(() => { });
         };
 
-        window.closeProfileModal = function() {
+        window.closeProfileModal = function () {
             document.getElementById('profile-modal-overlay').style.display = 'none';
         };
 
-        window.switchProfileTab = function(tab) {
+        window.switchProfileTab = function (tab) {
             const hTab = document.getElementById('prof-tab-history');
             const sTab = document.getElementById('prof-tab-security');
             const hView = document.getElementById('profile-view-history');
@@ -2951,7 +3271,7 @@ function toggleChat() {
             } catch (e) { }
         }
 
-        window.handleProfileUpdateName = async function(e) {
+        window.handleProfileUpdateName = async function (e) {
             e.preventDefault();
             const rawInput = (document.getElementById('prof-name-input')?.value || '').replace(/[<>]/g, '').trim();
             const email = (localStorage.getItem('loggedInUserEmail') || '').trim();
@@ -2960,13 +3280,13 @@ function toggleChat() {
             const btn = document.getElementById('prof-name-btn');
 
             if (rawInput.length < 2) {
-                msg.textContent = '❌ Please enter a valid name (at least 2 characters).';
+                msg.textContent = 'âŒ Please enter a valid name (at least 2 characters).';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
             }
             if (!email) {
-                msg.textContent = '❌ Please sign in again to update your account name.';
+                msg.textContent = 'âŒ Please sign in again to update your account name.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
@@ -3000,16 +3320,16 @@ function toggleChat() {
                     if (typeof window.renderProfileHistory === 'function') window.renderProfileHistory();
                     if (typeof syncCustomerReservationsFromCloud === 'function') syncCustomerReservationsFromCloud();
 
-                    msg.textContent = '✅ Name updated! Your account and reservation records are now updated.';
+                    msg.textContent = 'âœ… Name updated! Your account and reservation records are now updated.';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                 } else {
-                    msg.textContent = '❌ ' + ((data && data.error) || 'Failed to update name.');
+                    msg.textContent = 'âŒ ' + ((data && data.error) || 'Failed to update name.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
-                msg.textContent = '❌ Connection error while saving your name.';
+                msg.textContent = 'âŒ Connection error while saving your name.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
             } finally {
@@ -3018,7 +3338,7 @@ function toggleChat() {
             }
         };
 
-        window.handleProfileUpdatePhone = async function(e) {
+        window.handleProfileUpdatePhone = async function (e) {
             e.preventDefault();
             const phone = (document.getElementById('prof-phone-input').value || '').trim();
             const email = localStorage.getItem('loggedInUserEmail');
@@ -3026,7 +3346,7 @@ function toggleChat() {
             const btn = document.getElementById('prof-phone-btn');
 
             if (phone.length !== 10 || !phone.startsWith('9')) {
-                msg.textContent = '❌ Please enter a valid 10-digit mobile number starting with 9.';
+                msg.textContent = 'âŒ Please enter a valid 10-digit mobile number starting with 9.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
                 return;
@@ -3046,18 +3366,18 @@ function toggleChat() {
                 if (data.success) {
                     localStorage.setItem('loggedInUserPhone', phone);
                     if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
-                    msg.textContent = '✅ Mobile number saved! It will now auto-fill when you book.';
+                    msg.textContent = 'âœ… Mobile number saved! It will now auto-fill when you book.';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                 } else {
-                    msg.textContent = '❌ ' + (data.error || 'Failed to save mobile number.');
+                    msg.textContent = 'âŒ ' + (data.error || 'Failed to save mobile number.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
                 localStorage.setItem('loggedInUserPhone', phone);
                 if (typeof window.syncBookingFormAutofill === 'function') window.syncBookingFormAutofill();
-                msg.textContent = '✅ Mobile number saved to this device!';
+                msg.textContent = 'âœ… Mobile number saved to this device!';
                 msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                 msg.style.display = 'block';
             } finally {
@@ -3066,7 +3386,7 @@ function toggleChat() {
             }
         };
 
-        window.renderProfileHistory = function() {
+        window.renderProfileHistory = function () {
             const listEl = document.getElementById('profile-history-list');
             if (!listEl) return;
             const cName = (localStorage.getItem('loggedInUserName') || '').trim();
@@ -3121,18 +3441,18 @@ function toggleChat() {
                 return `
                     <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
-                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">🎫 ${escProf(r.reservationNumber)}</div>
+                            <div style="font-size:13px; font-weight:800; color:#1b5e20;">ðŸŽ« ${escProf(r.reservationNumber)}</div>
                             <div style="font-size:10px; font-weight:800; color:${statusColor}; background:${statusBg}; padding:3px 8px; border-radius:8px;">${escProf(status)}</div>
                         </div>
-                        <div style="font-size:12px; color:#1e293b; font-weight:700; margin-bottom:4px;">👤 ${escProf(r.customerName || cName || 'Guest')} ${r.branch ? `<span style="color:#64748b; font-weight:600;">• 📍 ${escProf(r.branch)}</span>` : ''}</div>
-                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">📅 ${escProf(r.arrivalDate)} &nbsp; ⏰ ${escProf(r.arrivalTime)} &nbsp; 🪑 ${escProf(r.bookedTable || 'TBD')}</div>
-                        <div style="font-size:12px; color:#475569; font-weight:600;">💰 Paid: ₱${Number(r.paymentAmount||0).toLocaleString()}</div>
+                        <div style="font-size:12px; color:#1e293b; font-weight:700; margin-bottom:4px;">ðŸ‘¤ ${escProf(r.customerName || cName || 'Guest')} ${r.branch ? `<span style="color:#64748b; font-weight:600;">â€¢ ðŸ“ ${escProf(r.branch)}</span>` : ''}</div>
+                        <div style="font-size:12px; color:#475569; margin-bottom:4px;">ðŸ“… ${escProf(r.arrivalDate)} &nbsp; â° ${escProf(r.arrivalTime)} &nbsp; ðŸª‘ ${escProf(r.bookedTable || 'TBD')}</div>
+                        <div style="font-size:12px; color:#475569; font-weight:600;">ðŸ’° Paid: â‚±${Number(r.paymentAmount || 0).toLocaleString()}</div>
                     </div>
                 `;
             }).join('');
         };
 
-        window.handleProfileChangePassword = async function(e) {
+        window.handleProfileChangePassword = async function (e) {
             e.preventDefault();
             const curr = document.getElementById('prof-curr-pass').value;
             const newP = document.getElementById('prof-new-pass').value;
@@ -3159,21 +3479,21 @@ function toggleChat() {
                     body: JSON.stringify({ email, currentPassword: curr, newPassword: newP })
                 });
                 const data = await res.json();
-                
+
                 if (data.success) {
-                    msg.textContent = '✅ Password successfully updated!';
+                    msg.textContent = 'âœ… Password successfully updated!';
                     msg.style.color = '#166534'; msg.style.background = '#dcfce7';
                     msg.style.display = 'block';
                     document.getElementById('prof-curr-pass').value = '';
                     document.getElementById('prof-new-pass').value = '';
                     document.getElementById('prof-confirm-pass').value = '';
                 } else {
-                    msg.textContent = '❌ ' + (data.error || 'Failed to update.');
+                    msg.textContent = 'âŒ ' + (data.error || 'Failed to update.');
                     msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                     msg.style.display = 'block';
                 }
             } catch (err) {
-                msg.textContent = '❌ Connection error.';
+                msg.textContent = 'âŒ Connection error.';
                 msg.style.color = '#dc2626'; msg.style.background = '#fee2e2';
                 msg.style.display = 'block';
             } finally {
@@ -3182,7 +3502,7 @@ function toggleChat() {
             }
         };
 
-        window.executeProfileLogout = async function() {
+        window.executeProfileLogout = async function () {
             localStorage.removeItem('loggedInUserName');
             localStorage.removeItem('loggedInUserEmail');
             localStorage.removeItem('loggedInUserPhone');
@@ -3191,24 +3511,24 @@ function toggleChat() {
             localStorage.removeItem('customerPhone');
             localStorage.removeItem('chatSessionId');
             sessionStorage.removeItem('guestChatRes');
-            
+
             closeProfileModal();
-            
+
             if (typeof superModal === 'function') {
-                await superModal({ title: 'Logged Out 👋', message: 'You have successfully signed out of your account.' });
+                await superModal({ title: 'Logged Out ðŸ‘‹', message: 'You have successfully signed out of your account.' });
             } else {
                 alert('You have successfully signed out.');
             }
-            
+
             window.location.reload();
         };
     </script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var sel = document.getElementById('customer-branch-select');
-        if (sel && window.getCurrentBranch) sel.value = window.getCurrentBranch();
-    });
-</script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var sel = document.getElementById('customer-branch-select');
+            if (sel && window.getCurrentBranch) sel.value = window.getCurrentBranch();
+        });
+    </script>
 </body>
 
 </html>
