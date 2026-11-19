@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.3"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <style>
         /* 👉 LOGO SCALER & HOVER/CLICK ANIMATION (seat-selection.html) */
@@ -128,6 +128,8 @@ body.vip-mode .rsh-floating-summary-card {
                     <span class="vip-pill">🔒 Private &amp; Exclusive</span>
                 </div>
 
+                <div id="vip-rooms-picker" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(195px, 1fr)); gap:12px; margin:0 0 22px; text-align:left;"></div>
+
                 <div class="vip-price-box">
                     <p class="vip-price-main">₱500 <span>/hour</span></p>
                     <p class="vip-price-sub">Minimum 2 hours &bull; Maximum 20 pax</p>
@@ -194,6 +196,16 @@ body.vip-mode .rsh-floating-summary-card {
         // ──────────────────────────────────────────────────────────
         // DYNAMIC FLOOR PLAN GENERATION
         // ──────────────────────────────────────────────────────────
+        function isVipFloorTable(t) {
+            if (!t) return false;
+            if (typeof t.isVip === 'boolean') return t.isVip;
+            return /\bvip\b/i.test(String(t.id || t.name || ''));
+        }
+
+        function getVipRoomsFromFloorPlan() {
+            return getFloorPlanConfig().filter(t => t && isVipFloorTable(t));
+        }
+
         function getFloorPlanConfig() {
             try {
                 const saved = localStorage.getItem('floorPlanConfig');
@@ -285,6 +297,7 @@ body.vip-mode .rsh-floating-summary-card {
         const confirmBtn   = document.getElementById('confirm-final-btn');
 
         let chosenTableId   = null;
+        let selectedVipRoomId = null;
         let reservationType = 'standard';
 
         function enterVipMode() {
@@ -299,6 +312,7 @@ body.vip-mode .rsh-floating-summary-card {
             checkoutEl.style.display = 'none';
             // Show VIP card (inside section — section is now transparent)
             vipSection.classList.add('show');
+            if (typeof updateVipAvailability === 'function') updateVipAvailability();
         }
 
         function exitVipMode() {
@@ -330,7 +344,16 @@ body.vip-mode .rsh-floating-summary-card {
 
         // VIP booking button
         document.getElementById('vip-book-btn').addEventListener('click', () => {
-            localStorage.setItem('bookedTable',     'VIP Private Room');
+            const vipRooms = getVipRoomsFromFloorPlan();
+            const chosenVip = vipRooms.find(v => String(v.id || v.name || '').trim() === selectedVipRoomId) || vipRooms[0];
+            if (!chosenVip) {
+                if (typeof superModal === 'function') {
+                    superModal({ title: 'No VIP Room Available 🚫', message: 'No VIP room is currently available on the floor plan for this branch.' });
+                } else alert('No VIP room available.');
+                return;
+            }
+            const vipTableName = String(chosenVip.id || chosenVip.name || 'VIP Room').trim();
+            localStorage.setItem('bookedTable',     vipTableName);
             localStorage.setItem('reservationType', 'vip');
             localStorage.setItem('totalBill',       '1000');
             localStorage.setItem('vipDownPayment',  '1000');
@@ -406,7 +429,7 @@ body.vip-mode .rsh-floating-summary-card {
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             const activeDate = localStorage.getItem('arrivalDate') || chosenDate || '';
             const activeTime = localStorage.getItem('arrivalTime') || chosenTime || '';
-            const floorTables = getFloorPlanConfig().filter(t => t && !t.isVip);
+            const floorTables = getFloorPlanConfig().filter(t => t && !isVipFloorTable(t));
 
             function parseTimeMins(t) {
                 if (!t) return -9999;
@@ -893,6 +916,9 @@ body.vip-mode .rsh-floating-summary-card {
                     if (typeof window.renderTables === 'function') {
                         try { window.renderTables(); } catch (e) {}
                     }
+                    if (typeof window.updateVipAvailability === 'function') {
+                        try { window.updateVipAvailability(); } catch (e) {}
+                    }
                     window.dispatchEvent(new Event('storage'));
                     setTimeout(syncTableCards, 60);
                 }
@@ -909,9 +935,10 @@ body.vip-mode .rsh-floating-summary-card {
 
             const imgs = Array.from(document.querySelectorAll('#dynamic-floor-plan .table-seat img, img')).filter((img, idx, arr) => {
                 if (arr.indexOf(img) !== idx) return false;
+                if (img.closest('#vip-room-section')) return false;
                 if (img.closest('#dynamic-floor-plan .table-seat')) return true;
                 const parentText = (img.parentElement?.innerText || '').trim();
-                return /^Table\s*\d+|VIP/i.test(parentText);
+                return /^Table\s*\d+/i.test(parentText);
             });
 
             imgs.forEach(img => {
@@ -1021,9 +1048,11 @@ body.vip-mode .rsh-floating-summary-card {
         setInterval(syncAllTableDataFromCloud, 6000);
     })();
 
-    // ── VIP ROOM AVAILABILITY (synced via reservationHistory) ──
+    // ── VIP ROOM AVAILABILITY & FLOOR PLAN PICKER (synced via floorPlanConfig & reservationHistory) ──
+let lastVipPickerSig = '';
 function updateVipAvailability() {
     const btn = document.getElementById('vip-book-btn');
+    const picker = document.getElementById('vip-rooms-picker');
     if (!btn) return;
     const toMins = t => { if (!t) return -9999; const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); };
     const fmtMin = m => { let h = Math.floor(m / 60), mm = m % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${String(mm).padStart(2, '0')} ${ap}`; };
@@ -1032,15 +1061,118 @@ function updateVipAvailability() {
     const date = localStorage.getItem('arrivalDate') || '';
     const want = toMins(localStorage.getItem('arrivalTime'));
     const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
+    const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
+    const vipRooms = getVipRoomsFromFloorPlan();
 
-    const booked = hist.filter(r => {
-        const st = String(r.status || '').toLowerCase();
-        const isVip = r.reservationType === 'vip' || /vip/i.test(r.bookedTable || '');
-        return isVip && r.arrivalDate === date && !['cancelled', 'rejected', 'completed'].includes(st);
-    }).map(r => { const s = toMins(r.arrivalTime); return [s, s + VIP_STAY]; })
-      .sort((a, b) => a[0] - b[0]);
+    const getRoomBookings = (roomId) => {
+        const normRoom = String(roomId || '').trim().toLowerCase();
+        return hist.filter(r => {
+            if (!r || r.completedAt) return false;
+            const st = String(r.status || '').toLowerCase().trim();
+            const aSt = String(r.approvalStatus || '').toLowerCase().trim();
+            if (['cancelled', 'rejected', 'completed'].includes(st) || ['cancelled', 'rejected', 'completed'].includes(aSt)) return false;
+            if (r.arrivalDate !== date) return false;
+            const rTable = String(r.bookedTable || '').trim().toLowerCase();
+            if (rTable === normRoom) return true;
+            if (vipRooms.length === 1 && (r.reservationType === 'vip' || /\bvip\b/i.test(rTable))) return true;
+            return false;
+        }).map(r => { const s = toMins(r.arrivalTime); return [s, s + VIP_STAY]; })
+          .sort((a, b) => a[0] - b[0]);
+    };
 
-    const clash = want >= 0 && booked.some(([s, e]) => want < e && want + VIP_STAY > s);
+    const evaluatedRooms = vipRooms.map(room => {
+        const roomId = String(room.id || room.name || 'VIP Room').trim();
+        const roomName = String(room.name || roomId).trim();
+        const locked = overrides[roomId] === 'unavailable';
+        const booked = getRoomBookings(roomId);
+        const clash = want >= 0 && booked.some(([s, e]) => want < e && want + VIP_STAY > s);
+        const unavailable = locked || clash;
+        return { room, roomId, roomName, locked, booked, clash, unavailable };
+    });
+
+    if (evaluatedRooms.length > 0) {
+        const stillExists = evaluatedRooms.some(r => r.roomId === selectedVipRoomId);
+        if (!stillExists) {
+            const firstFree = evaluatedRooms.find(r => !r.unavailable) || evaluatedRooms[0];
+            selectedVipRoomId = firstFree.roomId;
+        }
+    } else {
+        selectedVipRoomId = null;
+    }
+
+    const activeEval = evaluatedRooms.find(r => r.roomId === selectedVipRoomId) || evaluatedRooms[0] || null;
+
+    // Update slide 0 background photo if custom photo uploaded for active VIP room
+    const bg0 = document.getElementById('vip-bg-0');
+    if (bg0) {
+        const customBg = (activeEval && activeEval.room.image) ? activeEval.room.image : 'images/VIP1.jpg';
+        const nextBgVal = `url('${String(customBg).replace(/'/g, "\\'")}')`;
+        if (bg0.style.backgroundImage !== nextBgVal) bg0.style.backgroundImage = nextBgVal;
+    }
+
+    if (picker) {
+        const pickerSig = JSON.stringify({
+            selectedVipRoomId,
+            date,
+            want,
+            rooms: evaluatedRooms.map(r => ({
+                id: r.roomId,
+                name: r.roomName,
+                desc: r.room.description || '',
+                img: r.room.image || '',
+                locked: r.locked,
+                clash: r.clash,
+                booked: r.booked
+            }))
+        });
+
+        if (lastVipPickerSig !== pickerSig) {
+            lastVipPickerSig = pickerSig;
+            picker.innerHTML = '';
+
+            if (evaluatedRooms.length === 0) {
+                picker.innerHTML = `<div style="grid-column:1 / -1; background:rgba(255,255,255,0.08); border:1px dashed rgba(255,215,0,0.45); border-radius:14px; padding:14px; text-align:center; color:#fde68a; font-size:13px; font-weight:700;">No VIP rooms are currently configured for this branch.</div>`;
+            } else {
+                evaluatedRooms.forEach(item => {
+                    const isSel = item.roomId === selectedVipRoomId;
+                    const card = document.createElement('div');
+                    const imgSrc = item.room.image || 'images/VIP1.jpg';
+                    const statusLabel = item.locked
+                        ? '🔒 Unavailable'
+                        : (item.clash ? '🔴 Reserved at chosen time' : '🟢 Available');
+                    const statusColor = item.unavailable ? '#fca5a5' : '#86efac';
+
+                    card.style.cssText = `
+                        background:${isSel ? 'rgba(255,215,0,0.18)' : 'rgba(255,255,255,0.08)'};
+                        border:${isSel ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.22)'};
+                        border-radius:16px;
+                        padding:10px;
+                        cursor:pointer;
+                        transition:all 0.2s ease;
+                        box-shadow:${isSel ? '0 8px 24px rgba(255,215,0,0.25)' : 'none'};
+                        display:flex;
+                        flex-direction:column;
+                        gap:8px;
+                    `;
+                    card.innerHTML = `
+                        <img src="${escapeSeatHtml(imgSrc)}" alt="${escapeSeatHtml(item.roomName)}"
+                            style="width:100%; height:110px; object-fit:cover; border-radius:10px; border:1px solid rgba(255,255,255,0.18);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                            <div style="font-weight:800; font-size:14px; color:#ffffff;">👑 ${escapeSeatHtml(item.roomName)}</div>
+                            ${isSel ? '<span style="font-size:10px; font-weight:800; background:#ffd700; color:#1a0800; padding:2px 7px; border-radius:999px;">SELECTED</span>' : ''}
+                        </div>
+                        ${item.room.description ? `<div style="font-size:11.5px; color:rgba(255,255,255,0.8);">🪑 ${escapeSeatHtml(item.room.description)}</div>` : ''}
+                        <div style="font-size:11.5px; font-weight:700; color:${statusColor};">${statusLabel}</div>
+                    `;
+                    card.addEventListener('click', () => {
+                        selectedVipRoomId = item.roomId;
+                        updateVipAvailability();
+                    });
+                    picker.appendChild(card);
+                });
+            }
+        }
+    }
 
     let note = document.getElementById('vip-avail-note');
     if (!note) {
@@ -1049,19 +1181,37 @@ function updateVipAvailability() {
         note.style.cssText = 'margin:10px 0;font-size:13px;font-weight:700;text-align:center;line-height:1.6;';
         btn.before(note);
     }
-    note.innerHTML = booked.length
-        ? booked.map(([s, e]) => `🔴 Reserved ${fmtMin(s)} – ${fmtMin(e)}`).join('<br>') + '<br>🟢 Available outside these times'
-        : '🟢 VIP Room available all day';
-    note.style.color = clash ? '#f87171' : '#4ade80';
+
+    if (!activeEval) {
+        note.innerHTML = '🔒 No VIP rooms configured for this branch';
+        note.style.color = '#f87171';
+        btn.disabled = true;
+        btn.textContent = 'No VIP Room Available';
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+        return;
+    }
+
+    const booked = activeEval.booked;
+    const isUnavailable = activeEval.unavailable;
+
+    if (activeEval.locked) {
+        note.innerHTML = `🔒 ${escapeSeatHtml(activeEval.roomName)} is currently marked unavailable by staff`;
+    } else if (booked.length) {
+        note.innerHTML = booked.map(([s, e]) => `🔴 Reserved ${fmtMin(s)} – ${fmtMin(e)}`).join('<br>') + '<br>🟢 Available outside these times';
+    } else {
+        note.innerHTML = `🟢 ${escapeSeatHtml(activeEval.roomName)} available all day`;
+    }
+    note.style.color = isUnavailable ? '#f87171' : '#4ade80';
     note.style.fontWeight = '800';
     note.style.letterSpacing = '0.3px';
 
-
-    btn.disabled = clash;
-    btn.textContent = clash ? 'VIP Room Unavailable at This Time' : 'Reserve VIP Room Now';
-    btn.style.opacity = clash ? '0.5' : '1';
-    btn.style.cursor = clash ? 'not-allowed' : 'pointer';
+    btn.disabled = isUnavailable;
+    btn.textContent = isUnavailable ? `${activeEval.roomName} Unavailable at This Time` : `Reserve ${activeEval.roomName} Now`;
+    btn.style.opacity = isUnavailable ? '0.5' : '1';
+    btn.style.cursor = isUnavailable ? 'not-allowed' : 'pointer';
 }
+window.updateVipAvailability = updateVipAvailability;
 setInterval(updateVipAvailability, 2000);
 setTimeout(updateVipAvailability, 300);
 
