@@ -11,11 +11,11 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="css/design-system.css">
     <script src="js/design-system.js"></script>
-    <script src="js/inventory-system.js?v=7.5"></script>
+    <script src="js/inventory-system.js?v=7.6"></script>
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/pos.css">
     <style>
-        /* 📱 3-COLUMN POS GRID OVERRIDES */
+        /* ðŸ“± 3-COLUMN POS GRID OVERRIDES */
         .product-grid {
             display: grid !important;
             grid-template-columns: repeat(3, 1fr) !important;
@@ -85,7 +85,7 @@
                 <button class="num-btn" onclick="appendPin('9')">9</button>
                 <button class="num-btn" style="background:transparent;" title="Disabled key" disabled></button>
                 <button class="num-btn" onclick="appendPin('0')">0</button>
-                <button class="num-btn" style="background:#ef4444;" title="Clear PIN" onclick="clearPin()">⌫</button>
+                <button class="num-btn" style="background:#ef4444;" title="Clear PIN" onclick="clearPin()">âŒ«</button>
             </div>
             <div id="pos-auth-msg" class="auth-msg"></div>
         </div>
@@ -118,7 +118,7 @@
             <div id="pos-branch-pin-msg" style="min-height:18px; color:#dc2626; font-size:12.5px; font-weight:700; margin-bottom:12px;"></div>
             <div style="display:flex; gap:10px;">
                 <button type="button" id="pos-branch-secondary-btn" onclick="handlePosBranchSecondaryAction()"
-                    style="flex:1; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#f1f5f9; color:#334155; font-size:13px; font-weight:800; cursor:pointer;">🔒 Lock POS</button>
+                    style="flex:1; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#f1f5f9; color:#334155; font-size:13px; font-weight:800; cursor:pointer;">ðŸ”’ Lock POS</button>
                 <button type="button" id="pos-branch-unlock-btn" onclick="verifyPosBranchGate()"
                     style="flex:1.4; padding:12px; border:none; border-radius:12px; background:#155e2b; color:#ffffff; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(21,94,43,0.3);">Verify & Unlock</button>
             </div>
@@ -136,7 +136,7 @@
             </div>
             <button type="button" onclick="lockPosTerminal()" title="Lock POS Terminal"
                 style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:10px; color:white; font-size:13px; font-weight:700; cursor:pointer; padding:7px 14px; display:flex; align-items:center; gap:6px; transition:0.2s;">
-                🔒 Lock
+                ðŸ”’ Lock
             </button>
             <button onclick="window.close()"
                 style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:10px; color:white; font-size:13px; font-weight:700; cursor:pointer; padding:7px 16px; display:flex; align-items:center; gap:6px; transition:0.2s;">
@@ -247,19 +247,19 @@
                         placeholder="Customer Name (Optional)"
                         style="width:100%; margin-bottom:15px; box-sizing:border-box;">
 
-                    <!-- ── PWD / Senior / Voucher Discount Panel ── -->
+                    <!-- â”€â”€ PWD / Senior / Voucher Discount Panel â”€â”€ -->
                     <div class="discount-panel"
                         style="display:block; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:12px; margin-bottom:12px;">
                         <div class="discount-label"
                             style="font-size:11.5px; font-weight:800; color:#1b5e20; text-transform:uppercase; margin-bottom:6px;">
-                            🏷️ Discount / Promo Voucher</div>
+                            ðŸ·ï¸ Discount / Promo Voucher</div>
                         <select class="discount-select" id="pos-discount-type" title="Discount Type"
                             aria-label="Discount Type" onchange="handlePosDiscountChange()"
                             style="width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; font-size:13px; background:white; color:#0f172a; cursor:pointer; box-sizing:border-box;">
                             <option value="none">No Discount (Regular)</option>
-                            <option value="pwd">♿ PWD – 20% Discount</option>
-                            <option value="senior">👵 Senior Citizen – 20% Discount</option>
-                            <option value="voucher">🎟️ Promo Voucher Code</option>
+                            <option value="pwd">â™¿ PWD â€“ 20% Discount</option>
+                            <option value="senior">ðŸ‘µ Senior Citizen â€“ 20% Discount</option>
+                            <option value="voucher">ðŸŽŸï¸ Promo Voucher Code</option>
                         </select>
 
                         <!-- PWD / Senior ID Input -->
@@ -281,7 +281,7 @@
 
                         <div class="discount-row-badge" id="pos-discount-badge" style="margin-top:8px;">
                             <span id="pos-discount-label-text">Discount</span>
-                            <span id="pos-discount-amount">-₱0</span>
+                            <span id="pos-discount-amount">-â‚±0</span>
                         </div>
                     </div>
                 </div> <!-- /order-meta-container -->
@@ -290,16 +290,16 @@
             <div class="cart-summary">
                 <div class="summary-row">
                     <span>Subtotal</span>
-                    <span id="subtotal">₱0</span>
+                    <span id="subtotal">â‚±0</span>
                 </div>
                 <div class="summary-row" id="pos-discount-summary-row"
                     style="display:none; color:#16a34a; font-weight:700;">
                     <span id="pos-discount-summary-label">Discount (20%)</span>
-                    <span id="pos-discount-summary-val">-₱0</span>
+                    <span id="pos-discount-summary-val">-â‚±0</span>
                 </div>
                 <div class="summary-row" style="font-weight:900; font-size:22px; margin-top:5px; color:var(--primary);">
                     <span>Total</span>
-                    <span id="total-val">₱0</span>
+                    <span id="total-val">â‚±0</span>
                 </div>
                 <button class="checkout-btn" onclick="processCheckout()" style="margin-top:10px; width: 100%;">COMPLETE
                     TRANSACTION</button>
@@ -335,7 +335,7 @@
     <!-- VERIFY MODAL -->
     <div id="modal-verify" class="modal-overlay">
         <div class="modal-card">
-            <div id="verify-icon" style="font-size:60px; margin-bottom:20px;">🔍</div>
+            <div id="verify-icon" style="font-size:60px; margin-bottom:20px;">ðŸ”</div>
             <h2 id="verify-title" style="font-family:'Playfair Display'; margin:0 0 15px;">QR Verification</h2>
             <div id="verify-body"
                 style="text-align:left; background:#f8fafc; padding:20px; border-radius:15px; margin-bottom:20px; font-size:14px;">
@@ -353,7 +353,7 @@
                 <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">Find Customer
                     Reservation</h3>
                 <button type="button" onclick="document.getElementById('modal-reservation-search').style.display='none'"
-                    style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">✕</button>
+                    style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">âœ•</button>
             </div>
 
             <input type="text" id="pos-res-search-input" placeholder="Search by Customer Name, Phone, or Res #"
@@ -468,8 +468,8 @@
             const btn = document.getElementById('pos-branch-secondary-btn');
             if (!btn) return;
             btn.textContent = (posSwitchOriginBranch && posTerminalUnlocked)
-                ? '✕ Cancel Switch'
-                : '🔒 Lock POS';
+                ? 'âœ• Cancel Switch'
+                : 'ðŸ”’ Lock POS';
         }
 
         window.handlePosBranchSecondaryAction = function () {
@@ -595,7 +595,7 @@
             }
             const requiredPin = typeof window.getPosBranchPin === 'function' ? window.getPosBranchPin(targetBranch) : '1234';
             if (entered !== String(requiredPin).trim() && entered !== '789456') {
-                if (msgEl) msgEl.textContent = `❌ Incorrect Branch PIN for ${targetBranch}.`;
+                if (msgEl) msgEl.textContent = `âŒ Incorrect Branch PIN for ${targetBranch}.`;
                 if (pinInput) {
                     pinInput.value = '';
                     pinInput.focus();
@@ -747,7 +747,8 @@
                 const hdrs = { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' };
                 const [invRes, rawRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/api/memory/inventory-items?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
-                    fetch(`${API_BASE_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs })
+                    fetch(`${API_BASE_URL}/api/memory/raw-ingredients?branch=${encodeURIComponent(branch)}&nocache=${Date.now()}`, { headers: hdrs }),
+                    typeof window.syncSharedPhotosFromCloud === 'function' ? window.syncSharedPhotosFromCloud().catch(() => null) : Promise.resolve(null)
                 ]);
                 if (Date.now() < (window.__inventoryHoldUntil || 0)) return;
                 let updated = false;
@@ -911,7 +912,7 @@
                     }
                 }
 
-                // Full default menu — always used as the base
+                // Full default menu â€” always used as the base
                 const defaultItems = [
                     // Beef
                     { id: 'INV-B1', title: 'Fillet Mignon', category: 'Beef', price: 935, stock: 100 },
@@ -1068,7 +1069,7 @@
                 const soldVal = Number(item.sold_stock) || 0;
                 const isLow = stockVal <= 10;
 
-                // 👉 ALWAYS use an image! If no custom image exists, create a beautiful placeholder.
+                // ðŸ‘‰ ALWAYS use an image! If no custom image exists, create a beautiful placeholder.
                 const hasCustomPhoto = item.image && !item.image.includes('placehold.co') && (item.image.startsWith('data:') || item.image.startsWith('http'));
                 const imgSrc = hasCustomPhoto
                     ? item.image
@@ -1077,11 +1078,11 @@
                 // Force uniform height, taller images, floating EOD pill, and synchronized Total / +Added / -Sold breakdown
                 return `
                     <div class="product-card" onclick="addToCart('${item.id}')">
-                        <!-- 👉 Increased height to 160px for much bigger photos -->
+                        <!-- ðŸ‘‰ Increased height to 160px for much bigger photos -->
                         <div class="product-img-wrapper" style="position:relative; width:100%; height:160px; border-bottom:1px solid #f1f5f9; background:#f8fafc;">
                             <img src="${imgSrc}" class="product-img" alt="${title}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
                             
-                            <!-- 👉 Removed the stock-badge class so it doesn't stretch, made it a sleek floating pill -->
+                            <!-- ðŸ‘‰ Removed the stock-badge class so it doesn't stretch, made it a sleek floating pill -->
                             <div style="position:absolute; top:10px; right:10px; display:inline-block; width:auto; background:${isLow ? 'rgba(239, 68, 68, 0.9)' : 'rgba(15, 23, 42, 0.75)'}; color:white; font-size:11px; font-weight:800; padding:5px 10px; border-radius:20px; backdrop-filter:blur(4px); box-shadow:0 4px 6px rgba(0,0,0,0.15);">
                                 ${stockVal} left
                             </div>
@@ -1096,7 +1097,7 @@
                                 </div>
                             </div>
                             <div class="product-price-row" style="display:flex; justify-content:space-between; align-items:center;">
-                                <div class="product-price" style="color:#16a34a; font-weight:900; font-size:17px;">₱${Number(item.price).toLocaleString()}</div>
+                                <div class="product-price" style="color:#16a34a; font-weight:900; font-size:17px;">â‚±${Number(item.price).toLocaleString()}</div>
                                 <button class="add-item-btn" type="button" aria-label="Add item" style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; border-radius:8px; width:36px; height:36px; font-weight:900; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.15s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
                                     +
                                 </button>
@@ -1115,7 +1116,7 @@
             const item = items.find(i => i.id === id);
             if (!item || item.stock_val <= 0) {
                 if (window.showToast) window.showToast('Item is currently out of stock', 'error');
-                else superModal({ title: 'Out of Stock 🥩', message: 'This item is currently unavailable.' });
+                else superModal({ title: 'Out of Stock ðŸ¥©', message: 'This item is currently unavailable.' });
                 return;
             }
 
@@ -1159,7 +1160,7 @@
             switchMode('status');
         }
 
-        /* ── DYNAMIC POS TABLE SELECT & LIVE RESERVATION CONNECTION ── */
+        /* â”€â”€ DYNAMIC POS TABLE SELECT & LIVE RESERVATION CONNECTION â”€â”€ */
         function getFloorPlanTables() {
             try {
                 const stored = localStorage.getItem('floorPlanConfig');
@@ -1306,7 +1307,7 @@
             const searchModal = document.getElementById('modal-reservation-search');
             if (searchModal) searchModal.style.display = 'none';
 
-            // 👉 NEW: Instantly mark the table as 'Seated' in the Hostess floor plan!
+            // ðŸ‘‰ NEW: Instantly mark the table as 'Seated' in the Hostess floor plan!
             if (res.bookedTable && res.bookedTable !== 'Takeout') {
                 const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
                 overrides[res.bookedTable] = 'seated';
@@ -1320,7 +1321,7 @@
                 } catch (e) { }
             }
 
-            // 👉 NEW: Update the reservation status locally so it stays seated
+            // ðŸ‘‰ NEW: Update the reservation status locally so it stays seated
             res.approvalStatus = 'seated';
             localStorage.setItem('reservationHistory', JSON.stringify(history));
             try {
@@ -1374,7 +1375,7 @@
                         <div>
                             <div style="font-weight:bold; color:#0f172a; font-size:13.5px;">${r.customerName || 'Guest'} (${r.reservationNumber})</div>
                             <div style="font-size:12px; color:#475569; margin-top:2px;">
-                                Table: <strong>${r.bookedTable || 'Unassigned'}</strong> • Guests: ${r.numberOfGuests || 2} Pax
+                                Table: <strong>${r.bookedTable || 'Unassigned'}</strong> â€¢ Guests: ${r.numberOfGuests || 2} Pax
                             </div>
                             <div style="font-size:11.5px; color:#166534; margin-top:3px; font-weight:600;">
                                 Pre-orders: ${foodsStr}
@@ -1389,7 +1390,7 @@
         }
         window.renderProducts = renderProducts;
 
-        /* ── Discount & Voucher Eligibility Helpers ── */
+        /* â”€â”€ Discount & Voucher Eligibility Helpers â”€â”€ */
         function populatePosVoucherDropdown() {
             const sel = document.getElementById('pos-voucher-select');
             if (!sel || !window.VoucherSystem) return;
@@ -1397,9 +1398,9 @@
             const list = window.VoucherSystem.getVouchers().filter(v => v.active !== false);
             sel.innerHTML = `<option value="">-- Choose Saved Voucher (${list.length} available) --</option>` +
                 list.map(v => {
-                    const discTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `₱${v.value} OFF`;
+                    const discTxt = v.discountMode === 'pct' ? `${v.value}% OFF` : `â‚±${v.value} OFF`;
                     const reqTxt = window.VoucherSystem.formatRequirementSummary(v);
-                    return `<option value="${v.code}">${v.code} — ${discTxt} (${reqTxt})</option>`;
+                    return `<option value="${v.code}">${v.code} â€” ${discTxt} (${reqTxt})</option>`;
                 }).join('');
             if (curr) sel.value = curr;
         }
@@ -1468,7 +1469,7 @@
                 const check = window.VoucherSystem.validateVoucher(code, subtotal, buildPosCartItemsForVoucher());
                 if (msgEl) {
                     msgEl.style.color = check.valid ? '#15803d' : '#dc2626';
-                    msgEl.textContent = check.valid ? `✅ ${check.label} applied (-₱${check.discountAmount.toLocaleString()})` : `⚠️ ${check.reason}`;
+                    msgEl.textContent = check.valid ? `âœ… ${check.label} applied (-â‚±${check.discountAmount.toLocaleString()})` : `âš ï¸ ${check.reason}`;
                 }
                 if (!check.valid) {
                     return { type: 'voucher', rate: 0, amount: 0, label: code || 'Voucher', voucherCode: code, valid: false, reason: check.reason };
@@ -1515,7 +1516,7 @@
                         <div class="cart-item">
                             <div class="cart-item-info">
                                 <div class="cart-item-name">${item.title || item.name}</div>
-                                <div class="cart-item-price">₱${lineTotal.toLocaleString()}</div>
+                                <div class="cart-item-price">â‚±${lineTotal.toLocaleString()}</div>
                             </div>
                             <div class="qty-ctrl">
                                 <button class="qty-btn" onclick="changeQty('${id}', -1)">-</button>
@@ -1552,7 +1553,7 @@
             const finalTotal = subtotal - disc.amount;
 
             const subtotalEl = document.getElementById('subtotal');
-            if (subtotalEl) subtotalEl.textContent = `₱${subtotal.toLocaleString()}`;
+            if (subtotalEl) subtotalEl.textContent = `â‚±${subtotal.toLocaleString()}`;
 
             const discSummaryRow = document.getElementById('pos-discount-summary-row');
             const discSummaryLabel = document.getElementById('pos-discount-summary-label');
@@ -1562,7 +1563,7 @@
             if (disc.amount > 0) {
                 if (discSummaryRow) discSummaryRow.style.display = 'flex';
                 if (discSummaryLabel) discSummaryLabel.textContent = `Discount (${disc.label || 'Promo'})`;
-                if (valEl) valEl.textContent = `-₱${disc.amount.toLocaleString()}`;
+                if (valEl) valEl.textContent = `-â‚±${disc.amount.toLocaleString()}`;
                 if (badge) badge.classList.add('show');
             } else {
                 if (discSummaryRow) discSummaryRow.style.display = 'none';
@@ -1570,22 +1571,22 @@
             }
 
             const totalValEl = document.getElementById('total-val');
-            if (totalValEl) totalValEl.textContent = `₱${finalTotal.toLocaleString()}`;
+            if (totalValEl) totalValEl.textContent = `â‚±${finalTotal.toLocaleString()}`;
         }
 
         async function processCheckout() {
-            if (Object.keys(cart).length === 0) return superModal({ title: 'Empty Cart 🛒', message: 'Please add items to the order before finalizing.' });
+            if (Object.keys(cart).length === 0) return superModal({ title: 'Empty Cart ðŸ›’', message: 'Please add items to the order before finalizing.' });
 
             const table = document.getElementById('order-table').value;
             const guests = document.getElementById('order-guests').value;
             const name = document.getElementById('order-name').value || 'Walk-in Guest';
 
-            if (!table) return superModal({ title: 'Table Required 📍', message: 'Please select a table to complete the transaction.' });
+            if (!table) return superModal({ title: 'Table Required ðŸ“', message: 'Please select a table to complete the transaction.' });
 
-            // 👉 NEW: Grab Checkout Button for Loading State
+            // ðŸ‘‰ NEW: Grab Checkout Button for Loading State
             const checkoutBtn = document.querySelector('button[onclick="processCheckout()"]');
             const originalBtnHtml = checkoutBtn.innerHTML;
-            checkoutBtn.innerHTML = '⏳ Processing...';
+            checkoutBtn.innerHTML = 'â³ Processing...';
             checkoutBtn.disabled = true;
 
             try {
@@ -1653,11 +1654,11 @@
                 if (deltaDeductItems.length > 0 && window.InventorySystem && typeof window.InventorySystem.validateOrderIngredients === 'function') {
                     const check = window.InventorySystem.validateOrderIngredients(deltaDeductItems);
                     if (!check.isValid) {
-                        const list = check.shortages.map(s => `• <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} remaining`).join('<br>');
+                        const list = check.shortages.map(s => `â€¢ <b>${s.ingredientName}</b>: Needed ${s.needed} ${s.unit}, only ${s.available} ${s.unit} remaining`).join('<br>');
                         checkoutBtn.innerHTML = originalBtnHtml;
                         checkoutBtn.disabled = false;
                         return superModal({
-                            title: 'Stock Shortage 📉',
+                            title: 'Stock Shortage ðŸ“‰',
                             message: `Cannot finalize POS order due to kitchen shortages:<br><br>${list}`
                         });
                     }
@@ -1669,7 +1670,7 @@
                     checkoutBtn.innerHTML = originalBtnHtml;
                     checkoutBtn.disabled = false;
                     return superModal({
-                        title: 'Voucher Not Eligible 🎟️',
+                        title: 'Voucher Not Eligible ðŸŽŸï¸',
                         message: disc.reason || 'This order does not meet the voucher requirements yet.'
                     });
                 }
@@ -1708,10 +1709,10 @@
                     }
                     const dbData = await dbRes.json();
 
-                    // 👉 Apply the official Sequential Database ID
+                    // ðŸ‘‰ Apply the official Sequential Database ID
                     resNo = 'POS-' + dbData.reservationId;
 
-                    // 👉 FIX: Instantly sync the KDS status so the Kitchen Phone wakes up!
+                    // ðŸ‘‰ FIX: Instantly sync the KDS status so the Kitchen Phone wakes up!
                     fetch(`${API_BASE_URL}/api/reservations/update-kds`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1726,7 +1727,7 @@
                     window.InventorySystem.restoreIngredientsForOrder(deltaRestoreItems, 'POS Order Edit Reduction', 'POS Cashier');
                 }
 
-                // 👉 FIX: Update existing reservation or handle edit
+                // ðŸ‘‰ FIX: Update existing reservation or handle edit
                 if (isEdit && existingRes) {
                     existingRes.customerName = name;
                     existingRes.bookedTable = table;
@@ -1744,7 +1745,7 @@
                     // Strip away the "completed" tags so it shows up in Order Status
                     existingRes.status = 'seated';
 
-                    // 👉 FIX: Change it to 'verified' instead of 'paid' so it waits for the Bill Out button!
+                    // ðŸ‘‰ FIX: Change it to 'verified' instead of 'paid' so it waits for the Bill Out button!
                     if (existingRes.paymentStatus === 'paid') {
                         existingRes.paymentStatus = 'verified';
                     } else if (!existingRes.paymentStatus) {
@@ -1753,7 +1754,7 @@
 
                     if (existingRes.completedAt) delete existingRes.completedAt;
 
-                    // 👉 FIX: Send the FULL updated order (foods, payment, status) to the Live MySQL Database!
+                    // ðŸ‘‰ FIX: Send the FULL updated order (foods, payment, status) to the Live MySQL Database!
                     try {
                         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
                         await fetch(`${API_BASE_URL}/api/reservations/update-order`, {
@@ -1783,7 +1784,7 @@
                         discountAmount: disc.amount,
                         discountIdNo: discountIdNo,
                         paymentAmount: totalAmt,
-                        paymentStatus: 'verified', // 👉 FIX: Set to 'verified'. It will only become 'paid' when billed out!
+                        paymentStatus: 'verified', // ðŸ‘‰ FIX: Set to 'verified'. It will only become 'paid' when billed out!
                         approvalStatus: 'seated',
                         bookedBy: 'pos',
                         createdAt: new Date().toISOString(),
@@ -1801,7 +1802,7 @@
                     }
                 } catch (e) { }
 
-                // 👉 FIX: Update table occupancy status to the CLOUD!
+                // ðŸ‘‰ FIX: Update table occupancy status to the CLOUD!
                 if (table && table !== 'Takeout') {
                     const overrides = JSON.parse(localStorage.getItem('tableOverrides') || '{}');
                     overrides[table] = 'seated';
@@ -1822,8 +1823,8 @@
                     } catch (e) { }
                 }
                 // 4. Reset
-                editingTransactionId = null; // 👉 FIX: Erase the edit memory FIRST!
-                clearCart();                 // 👉 Then clear the cart so the UI resets to "Current Order"
+                editingTransactionId = null; // ðŸ‘‰ FIX: Erase the edit memory FIRST!
+                clearCart();                 // ðŸ‘‰ Then clear the cart so the UI resets to "Current Order"
 
                 if (document.getElementById('order-table')) document.getElementById('order-table').value = '';
                 if (document.getElementById('order-guests')) document.getElementById('order-guests').value = '';
@@ -1840,14 +1841,14 @@
 
                 lastTransactionId = resNo;
                 if (typeof superModal === 'function') {
-                    superModal({ title: 'Order Sent 🍳', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen.` });
+                    superModal({ title: 'Order Sent ðŸ³', message: `Order <b>${resNo}</b> has been successfully sent to the kitchen.` });
                 } else {
                     alert(`Order ${resNo} has been successfully sent to the kitchen.`);
                 }
 
             } catch (err) {
                 console.error(err);
-                if (typeof superModal === 'function') superModal({ title: 'Error ❌', message: err.message });
+                if (typeof superModal === 'function') superModal({ title: 'Error âŒ', message: err.message });
                 else alert(err.message);
             } finally {
                 checkoutBtn.innerHTML = originalBtnHtml;
@@ -1886,7 +1887,7 @@
             const list = document.getElementById('pos-order-status-list');
             const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
-            // 👉 FIX: The Ultimate Filter + Strict Numeric ID Sorting (Highest at Top, Lowest at Bottom).
+            // ðŸ‘‰ FIX: The Ultimate Filter + Strict Numeric ID Sorting (Highest at Top, Lowest at Bottom).
             const posOrders = history.filter(r => {
                 if (!r || !r.reservationNumber) return false;
 
@@ -1910,7 +1911,7 @@
                 const numA = extractNumber(a.reservationNumber);
                 const numB = extractNumber(b.reservationNumber);
 
-                // 👉 FIX: Swapped to numB - numA. 
+                // ðŸ‘‰ FIX: Swapped to numB - numA. 
                 // This puts the Highest number (Newest) at the Top, and Lowest (Oldest) at the Bottom!
                 return numB - numA;
             });
@@ -1923,9 +1924,9 @@
                 if (status === 'pending' || status === 'pending_check') {
                     statusBadge = `<span style="background:#fef08a; color:#854d0e; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Pending</span>`;
                 } else if (status === 'approved') {
-                    statusBadge = `<span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Approved ✅</span>`;
+                    statusBadge = `<span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Approved âœ…</span>`;
                 } else if (status === 'seated') {
-                    statusBadge = `<span style="background:#dbeafe; color:#1e40af; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Seated 🪑</span>`;
+                    statusBadge = `<span style="background:#dbeafe; color:#1e40af; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold;">Seated ðŸª‘</span>`;
                 } else {
                     statusBadge = `<span style="background:#f1f5f9; color:#475569; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; text-transform:capitalize;">${status}</span>`;
                 }
@@ -1944,13 +1945,13 @@
                     }
                 }
 
-                // 👉 NEW: Add visual Badges for Priority and Standard online bookings!
+                // ðŸ‘‰ NEW: Add visual Badges for Priority and Standard online bookings!
                 const rType = String(r.reservationType || '').toLowerCase();
                 let typeBadge = '';
                 if (rType === 'priority') {
-                    typeBadge = `<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:900; margin-left:8px; vertical-align:middle;">⭐ PRIO</span>`;
+                    typeBadge = `<span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:900; margin-left:8px; vertical-align:middle;">â­ PRIO</span>`;
                 } else if (rType === 'standard' && !r.reservationNumber.startsWith('POS-') && !r.reservationNumber.startsWith('WI-')) {
-                    typeBadge = `<span style="background:#f1f5f9; color:#475569; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:900; margin-left:8px; vertical-align:middle;">🪑 STD</span>`;
+                    typeBadge = `<span style="background:#f1f5f9; color:#475569; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:900; margin-left:8px; vertical-align:middle;">ðŸª‘ STD</span>`;
                 }
 
                 const paidVal = getReservationPaidAmount(r);
@@ -1963,12 +1964,12 @@
                             </div>
                             <div>${statusBadge}</div>
                         </div>
-                        <div style="font-size:13px; color:var(--text-muted); margin-bottom:5px;">👤 ${r.customerName || 'Walk-in'} &nbsp; | &nbsp; 🪑 ${r.bookedTable || 'None'}</div>
+                        <div style="font-size:13px; color:var(--text-muted); margin-bottom:5px;">ðŸ‘¤ ${r.customerName || 'Walk-in'} &nbsp; | &nbsp; ðŸª‘ ${r.bookedTable || 'None'}</div>
                         <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                            <div style="font-size:14px; color:var(--text-dark); font-weight:900;">💰 ₱${paidVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style="font-size:14px; color:var(--text-dark); font-weight:900;">ðŸ’° â‚±${paidVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div style="display:flex; gap:6px;">
-                                <button onclick="billOutOrder('${r.reservationNumber}')" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05);">🧾 Bill Out</button>
-                                <button onclick="editOrder('${r.reservationNumber}')" style="background:var(--primary); color:white; border:none; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">✏️ Edit</button>
+                                <button onclick="billOutOrder('${r.reservationNumber}')" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05);">ðŸ§¾ Bill Out</button>
+                                <button onclick="editOrder('${r.reservationNumber}')" style="background:var(--primary); color:white; border:none; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">âœï¸ Edit</button>
                             </div>
                         </div>
                     </div>
@@ -2034,13 +2035,13 @@
             document.getElementById('confirm-bill-msg').innerHTML = `Are you sure you want to bill out <b>${resNo}</b>? It will be marked as paid and transferred to History.`;
             document.getElementById('modal-confirm-bill').style.display = 'flex';
 
-            // 👉 FIX: Made this function async so it can talk to the database
+            // ðŸ‘‰ FIX: Made this function async so it can talk to the database
             document.getElementById('btn-confirm-bill').onclick = async function () {
                 const history = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 const idx = history.findIndex(h => h.reservationNumber === resNo);
 
                 if (idx > -1) {
-                    // 👉 NEW: Tell the live MySQL database that this order is officially COMPLETED
+                    // ðŸ‘‰ NEW: Tell the live MySQL database that this order is officially COMPLETED
                     try {
                         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
                         await fetch(`${API_BASE_URL}/api/reservations/update-status`, {
@@ -2073,7 +2074,7 @@
 
                     localStorage.setItem('reservationHistory', JSON.stringify(history));
 
-                    // 👉 NEW: Broadcast the completion so the Admin dashboard updates instantly
+                    // ðŸ‘‰ NEW: Broadcast the completion so the Admin dashboard updates instantly
                     try {
                         if (typeof BroadcastChannel !== 'undefined') {
                             new BroadcastChannel('inventory_sync_channel').postMessage({ action: 'reservationHistoryUpdated', payload: history });
@@ -2126,7 +2127,7 @@
                 );
             } catch (err) {
                 if (typeof superModal === 'function') {
-                    superModal({ title: 'Camera Error 📸', message: 'Could not access camera: ' + err });
+                    superModal({ title: 'Camera Error ðŸ“¸', message: 'Could not access camera: ' + err });
                 }
                 stopScanner();
             }
@@ -2232,7 +2233,7 @@
             let resIndex = findInLocalHistory(history);
 
             if (resIndex === -1 && lookupKey) {
-                icon.textContent = '⏳';
+                icon.textContent = 'â³';
                 title.textContent = 'Verifying Receipt...';
                 body.innerHTML = `<div style="text-align:center; padding:20px; color:#475569;">Checking cloud records for <b>${escapePosHtml(resNo)}</b>...</div>`;
                 try {
@@ -2254,15 +2255,15 @@
                             const currentPosBranch = getActivePosBranch();
                             const remoteBranch = String(remote.branch || 'General Santos City').trim();
                             if (remoteBranch.toLowerCase() !== currentPosBranch.toLowerCase()) {
-                                icon.textContent = '⚠️';
+                                icon.textContent = 'âš ï¸';
                                 title.textContent = 'Wrong Branch Receipt';
                                 body.innerHTML = `
                                     <div style="text-align:center; margin-bottom:15px; background:#fff7ed; padding:12px; border-radius:8px; border:1px solid #fed7aa; color:#9a3412; font-weight:700;">
-                                        Reservation <b>${escapePosHtml(remote.reservationNumber)}</b> belongs to <b>📍 ${escapePosHtml(remoteBranch)}</b>, not <b>${escapePosHtml(currentPosBranch)}</b>.
+                                        Reservation <b>${escapePosHtml(remote.reservationNumber)}</b> belongs to <b>ðŸ“ ${escapePosHtml(remoteBranch)}</b>, not <b>${escapePosHtml(currentPosBranch)}</b>.
                                     </div>
-                                    <div style="margin-bottom:8px;">👤 <b>Customer:</b> ${escapePosHtml(remote.customerName || 'Guest')}</div>
-                                    <div style="margin-bottom:8px;">🪑 <b>Table:</b> ${escapePosHtml(remote.bookedTable || 'TBD')}</div>
-                                    <div style="margin-bottom:8px;">🕒 <b>Arrival:</b> ${escapePosHtml([remote.arrivalDate, remote.arrivalTime].filter(Boolean).join(' ') || 'Scheduled')}</div>
+                                    <div style="margin-bottom:8px;">ðŸ‘¤ <b>Customer:</b> ${escapePosHtml(remote.customerName || 'Guest')}</div>
+                                    <div style="margin-bottom:8px;">ðŸª‘ <b>Table:</b> ${escapePosHtml(remote.bookedTable || 'TBD')}</div>
+                                    <div style="margin-bottom:8px;">ðŸ•’ <b>Arrival:</b> ${escapePosHtml([remote.arrivalDate, remote.arrivalTime].filter(Boolean).join(' ') || 'Scheduled')}</div>
                                     <div style="font-size:12px; color:#9a3412; font-weight:600; margin-top:14px; text-align:center;">
                                         Switch POS branch to <b>${escapePosHtml(remoteBranch)}</b> to verify or claim this booking.
                                     </div>
@@ -2301,39 +2302,39 @@
                 if (isCancelled) {
                     const isRefunded = res.refundStatus === 'refunded' || res.paymentStatus === 'refunded';
                     const refundAmt = Number(res.refundAmount || res.paymentAmount || 0);
-                    icon.textContent = '🚫';
+                    icon.textContent = 'ðŸš«';
                     title.textContent = isRefunded ? 'Cancelled & Refunded' : 'Cancelled - Invalid Receipt';
                     body.innerHTML = `
                         <div style="text-align:center; margin-bottom:15px; background:${isRefunded ? '#eff6ff' : '#fef2f2'}; padding:12px; border-radius:8px; border:1.5px solid ${isRefunded ? '#bfdbfe' : '#fca5a5'}; color:${isRefunded ? '#1e40af' : '#991b1b'}; font-weight:800; font-size:14px; letter-spacing:0.5px;">
-                            ${isRefunded ? `💸 CANCELLED & REFUNDED (₱${refundAmt.toLocaleString()})` : '🚫 RESERVATION CANCELLED (INVALID)'}
+                            ${isRefunded ? `ðŸ’¸ CANCELLED & REFUNDED (â‚±${refundAmt.toLocaleString()})` : 'ðŸš« RESERVATION CANCELLED (INVALID)'}
                         </div>
-                        <div style="margin-bottom:8px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
-                        <div style="margin-bottom:8px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName || 'N/A')}</div>
-                        <div style="margin-bottom:8px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable || 'None')}</div>
-                        <div style="margin-bottom:8px;">🕒 <b>Date & Time:</b> ${escapePosHtml(res.arrivalDateTimeDisplay || res.arrivalDate || 'N/A')}</div>
+                        <div style="margin-bottom:8px;">ðŸ“ <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:8px;">ðŸ‘¤ <b>Customer:</b> ${escapePosHtml(res.customerName || 'N/A')}</div>
+                        <div style="margin-bottom:8px;">ðŸª‘ <b>Table:</b> ${escapePosHtml(res.bookedTable || 'None')}</div>
+                        <div style="margin-bottom:8px;">ðŸ•’ <b>Date & Time:</b> ${escapePosHtml(res.arrivalDateTimeDisplay || res.arrivalDate || 'N/A')}</div>
                         ${isRefunded ? `
-                            <div style="margin-bottom:8px; color:#1e40af;">💰 <b>Refunded:</b> ₱${refundAmt.toLocaleString()} via ${escapePosHtml((res.refundMethod || 'GCash').toUpperCase())}</div>
-                            ${res.refundRef ? `<div style="margin-bottom:8px; color:#1e40af;">🔖 <b>Ref #:</b> ${escapePosHtml(res.refundRef)}</div>` : ''}
+                            <div style="margin-bottom:8px; color:#1e40af;">ðŸ’° <b>Refunded:</b> â‚±${refundAmt.toLocaleString()} via ${escapePosHtml((res.refundMethod || 'GCash').toUpperCase())}</div>
+                            ${res.refundRef ? `<div style="margin-bottom:8px; color:#1e40af;">ðŸ”– <b>Ref #:</b> ${escapePosHtml(res.refundRef)}</div>` : ''}
                         ` : ''}
-                        ${res.cancellationReason || res.cancelReason ? `<div style="margin-bottom:8px; color:#b91c1c;">⚠️ <b>Reason:</b> ${escapePosHtml(res.cancellationReason || res.cancelReason)}</div>` : ''}
+                        ${res.cancellationReason || res.cancelReason ? `<div style="margin-bottom:8px; color:#b91c1c;">âš ï¸ <b>Reason:</b> ${escapePosHtml(res.cancellationReason || res.cancelReason)}</div>` : ''}
                         <div style="font-size:12px; color:#991b1b; font-weight:800; margin-top:15px; text-align:center; background:#fff1f2; padding:8px; border-radius:6px;">
-                            ❌ VOID: THIS RESERVATION IS CANCELLED & CANNOT BE CLAIMED
+                            âŒ VOID: THIS RESERVATION IS CANCELLED & CANNOT BE CLAIMED
                         </div>
                     `;
                     return;
                 }
 
                 if (res.isVerified) {
-                    icon.textContent = '⚠️';
+                    icon.textContent = 'âš ï¸';
                     title.textContent = 'Already Verified';
                     body.innerHTML = `
                         <div style="text-align:center; margin-bottom:15px; background:#fff7ed; padding:10px; border-radius:8px; border:1px solid #ffedd5; color:#9a3412; font-weight:700;">
                             This QR code was already claimed.
                         </div>
-                        <div style="margin-bottom:10px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
-                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
-                        <div style="margin-bottom:10px;">🕒 <b>Verified At:</b> ${escapePosHtml(res.verifiedAt || 'Unknown')}</div>
-                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
+                        <div style="margin-bottom:10px;">ðŸ“ <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:10px;">ðŸ‘¤ <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
+                        <div style="margin-bottom:10px;">ðŸ•’ <b>Verified At:</b> ${escapePosHtml(res.verifiedAt || 'Unknown')}</div>
+                        <div style="margin-bottom:10px;">ðŸª‘ <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
                         <div style="font-size:12px; color:#9a3412; font-weight:600; margin-top:15px; text-align:center;">FRAUD PROTECTION ACTIVE</div>
                     `;
                 } else {
@@ -2345,20 +2346,20 @@
                     }
                     localStorage.setItem('reservationHistory', JSON.stringify(history));
 
-                    icon.textContent = '✅';
+                    icon.textContent = 'âœ…';
                     title.textContent = 'Valid Receipt';
                     body.innerHTML = `
-                        <div style="margin-bottom:10px;">🔖 <b>Reservation #:</b> ${escapePosHtml(res.reservationNumber)}</div>
-                        <div style="margin-bottom:10px;">📍 <b>Branch:</b> ${resBranchLabel}</div>
-                        <div style="margin-bottom:10px;">👤 <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
-                        <div style="margin-bottom:10px;">🍽️ <b>Items:</b> ${escapePosHtml(res.foods?.join(', ') || res.orderSummary || 'None')}</div>
-                        <div style="margin-bottom:10px;">🪑 <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
-                        <div style="margin-bottom:10px;">💰 <b>Paid:</b> ₱${paidAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style="margin-bottom:10px;">ðŸ”– <b>Reservation #:</b> ${escapePosHtml(res.reservationNumber)}</div>
+                        <div style="margin-bottom:10px;">ðŸ“ <b>Branch:</b> ${resBranchLabel}</div>
+                        <div style="margin-bottom:10px;">ðŸ‘¤ <b>Customer:</b> ${escapePosHtml(res.customerName)}</div>
+                        <div style="margin-bottom:10px;">ðŸ½ï¸ <b>Items:</b> ${escapePosHtml(res.foods?.join(', ') || res.orderSummary || 'None')}</div>
+                        <div style="margin-bottom:10px;">ðŸª‘ <b>Table:</b> ${escapePosHtml(res.bookedTable)}</div>
+                        <div style="margin-bottom:10px;">ðŸ’° <b>Paid:</b> â‚±${paidAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div style="font-size:12px; color:var(--primary); font-weight:bold; margin-top:15px; text-align:center;">VERIFICATION COMPLETE</div>
                     `;
                 }
             } else {
-                icon.textContent = '❌';
+                icon.textContent = 'âŒ';
                 title.textContent = 'Invalid Receipt';
                 body.innerHTML = `<div style="text-align:center; padding:20px;">No reservation found matching <b>${escapePosHtml(resNo || decodedText.trim())}</b>${branchHint ? ` for <b>${escapePosHtml(branchHint)}</b>` : ''}.</div>`;
             }
@@ -2449,7 +2450,7 @@
         }
     </style>
 
-    <!-- 🧾 POS CONFIRMATION MODAL, 12% VAT & E-RECEIPT PROOF GENERATOR -->
+    <!-- ðŸ§¾ POS CONFIRMATION MODAL, 12% VAT & E-RECEIPT PROOF GENERATOR -->
     <script>
         (function initPosConfirmationAndVatUpgrade() {
             const API_BASE = 'https://rolands-steakhouse-vqtr.vercel.app';
@@ -2473,7 +2474,7 @@
                 if (subRow.children[0]) {
                     subRow.children[0].textContent = 'Vatable Sales';
                 }
-                subValEl.textContent = '₱' + vatableVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                subValEl.textContent = 'â‚±' + vatableVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 // Create or update the 12% VAT row right below Vatable Sales
                 let vatRow = document.getElementById('pos-vat-breakdown-row');
@@ -2484,7 +2485,7 @@
                     vatRow.style.cssText = 'display:flex; justify-content:space-between; font-size:13.5px; color:#64748b; margin:4px 0 8px 0; font-weight:600;';
                     subRow.parentElement.insertBefore(vatRow, subRow.nextSibling);
                 }
-                vatRow.innerHTML = `<span>VAT (12% Incl.)</span><span>₱${vatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+                vatRow.innerHTML = `<span>VAT (12% Incl.)</span><span>â‚±${vatVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
             }
 
             // Wrap updateCartUI so VAT updates the exact millisecond any item is added/removed!
@@ -2516,12 +2517,12 @@
                     overlay.innerHTML = `
                         <div style="background:#ffffff; border-radius:20px; width:100%; max-width:440px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.45); border:1px solid #e2e8f0;">
                             <div style="background:linear-gradient(135deg, #1b5e20 0%, #064e3b 100%); color:white; padding:18px 22px; display:flex; justify-content:space-between; align-items:center;">
-                                <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:#ffffff;">Confirm POS Order Details 📋</h3>
-                                <button type="button" id="pos-conf-close-x" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.15); color:white; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                                <h3 style="margin:0; font-family:'Playfair Display',serif; font-size:19px; font-weight:700; color:#ffffff;">Confirm POS Order Details ðŸ“‹</h3>
+                                <button type="button" id="pos-conf-close-x" style="width:32px; height:32px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.15); color:white; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;">âœ•</button>
                             </div>
                             <div style="padding:20px 22px;">
                                 <div style="text-align:left; font-size:13.5px; background:#f8fafc; padding:15px; border-radius:10px; border:1px dashed #cbd5e1;">
-                                    ${loadedResNo ? `<div style="margin-bottom:6px; color:#0369a1; font-weight:800;">🔖 Updating Reservation: #${loadedResNo}</div>` : ''}
+                                    ${loadedResNo ? `<div style="margin-bottom:6px; color:#0369a1; font-weight:800;">ðŸ”– Updating Reservation: #${loadedResNo}</div>` : ''}
                                     <div style="margin-bottom:6px;"><strong>Customer:</strong> ${customerName || 'Walk-in Guest'}</div>
                                     <div style="margin-bottom:6px;"><strong>Table:</strong> ${table || 'Walk-in / Counter'}</div>
                                     <div style="margin-bottom:6px;"><strong>Time:</strong> ${new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
@@ -2532,16 +2533,16 @@
                                     <div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:8px; font-size:12.5px; color:#64748b;">
                                         <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
                                             <span>Vatable Sales:</span>
-                                            <span>₱${vatable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            <span>â‚±${vatable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                         <div style="display:flex; justify-content:space-between;">
                                             <span>VAT (12% Incl.):</span>
-                                            <span>₱${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            <span>â‚±${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     </div>
                                     <div style="margin-top:8px; font-size:16px; color:#1b5e20; border-top:1px solid #e2e8f0; padding-top:8px; display:flex; justify-content:space-between; font-weight:800;">
                                         <span>Total Payment:</span>
-                                        <span>₱${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span>â‚±${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </div>
                                 </div>
                                 <p style="margin:14px 0 16px; font-size:12.5px; color:#64748b; text-align:center;">Please verify these details before completing the transaction.</p>
@@ -2568,11 +2569,11 @@
                 window.processCheckout = async function () {
                     if (typeof window.requirePosUnlocked === 'function' && !window.requirePosUnlocked()) return;
                     if (typeof cart !== 'undefined' && Object.keys(cart).length === 0) {
-                        return superModal({ title: 'Empty Cart 🛒', message: 'Please add items to the order before finalizing.' });
+                        return superModal({ title: 'Empty Cart ðŸ›’', message: 'Please add items to the order before finalizing.' });
                     }
                     const selectedTable = document.getElementById('order-table')?.value || '';
                     if (!selectedTable) {
-                        return superModal({ title: 'Table Required 📍', message: 'Please select a table to complete the transaction.' });
+                        return superModal({ title: 'Table Required ðŸ“', message: 'Please select a table to complete the transaction.' });
                     }
 
                     const customerName = (document.getElementById('order-name')?.value || '').trim() || 'Walk-in Guest';
