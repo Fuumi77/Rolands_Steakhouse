@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="css/superadmin.css?v=2.1">
+    <link rel="stylesheet" href="css/superadmin.css?v=2.2">
     <link rel="stylesheet" href="css/design-system.css?v=2.0">
     <script src="js/design-system.js?v=2.1"></script>
     <script src="js/inventory-system.js?v=7.6"></script>
@@ -31,7 +31,7 @@
             box-shadow: none !important;
         }
 
-        /* ðŸ“± RESPONSIVE MOBILE FIXES FOR DASHBOARDS */
+        /* 📱 RESPONSIVE MOBILE FIXES FOR DASHBOARDS */
         html,
         body {
             overflow-x: hidden !important;
@@ -40,7 +40,7 @@
 
         @media (max-width: 768px) {
 
-            /* ðŸ‘‰ FIX: Force mobile table cards to stretch perfectly to the edges */
+            /* 👉 FIX: Force mobile table cards to stretch perfectly to the edges */
             table,
             tbody,
             tr {
@@ -139,7 +139,7 @@
             }
         }
 
-        /* ðŸ“± INVENTORY EDIT MODAL â€” MOBILE FLEX */
+        /* 📱 INVENTORY EDIT MODAL — MOBILE FLEX */
         @media (max-width: 768px) {
             #inv-modal .super-modal-box {
                 max-width: 100% !important;
@@ -195,7 +195,7 @@
     <header>
         <div style="display:flex; align-items:center; gap:12px;">
             <button type="button" class="mobile-nav-toggle" onclick="window.toggleSuperAdminMobileNav()"
-                aria-label="Toggle Navigation">â˜° Menu</button>
+                aria-label="Toggle Navigation">☰ Menu</button>
             <div class="brand">Roland's Steakhouse <span class="brand-badge">MANAGER</span></div>
         </div>
         <div class="header-right">
@@ -203,13 +203,13 @@
             <div class="actions">
                 <div
                     style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.14); padding:5px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.28); color:white; font-size:12.5px; font-weight:800;">
-                    <span>ðŸ¬ View:</span>
+                    <span>🏬 View:</span>
                     <select id="superadmin-branch-select" onchange="window.setActiveBranch(this.value)"
                         title="Filter Branch or View Total"
                         style="background:transparent; border:none; color:white; font-weight:800; font-size:12.5px; cursor:pointer; outline:none;">
-                        <option value="ALL" style="color:#0f172a;">ðŸŒ All Branches (Total)</option>
-                        <option value="General Santos City" style="color:#0f172a;">ðŸ“ General Santos City</option>
-                        <option value="Koronadal City" style="color:#0f172a;">ðŸ“ Koronadal City</option>
+                        <option value="ALL" style="color:#0f172a;">🌐 All Branches (Total)</option>
+                        <option value="General Santos City" style="color:#0f172a;">📍 General Santos City</option>
+                        <option value="Koronadal City" style="color:#0f172a;">📍 Koronadal City</option>
                     </select>
                 </div>
                 <script>
@@ -243,7 +243,7 @@
         <div class="auth-wrap">
             <div style="text-align: center; margin-bottom: 12px;">
                 <span
-                    style="display: inline-flex; width: 60px; height: 60px; border-radius: 18px; background: rgba(27, 94, 32, 0.1); color: #1b5e20; font-size: 30px; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(27, 94, 32, 0.12);">ðŸ›¡ï¸</span>
+                    style="display: inline-flex; width: 60px; height: 60px; border-radius: 18px; background: rgba(27, 94, 32, 0.1); color: #1b5e20; font-size: 30px; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(27, 94, 32, 0.12);">🛡️</span>
             </div>
             <h1 class="auth-title">Manager</h1>
             <p class="auth-subtitle">Roland's Steakhouse Operations Center</p>
@@ -265,13 +265,13 @@
                 <a href="admin.html"
                     style="color: var(--sa-primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;"
                     onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                    â† Staff Portal
+                    ← Staff Portal
                 </a>
-                <span style="color: #cbd5e1;">â€¢</span>
+                <span style="color: #cbd5e1;">•</span>
                 <a href="index.html"
                     style="color: #64748b; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;"
                     onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                    ðŸ  Customer Homepage
+                    🏠 Customer Homepage
                 </a>
             </div>
         </div>
@@ -287,10 +287,10 @@
             <div class="sidebar-header-mobile">
                 <div
                     style="font-weight: 800; font-size: 14px; color: var(--sa-primary); display: flex; align-items: center; gap: 6px;">
-                    <span>ðŸ›¡ï¸</span> Manager Menu
+                    <span>🛡️</span> Manager Menu
                 </div>
                 <button type="button" class="sidebar-close-btn" onclick="window.toggleSuperAdminMobileNav(false)"
-                    aria-label="Close Navigation">âœ•</button>
+                    aria-label="Close Navigation">✕</button>
             </div>
             <div class="sidebar-label">Main</div>
             <button class="tab-link active" onclick="switchTab('overview', this)">
@@ -305,7 +305,7 @@
             </button>
             <button class="tab-link" onclick="switchTab('revenue', this)">
                 <span class="tab-icon"
-                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-weight:900; font-size:16px; font-family:'Roboto', sans-serif; line-height:1;">â‚±</span>
+                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-weight:900; font-size:16px; font-family:'Roboto', sans-serif; line-height:1;">₱</span>
                 Revenue
             </button>
             <button class="tab-link" onclick="switchTab('activity', this)">
@@ -350,12 +350,12 @@
             </button>
             <button class="tab-link" onclick="switchTab('branches', this)">
                 <span class="tab-icon"
-                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">ðŸ¬</span>
+                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">🏬</span>
                 Branches
             </button>
             <button class="tab-link" onclick="switchTab('promotions', this)">
                 <span class="tab-icon"
-                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">ðŸ“¢</span>
+                    style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:14px;">📢</span>
                 Promotions
             </button>
             <div class="sidebar-label">System</div>
@@ -430,7 +430,7 @@
                     </div>
                     <div class="card">
                         <h3>Total Revenue</h3>
-                        <div class="value" id="stat-revenue">â‚±0</div>
+                        <div class="value" id="stat-revenue">₱0</div>
                     </div>
                     <div class="card">
                         <h3>Staff Registered</h3>
@@ -481,9 +481,9 @@
                             <span style="font-size:11px; font-weight:800; color:#64748b;">BRANCH:</span>
                             <select id="records-branch-filter" onchange="window.applyRecordsSearch()"
                                 style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; background:white; color:#0f172a; font-size:12px; font-weight:700; cursor:pointer; outline:none; flex:1;">
-                                <option value="ALL">ðŸŒ All Branches</option>
-                                <option value="General Santos City">ðŸ“ General Santos City</option>
-                                <option value="Koronadal City">ðŸ“ Koronadal City</option>
+                                <option value="ALL">🌐 All Branches</option>
+                                <option value="General Santos City">📍 General Santos City</option>
+                                <option value="Koronadal City">📍 Koronadal City</option>
                             </select>
                         </div>
                         <div
@@ -549,10 +549,10 @@
                             </div>
                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                 <button type="button" onclick="window.resetReservationCounterToOne()"
-                                    style="margin: 0; white-space: nowrap; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.12);">ðŸ”„
+                                    style="margin: 0; white-space: nowrap; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.12);">🔄
                                     Reset Order # to 1</button>
                                 <button type="button" onclick="wipeAllRecords()"
-                                    style="margin: 0; white-space: nowrap; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.15);">ðŸ—‘ï¸
+                                    style="margin: 0; white-space: nowrap; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800; border-radius: 8px; padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.15);">🗑️
                                     Wipe All Records</button>
                                 <button type="button" id="export-csv-btn" class="secondary"
                                     onclick="openExportCsvModal()" style="margin: 0; white-space: nowrap;">Export
@@ -631,22 +631,22 @@
                 <div class="grid revenue-grid">
                     <div class="card">
                         <h3>Total Revenue</h3>
-                        <div class="value" id="rev-total">â‚±0</div>
+                        <div class="value" id="rev-total">₱0</div>
                         <div class="trend up" id="rev-trend"></div>
                     </div>
                     <div class="card">
                         <h3>POS Revenue</h3>
-                        <div class="value" id="rev-pos">â‚±0</div>
+                        <div class="value" id="rev-pos">₱0</div>
                         <div class="muted">Walk-in orders</div>
                     </div>
                     <div class="card">
                         <h3>Priority Revenue</h3>
-                        <div class="value" id="rev-priority">â‚±0</div>
+                        <div class="value" id="rev-priority">₱0</div>
                         <div class="muted">Reservation orders</div>
                     </div>
                     <div class="card">
                         <h3>Avg. Order Value</h3>
-                        <div class="value" id="rev-avg">â‚±0</div>
+                        <div class="value" id="rev-avg">₱0</div>
                         <div class="muted">Per transaction</div>
                     </div>
                 </div>
@@ -724,9 +724,9 @@
                             style="flex:1; min-width:180px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-family:inherit; box-sizing:border-box;">
                         <select id="new-staff-branch" title="Assign Branch"
                             style="flex:1; min-width:190px; padding:12px 14px; border:1px solid var(--sa-border); border-radius:8px; background:var(--sa-bg); color:var(--sa-text); font-weight:700; font-family:inherit; box-sizing:border-box; cursor:pointer;">
-                            <option value="General Santos City">ðŸ“ General Santos City Only</option>
-                            <option value="Koronadal City">ðŸ“ Koronadal City Only</option>
-                            <option value="ALL">ðŸŒ All Branches (Floating Staff)</option>
+                            <option value="General Santos City">📍 General Santos City Only</option>
+                            <option value="Koronadal City">📍 Koronadal City Only</option>
+                            <option value="ALL">🌐 All Branches (Floating Staff)</option>
                         </select>
                         <button type="button" id="create-staff-btn"
                             style="flex:1; min-width:180px; padding:12px 14px; box-sizing:border-box;">+ Create
@@ -758,13 +758,13 @@
                         <div
                             style="display:inline-flex; align-items:center; gap:8px; background:#f0fdf4; border:2px solid #16a34a; padding:6px 12px; border-radius:12px; box-shadow:0 2px 8px rgba(22,163,74,0.12);">
                             <span
-                                style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.4px;">ðŸ¬
+                                style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.4px;">🏬
                                 Branch Inventory:</span>
                             <select id="sa-inv-branch-select"
                                 onchange="window.switchSuperAdminInventoryBranch(this.value)"
                                 style="background:white; border:1px solid #bbf7d0; color:#14532d; font-weight:800; font-size:13px; padding:4px 10px; border-radius:8px; cursor:pointer; outline:none;">
-                                <option value="General Santos City">ðŸ“ General Santos City</option>
-                                <option value="Koronadal City">ðŸ“ Koronadal City</option>
+                                <option value="General Santos City">📍 General Santos City</option>
+                                <option value="Koronadal City">📍 Koronadal City</option>
                             </select>
                         </div>
                     </div>
@@ -819,7 +819,7 @@
                             <span id="inv-search-clear-btn"
                                 onclick="var el=document.getElementById('inv-search-input'); if(el){el.value=''; if(window.renderInventory) window.renderInventory(); el.focus();}"
                                 title="Clear search"
-                                style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">âœ•</span>
+                                style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>
                         </div>
                         <div id="bulk-controls" class="hidden">
                             <button type="button" onclick="saveBulkInventory()"
@@ -995,10 +995,10 @@
                                     <div>
                                         <label for="inv-price"
                                             style="display:block; margin-bottom:6px; font-weight:700; font-size:12px; color:#1b5e20;">Menu
-                                            Price (â‚±)</label>
+                                            Price (₱)</label>
                                         <div style="position:relative;">
                                             <span
-                                                style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#1b5e20; font-weight:800; font-size:14px;">â‚±</span>
+                                                style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#1b5e20; font-weight:800; font-size:14px;">₱</span>
                                             <input type="number" id="inv-price" title="Menu Price" min="0" step="1"
                                                 style="width:100%; padding:10px 10px 10px 24px; border:2px solid #16a34a; border-radius:10px; background:#f0fdf4; font-size:14px; font-weight:700; color:#1b5e20;"
                                                 placeholder="0.00">
@@ -1014,7 +1014,7 @@
                                             style="width:100%; padding:10px; border:1.5px solid #e2e8f0; border-radius:10px; background:#f8fafc; font-weight: 700;"
                                             value="5">
                                         <div class="muted" style="font-size:11px; margin-top:6px;">Alerts when End of
-                                            Day â‰¤ threshold.</div>
+                                            Day ≤ threshold.</div>
                                     </div>
 
                                     <div
@@ -1041,7 +1041,7 @@
                                             <div>
                                                 <label for="inv-sold"
                                                     style="display:block; margin-bottom:6px; font-weight:700; font-size:11px; color:#dc2626; text-transform:uppercase;">Sold
-                                                    (âˆ’)</label>
+                                                    (−)</label>
                                                 <input type="number" id="inv-sold" title="Sold quantity"
                                                     placeholder="Sold quantity"
                                                     style="width: 100%; padding:10px; border:1.5px solid #dc2626; border-radius:10px; background:#fef2f2; font-weight: 700; color:#991b1b;"
@@ -1229,7 +1229,7 @@
                             Access Code</label>
                         <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
                             <div style="position:relative; flex:1;">
-                                <input id="kitchen-password-input" type="password" placeholder="â€¢â€¢â€¢â€¢"
+                                <input id="kitchen-password-input" type="password" placeholder="••••"
                                     title="Kitchen Access Code" aria-label="Kitchen Access Code" maxlength="4"
                                     style="width:100%; padding:12px; border:2px solid #cbd5e1; border-radius:12px; font-size:20px; letter-spacing:8px; text-align:center; background:#f8fafc; color:#1e293b; font-weight:800; box-sizing:border-box; outline:none; transition:all 0.2s;"
                                     onfocus="this.style.borderColor='#16a34a'; this.style.background='white'; this.style.boxShadow='0 0 0 4px rgba(22,163,74,0.15)';"
@@ -1278,7 +1278,7 @@
                             Access Code</label>
                         <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
                             <div style="position:relative; flex:1;">
-                                <input id="pos-password-input" type="password" placeholder="â€¢â€¢â€¢â€¢"
+                                <input id="pos-password-input" type="password" placeholder="••••"
                                     title="POS Access Code" aria-label="POS Access Code" maxlength="4"
                                     style="width:100%; padding:12px; border:2px solid #cbd5e1; border-radius:12px; font-size:20px; letter-spacing:8px; text-align:center; background:#f8fafc; color:#1e293b; font-weight:800; box-sizing:border-box; outline:none; transition:all 0.2s;"
                                     onfocus="this.style.borderColor='#0284c7'; this.style.background='white'; this.style.boxShadow='0 0 0 4px rgba(2,132,199,0.15)';"
@@ -1305,7 +1305,7 @@
                         <div style="display:flex; align-items:center; gap:16px; margin-bottom:14px;">
                             <div
                                 style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1px solid #fde68a; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(217,119,6,0.15);">
-                                <span style="font-size:24px;">ðŸ¬</span>
+                                <span style="font-size:24px;">🏬</span>
                             </div>
                             <div>
                                 <h3 style="color:#1e293b; margin:0 0 4px 0; font-size:18px; font-weight:700;">POS & Kitchen
@@ -1323,8 +1323,8 @@
                             Branch to Configure</label>
                         <select id="pos-branch-pin-select" onchange="window.loadPosBranchPinInput()"
                             style="width:100%; padding:10px 12px; margin-bottom:12px; border:2px solid #fde68a; border-radius:10px; background:#fffbeb; color:#92400e; font-weight:800; font-size:13.5px; cursor:pointer; outline:none;">
-                            <option value="General Santos City">ðŸ“ General Santos City</option>
-                            <option value="Koronadal City">ðŸ“ Koronadal City</option>
+                            <option value="General Santos City">📍 General Santos City</option>
+                            <option value="Koronadal City">📍 Koronadal City</option>
                         </select>
 
                         <label for="pos-branch-pin-input"
@@ -1332,7 +1332,7 @@
                             Switch PIN</label>
                         <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
                             <div style="position:relative; flex:1;">
-                                <input id="pos-branch-pin-input" type="password" placeholder="â€¢â€¢â€¢â€¢"
+                                <input id="pos-branch-pin-input" type="password" placeholder="••••"
                                     title="POS Branch Switch Code" maxlength="6"
                                     style="width:100%; padding:12px; border:2px solid #cbd5e1; border-radius:12px; font-size:20px; letter-spacing:8px; text-align:center; background:#f8fafc; color:#1e293b; font-weight:800; box-sizing:border-box; outline:none; transition:all 0.2s;">
                             </div>
@@ -1378,10 +1378,10 @@
                             <div style="font-size:12px; font-weight:800; color:#6b21a8; margin-bottom:4px;">Default
                                 Terminal PINs:</div>
                             <div style="font-size:12px; color:#4c1d95; line-height:1.6;">
-                                â€¢ Kitchen Default: <code style="font-weight:700;">1234</code><br>
-                                â€¢ POS Terminal Default: <code style="font-weight:700;">0000</code><br>
-                                â€¢ POS Switch (GenSan Default): <code style="font-weight:700;">1111</code><br>
-                                â€¢ POS Switch (Koronadal Default): <code style="font-weight:700;">2222</code>
+                                • Kitchen Default: <code style="font-weight:700;">1234</code><br>
+                                • POS Terminal Default: <code style="font-weight:700;">0000</code><br>
+                                • POS Switch (GenSan Default): <code style="font-weight:700;">1111</code><br>
+                                • POS Switch (Koronadal Default): <code style="font-weight:700;">2222</code>
                             </div>
                         </div>
                     </div>
@@ -1416,8 +1416,8 @@
                     </div>
                     <div
                         style="font-size:12px; color:#475569; margin-top:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; line-height:1.45;">
-                        ðŸ’¡ <strong>API URL Guide:</strong> Keep the default shared backend URL
-                        <code>https://rolands-steakhouse-jsoo.onrender.com</code> (or leave blank to auto-use it) â€”
+                        💡 <strong>API URL Guide:</strong> Keep the default shared backend URL
+                        <code>https://rolands-steakhouse-jsoo.onrender.com</code> (or leave blank to auto-use it) —
                         branches are separated cleanly by <code>?branch=...</code>. Only enter a different URL if this
                         branch runs on its own separate server. New branches automatically sync.
                     </div>
@@ -1436,7 +1436,7 @@
                     <select id="br-filter" onchange="window.brSetFilter(this.value)"
                         style="margin-left:auto; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;"></select>
                     <button type="button" onclick="window.brRefresh(true)"
-                        style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">â†»
+                        style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">↻
                         Refresh</button>
                 </div>
                 <div id="br-content" style="overflow-x:auto;"></div>
@@ -1449,7 +1449,7 @@
                     <div>
                         <h2
                             style="margin:0 0 4px; font-family:'Playfair Display',serif; color:#1b5e20; font-size:24px;">
-                            ðŸ“¢ Promotions, Pop-up Ads & Vouchers</h2>
+                            📢 Promotions, Pop-up Ads & Vouchers</h2>
                         <p style="margin:0; font-size:13px; color:#64748b;">Modify the customer website pop-up
                             advertisement (picture, title, description, and vouchers) and sync across devices.</p>
                     </div>
@@ -1459,9 +1459,9 @@
                             Branch:</label>
                         <select id="superadmin-promo-branch-select" onchange="switchSuperAdminPromoBranch(this.value)"
                             style="padding:9px 14px; border:1.5px solid #cbd5e1; border-radius:10px; font-weight:700; color:#1e293b; background:white; cursor:pointer;">
-                            <option value="ALL">ðŸŒ All Branches (Sync Everywhere)</option>
-                            <option value="General Santos City">ðŸ¥© General Santos City</option>
-                            <option value="Koronadal City">ðŸ¥© Koronadal City</option>
+                            <option value="ALL">🌐 All Branches (Sync Everywhere)</option>
+                            <option value="General Santos City">🥩 General Santos City</option>
+                            <option value="Koronadal City">🥩 Koronadal City</option>
                         </select>
                     </div>
                 </div>
@@ -1476,7 +1476,7 @@
                     <div>
                         <div
                             style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1.5px solid #fca5a5; color:#dc2626; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:10px;">
-                            ðŸ‡µðŸ‡­ Per-Branch Holidays & Restaurant Closures
+                            🇵🇭 Per-Branch Holidays & Restaurant Closures
                         </div>
                         <h2
                             style="font-family:'Playfair Display',serif; font-size:26px; color:#1b5e20; margin:0 0 6px 0; font-weight:700;">
@@ -1486,12 +1486,12 @@
                     </div>
                     <div
                         style="background:white; border:2px solid #16a34a; border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 12px rgba(22,163,74,0.1);">
-                        <span style="font-size:12px; font-weight:800; color:#166534; text-transform:uppercase;">ðŸ¬
+                        <span style="font-size:12px; font-weight:800; color:#166534; text-transform:uppercase;">🏬
                             Configure Branch:</span>
                         <select id="holiday-branch-select" onchange="window.switchHolidayBranch(this.value)"
                             style="padding:6px 12px; border-radius:8px; border:1px solid #bbf7d0; background:#f0fdf4; color:#14532d; font-weight:800; font-size:13.5px; cursor:pointer; outline:none;">
-                            <option value="General Santos City">ðŸ“ General Santos City</option>
-                            <option value="Koronadal City">ðŸ“ Koronadal City</option>
+                            <option value="General Santos City">📍 General Santos City</option>
+                            <option value="Koronadal City">📍 Koronadal City</option>
                         </select>
                     </div>
                 </div>
@@ -1507,14 +1507,14 @@
                     </div>
                     <div
                         style="background:#fef2f2; border:1px solid #fca5a5; padding:14px 20px; border-radius:14px; flex:1; min-width:160px; box-shadow:var(--sa-shadow);">
-                        <div style="font-size:12px; color:#991b1b; font-weight:700; text-transform:uppercase;">ðŸš« Closed
+                        <div style="font-size:12px; color:#991b1b; font-weight:700; text-transform:uppercase;">🚫 Closed
                             / Blocked</div>
                         <div id="stat-closed-holidays"
                             style="font-size:24px; font-weight:900; color:#dc2626; margin-top:4px;">0</div>
                     </div>
                     <div
                         style="background:#f0fdf4; border:1px solid #bbf7d0; padding:14px 20px; border-radius:14px; flex:1; min-width:160px; box-shadow:var(--sa-shadow);">
-                        <div style="font-size:12px; color:#166534; font-weight:700; text-transform:uppercase;">âœ… Open
+                        <div style="font-size:12px; color:#166534; font-weight:700; text-transform:uppercase;">✅ Open
                             For Booking</div>
                         <div id="stat-open-holidays"
                             style="font-size:24px; font-weight:900; color:#16a34a; margin-top:4px;">0</div>
@@ -1525,7 +1525,7 @@
                 <div class="holiday-cal-wrap">
                     <div class="holiday-cal-header">
                         <div class="holiday-cal-title-group">
-                            <div style="font-size:26px;">ðŸ“…</div>
+                            <div style="font-size:26px;">📅</div>
                             <div>
                                 <div class="holiday-cal-title" id="holiday-cal-month-title">August 2026</div>
                                 <div style="font-size:12px; color:var(--sa-muted); font-weight:600;">Click any calendar
@@ -1533,15 +1533,15 @@
                             </div>
                         </div>
                         <div class="holiday-cal-controls">
-                            <button type="button" class="cal-nav-btn" onclick="window.changeHolidayMonth(-1)">â—€
+                            <button type="button" class="cal-nav-btn" onclick="window.changeHolidayMonth(-1)">◀
                                 Prev</button>
                             <button type="button" class="cal-nav-btn"
                                 onclick="window.jumpHolidayToToday()">Today</button>
                             <button type="button" class="cal-nav-btn" onclick="window.changeHolidayMonth(1)">Next
-                                â–¶</button>
+                                ▶</button>
                             <button type="button" class="cal-nav-btn cal-btn-auto"
                                 onclick="window.autoPopulateHolidays()">
-                                âš¡ Auto-Populate PH Holidays
+                                ⚡ Auto-Populate PH Holidays
                             </button>
                         </div>
                     </div>
@@ -1603,11 +1603,11 @@
                 </div>
             </div>
 
-            <!-- ðŸ‘‰ NEW: PAYMENT PROOF MODAL -->
+            <!-- 👉 NEW: PAYMENT PROOF MODAL -->
             <div id="proof-modal" class="hidden" style="z-index: 99999;">
                 <div class="rsh-manager-proof-box">
                     <div class="rsh-proof-header">
-                        <h3>ðŸ§¾ Payment Proof Attachment</h3>
+                        <h3>🧾 Payment Proof Attachment</h3>
                         <div class="rsh-proof-close"
                             onclick="var m=document.getElementById('proof-modal'); m.classList.add('hidden'); m.style.display='none'; m.style.alignItems=''; m.style.justifyContent='';">
                             &times;</div>
@@ -1630,7 +1630,7 @@
 
     <script>
         const API_BASE_URL = 'https://rolands-steakhouse-vqtr.vercel.app';
-        // ðŸ‘‰ Bridge: resolve a reservation number, then open the existing proof modal
+        // 👉 Bridge: resolve a reservation number, then open the existing proof modal
         window.openProofByResNum = function (resNum) {
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
             const key = String(resNum || '').trim().toLowerCase();
@@ -1787,10 +1787,10 @@
         function getReservationHistory() {
             let hist = safeJsonParse(localStorage.getItem('reservationHistory'), []) || [];
 
-            // ðŸ‘‰ FIX: Removed the fake sample data injection! If the database is empty, stay empty!
+            // 👉 FIX: Removed the fake sample data injection! If the database is empty, stay empty!
             if (!Array.isArray(hist)) hist = [];
 
-            // ðŸ‘‰ FIX: Extract the true database ID to interleave WI, POS, and RES perfectly
+            // 👉 FIX: Extract the true database ID to interleave WI, POS, and RES perfectly
             return hist.sort((a, b) => {
                 const idA = parseInt(String(a.reservationNumber).replace(/[^0-9]/g, '')) || 0;
                 const idB = parseInt(String(b.reservationNumber).replace(/[^0-9]/g, '')) || 0;
@@ -2005,6 +2005,26 @@
             return safeJsonParse(localStorage.getItem('adminUsers'), []) || [];
         }
 
+        window.isSuperAdminVipRecord = function (r) {
+            if (!r || typeof r !== 'object') return false;
+            const resNum = String(r.reservationNumber || '').trim();
+            const resType = String(r.reservationType || '').toLowerCase().trim();
+            const tableName = String(r.bookedTable || '').trim();
+            if (resType === 'vip' || resNum.startsWith('VIP-') || /\bvip\b/i.test(tableName)) return true;
+            if (!tableName) return false;
+            try {
+                const br = String(r.branch || '').trim();
+                const cfgKey = (!br || br === 'General Santos City' || br === 'ALL') ? 'floorPlanConfig' : `${br}__floorPlanConfig`;
+                const rawCfg = (window.__rawGetStorage ? window.__rawGetStorage(cfgKey) : null) || localStorage.getItem('floorPlanConfig');
+                const cfg = rawCfg ? JSON.parse(rawCfg) : [];
+                if (Array.isArray(cfg)) {
+                    const match = cfg.find(t => t && String(t.id || t.name || '').trim().toLowerCase() === tableName.toLowerCase());
+                    if (match && typeof match.isVip === 'boolean') return match.isVip;
+                }
+            } catch (e) { }
+            return false;
+        };
+
         const SUPER_ADMIN_PASSKEY = "rolands1994";
 
         function setSuperAdminSession() {
@@ -2067,7 +2087,7 @@
             if (tabId === 'kitchen' || tabId === 'holidays') {
                 if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
                 if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
-                // ðŸ‘‰ Redraw when the cloud pushes a holiday change
+                // 👉 Redraw when the cloud pushes a holiday change
                 window.addEventListener('holidayConfigUpdated', function () {
                     if (typeof window.renderHolidayCalendar === 'function') window.renderHolidayCalendar();
                     if (typeof window.renderPhHolidayManagerTable === 'function') window.renderPhHolidayManagerTable();
@@ -2243,7 +2263,7 @@
                     document.querySelectorAll('img[alt*="Roland"]').forEach(img => img.src = dataUrl);
 
                     superModal({
-                        title: 'Brand Updated! âœ¨',
+                        title: 'Brand Updated! ✨',
                         message: 'Your new logo has been saved and will now appear across the entire website with automatic light/dark adaptation.'
                     });
                 };
@@ -2265,10 +2285,10 @@
             if (!input) return;
             if (input.type === 'password') {
                 input.type = 'text';
-                btnEl.textContent = 'ðŸ‘ï¸â€ðŸ—¨ï¸ Hide';
+                btnEl.textContent = '👁️‍🗨️ Hide';
             } else {
                 input.type = 'password';
-                btnEl.textContent = 'ðŸ‘ï¸ Reveal';
+                btnEl.textContent = '👁️ Reveal';
             }
         };
 
@@ -2277,14 +2297,14 @@
             const pass = document.getElementById('kitchen-password-input').value.trim();
             if (!pass) {
                 return await superModal({
-                    title: 'âš ï¸ Input Missing',
+                    title: '⚠️ Input Missing',
                     message: 'Please enter a valid Kitchen Access Code.',
                     confirmText: 'OK'
                 });
             }
 
             const pin = await superModal({
-                title: 'ðŸ”’ Security Authorization',
+                title: '🔒 Security Authorization',
                 message: 'Enter Pincode to authorize changing the Kitchen Access Code:',
                 showInput: true,
                 placeholder: 'Enter 6-digit pin',
@@ -2298,13 +2318,13 @@
                     localStorage.setItem('kitchenPassword', pass);
                 }
                 await superModal({
-                    title: 'âœ… Success',
+                    title: '✅ Success',
                     message: 'Kitchen Area Access Code has been updated and synced across devices.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
                 await superModal({
-                    title: 'âŒ Denied',
+                    title: '❌ Denied',
                     message: 'Incorrect pincode. Update cancelled.',
                     confirmText: 'Close'
                 });
@@ -2334,14 +2354,14 @@
 
             if (!pass) {
                 return await superModal({
-                    title: 'âš ï¸ Input Missing',
+                    title: '⚠️ Input Missing',
                     message: `Please enter a valid POS Branch Switch PIN for <b>${branchName}</b>.`,
                     confirmText: 'OK'
                 });
             }
 
             const pin = await superModal({
-                title: 'ðŸ”’ Security Authorization',
+                title: '🔒 Security Authorization',
                 message: `Enter Master PIN (789456) to update the POS Branch Switch PIN for <b>${branchName}</b>:`,
                 showInput: true,
                 placeholder: 'Enter 6-digit pin',
@@ -2353,13 +2373,13 @@
                     await window.setPosBranchPin(branchName, pass);
                 }
                 await superModal({
-                    title: 'âœ… Branch PIN Updated',
+                    title: '✅ Branch PIN Updated',
                     message: `The POS Branch Switch PIN for <b>${branchName}</b> has been updated to <code>${pass}</code> and synced across all terminals!`,
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
                 await superModal({
-                    title: 'âŒ Denied',
+                    title: '❌ Denied',
                     message: 'Incorrect Master PIN. Update cancelled.',
                     confirmText: 'Close'
                 });
@@ -2370,14 +2390,14 @@
             const pass = document.getElementById('pos-password-input').value.trim();
             if (!pass) {
                 return await superModal({
-                    title: 'âš ï¸ Input Missing',
+                    title: '⚠️ Input Missing',
                     message: 'Please enter a valid POS Access Code.',
                     confirmText: 'OK'
                 });
             }
 
             const pin = await superModal({
-                title: 'ðŸ”’ Security Authorization',
+                title: '🔒 Security Authorization',
                 message: 'Enter Master PIN to authorize changing the POS Access Code:',
                 showInput: true,
                 placeholder: 'Enter 6-digit pin',
@@ -2391,20 +2411,20 @@
                     localStorage.setItem('posPassword', pass);
                 }
                 await superModal({
-                    title: 'âœ… Success',
+                    title: '✅ Success',
                     message: 'POS Terminal Access Code has been updated and synced across devices.',
                     confirmText: 'Done'
                 });
             } else if (pin !== null) {
                 await superModal({
-                    title: 'âŒ Denied',
+                    title: '❌ Denied',
                     message: 'Incorrect pincode. Update cancelled.',
                     confirmText: 'Close'
                 });
             }
         };
 
-        // â”€â”€â”€ PER-BRANCH HOLIDAY SWITCHER & SYNC â”€â”€â”€
+        // ─── PER-BRANCH HOLIDAY SWITCHER & SYNC ───
         window.__holidayBranchOverride = (window.getEffectiveBranch ? window.getEffectiveBranch() : 'General Santos City');
 
         window.pushBranchHolidaysToCloud = async function () {
@@ -2439,7 +2459,7 @@
             if (window.showToast) window.showToast(`Loaded Holidays & Closures for ${window.__holidayBranchOverride}`, 'info');
         };
 
-        // â”€â”€â”€ HOLIDAY & CLOSURE CALENDAR LOGIC â”€â”€â”€
+        // ─── HOLIDAY & CLOSURE CALENDAR LOGIC ───
         let calCurrentYear = new Date().getFullYear();
         let calCurrentMonth = new Date().getMonth(); // 0-11
 
@@ -2479,10 +2499,10 @@
 
                 if (check.isBlocked) {
                     cellClass += ' is-blocked';
-                    badgeHtml = `<div class="cal-day-badge blocked" title="${escapeHtml(check.name || 'Closed')}">ðŸš« ${escapeHtml(check.name || 'Closed')}</div>`;
+                    badgeHtml = `<div class="cal-day-badge blocked" title="${escapeHtml(check.name || 'Closed')}">🚫 ${escapeHtml(check.name || 'Closed')}</div>`;
                 } else if (check.isOpenOverride) {
                     cellClass += ' is-open-override';
-                    badgeHtml = `<div class="cal-day-badge open" title="${escapeHtml(check.name || 'Open')}">ðŸŸ¢ Open: ${escapeHtml(check.name || 'Holiday')}</div>`;
+                    badgeHtml = `<div class="cal-day-badge open" title="${escapeHtml(check.name || 'Open')}">🟢 Open: ${escapeHtml(check.name || 'Holiday')}</div>`;
                 }
 
                 html += `
@@ -2534,10 +2554,10 @@
                 let confirmed = false;
                 if (typeof superModal === 'function') {
                     confirmed = await superModal({
-                        title: `ðŸ“… ${dateStr}`,
+                        title: `📅 ${dateStr}`,
                         message: `<b>${escapeHtml(check.name || 'Holiday/Closure')}</b> is currently <b>${isBlocked ? 'CLOSED' : 'OPEN'}</b> for online reservations.<br><br>Do you want to <b>${actionVerb}</b> on this date?`,
                         type: 'confirm',
-                        confirmText: isBlocked ? 'ðŸ”“ Allow Reservations' : 'ðŸ”’ Block Reservations'
+                        confirmText: isBlocked ? '🔓 Allow Reservations' : '🔒 Block Reservations'
                     });
                 } else {
                     confirmed = confirm(`Do you want to ${actionVerb} on ${dateStr}?`);
@@ -2591,10 +2611,10 @@
                     : `<span style="background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-weight:bold; font-size:11px;">Custom Blocked Date</span>`;
 
                 const statusBadge = isBlocked
-                    ? `<span style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:20px; font-weight:800; font-size:12px;">ðŸš« CLOSED FOR RESERVATION</span>`
-                    : `<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:4px 10px; border-radius:20px; font-weight:800; font-size:12px;">âœ… OPEN FOR RESERVATION</span>`;
+                    ? `<span style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:20px; font-weight:800; font-size:12px;">🚫 CLOSED FOR RESERVATION</span>`
+                    : `<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:4px 10px; border-radius:20px; font-weight:800; font-size:12px;">✅ OPEN FOR RESERVATION</span>`;
 
-                const toggleBtnText = isBlocked ? 'ðŸ”“ Allow Reservations' : 'ðŸ”’ Block Date';
+                const toggleBtnText = isBlocked ? '🔓 Allow Reservations' : '🔒 Block Date';
                 const toggleBtnStyle = isBlocked
                     ? 'background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0;'
                     : 'background:#fef2f2; color:#dc2626; border:1px solid #fca5a5;';
@@ -2605,7 +2625,7 @@
 
                 html += `
                     <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:14px 16px; font-weight:800; color:#0f172a;">ðŸ“… ${dateDisplay}</td>
+                        <td style="padding:14px 16px; font-weight:800; color:#0f172a;">📅 ${dateDisplay}</td>
                         <td style="padding:14px 16px; font-weight:700; color:#334155;">${escapeHtml(item.name || 'Holiday')}</td>
                         <td style="padding:14px 16px;">${typeBadge}</td>
                         <td style="padding:14px 16px;">${statusBadge}</td>
@@ -2669,7 +2689,7 @@
         }, 400);
 
         function renderDashboard() {
-            // ðŸ‘‰ STRICT AUTH GUARD: Never render or reveal dashboard unless authenticated!
+            // 👉 STRICT AUTH GUARD: Never render or reveal dashboard unless authenticated!
             if (sessionStorage.getItem('superAdminActive') !== 'true') {
                 return;
             }
@@ -2715,7 +2735,7 @@
                 const s = (r.paymentStatus || '').toLowerCase();
                 if (s === 'paid' || s === 'verified' || s === 'walk-in') {
                     let amt = Number(r.paymentAmount || 0);
-                    // ðŸ‘‰ FIX: Exclude the â‚±200 online deposit from revenue unless they actually ordered food!
+                    // 👉 FIX: Exclude the ₱200 online deposit from revenue unless they actually ordered food!
                     if (r.reservationType === 'standard' && amt === 200 && (!r.foods || r.foods.length === 0)) {
                         amt = 0;
                     }
@@ -2731,7 +2751,7 @@
             document.getElementById('stat-total').textContent = total;
             document.getElementById('stat-priority-pct').textContent = `${priorityPct}%`;
             document.getElementById('stat-walkins').textContent = walkinCount;
-            document.getElementById('stat-revenue').textContent = `â‚±${Number(revenue).toLocaleString()}`;
+            document.getElementById('stat-revenue').textContent = `₱${Number(revenue).toLocaleString()}`;
             document.getElementById('stat-admins').textContent = adminCount;
 
             // Customer tracking poll
@@ -2767,7 +2787,7 @@
                     ? window.unpackCloudFoodsAndNote(Array.isArray(r.foods) ? r.foods : [], r.beefNote || r.notes || '')
                     : { foods: Array.isArray(r.foods) ? r.foods : [], beefNote: String(r.beefNote || r.notes || '') };
                 const foods = unpacked.foods;
-                const isVip = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isVip = window.isSuperAdminVipRecord(r);
                 const isStandardNoFood = String(r.reservationType || '').toLowerCase() === 'standard' && !foods.length;
 
                 const rawNote = String(unpacked.beefNote || '');
@@ -2791,12 +2811,12 @@
 
                 let text = '';
                 if (!foods.length) {
-                    text = isVip ? 'ðŸ‘‘ VIP Room Down Payment' : (r.reservationType === 'standard' ? 'Standard deposit' : 'None');
+                    text = isVip ? '👑 VIP Room Down Payment' : (r.reservationType === 'standard' ? 'Standard deposit' : 'None');
                 } else {
                     text = foods.join(', ');
                 }
                 if (cleanNote) text = text ? (text + ' | ' + cleanNote) : cleanNote;
-                if (timingLabel) text += `${text ? ' | â€¢ ' : ''}â±ï¸ ${timingLabel}`;
+                if (timingLabel) text += `${text ? ' | • ' : ''}⏱️ ${timingLabel}`;
                 return text;
             }
 
@@ -2869,15 +2889,15 @@
                         typePill = `<span style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
                     } else if (resNum.startsWith('POS-')) {
                         typePill = `<span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
-                    } else if (resNum.startsWith('VIP-') || resType === 'vip' || r.bookedTable === 'VIP Room') {
-                        typePill = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">ðŸ‘‘ VIP</span>`;
+                    } else if (window.isSuperAdminVipRecord(r)) {
+                        typePill = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">👑 VIP</span>`;
                     } else if (resType === 'priority') {
                         typePill = `<span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
                     } else {
                         typePill = `<span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; letter-spacing:0.5px;">STD</span>`;
                     }
 
-                    // ðŸ‘‰ NEW: Unified & Robust Date Formatter
+                    // 👉 NEW: Unified & Robust Date Formatter
                     let dateStr = 'Walk-in';
                     let targetDateObj = null;
 
@@ -2914,9 +2934,9 @@
 
                     let refundBadge = '';
                     if (r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') {
-                        refundBadge = `<div style="font-size:10px; color:#60a5fa; font-weight:700;">ðŸ’¸ REFUNDED (-â‚±${Number(r.refundAmount || r.paymentAmount || 0).toLocaleString()})</div>`;
+                        refundBadge = `<div style="font-size:10px; color:#60a5fa; font-weight:700;">💸 REFUNDED (-₱${Number(r.refundAmount || r.paymentAmount || 0).toLocaleString()})</div>`;
                     } else if (r.refundStatus === 'pending_refund') {
-                        refundBadge = `<div style="font-size:10px; color:#fbbf24; font-weight:700;">âš ï¸ REFUND PENDING</div>`;
+                        refundBadge = `<div style="font-size:10px; color:#fbbf24; font-weight:700;">⚠️ REFUND PENDING</div>`;
                     }
 
                     let discountBadge = '';
@@ -2924,7 +2944,7 @@
                         const dType = String(r.discountType || 'discount').toUpperCase();
                         const dLabel = dType === 'PWD' ? 'PWD 20%' : (dType === 'SENIOR' ? 'SENIOR 20%' : `VOUCHER${r.voucherCode ? ' (' + r.voucherCode + ')' : ''}`);
                         const dAmt = Number(r.discountAmount || 0);
-                        discountBadge = `<div style="font-size:10px; color:#c2410c; font-weight:800; background:#ffedd5; border:1px solid #fed7aa; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:3px;">ðŸ·ï¸ DISCOUNTED: ${dLabel}${dAmt > 0 ? ' (-â‚±' + dAmt.toLocaleString() + ')' : ''}</div>`;
+                        discountBadge = `<div style="font-size:10px; color:#c2410c; font-weight:800; background:#ffedd5; border:1px solid #fed7aa; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:3px;">🏷️ DISCOUNTED: ${dLabel}${dAmt > 0 ? ' (-₱' + dAmt.toLocaleString() + ')' : ''}</div>`;
                     }
 
                     let paymentBadge = '';
@@ -2954,29 +2974,29 @@
                         <td>${isNew ? '<span class="new-badge">NEW</span>' : ''}<strong style="font-size:12px;">${r.reservationNumber || 'N/A'}</strong></td>
                         <td style="font-size:12px; color:var(--sa-muted);"${soonMins !== null ? ' title="Within 2 hours of reserved time"' : ''}>
                             <div>${dateStr}</div>
-                            ${soonMins !== null ? `<div class="soon-badge">â° SOON Â· ${typeof window.formatArrivalCountdown === 'function' ? window.formatArrivalCountdown(soonMins) : soonMins + 'm'}</div>` : ''}
+                            ${soonMins !== null ? `<div class="soon-badge">⏰ SOON · ${typeof window.formatArrivalCountdown === 'function' ? window.formatArrivalCountdown(soonMins) : soonMins + 'm'}</div>` : ''}
                         </td>
                         <td style="font-weight:600;">${r.customerName || 'Walk-in Guest'}</td>
-                        <td style="font-size:12px;">${r.bookedTable || 'â€”'}</td>
+                        <td style="font-size:12px;">${r.bookedTable || '—'}</td>
                         <td>${typePill}</td>
                         <td class="foods-cell" style="max-width: 280px; min-width: 200px;"></td>
                         <td class="payment-cell">
-                            <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">â‚±${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            <div style="color:${(r.refundStatus === 'refunded' || r.paymentStatus === 'refunded') ? '#94a3b8' : '#0f172a'}; font-weight:800;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             ${paymentBadge}${discountBadge}${refundBadge}
                             ${r.reservationNumber ? `
                                 <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
-                                    ${r.reservationNumber ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">ðŸ§¾ View Proof</button>` : ''}
-                                    <a href="receipt.html?res=${encodeURIComponent(r.reservationNumber)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">ðŸ–¨ï¸ Receipt</a>
+                                    ${r.reservationNumber ? `<button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${String(r.reservationNumber).replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>` : ''}
+                                    <a href="receipt.html?res=${encodeURIComponent(r.reservationNumber)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">🖨️ Receipt</a>
                                 </div>
                             ` : ''}
                         </td>
                         <td>${statusHtml}</td>
-                        <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">ðŸ—‘ï¸</button></td>
+                        <td><button type="button" class="danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteRecord('${r.reservationNumber}')">🗑️</button></td>
                     `;
 
                     const foodsCell = tr.querySelector('.foods-cell');
 
-                    // ðŸ‘‰ NEW: Smooth & Clean "See More" inline logic (With Memory!)
+                    // 👉 NEW: Smooth & Clean "See More" inline logic (With Memory!)
                     const foodWrapper = document.createElement('div');
                     foodWrapper.style.cssText = 'white-space: normal; word-wrap: break-word; line-height: 1.5; color: #334155; font-size: 13px;';
 
@@ -3022,10 +3042,10 @@
                         const kdsBadge = document.createElement('div');
                         kdsBadge.style.cssText = 'font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;';
                         const kdsMap = {
-                            cooking: ['#c2410c', '#ffedd5', 'ðŸ‘¨â€ðŸ³ COOKING'],
-                            ready: ['#15803d', '#dcfce7', 'âœ… COOKED'],
-                            served: ['#4338ca', '#e0e7ff', 'ðŸ½ï¸ SERVED'],
-                            cancelled: ['#991b1b', '#fee2e2', 'ðŸš« CANCELLED']
+                            cooking: ['#c2410c', '#ffedd5', '👨‍🍳 COOKING'],
+                            ready: ['#15803d', '#dcfce7', '✅ COOKED'],
+                            served: ['#4338ca', '#e0e7ff', '🍽️ SERVED'],
+                            cancelled: ['#991b1b', '#fee2e2', '🚫 CANCELLED']
                         };
                         const kds = kdsMap[r.kdsStatus];
                         if (kds) { kdsBadge.style.color = kds[0]; kdsBadge.style.background = kds[1]; kdsBadge.textContent = kds[2]; foodsCell.appendChild(kdsBadge); }
@@ -3035,7 +3055,7 @@
                 });
             }
 
-            // ðŸ‘‰ NEW: Global Function to Open Payment Proofs in Manager Dashboard
+            // 👉 NEW: Global Function to Open Payment Proofs in Manager Dashboard
             window.openProofModal = function (r) {
                 const modal = document.getElementById('proof-modal');
                 const img = document.getElementById('proof-modal-img');
@@ -3043,16 +3063,16 @@
                 const info = document.getElementById('proof-modal-info');
 
                 const name = r.customerName || 'Guest';
-                const ref = r.paymentRef || 'â€”';
-                const amount = `â‚±${Number(r.paymentAmount || 0).toLocaleString()}`;
+                const ref = r.paymentRef || '—';
+                const amount = `₱${Number(r.paymentAmount || 0).toLocaleString()}`;
                 const resNum = r.reservationNumber || '';
 
                 info.innerHTML = `
                     <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                        <tr><td style="padding:5px 0; color:#888; width:120px;">ðŸ‘¤ Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
-                        <tr><td style="padding:5px 0; color:#888;">ðŸ”– Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
-                        <tr><td style="padding:5px 0; color:#888;">ðŸ’š Amount Paid</td><td style="font-weight:800; color:#16a34a;">${amount}</td></tr>
-                        <tr><td style="padding:5px 0; color:#888;">ðŸ¦ Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888; width:120px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a;">${amount}</td></tr>
+                        <tr><td style="padding:5px 0; color:#888;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
                     </table>
                 `;
 
@@ -3068,10 +3088,10 @@
                 modal.classList.remove('hidden');
             };
 
-            // ðŸ‘‰ NEW: Single Record Deletion Function
+            // 👉 NEW: Single Record Deletion Function
             window.deleteRecord = async function (reservationNumber) {
                 const confirmed = await superModal({
-                    title: 'ðŸ—‘ï¸ Delete Record?',
+                    title: '🗑️ Delete Record?',
                     message: `Are you sure you want to permanently delete reservation <b>${reservationNumber}</b>? This action cannot be undone.`,
                     type: 'confirm',
                     confirmText: 'Delete',
@@ -3095,13 +3115,13 @@
 
                     renderDashboard();
                 } catch (err) {
-                    await superModal({ title: 'âŒ Error', message: `Could not delete record: ${err.message}`, confirmText: 'Close' });
+                    await superModal({ title: '❌ Error', message: `Could not delete record: ${err.message}`, confirmText: 'Close' });
                 }
             };
-            // ðŸ‘‰ NEW: Master Wipe Function with PIN Guard
+            // 👉 NEW: Master Wipe Function with PIN Guard
             window.wipeAllRecords = async function () {
                 const confirmed = await superModal({
-                    title: 'ðŸš¨ WIPE ALL RECORDS? ðŸš¨',
+                    title: '🚨 WIPE ALL RECORDS? 🚨',
                     message: 'Are you absolutely sure you want to permanently delete ALL reservations, POS orders, and walk-ins? This will completely clear the restaurant history and reset the database to zero. This action CANNOT be undone!',
                     type: 'confirm',
                     confirmText: 'YES, WIPE EVERYTHING',
@@ -3111,7 +3131,7 @@
                 if (!confirmed) return;
 
                 const pin = await superModal({
-                    title: 'ðŸ”’ Security Authorization',
+                    title: '🔒 Security Authorization',
                     message: 'Enter Master PIN to authorize DATABASE WIPE:',
                     showInput: true,
                     placeholder: 'Enter 6-digit pin',
@@ -3132,21 +3152,21 @@
                         // Push clear to cloud memory
                         await fetch(`${API_BASE_URL}/api/memory/table-overrides`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
 
-                        await superModal({ title: 'âœ… Database Wiped', message: 'All records have been permanently deleted and the system has been reset.', confirmText: 'Done' });
+                        await superModal({ title: '✅ Database Wiped', message: 'All records have been permanently deleted and the system has been reset.', confirmText: 'Done' });
                         location.reload();
                     } catch (e) {
-                        await superModal({ title: 'âŒ Error', message: e.message, confirmText: 'Close' });
-                        if (btn) btn.textContent = 'ðŸ—‘ï¸ Wipe All Records';
+                        await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
+                        if (btn) btn.textContent = '🗑️ Wipe All Records';
                     }
                 } else if (pin !== null) {
-                    await superModal({ title: 'âŒ Denied', message: 'Incorrect pincode. Wipe cancelled.', confirmText: 'Close' });
+                    await superModal({ title: '❌ Denied', message: 'Incorrect pincode. Wipe cancelled.', confirmText: 'Close' });
                 }
             };
 
-            // ðŸ”„ RESET RESERVATION NUMBERS BACK TO #1 (WITH MASTER PIN GUARD)
+            // 🔄 RESET RESERVATION NUMBERS BACK TO #1 (WITH MASTER PIN GUARD)
             window.resetReservationCounterToOne = async function () {
                 const confirmed = await superModal({
-                    title: 'ðŸ”„ Reset Order / Reservation # to 1?',
+                    title: '🔄 Reset Order / Reservation # to 1?',
                     message: 'This will re-sequence existing reservation numbers starting from <b>#1</b> (or reset the counter to <b>#1</b> if records are empty) so new bookings continue cleanly from the lowest number.<br><br>Do you want to proceed?',
                     type: 'confirm',
                     confirmText: 'Continue',
@@ -3155,7 +3175,7 @@
                 if (!confirmed) return;
 
                 const pin = await superModal({
-                    title: 'ðŸ”’ Security Authorization',
+                    title: '🔒 Security Authorization',
                     message: 'Enter Master PIN (789456) to authorize resetting reservation numbers back to #1:',
                     showInput: true,
                     placeholder: 'Enter 6-digit pin',
@@ -3163,7 +3183,7 @@
                 });
 
                 if (pin !== '789456') {
-                    if (pin !== null) await superModal({ title: 'âŒ Denied', message: 'Incorrect Master PIN. Reset cancelled.', confirmText: 'Close' });
+                    if (pin !== null) await superModal({ title: '❌ Denied', message: 'Incorrect Master PIN. Reset cancelled.', confirmText: 'Close' });
                     return;
                 }
 
@@ -3177,13 +3197,13 @@
                     localStorage.setItem('reservationHistory', '[]');
                     await syncReservations();
                     await superModal({
-                        title: 'âœ… Order Numbers Reset to #1',
+                        title: '✅ Order Numbers Reset to #1',
                         message: 'Reservation and Order numbers have been reset back to #1 successfully!',
                         confirmText: 'Done'
                     });
                     renderDashboard();
                 } catch (e) {
-                    await superModal({ title: 'âŒ Error', message: e.message, confirmText: 'Close' });
+                    await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
                 }
             };
 
@@ -3255,7 +3275,7 @@
                     const resNumStr = String(r.reservationNumber || '');
                     if (resNumStr.startsWith('WI-')) rType = 'wi';
                     else if (resNumStr.startsWith('POS-')) rType = 'pos';
-                    else if (resNumStr.startsWith('VIP-') || r.reservationType === 'vip' || r.bookedTable === 'VIP Room') rType = 'vip';
+                    else if (window.isSuperAdminVipRecord(r)) rType = 'vip';
                     else if (r.reservationType === 'priority') rType = 'priority';
                     const matchType = activeTypes.includes(rType);
 
@@ -3317,7 +3337,7 @@
             const staffTbody = document.getElementById('staff-list-tbody');
 
             async function renderStaffManagement(isPolling = false) {
-                // ðŸ‘‰ Skip the network call if we fetched under 15s ago
+                // 👉 Skip the network call if we fetched under 15s ago
                 const nowTs = Date.now();
                 if (!isPolling && window.__staffLastFetch && nowTs - window.__staffLastFetch < 15000) {
                     return;
@@ -3331,7 +3351,7 @@
                     });
                     if (response.ok) {
                         users = await response.json();
-                        // ðŸ‘‰ Only write when the data actually changed, so no listener re-fires
+                        // 👉 Only write when the data actually changed, so no listener re-fires
                         const prev = localStorage.getItem('adminUsers') || '';
                         const next = JSON.stringify(users);
                         if (prev !== next) localStorage.setItem('adminUsers', next);
@@ -3344,7 +3364,7 @@
 
                 const staffTbody = document.getElementById('staff-list-tbody');
                 if (!staffTbody) {
-                    // ðŸ‘‰ Tab not in the DOM yet â€” retry shortly instead of giving up
+                    // 👉 Tab not in the DOM yet — retry shortly instead of giving up
                     setTimeout(() => renderStaffManagement(true), 500);
                     return;
                 }
@@ -3359,8 +3379,8 @@
                     users.forEach((u) => {
                         const isOnline = u.last_active && (now - u.last_active < 15000);
                         const statusBadge = isOnline
-                            ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">ðŸŸ¢ Online</span>`
-                            : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">âšª Offline</span>`;
+                            ? `<span style="background:#dcfce7; color:#16a34a; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">🟢 Online</span>`
+                            : `<span style="background:#f1f5f9; color:#94a3b8; font-size:11px; padding:4px 10px; border-radius:12px; font-weight:bold;">⚪ Offline</span>`;
                         const staffBranch = u.branch || u.assigned_branch || 'General Santos City';
                         const branchListForRow = (typeof window.getBranches === 'function' ? window.getBranches() : [{ name: 'General Santos City' }, { name: 'Koronadal City' }]);
                         const branchNamesForRow = branchListForRow.map(b => b.name);
@@ -3377,9 +3397,9 @@
                                     <select class="sa-staff-branch-select" data-branch="${safeStaffBranch}" onchange="window.changeStaffBranch('${safeUser}', this.value)" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#1e293b; font-size:12px; font-weight:700; cursor:pointer;">
                                         ${branchNamesForRow.map(bn => {
                             const ebn = String(bn).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                            return `<option value="${ebn}" ${staffBranch === bn ? 'selected' : ''}>ðŸ“ ${ebn}</option>`;
+                            return `<option value="${ebn}" ${staffBranch === bn ? 'selected' : ''}>📍 ${ebn}</option>`;
                         }).join('')}
-                                        <option value="ALL" ${staffBranch === 'ALL' ? 'selected' : ''}>ðŸŒ All Branches</option>
+                                        <option value="ALL" ${staffBranch === 'ALL' ? 'selected' : ''}>🌐 All Branches</option>
                                     </select>
                                 </div>
                                 <div>${statusBadge}</div>
@@ -3403,7 +3423,7 @@
 
             window.resetStaffPassword = async function (username) {
                 const pin = await superModal({
-                    title: 'ðŸ”’ Security Authorization',
+                    title: '🔒 Security Authorization',
                     message: `Enter Master PIN to authorize password reset for <b>${username}</b>:`,
                     showInput: true,
                     placeholder: 'Enter 6-digit pin',
@@ -3412,7 +3432,7 @@
 
                 if (pin === "789456") {
                     const newPass = await superModal({
-                        title: `ðŸ”‘ Reset Password for ${username}`,
+                        title: `🔑 Reset Password for ${username}`,
                         message: 'Enter the new passphrase for this staff account (minimum 4 characters):',
                         showInput: true,
                         inputType: 'text',
@@ -3424,7 +3444,7 @@
 
                     if (!newPass || newPass.trim().length < 4) {
                         return await superModal({
-                            title: 'âš ï¸ Password Too Short',
+                            title: '⚠️ Password Too Short',
                             message: 'Please enter a passphrase with at least 4 characters.',
                             confirmText: 'Try Again'
                         });
@@ -3450,21 +3470,21 @@
                         }
 
                         await superModal({
-                            title: 'âœ… Password Updated',
+                            title: '✅ Password Updated',
                             message: `The password for <b>${username}</b> has been successfully updated!`,
                             confirmText: 'Done'
                         });
                         renderStaffManagement();
                     } catch (e) {
                         await superModal({
-                            title: 'âŒ Error',
+                            title: '❌ Error',
                             message: `Failed to update password: ${e.message}`,
                             confirmText: 'Close'
                         });
                     }
                 } else if (pin !== null) {
                     await superModal({
-                        title: 'âŒ Denied',
+                        title: '❌ Denied',
                         message: 'Incorrect Master PIN. Password reset cancelled.',
                         confirmText: 'Close'
                     });
@@ -3473,7 +3493,7 @@
 
             window.deleteStaffUser = async function (username) {
                 const pin = await superModal({
-                    title: 'ðŸ”’ Security Authorization',
+                    title: '🔒 Security Authorization',
                     message: `Enter Pincode to DELETE staff account: <b>${username}</b>`,
                     showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Delete Account'
                 });
@@ -3482,17 +3502,17 @@
                     try {
                         const res = await fetch(`${API_BASE_URL}/api/staff/` + username, { method: 'DELETE' });
                         if (!res.ok) throw new Error('Could not delete.');
-                        await superModal({ title: 'âœ… Success', message: `Staff account <b>${username}</b> has been permanently removed.`, confirmText: 'OK' });
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> has been permanently removed.`, confirmText: 'OK' });
                         renderStaffManagement();
                     } catch (e) {
-                        await superModal({ title: 'âŒ Error', message: e.message, confirmText: 'Close' });
+                        await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
                     }
                 }
             };
 
             window.changeStaffBranch = async function (username, newBranch) {
                 const pin = await superModal({
-                    title: 'ðŸ”’ Authorize Branch Assignment',
+                    title: '🔒 Authorize Branch Assignment',
                     message: `Enter Master PIN (789456) to assign <b>${username}</b> to <b>${newBranch === 'ALL' ? 'All Branches' : newBranch}</b>:`,
                     showInput: true,
                     placeholder: 'Enter 6-digit pin',
@@ -3500,7 +3520,7 @@
                 });
 
                 if (pin !== "789456") {
-                    if (pin !== null) await superModal({ title: 'âŒ Denied', message: 'Incorrect Master PIN.', confirmText: 'Close' });
+                    if (pin !== null) await superModal({ title: '❌ Denied', message: 'Incorrect Master PIN.', confirmText: 'Close' });
                     window.__staffLastFetch = 0;
                     renderStaffManagement(true);
                     return;
@@ -3526,7 +3546,7 @@
                     window.__staffLastFetch = 0;
                     renderStaffManagement(true);
                 } catch (e) {
-                    await superModal({ title: 'âŒ Error', message: e.message, confirmText: 'Close' });
+                    await superModal({ title: '❌ Error', message: e.message, confirmText: 'Close' });
                 }
             };
 
@@ -3539,11 +3559,11 @@
                 const branch = bInput ? bInput.value : 'General Santos City';
 
                 if (!username || password.length < 4) {
-                    return await superModal({ title: 'âš ï¸ Input Required', message: 'Please provide a username and a password (min. 4 characters).', confirmText: 'Got it' });
+                    return await superModal({ title: '⚠️ Input Required', message: 'Please provide a username and a password (min. 4 characters).', confirmText: 'Got it' });
                 }
 
                 const pin = await superModal({
-                    title: 'ðŸ”’ Security Authorization',
+                    title: '🔒 Security Authorization',
                     message: `Enter Pincode to authorize creating staff account <b>${username}</b> assigned to <b>${branch === 'ALL' ? 'All Branches' : branch}</b>:`,
                     showInput: true, placeholder: 'Enter 6-digit pin', confirmText: 'Authorize Creation'
                 });
@@ -3567,12 +3587,12 @@
                         }
 
                         uInput.value = ''; pInput.value = '';
-                        await superModal({ title: 'âœ… Success', message: `Staff account <b>${username}</b> (assigned to <b>${branch}</b>) was saved to the cloud!`, confirmText: 'Done' });
+                        await superModal({ title: '✅ Success', message: `Staff account <b>${username}</b> (assigned to <b>${branch}</b>) was saved to the cloud!`, confirmText: 'Done' });
                         window.__staffLastFetch = 0;
                         renderStaffManagement(true);
 
                     } catch (e) {
-                        await superModal({ title: 'âŒ Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
+                        await superModal({ title: '❌ Error', message: `Could not save account to the cloud. Error: ${e.message}`, confirmText: 'Close' });
                     } finally {
                         btn.textContent = '+ Create Account';
                         btn.disabled = false;
@@ -3630,7 +3650,7 @@
                         }
                     }
 
-                    // Full canonical menu â€” always the base so no category ever goes missing
+                    // Full canonical menu — always the base so no category ever goes missing
                     const menuDefaults = [
                         { id: 'INV-B1', title: 'Fillet Mignon', category: 'Beef', price: 935 },
                         { id: 'INV-B2', title: 'Tenderloin Steak (200g)', category: 'Beef', price: 740 },
@@ -3714,7 +3734,7 @@
                             // Merge saved item over default to preserve image and status
                             return { ...def, ...savedMap[def.id] };
                         }
-                        // Default item not yet in storage â€” derive clean capacity from raw ingredients if available
+                        // Default item not yet in storage — derive clean capacity from raw ingredients if available
                         let baseCap = 100;
                         if (window.InventorySystem && typeof window.InventorySystem.calculateFoodAvailability === 'function') {
                             const av = window.InventorySystem.calculateFoodAvailability(def);
@@ -3746,7 +3766,7 @@
             async function seedInventoryFromMenu(isAuto = false) {
                 if (!isAuto) {
                     const confirmed = await superModal({
-                        title: 'Sync Inventory? ðŸ”„',
+                        title: 'Sync Inventory? 🔄',
                         message: 'This will synchronize your inventory with the official 52-item menu. Your current stock levels (Total/Added/Sold) will be PRESERVED for matching items. Proceed?',
                         type: 'confirm'
                     });
@@ -3924,7 +3944,7 @@
             window.switchSuperAdminInvSubTab = function (tabName) {
                 window.__saInvSubTabBooted = true;
                 window.activeSuperAdminInvSubTab = tabName;
-                // ðŸ‘‰ FIX: remember the tab across re-renders
+                // 👉 FIX: remember the tab across re-renders
                 try { localStorage.setItem('superActiveInvSubTab', tabName); } catch (e) { }
 
                 const valuationContainer = document.getElementById('superadmin-valuation-container');
@@ -4009,7 +4029,7 @@
                 }
             };
 
-            // â”€â”€ SMART OPERATIONAL HEALTH SUMMARY BANNER â”€â”€
+            // ── SMART OPERATIONAL HEALTH SUMMARY BANNER ──
             function renderInventoryHealthBanner() {
                 const summary = window.InventorySystem ? window.InventorySystem.getInventoryHealthSummary() : null;
                 if (!summary) return '';
@@ -4098,14 +4118,14 @@
                 `;
             };
 
-            // ðŸ‘‰ NEW: Force the banner to draw immediately on page load!
+            // 👉 NEW: Force the banner to draw immediately on page load!
             window.renderGlobalSuperAdminStoreStatusBanner();
 
             window.toggleSuperAdminStoreStatus = function () {
                 if (window.InventorySystem) {
                     const newStatus = window.InventorySystem.toggleStoreStatus();
                     const isOpen = newStatus === 'open';
-                    const msg = isOpen ? 'ONLINE ORDERS & RESERVATIONS ARE NOW OPEN' : 'STORE CLOSED â€” ONLINE ORDERS & RESERVATIONS DISABLED';
+                    const msg = isOpen ? 'ONLINE ORDERS & RESERVATIONS ARE NOW OPEN' : 'STORE CLOSED — ONLINE ORDERS & RESERVATIONS DISABLED';
                     if (window.showToast) {
                         window.showToast(msg, isOpen ? 'success' : 'error', 4000);
                     } else {
@@ -4148,7 +4168,7 @@
                 let addAmt = null;
                 if (typeof window.superModal === 'function') {
                     const amountStr = await window.superModal({
-                        title: `ðŸ“¦ Custom Restock - ${ing.name}`,
+                        title: `📦 Custom Restock - ${ing.name}`,
                         message: `Current Stock: <b>${ing.stock.toLocaleString()} ${ing.unit}</b>.<br>Enter the quantity to ADD (in <b>${ing.unit}</b>):`,
                         showInput: true,
                         placeholder: `e.g. ${suggestedAdd} (${ing.unit})`,
@@ -4166,7 +4186,7 @@
 
                 if (isNaN(addAmt) || addAmt <= 0) {
                     if (typeof window.superModal === 'function') {
-                        await window.superModal({ title: 'Invalid Restock Amount âš ï¸', message: 'Please enter a valid positive number for restock.' });
+                        await window.superModal({ title: 'Invalid Restock Amount ⚠️', message: 'Please enter a valid positive number for restock.' });
                     } else {
                         alert('Invalid restock amount.');
                     }
@@ -4178,11 +4198,11 @@
 
                 if (typeof window.superModal === 'function') {
                     await window.superModal({
-                        title: 'Restock Successful âœ…',
+                        title: 'Restock Successful ✅',
                         message: `Successfully restocked <b>${ing.name}</b> by <b>+${addAmt.toLocaleString()} ${ing.unit}</b>.<br>New Current Stock: <b>${newStock.toLocaleString()} ${ing.unit}</b>.`
                     });
                 } else {
-                    alert(`âœ… Successfully restocked ${ing.name}! New Stock: ${newStock} ${ing.unit}`);
+                    alert(`✅ Successfully restocked ${ing.name}! New Stock: ${newStock} ${ing.unit}`);
                 }
 
                 refreshActiveSuperAdminInvTab(true);
@@ -4222,11 +4242,11 @@
                 }
 
                 closeRawIngredientModal();
-                alert(`âœ… Raw ingredient "${name}" added!`);
+                alert(`✅ Raw ingredient "${name}" added!`);
                 refreshActiveSuperAdminInvTab(true);
             };
 
-            // â”€â”€ RECIPE EDITOR MODAL CONTROLLERS FOR SUPER ADMIN â”€â”€
+            // ── RECIPE EDITOR MODAL CONTROLLERS FOR SUPER ADMIN ──
             window.currentEditingRecipeMenuId = null;
             window.currentEditingRecipeTemp = [];
 
@@ -4377,7 +4397,7 @@
                 renderTempRecipeList();
             };
 
-            // â”€â”€ KITCHEN PREP FEASIBILITY CALCULATOR â”€â”€
+            // ── KITCHEN PREP FEASIBILITY CALCULATOR ──
             window.prepTargetDishes = {};
 
             window.openPrepCalculatorModal = function () {
@@ -4513,7 +4533,7 @@
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <strong style="font-size:13px; color:#0f172a;">${name}</strong>
                                 <span style="font-size:12px; font-weight:800; color:${isShort ? '#ef4444' : '#16a34a'};">
-                                    ${isShort ? `âš ï¸ Short by ${(needed - inStock).toLocaleString()} ${unit}` : `âœ… Sufficient`}
+                                    ${isShort ? `⚠️ Short by ${(needed - inStock).toLocaleString()} ${unit}` : `✅ Sufficient`}
                                 </span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#64748b; margin-top:4px;">
@@ -4526,11 +4546,11 @@
 
                 if (badge) {
                     if (allFeasible) {
-                        badge.textContent = 'âœ… All Ingredients in Stock';
+                        badge.textContent = '✅ All Ingredients in Stock';
                         badge.style.background = '#dcfce7';
                         badge.style.color = '#166534';
                     } else {
-                        badge.textContent = 'âš ï¸ Shortage Warning';
+                        badge.textContent = '⚠️ Shortage Warning';
                         badge.style.background = '#fee2e2';
                         badge.style.color = '#b91c1c';
                     }
@@ -4587,12 +4607,12 @@
             window.renderSuperAdminRecipeBuilder = renderSuperAdminRecipeBuilder;
             window.renderInventory = renderInventory;
 
-            // â”€â”€ LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS â”€â”€
+            // ── LIVE BROADCAST & LOCALSTORAGE SYNC LISTENERS ──
             try {
                 if (typeof BroadcastChannel !== 'undefined') {
                     const superSyncChannel = new BroadcastChannel('inventory_sync_channel');
                     superSyncChannel.onmessage = function (event) {
-                        // ðŸ‘‰ Throttle: at most one refresh per 3 seconds, no matter how many messages arrive
+                        // 👉 Throttle: at most one refresh per 3 seconds, no matter how many messages arrive
                         const now = Date.now();
                         if (window.__superSyncLastRun && now - window.__superSyncLastRun < 3000) return;
                         window.__superSyncLastRun = now;
@@ -4607,7 +4627,7 @@
             } catch (e) { }
 
             window.addEventListener('storage', function (e) {
-                // ðŸ‘‰ Throttle the same way â€” storage fires for every write on this origin
+                // 👉 Throttle the same way — storage fires for every write on this origin
                 const now = Date.now();
                 if (window.__superStorageLastRun && now - window.__superStorageLastRun < 3000) return;
                 window.__superStorageLastRun = now;
@@ -4618,7 +4638,7 @@
                     if (typeof renderSuperFloorPlan === 'function') renderSuperFloorPlan();
                     if (typeof renderSuperReservations === 'function') renderSuperReservations();
 
-                    // ðŸ‘‰ FIX: Trigger the live updates for local storage events too
+                    // 👉 FIX: Trigger the live updates for local storage events too
                     if (typeof renderActivityFeed === 'function') renderActivityFeed();
                     if (typeof renderDashboard === 'function') renderDashboard();
                 }
@@ -4672,15 +4692,15 @@
 
                 const rawCatFilters = [
                     { id: 'all', label: 'All' },
-                    { id: 'Meat', label: 'ðŸ¥© Meat' },
-                    { id: 'Poultry', label: 'ðŸ— Poultry' },
-                    { id: 'Seafood', label: 'ðŸŸ Seafood' },
-                    { id: 'Produce', label: 'ðŸ¥¬ Produce' },
-                    { id: 'Dairy', label: 'ðŸ§ˆ Dairy' },
-                    { id: 'Sauces & Liquids', label: 'ðŸ¶ Sauces & Liquids' },
-                    { id: 'Bakery', label: 'ðŸž Bakery' },
-                    { id: 'Grains', label: 'ðŸŒ¾ Grains' },
-                    { id: 'Beverages', label: 'ðŸ¹ Beverages' }
+                    { id: 'Meat', label: '🥩 Meat' },
+                    { id: 'Poultry', label: '🍗 Poultry' },
+                    { id: 'Seafood', label: '🐟 Seafood' },
+                    { id: 'Produce', label: '🥬 Produce' },
+                    { id: 'Dairy', label: '🧈 Dairy' },
+                    { id: 'Sauces & Liquids', label: '🍶 Sauces & Liquids' },
+                    { id: 'Bakery', label: '🍞 Bakery' },
+                    { id: 'Grains', label: '🌾 Grains' },
+                    { id: 'Beverages', label: '🍹 Beverages' }
                 ];
 
                 container.innerHTML = `
@@ -4705,13 +4725,13 @@
                     return `<button type="button" onclick="setSuperAdminRawFilter('${f.id}')" style="padding:6px 12px; border-radius:20px; border:1px solid ${active ? '#1b5e20' : '#cbd5e1'}; background:${active ? '#1b5e20' : '#f8fafc'}; color:${active ? 'white' : '#475569'}; font-size:12px; font-weight:bold; cursor:pointer;">${f.label}</button>`;
                 }).join('')}
                             <span style="color:#cbd5e1; margin:0 2px;">|</span>
-                            <button type="button" onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter === 'low' ? '#f59e0b' : '#fffbeb'}; color:${window.superAdminRawFilter === 'low' ? 'white' : '#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">âš ï¸ Low Stock</button>
-                            <button type="button" onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter === 'out' ? '#ef4444' : '#fef2f2'}; color:${window.superAdminRawFilter === 'out' ? 'white' : '#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">ðŸ”´ Out of Stock</button>
+                            <button type="button" onclick="setSuperAdminRawFilter('low')" style="padding:6px 12px; border-radius:20px; border:1px solid #fde68a; background:${window.superAdminRawFilter === 'low' ? '#f59e0b' : '#fffbeb'}; color:${window.superAdminRawFilter === 'low' ? 'white' : '#b45309'}; font-size:12px; font-weight:bold; cursor:pointer;">⚠️ Low Stock</button>
+                            <button type="button" onclick="setSuperAdminRawFilter('out')" style="padding:6px 12px; border-radius:20px; border:1px solid #fca5a5; background:${window.superAdminRawFilter === 'out' ? '#ef4444' : '#fef2f2'}; color:${window.superAdminRawFilter === 'out' ? 'white' : '#b91c1c'}; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Out of Stock</button>
                         </div>
                         <div style="position:relative; flex:1; min-width:240px; max-width:340px;">
-                            <input type="text" id="super-raw-search-input" value="${(window.superAdminRawSearch || '').replace(/"/g, '&quot;')}" oninput="window.handleSuperAdminRawSearch(this.value)" placeholder="ðŸ” Search ingredients by name..." 
+                            <input type="text" id="super-raw-search-input" value="${(window.superAdminRawSearch || '').replace(/"/g, '&quot;')}" oninput="window.handleSuperAdminRawSearch(this.value)" placeholder="🔍 Search ingredients by name..." 
                                 style="width:100%; padding:9px 32px 9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12.5px; box-sizing:border-box; outline:none; background:#f8fafc;">
-                            ${window.superAdminRawSearch ? `<span onclick="window.handleSuperAdminRawSearch('')" title="Clear search" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:14px; line-height:1; user-select:none;">âœ•</span>` : ''}
+                            ${window.superAdminRawSearch ? `<span onclick="window.handleSuperAdminRawSearch('')" title="Clear search" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:14px; line-height:1; user-select:none;">✕</span>` : ''}
                         </div>
                     </div>
 
@@ -4767,10 +4787,10 @@
                                                         + Custom
                                                     </button>
                                                     <button onclick="window.promptRemoveRawIngredientStock('${ing.id}', 'Manager')" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
-                                                        âˆ’ Remove
+                                                        − Remove
                                                     </button>
                                                     <button onclick="window.confirmDeleteRawIngredient('${ing.id}', 'Manager')" title="Delete Ingredient" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:5px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">
-                                                        ðŸ—‘ï¸
+                                                        🗑️
                                                     </button>
                                                 </div>
                                             </td>
@@ -4811,7 +4831,7 @@
                 }
                 renderSuperAdminRecipeBuilder();
                 if (typeof renderInventory === 'function') renderInventory();
-                alert("âœ… Official Roland's Recipes Applied Successfully!\n\nðŸ¥© Steaks: Meat Cut + Salt & Pepper + Margarine + Oyster Sauce\nðŸ— Chicken: Chicken + Ketchup + Butter\nðŸŸ Fish: Fish + Toyo + Kalamansi\n\nAll portion availability and automatic deductions are up to date!");
+                alert("✅ Official Roland's Recipes Applied Successfully!\n\n🥩 Steaks: Meat Cut + Salt & Pepper + Margarine + Oyster Sauce\n🍗 Chicken: Chicken + Ketchup + Butter\n🐟 Fish: Fish + Toyo + Kalamansi\n\nAll portion availability and automatic deductions are up to date!");
             };
 
             window.resetSingleRecipeToDefault = function (menuId) {
@@ -4837,14 +4857,14 @@
 
                 const categories = [
                     { id: 'All', label: 'All Items' },
-                    { id: 'Beef', label: 'ðŸ¥© Steaks (Beef)' },
-                    { id: 'T-Bone', label: 'ðŸ¥© T-Bone' },
-                    { id: 'Sirloin Steak', label: 'ðŸ¥© Sirloin' },
-                    { id: 'Chicken & Fish', label: 'ðŸ— Chicken & ðŸŸ Fish' },
-                    { id: 'Sandwich', label: 'ðŸ” Sandwiches' },
-                    { id: 'Side Orders', label: 'ðŸŸ Sides' },
-                    { id: 'Drinks', label: 'ðŸ¥¤ Drinks' },
-                    { id: 'Wines', label: 'ðŸ· Wines' }
+                    { id: 'Beef', label: '🥩 Steaks (Beef)' },
+                    { id: 'T-Bone', label: '🥩 T-Bone' },
+                    { id: 'Sirloin Steak', label: '🥩 Sirloin' },
+                    { id: 'Chicken & Fish', label: '🍗 Chicken & 🐟 Fish' },
+                    { id: 'Sandwich', label: '🍔 Sandwiches' },
+                    { id: 'Side Orders', label: '🍟 Sides' },
+                    { id: 'Drinks', label: '🥤 Drinks' },
+                    { id: 'Wines', label: '🍷 Wines' }
                 ];
 
                 let filteredItems = items;
@@ -4870,7 +4890,7 @@
                     <div style="background:linear-gradient(135deg, #14532d 0%, #166534 100%); color:white; padding:18px 24px; border-radius:14px; margin-bottom:16px; box-shadow:0 6px 20px rgba(20,83,45,0.18); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
                         <div style="flex:1; min-width:280px;">
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <span style="font-size:20px;">ðŸ’¡</span>
+                                <span style="font-size:20px;">💡</span>
                                 <h3 style="margin:0; font-family:'Playfair Display',serif; color:#fef08a; font-size:18px;">Roland's Kitchen Bill of Materials (BOM)</h3>
                             </div>
                             <p style="margin:4px 0 0 0; font-size:13px; color:#dcfce7; line-height:1.4;">
@@ -4879,10 +4899,10 @@
                         </div>
                         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                             <button type="button" onclick="openPrepCalculatorModal()" style="background:#fef08a; color:#14532d; border:none; padding:10px 16px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
-                                ðŸ³ Prep Feasibility Calculator
+                                🍳 Prep Feasibility Calculator
                             </button>
                             <button type="button" onclick="applyOfficialMasterRecipesWithToast()" style="background:#22c55e; color:white; border:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
-                                âœ¨ Sync Official Recipes (Steak, Chicken, Fish)
+                                ✨ Sync Official Recipes (Steak, Chicken, Fish)
                             </button>
                         </div>
                     </div>
@@ -4891,8 +4911,8 @@
                     <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                             <div style="position:relative; flex:1; min-width:260px;">
-                                <input type="text" id="super-recipe-search-box" value="${rawSearchVal.replace(/"/g, '&quot;')}" oninput="filterSuperRecipeSearch(this.value)" placeholder="ðŸ” Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 34px 10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box; outline:none;">
-                                ${rawSearchVal ? `<span onclick="filterSuperRecipeSearch('')" title="Clear search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">âœ•</span>` : ''}
+                                <input type="text" id="super-recipe-search-box" value="${rawSearchVal.replace(/"/g, '&quot;')}" oninput="filterSuperRecipeSearch(this.value)" placeholder="🔍 Search dishes or ingredients (e.g. Tenderloin, Oyster Sauce, Ketchup, Tanigue)..." style="width:100%; padding:10px 34px 10px 14px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box; outline:none;">
+                                ${rawSearchVal ? `<span onclick="filterSuperRecipeSearch('')" title="Clear search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-weight:800; font-size:15px; line-height:1; user-select:none;">✕</span>` : ''}
                             </div>
                             <div style="font-size:12px; background:#f0fdf4; border:1px solid #bbf7d0; padding:6px 14px; border-radius:20px; color:#166534; font-weight:700;">
                                 Showing ${filteredItems.length} of ${items.length} Menu Items
@@ -4924,11 +4944,11 @@
                     const avail = window.InventorySystem ? window.InventorySystem.calculateFoodAvailability(item, rawCatalog) : { availablePortions: item.stock || 0 };
 
                     // Determine status pill
-                    let portionsBg = '#f0fdf4', portionsColor = '#166534', portionsBorder = '#bbf7d0', statusDot = 'ðŸŸ¢';
+                    let portionsBg = '#f0fdf4', portionsColor = '#166534', portionsBorder = '#bbf7d0', statusDot = '🟢';
                     if (avail.availablePortions <= 0) {
-                        portionsBg = '#fef2f2'; portionsColor = '#991b1b'; portionsBorder = '#fecaca'; statusDot = 'ðŸ”´';
+                        portionsBg = '#fef2f2'; portionsColor = '#991b1b'; portionsBorder = '#fecaca'; statusDot = '🔴';
                     } else if (avail.availablePortions <= 10) {
-                        portionsBg = '#fffbeb'; portionsColor = '#b45309'; portionsBorder = '#fde68a'; statusDot = 'ðŸŸ¡';
+                        portionsBg = '#fffbeb'; portionsColor = '#b45309'; portionsBorder = '#fde68a'; statusDot = '🟡';
                     }
 
                     return `
@@ -4937,7 +4957,7 @@
                                         <div style="display:flex; align-items:center; gap:8px;">
                                             <span style="font-weight:800; font-size:15px; color:#0f172a;">${item.title}</span>
                                             <span style="font-size:11px; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:12px; font-weight:600;">${item.category}</span>
-                                            <span style="font-size:12px; font-weight:700; color:#166534;">â‚±${Number(item.price || 0).toLocaleString()}</span>
+                                            <span style="font-size:12px; font-weight:700; color:#166534;">₱${Number(item.price || 0).toLocaleString()}</span>
                                         </div>
 
                                         <!-- Raw Recipe Ingredients Display -->
@@ -4948,44 +4968,44 @@
 
                         // Intelligent Visual Badges with Icons
                         let badgeStyle = 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;';
-                        let icon = 'ðŸ“¦';
+                        let icon = '📦';
 
                         if (name.includes('Tenderloin') || name.includes('Ribeye') || name.includes('T-Bone') || name.includes('Sirloin') || name.includes('Patty') || name.includes('Beef')) {
                             badgeStyle = 'background:#fef2f2; color:#991b1b; border:1px solid #fecaca;';
-                            icon = 'ðŸ¥©';
+                            icon = '🥩';
                         } else if (name.includes('Chicken')) {
                             badgeStyle = 'background:#fff7ed; color:#9a3412; border:1px solid #fed7aa;';
-                            icon = 'ðŸ—';
+                            icon = '🍗';
                         } else if (name.includes('Fish') || name.includes('Tanigue') || name.includes('Bangus')) {
                             badgeStyle = 'background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd;';
-                            icon = 'ðŸŸ';
+                            icon = '🐟';
                         } else if (name.includes('Salt & Pepper') || name.includes('Seasoning')) {
                             badgeStyle = 'background:#fefce8; color:#854d0e; border:1px solid #fef08a;';
-                            icon = 'ðŸ§‚';
+                            icon = '🧂';
                         } else if (name.includes('Margarine')) {
                             badgeStyle = 'background:#fffbeb; color:#b45309; border:1px solid #fde68a;';
-                            icon = 'ðŸ§ˆ';
+                            icon = '🧈';
                         } else if (name.includes('Oyster Sauce')) {
                             badgeStyle = 'background:#faf5ff; color:#6b21a8; border:1px solid #e9d5ff;';
-                            icon = 'ðŸ¶';
+                            icon = '🍶';
                         } else if (name.includes('Ketchup')) {
                             badgeStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5;';
-                            icon = 'ðŸ…';
+                            icon = '🍅';
                         } else if (name.includes('Butter')) {
                             badgeStyle = 'background:#fef9c3; color:#713f12; border:1px solid #fde047;';
-                            icon = 'ðŸ§ˆ';
+                            icon = '🧈';
                         } else if (name.includes('Toyo')) {
                             badgeStyle = 'background:#f8fafc; color:#1e293b; border:1px solid #cbd5e1;';
-                            icon = 'ðŸ¶';
+                            icon = '🍶';
                         } else if (name.includes('Kalamansi')) {
                             badgeStyle = 'background:#f0fdf4; color:#15803d; border:1px solid #86efac;';
-                            icon = 'ðŸ‹';
+                            icon = '🍋';
                         } else if (name.includes('Bun')) {
                             badgeStyle = 'background:#fefce8; color:#854d0e; border:1px solid #fef08a;';
-                            icon = 'ðŸ”';
+                            icon = '🍔';
                         } else if (name.includes('Potato')) {
                             badgeStyle = 'background:#fefce8; color:#854d0e; border:1px solid #fef08a;';
-                            icon = 'ðŸ¥”';
+                            icon = '🥔';
                         }
 
                         return `<span style="${badgeStyle} padding:3px 10px; border-radius:6px; font-weight:700; font-size:11.5px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
@@ -5008,11 +5028,11 @@
                                         </div>
                                         <div style="display:flex; flex-direction:column; gap:6px;">
                                             <button onclick="openRecipeEditorModal('${item.id}')" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(46,125,50,0.2);">
-                                                âœï¸ Edit Recipe
+                                                ✏️ Edit Recipe
                                             </button>
                                             ${window.InventorySystem && window.InventorySystem.DEFAULT_FOOD_RECIPES[item.id] ? `
                                                 <button onclick="resetSingleRecipeToDefault('${item.id}')" title="Reset this recipe to Roland's Standard BOM" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:4px 8px; border-radius:6px; font-size:10.5px; font-weight:600; cursor:pointer;">
-                                                    ðŸ”„ Reset to Std
+                                                    🔄 Reset to Std
                                                 </button>
                                             ` : ''}
                                         </div>
@@ -5047,7 +5067,7 @@
                     controls.classList.remove('hidden');
                 } else {
                     btn.classList.remove('bulk-mode-active');
-                    btn.textContent = 'âœï¸ Bulk Restock';
+                    btn.textContent = '✏️ Bulk Restock';
                     controls.classList.add('hidden');
                 }
                 renderInventory();
@@ -5153,7 +5173,7 @@
                     window.dispatchEvent(new Event('storage'));
                     window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
                     await superModal({
-                        title: 'Bulk Update Success! ðŸš€',
+                        title: 'Bulk Update Success! 🚀',
                         message: 'All inventory changes have been saved across the system.'
                     });
                 }
@@ -5291,9 +5311,9 @@
 
                     const imgHtml = item.image
                         ? `<img src="${item.image}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:10px; border:1px solid #e2e8f0;">`
-                        : `<div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-right:10px; border:1px solid #e2e8f0; font-size:12px; color:#94a3b8;">ðŸ´</div>`;
+                        : `<div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-right:10px; border:1px solid #e2e8f0; font-size:12px; color:#94a3b8;">🍴</div>`;
 
-                    const priceDisplay = item.price !== undefined && item.price !== null ? 'â‚±' + item.price.toLocaleString() : '<span style="color:#94a3b8; font-size:11px;">Default</span>';
+                    const priceDisplay = item.price !== undefined && item.price !== null ? '₱' + item.price.toLocaleString() : '<span style="color:#94a3b8; font-size:11px;">Default</span>';
 
                     if (isBulkEditMode) {
                         tr.innerHTML = `
@@ -5314,7 +5334,7 @@
                             <td style="font-weight:600; color:#1b5e20;">${priceDisplay}</td>
                             <td>
                                 ${total}
-                                <button class="stock-adjust-btn" title="Remove Portions" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;" onclick="window.promptRemoveMenuPortions('${item.id}', 'Manager')">âˆ’</button>
+                                <button class="stock-adjust-btn" title="Remove Portions" style="background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;" onclick="window.promptRemoveMenuPortions('${item.id}', 'Manager')">−</button>
                             </td>
                             <td style="color:#16a34a;">
                                 +${add}
@@ -5328,7 +5348,7 @@
                             <td>
                                 <div style="display:flex; gap:4px; flex-wrap:wrap;">
                                     <button type="button" onclick="window.toggleItemManualAvailability('${item.id}', 'Manager')" style="padding:4px 8px; font-size:11px; font-weight:800; border-radius:6px; cursor:pointer; border:1px solid ${isManualOff ? '#86efac' : '#fca5a5'}; background:${isManualOff ? '#f0fdf4' : '#fef2f2'}; color:${isManualOff ? '#166534' : '#dc2626'};">
-                                        ${isManualOff ? 'ðŸŸ¢ Set Available' : 'ðŸš« Set Unavailable'}
+                                        ${isManualOff ? '🟢 Set Available' : '🚫 Set Unavailable'}
                                     </button>
                                     <button type="button" class="secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openInventoryModal('${item.id}')">Edit</button>
                                     <button type="button" class="danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteInventoryItem('${item.id}')">Delete</button>
@@ -5551,14 +5571,14 @@
                 window.dispatchEvent(new CustomEvent('inventoryUpdated', { detail: items }));
 
                 await superModal({
-                    title: id ? 'Item Updated! âœ¨' : 'Item Added! ðŸŽ‰',
+                    title: id ? 'Item Updated! ✨' : 'Item Added! 🎉',
                     message: `${title} has been successfully ${id ? 'updated' : 'added to the inventory'}${syncPhotoBranches ? ' and its picture is synced across branches with the same item/ID.' : '.'}`
                 });
             };
 
             window.deleteInventoryItem = async function (id) {
                 const confirm = await superModal({
-                    title: 'Delete Item? ðŸ—‘ï¸',
+                    title: 'Delete Item? 🗑️',
                     message: 'Are you sure you want to delete this item permanently? This action cannot be undone.',
                     type: 'confirm',
                     confirmText: 'Delete Permanently',
@@ -5617,7 +5637,7 @@
                     parseOCRResults(text);
                 } catch (e) {
                     console.error(e);
-                    superModal({ title: 'OCR Error ðŸ¤–', message: 'Failed to process image: ' + e.message });
+                    superModal({ title: 'OCR Error 🤖', message: 'Failed to process image: ' + e.message });
                     closeOCRModal();
                 }
             };
@@ -5685,15 +5705,15 @@
                 renderInventory();
                 closeOCRModal();
                 superModal({
-                    title: 'Import Successful! ðŸ“¦',
+                    title: 'Import Successful! 📦',
                     message: `Successfully synchronized ${items.length} items.`
                 });
             };
 
-            // â”€â”€ COMPREHENSIVE MULTI-SHEET INVENTORY & ASSET REPORT â”€â”€
+            // ── COMPREHENSIVE MULTI-SHEET INVENTORY & ASSET REPORT ──
             window.exportInventoryReport = async function () {
                 const confirm = await superModal({
-                    title: 'Generate Detailed Inventory Audit Report? ðŸ“Š',
+                    title: 'Generate Detailed Inventory Audit Report? 📊',
                     message: 'Export comprehensive Excel workbook including Menu Portions, Raw Stock Asset Valuation, Supplier Catalogs, and Safety Reorder Alerts?',
                     type: 'confirm',
                     confirmText: 'Download Excel Report',
@@ -5704,7 +5724,7 @@
                 const items = getInventory();
                 const rawCatalog = window.InventorySystem ? window.InventorySystem.getRawIngredients() : [];
 
-                // â”€â”€ SHEET 1: MENU DISHES & REAL-TIME PORTIONS â”€â”€
+                // ── SHEET 1: MENU DISHES & REAL-TIME PORTIONS ──
                 const wsFoodData = [
                     ["Item ID", "Dish Title", "Category", "Menu Price (PHP)", "Kitchen Available Portions", "Manual Availability", "Opening Portions", "Added (+)", "Sold (-)", "Net Stock EOD", "Required Raw Ingredients (BOM)", "Stock Bottlenecks / Missing", "Operational Status"]
                 ];
@@ -5735,7 +5755,7 @@
                     ]);
                 });
 
-                // â”€â”€ SHEET 2: DETAILED RAW INGREDIENTS ASSET VALUATION â”€â”€
+                // ── SHEET 2: DETAILED RAW INGREDIENTS ASSET VALUATION ──
                 const wsRawData = [
                     ["Ingredient ID", "Ingredient Name", "Category", "Current Stock", "Unit", "Safety Threshold", "Unit Cost (PHP)", "Total Asset Valuation (PHP)", "Preferred Supplier", "Stock Health", "Reorder Deficit", "Last Restocked"]
                 ];
@@ -5790,7 +5810,7 @@
 
                 const dateStr = new Date().toISOString().slice(0, 10);
                 XLSX.writeFile(wb, `Rolands_Enterprise_Inventory_${dateStr}.xlsx`);
-                if (window.showToast) window.showToast('Inventory Report Downloaded! ðŸ“Š', 'success');
+                if (window.showToast) window.showToast('Inventory Report Downloaded! 📊', 'success');
             };
 
             renderInventory();
@@ -5903,7 +5923,7 @@
             }
 
 
-            // â”€â”€ EXPORT CSV LOGIC WITH DATE TIMEFRAME OPTIONS & QUOTED ESCAPED FIELDS â”€â”€
+            // ── EXPORT CSV LOGIC WITH DATE TIMEFRAME OPTIONS & QUOTED ESCAPED FIELDS ──
             window.openExportCsvModal = function () {
                 const modal = document.getElementById('export-csv-modal');
                 if (!modal) return;
@@ -5920,7 +5940,7 @@
                 document.getElementById('export-csv-modal')?.classList.add('hidden');
             };
 
-            // â”€â”€ COMPREHENSIVE MULTI-SHEET REVENUE, TRANSACTIONS & SALES PERFORMANCE â”€â”€
+            // ── COMPREHENSIVE MULTI-SHEET REVENUE, TRANSACTIONS & SALES PERFORMANCE ──
             window.generateAndDownloadCsvReport = function (forcedTimeframe, forcedFormat) {
                 try {
                     const selectedTimeframe = forcedTimeframe || document.querySelector('input[name="csv-timeframe"]:checked')?.value || 'all';
@@ -5945,7 +5965,7 @@
                         return true;
                     });
 
-                    // â”€â”€ SHEET 1: ITEMIZED ORDERS & TRANSACTIONS â”€â”€
+                    // ── SHEET 1: ITEMIZED ORDERS & TRANSACTIONS ──
                     const txHeaders = [
                         'Order #', 'Branch', 'Type', 'Arrival Schedule', 'Customer Name', 'Table',
                         'Items Ordered', 'Gross Amount (PHP)', '12% VAT Included (PHP)', 'Net of VAT (PHP)',
@@ -5959,7 +5979,7 @@
                     filteredRecords.forEach(r => {
                         const amt = Number(r.paymentAmount || 0);
                         const isPaid = (r.paymentStatus === 'paid' || r.paymentStatus === 'verified' || r.paymentStatus === 'walk-in');
-                        const isVipOrder = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-');
+                        const isVipOrder = window.isSuperAdminVipRecord(r);
                         const isFixedDeposit = amt === 200 || (isVipOrder && amt === 1000 && (!r.foods || r.foods.length === 0));
 
                         let vatable = 0, vatAmt = 0;
@@ -5990,7 +6010,7 @@
                             (r.reservationType || 'standard').toUpperCase(),
                             r.arrivalDateTimeDisplay || `${r.arrivalDate} ${r.arrivalTime || ''}`,
                             r.customerName || 'Guest',
-                            r.bookedTable || 'â€”',
+                            r.bookedTable || '—',
                             foods.join('; ') || 'Reservation Deposit Only',
                             amt.toFixed(2),
                             vatAmt.toFixed(2),
@@ -6005,7 +6025,7 @@
                         ]);
                     });
 
-                    // â”€â”€ SHEET 2: DISH ITEM PERFORMANCE & COGS â”€â”€
+                    // ── SHEET 2: DISH ITEM PERFORMANCE & COGS ──
                     const itemHeaders = ['Item Dish Name', 'Category', 'Quantity Sold', 'Menu Price (PHP)', 'Gross Sales (PHP)', 'Unit Recipe COGS (PHP)', 'Total COGS (PHP)', 'Net Gross Profit (PHP)', 'Profit Margin %'];
                     const itemRows = [itemHeaders];
                     const invList = getInventory();
@@ -6033,15 +6053,15 @@
                         ]);
                     });
 
-                    // â”€â”€ SHEET 3: EXECUTIVE REVENUE SUMMARY â”€â”€
+                    // ── SHEET 3: EXECUTIVE REVENUE SUMMARY ──
                     const summaryRows = [
                         ['EXECUTIVE REVENUE SUMMARY METRIC', 'VALUE (PHP)'],
-                        ['Total Gross Sales', `â‚±${totalGross.toFixed(2)}`],
-                        ['Total Customer Refunds Processed', `-â‚±${totalRefunds.toFixed(2)}`],
-                        ['Net Realized Revenue', `â‚±${(totalGross - totalRefunds).toFixed(2)}`],
-                        ['Estimated 12% VAT Remitted', `â‚±${totalVat.toFixed(2)}`],
+                        ['Total Gross Sales', `₱${totalGross.toFixed(2)}`],
+                        ['Total Customer Refunds Processed', `-₱${totalRefunds.toFixed(2)}`],
+                        ['Net Realized Revenue', `₱${(totalGross - totalRefunds).toFixed(2)}`],
+                        ['Estimated 12% VAT Remitted', `₱${totalVat.toFixed(2)}`],
                         ['Total Completed/Recorded Transactions', filteredRecords.length],
-                        ['Average Transaction Value (AOV)', `â‚±${filteredRecords.length ? (totalGross / filteredRecords.length).toFixed(2) : '0.00'}`]
+                        ['Average Transaction Value (AOV)', `₱${filteredRecords.length ? (totalGross / filteredRecords.length).toFixed(2) : '0.00'}`]
                     ];
 
                     if (selectedFormat === 'xlsx' && typeof XLSX !== 'undefined') {
@@ -6083,7 +6103,7 @@
             }
 
 
-            // â”€â”€ REVENUE TAB WITH DATE & CUSTOM RANGE FILTERS â”€â”€
+            // ── REVENUE TAB WITH DATE & CUSTOM RANGE FILTERS ──
             let revenueChart = null;
             window.currentRevDateFilter = window.currentRevDateFilter || 'all';
             window.revCustomStart = window.revCustomStart || null;
@@ -6163,17 +6183,17 @@
                 const validPaidOrders = hist.filter(r => getTrueAmount(r) > 0);
                 const avg = validPaidOrders.length ? (totalRev / validPaidOrders.length) : 0;
 
-                document.getElementById('rev-total').textContent = 'â‚±' + totalRev.toLocaleString();
-                document.getElementById('rev-pos').textContent = 'â‚±' + posRev.toLocaleString();
-                document.getElementById('rev-priority').textContent = 'â‚±' + priorityRev.toLocaleString();
-                document.getElementById('rev-avg').textContent = 'â‚±' + Math.round(avg).toLocaleString();
+                document.getElementById('rev-total').textContent = '₱' + totalRev.toLocaleString();
+                document.getElementById('rev-pos').textContent = '₱' + posRev.toLocaleString();
+                document.getElementById('rev-priority').textContent = '₱' + priorityRev.toLocaleString();
+                document.getElementById('rev-avg').textContent = '₱' + Math.round(avg).toLocaleString();
 
                 const discountedOrders = hist.filter(r => (r.discountType && r.discountType !== 'none') || Number(r.discountAmount) > 0);
                 const totalDiscGiven = discountedOrders.reduce((s, r) => s + (Number(r.discountAmount) || 0), 0);
                 const revTrendEl = document.getElementById('rev-trend');
                 if (revTrendEl) {
                     revTrendEl.innerHTML = discountedOrders.length > 0
-                        ? `<span style="font-size:11px; color:#c2410c; background:#ffedd5; padding:2px 8px; border-radius:10px; font-weight:800;">ðŸ·ï¸ Includes ${discountedOrders.length} Discounted Order(s) (-â‚±${totalDiscGiven.toLocaleString()})</span>`
+                        ? `<span style="font-size:11px; color:#c2410c; background:#ffedd5; padding:2px 8px; border-radius:10px; font-weight:800;">🏷️ Includes ${discountedOrders.length} Discounted Order(s) (-₱${totalDiscGiven.toLocaleString()})</span>`
                         : `<span style="font-size:11px; color:#64748b;">Net realized revenue</span>`;
                 }
 
@@ -6208,8 +6228,8 @@
                     if (revenueChart) revenueChart.destroy();
                     revenueChart = new Chart(ctx.getContext('2d'), {
                         type: 'bar',
-                        data: { labels, datasets: [{ label: 'Revenue (â‚±)', data: vals, backgroundColor: 'rgba(46,125,50,0.2)', borderColor: '#2e7d32', borderWidth: 2, borderRadius: 8 }] },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a' } }, y: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a', callback: v => 'â‚±' + v.toLocaleString() }, beginAtZero: true } } }
+                        data: { labels, datasets: [{ label: 'Revenue (₱)', data: vals, backgroundColor: 'rgba(46,125,50,0.2)', borderColor: '#2e7d32', borderWidth: 2, borderRadius: 8 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a' } }, y: { grid: { color: 'rgba(212,232,212,0.5)' }, ticks: { color: '#5a7a5a', callback: v => '₱' + v.toLocaleString() }, beginAtZero: true } } }
                     });
                 }
 
@@ -6226,7 +6246,7 @@
                 const sorted = Object.entries(itemCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
                 const el = document.getElementById('top-items-list');
                 if (el) {
-                    const medals = ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰', '4ï¸âƒ£', '5ï¸âƒ£'];
+                    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
                     el.innerHTML = sorted.length ? sorted.map((e, i) =>
                         `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${e[0]}</span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${e[1]}x</span></div>`
                     ).join('') : '<div class="muted" style="padding:20px; text-align:center;">No item data for this period.</div>';
@@ -6247,16 +6267,16 @@
                     .slice(0, 5);
                 const tel = document.getElementById('top-tables-list');
                 if (tel) {
-                    const medals = ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰', '4ï¸âƒ£', '5ï¸âƒ£'];
+                    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
                     tel.innerHTML = tableSorted.length ? tableSorted.map((e, i) => {
                         const name = e[0];
                         const { count, revenue } = e[1];
-                        return `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${name}<div class="top-item-sub" style="font-size:11px; color:#64748b; font-weight:normal;">â‚±${Math.round(revenue).toLocaleString()} generated</div></span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${count} orders</span></div>`;
+                        return `<div class="top-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;"><span style="display:flex; gap:8px; align-items:center;"><span class="top-item-rank">${medals[i]}</span><span class="top-item-name" style="font-weight:600; color:#1e293b;">${name}<div class="top-item-sub" style="font-size:11px; color:#64748b; font-weight:normal;">₱${Math.round(revenue).toLocaleString()} generated</div></span></span><span class="top-item-count" style="font-weight:800; color:#166534; background:#dcfce7; padding:2px 8px; border-radius:12px; font-size:11px;">${count} orders</span></div>`;
                     }).join('') : '<div class="muted" style="padding:20px; text-align:center;">No table data for this period.</div>';
                 }
             };
 
-            // â”€â”€ LIVE ACTIVITY FEED â”€â”€
+            // ── LIVE ACTIVITY FEED ──
             window.currentActivityFilter = 'all';
             window.currentActivityLimit = 30;
             window.__cloudActivityLog = window.__cloudActivityLog || [];
@@ -6326,7 +6346,7 @@
                 }
 
                 el.innerHTML = recent.map(r => {
-                    const eventIcon = escActivityHtml(r.icon || 'ðŸ†•');
+                    const eventIcon = escActivityHtml(r.icon || '🆕');
                     const eventLabel = escActivityHtml(r.label || 'Activity');
                     const eventColor = /^#[0-9a-f]{3,8}$/i.test(String(r.color || '')) ? r.color : '#3b82f6';
                     const timeAgo = typeof window.formatActivityTimeAgo === 'function'
@@ -6346,8 +6366,8 @@
                         typeTag = `<span style="background:#dbeafe; color:#1e3a8a; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">WI</span>`;
                     } else if (feedResNum.startsWith('POS-')) {
                         typeTag = `<span style="background:#e0e7ff; color:#3730a3; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">POS</span>`;
-                    } else if (feedResNum.startsWith('VIP-') || feedResType === 'vip' || /vip\s*room/i.test(String(r.bookedTable || ''))) {
-                        typeTag = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">ðŸ‘‘ VIP</span>`;
+                    } else if (window.isSuperAdminVipRecord(r)) {
+                        typeTag = `<span style="background:#fae8ff; color:#7e22ce; border:1px solid #e9d5ff; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">👑 VIP</span>`;
                     } else if (feedResType === 'priority') {
                         typeTag = `<span style="background:#fef3c7; color:#92400e; font-size:10px; font-weight:800; padding:3px 8px; border-radius:12px; letter-spacing:0.5px;">PRIO</span>`;
                     } else {
@@ -6358,9 +6378,9 @@
                         ? window.formatActivityTableLabel(r.bookedTable)
                         : (r.bookedTable || 'No Table');
                     const branchBadge = activeBranch === 'ALL'
-                        ? `<span style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px;">ðŸ“ ${escActivityHtml(r.branch || 'General Santos City')}</span>`
+                        ? `<span style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px;">📍 ${escActivityHtml(r.branch || 'General Santos City')}</span>`
                         : '';
-                    const actorNote = r.actor ? ` Â· by ${escActivityHtml(r.actor)}` : '';
+                    const actorNote = r.actor ? ` · by ${escActivityHtml(r.actor)}` : '';
 
                     return `<div class="activity-item" style="border-left: 4px solid ${eventColor}; margin-bottom: 12px; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                         <div style="flex:1; min-width:0;">
@@ -6368,12 +6388,12 @@
                                 <strong style="font-size:14px; color: #0f172a;">${escActivityHtml(r.customerName || 'Walk-in Guest')}</strong>
                                 ${typeTag}
                                 ${branchBadge}
-                                <span style="font-size:11px; color:#64748b; font-weight: 600;">${escActivityHtml(tableText)}${feedResNum ? ' Â· ' + escActivityHtml(feedResNum) : ''}</span>
+                                <span style="font-size:11px; color:#64748b; font-weight: 600;">${escActivityHtml(tableText)}${feedResNum ? ' · ' + escActivityHtml(feedResNum) : ''}</span>
                             </div>
                             <div style="font-size:12px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escActivityHtml(foodsText)}</div>
                         </div>
                         <div style="text-align:right; flex-shrink:0;">
-                            <div style="font-size:13px; font-weight:800; color:#1e293b;">â‚±${Number(r.paymentAmount || 0).toLocaleString()}</div>
+                            <div style="font-size:13px; font-weight:800; color:#1e293b;">₱${Number(r.paymentAmount || 0).toLocaleString()}</div>
                             <div style="font-size:12px; color:${eventColor}; margin-top:4px; font-weight: 700;">${eventIcon} ${eventLabel}</div>
                             <div style="font-size:10px; color:#94a3b8; margin-top:4px; font-weight: 600;">${escActivityHtml(timeAgo)}${actorNote}</div>
                         </div>
@@ -6381,7 +6401,7 @@
                 }).join('');
             };
 
-            // ðŸ‘‰ FIX: Added a "lock" to prevent infinite polling loops that cause table flickering and network flooding!
+            // 👉 FIX: Added a "lock" to prevent infinite polling loops that cause table flickering and network flooding!
             if (!window.superAdminPollingActive) {
                 window.superAdminPollingActive = true;
 
@@ -6462,7 +6482,7 @@
             });
         }
 
-        // ðŸ‘‰ ENHANCED PROOF VIEWER ALIASES (Shows both Payment Picture & Discount ID/Voucher Picture side-by-side)
+        // 👉 ENHANCED PROOF VIEWER ALIASES (Shows both Payment Picture & Discount ID/Voucher Picture side-by-side)
         window.viewProof = function (resNum) {
             if (typeof window.openProofByResNum === 'function') {
                 return window.openProofByResNum(resNum);
@@ -6472,7 +6492,7 @@
 
         initAuth();
 
-        // â”€â”€ DESIGN SYSTEM ASSETS LOADED â”€â”€
+        // ── DESIGN SYSTEM ASSETS LOADED ──
     </script>
 
     <!-- RECIPE EDITOR MODAL -->
@@ -6491,7 +6511,7 @@
                         ingredients per serving</span>
                 </div>
                 <button onclick="closeRecipeEditorModal()"
-                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">âœ•</button>
+                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">✕</button>
             </div>
             <!-- Body -->
             <div style="padding:24px; overflow-y:auto; flex:1;">
@@ -6508,9 +6528,9 @@
                     <div style="margin-bottom:14px; display:flex; flex-direction:column; gap:8px;">
                         <div
                             style="font-size:11px; font-weight:bold; color:#15803d; text-transform:uppercase; letter-spacing:0.5px;">
-                            âš¡ 1-Click Recipe Presets:</div>
+                            ⚡ 1-Click Recipe Presets:</div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:11px; font-weight:700; color:#475569;">ðŸ¥© Steaks:</span>
+                            <span style="font-size:11px; font-weight:700; color:#475569;">🥩 Steaks:</span>
                             <button type="button" onclick="applyQuickRecipePreset('beef200')"
                                 style="padding:4px 8px; border-radius:4px; border:1px solid #bbf7d0; background:white; color:#166534; font-size:11px; font-weight:bold; cursor:pointer;">+
                                 200g Tenderloin</button>
@@ -6537,7 +6557,7 @@
                                 30ml Oyster Sauce</button>
                         </div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:11px; font-weight:700; color:#475569;">ðŸ— Chicken:</span>
+                            <span style="font-size:11px; font-weight:700; color:#475569;">🍗 Chicken:</span>
                             <button type="button" onclick="applyQuickRecipePreset('chicken1')"
                                 style="padding:4px 8px; border-radius:4px; border:1px solid #fed7aa; background:#fff7ed; color:#9a3412; font-size:11px; font-weight:bold; cursor:pointer;">+
                                 1 Whole Chicken</button>
@@ -6552,7 +6572,7 @@
                                 20g Butter</button>
                         </div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:11px; font-weight:700; color:#475569;">ðŸŸ Fish:</span>
+                            <span style="font-size:11px; font-weight:700; color:#475569;">🐟 Fish:</span>
                             <button type="button" onclick="applyQuickRecipePreset('tanigue250')"
                                 style="padding:4px 8px; border-radius:4px; border:1px solid #bae6fd; background:#f0f9ff; color:#0369a1; font-size:11px; font-weight:bold; cursor:pointer;">+
                                 250g Tanigue</button>
@@ -6567,7 +6587,7 @@
                                 20ml Kalamansi</button>
                         </div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                            <span style="font-size:11px; font-weight:700; color:#475569;">ðŸŸ Sides & Buns:</span>
+                            <span style="font-size:11px; font-weight:700; color:#475569;">🍟 Sides & Buns:</span>
                             <button type="button" onclick="applyQuickRecipePreset('bun1')"
                                 style="padding:4px 8px; border-radius:4px; border:1px solid #cbd5e1; background:white; color:#334155; font-size:11px; font-weight:bold; cursor:pointer;">+
                                 1 Burger Bun</button>
@@ -6602,7 +6622,7 @@
                 <button type="button" onclick="closeRecipeEditorModal()"
                     style="padding:10px 20px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#334155; font-weight:700; cursor:pointer;">Cancel</button>
                 <button type="button" onclick="saveCurrentRecipeModal()"
-                    style="padding:10px 24px; border-radius:8px; border:none; background:#2e7d32; color:white; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(46,125,50,0.25);">ðŸ’¾
+                    style="padding:10px 24px; border-radius:8px; border:none; background:#2e7d32; color:white; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(46,125,50,0.25);">💾
                     Save Recipe</button>
             </div>
         </div>
@@ -6619,13 +6639,13 @@
                 <div>
                     <h3
                         style="margin:0; font-family:'Playfair Display',serif; color:#166534; font-size:20px; display:flex; align-items:center; gap:8px;">
-                        <span>ðŸ³</span> Kitchen Shift Prep & Feasibility Calculator
+                        <span>🍳</span> Kitchen Shift Prep & Feasibility Calculator
                     </h3>
                     <span style="font-size:13px; color:#475569;">Simulate expected dinner/lunch portions and verify raw
                         meat cuts, seasonings, and sauces in real time.</span>
                 </div>
                 <button onclick="closePrepCalculatorModal()"
-                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">âœ•</button>
+                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">✕</button>
             </div>
             <!-- Body -->
             <div style="padding:20px 24px; overflow-y:auto; flex:1; display:flex; gap:20px; flex-wrap:wrap;">
@@ -6637,7 +6657,7 @@
                             Target Portions for Shift:</h4>
                         <button type="button" onclick="loadSamplePrepPlan()"
                             style="background:#e0f2fe; color:#0369a1; border:none; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">
-                            âš¡ Busy Shift Preset
+                            ⚡ Busy Shift Preset
                         </button>
                     </div>
                     <div id="prep-dish-inputs"
@@ -6758,10 +6778,10 @@
             style="background:white; border-radius:20px; width:95%; max-width:500px; padding:24px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">
             <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
-                <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">â¬‡ï¸ Export
+                <h3 style="margin:0; font-family:'Playfair Display',serif; color:#1b5e20; font-size:20px;">⬇️ Export
                     Transactions Report</h3>
                 <button onclick="closeExportCsvModal()"
-                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">âœ•</button>
+                    style="background:none; border:none; color:#64748b; cursor:pointer; font-size:22px; font-weight:bold;">✕</button>
             </div>
 
             <div style="margin-bottom:16px;">
@@ -6771,13 +6791,13 @@
                     <label
                         style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#f0fdf4; border:2px solid #86efac; border-radius:10px; cursor:pointer; font-weight:bold; font-size:13px; color:#166534;">
                         <input type="radio" name="export-format" value="xlsx" checked style="accent-color:#166534;">
-                        ðŸ“Š Excel (.xlsx)<br><span style="font-size:10px; font-weight:normal; color:#15803d;">Auto-fitted
+                        📊 Excel (.xlsx)<br><span style="font-size:10px; font-weight:normal; color:#15803d;">Auto-fitted
                             columns</span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; cursor:pointer; font-weight:bold; font-size:13px; color:#334155;">
                         <input type="radio" name="export-format" value="csv" style="accent-color:#1b5e20;">
-                        ðŸ“„ CSV (.csv)<br><span style="font-size:10px; font-weight:normal; color:#64748b;">Plain
+                        📄 CSV (.csv)<br><span style="font-size:10px; font-weight:normal; color:#64748b;">Plain
                             Text</span>
                     </label>
                 </div>
@@ -6789,27 +6809,27 @@
                 <label
                     style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; color:#1e293b;">
                     <input type="radio" name="csv-timeframe" value="all" checked style="accent-color:#1b5e20;">
-                    ðŸŒ All Time (All Records)
+                    🌐 All Time (All Records)
                 </label>
                 <label
                     style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; color:#1e293b;">
                     <input type="radio" name="csv-timeframe" value="day" style="accent-color:#1b5e20;">
-                    ðŸ“… Today Only
+                    📅 Today Only
                 </label>
                 <label
                     style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; color:#1e293b;">
                     <input type="radio" name="csv-timeframe" value="week" style="accent-color:#1b5e20;">
-                    ðŸ“† This Week (Last 7 Days)
+                    📆 This Week (Last 7 Days)
                 </label>
                 <label
                     style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; color:#1e293b;">
                     <input type="radio" name="csv-timeframe" value="month" style="accent-color:#1b5e20;">
-                    ðŸ—“ï¸ This Month
+                    🗓️ This Month
                 </label>
                 <label
                     style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; color:#1e293b;">
                     <input type="radio" name="csv-timeframe" value="year" style="accent-color:#1b5e20;">
-                    ðŸ›ï¸ This Year
+                    🏛️ This Year
                 </label>
             </div>
 
@@ -6817,7 +6837,7 @@
                 <button type="button" onclick="closeExportCsvModal()"
                     style="padding:10px 18px; border-radius:8px; border:1px solid #cbd5e1; background:white; color:#334155; cursor:pointer; font-weight:600;">Cancel</button>
                 <button type="button" onclick="generateAndDownloadCsvReport()"
-                    style="padding:10px 22px; border-radius:8px; border:none; background:#1b5e20; color:white; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">â¬‡ï¸
+                    style="padding:10px 22px; border-radius:8px; border:none; background:#1b5e20; color:white; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(27,94,32,0.25);">⬇️
                     Download Report</button>
             </div>
         </div>
@@ -6866,21 +6886,21 @@
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
                         <div style="flex:1;">
                             <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                                <span style="font-size:16px;">ðŸš¨</span>
+                                <span style="font-size:16px;">🚨</span>
                                 <span style="font-size:11px; font-weight:900; color:#dc2626; text-transform:uppercase; letter-spacing:0.8px;">Customer Self-Cancellation</span>
                                 <span style="font-size:10px; background:#fee2e2; color:#991b1b; padding:1px 6px; border-radius:4px; font-weight:700;">Live</span>
                             </div>
                             <div style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:3px;">
-                                ${payload.customerName || 'Guest'} Â· <span style="color:#64748b;">#${payload.reservationNumber}</span>
+                                ${payload.customerName || 'Guest'} · <span style="color:#64748b;">#${payload.reservationNumber}</span>
                             </div>
                             <div style="font-size:12px; color:#334155; margin-bottom:4px;">
-                                ðŸª‘ Table <strong>${payload.bookedTable || 'Assigned'}</strong> is released to ðŸŸ¢ Available.
+                                🪑 Table <strong>${payload.bookedTable || 'Assigned'}</strong> is released to 🟢 Available.
                             </div>
                             ${foodsSummary ? `
                                 <div style="font-size:11.5px; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:5px 8px; border-radius:6px; font-weight:700; margin-top:6px;">
-                                    ðŸ² Food: ${foodsSummary}
+                                    🍲 Food: ${foodsSummary}
                                     <div style="font-size:10.5px; font-weight:600; color:#15803d; margin-top:2px;">
-                                        ${payload.stockAction === 'restored_to_stock' ? 'âœ… Raw ingredients restored to warehouse inventory' : 'âš ï¸ Food prep halted (Kitchen notified)'}
+                                        ${payload.stockAction === 'restored_to_stock' ? '✅ Raw ingredients restored to warehouse inventory' : '⚠️ Food prep halted (Kitchen notified)'}
                                     </div>
                                 </div>
                             ` : ''}
@@ -6888,7 +6908,7 @@
                                 Reason: "${payload.reason || 'Customer request'}"
                             </div>
                         </div>
-                        <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; font-weight:bold; padding:0 4px;">âœ•</button>
+                        <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; font-weight:bold; padding:0 4px;">✕</button>
                     </div>
                 `;
 
@@ -7070,7 +7090,7 @@
         })();
     </script>
 
-    <!-- ðŸ§¾ UNIVERSAL E-RECEIPT PROOF, 12% VAT & MANAGER-STYLE ANIMATED MODAL -->
+    <!-- 🧾 UNIVERSAL E-RECEIPT PROOF, 12% VAT & MANAGER-STYLE ANIMATED MODAL -->
     <style>
         @keyframes rshModalBackdropFade {
             from {
@@ -7183,7 +7203,7 @@
 
     <script>
         (function initUniversalProofAndReceiptEngine() {
-            // 1. Universal E-Receipt Proof Image Generator (No VAT on â‚±200 Standard Fee, 12% VAT on Food Orders)
+            // 1. Universal E-Receipt Proof Image Generator (No VAT on ₱200 Standard Fee, 12% VAT on Food Orders)
             window.generateAdminEReceiptProof = function (r) {
                 if (!r) return '';
                 try {
@@ -7319,7 +7339,7 @@
                     ctx.fillText(line, 76, y);
 
                     const totalAmt = Number(r.paymentAmount || 0);
-                    const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                    const isVipProof = window.isSuperAdminVipRecord(r);
                     const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
 
                     ctx.strokeStyle = '#cbd5e1';
@@ -7343,8 +7363,8 @@
                         ctx.fillText('VAT (12% Incl.):', 76, 592);
 
                         ctx.textAlign = 'right';
-                        ctx.fillText('â‚±' + vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 570);
-                        ctx.fillText('â‚±' + vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 592);
+                        ctx.fillText('₱' + vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 570);
+                        ctx.fillText('₱' + vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 592);
                     }
 
                     ctx.strokeStyle = '#e2e8f0';
@@ -7359,12 +7379,12 @@
                     ctx.fillText('Total Paid', 76, 638);
 
                     ctx.textAlign = 'right';
-                    ctx.fillText('â‚±' + totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 638);
+                    ctx.fillText('₱' + totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 484, 638);
 
                     ctx.textAlign = 'center';
                     ctx.fillStyle = '#64748b';
                     ctx.font = '11.5px Arial, sans-serif';
-                    ctx.fillText("Roland's Steakhouse â€¢ Official Proof of Receipt", 280, 702);
+                    ctx.fillText("Roland's Steakhouse • Official Proof of Receipt", 280, 702);
 
                     return canvas.toDataURL('image/png');
                 } catch (e) {
@@ -7414,7 +7434,7 @@
                 if (modal.parentElement !== document.body) {
                     document.body.appendChild(modal);
                 }
-                // ðŸ‘‰ Force it visible regardless of class state
+                // 👉 Force it visible regardless of class state
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
                 modal.style.zIndex = '99999';
@@ -7423,7 +7443,7 @@
                 const resNum = r.reservationNumber || 'N/A';
                 const ref = r.paymentRef || (`E-RECEIPT-${resNum}`);
                 const totalAmt = Number(r.paymentAmount || 0);
-                const isVipProof = String(r.reservationType || '').toLowerCase() === 'vip' || String(r.reservationNumber || '').startsWith('VIP-') || r.bookedTable === 'VIP Room';
+                const isVipProof = window.isSuperAdminVipRecord(r);
                 const isStandardFixedFee = ((!Array.isArray(r.foods) || r.foods.length === 0) && (String(r.reservationType || '').toLowerCase() === 'standard' || isVipProof)) || totalAmt === 200 || (isVipProof && totalAmt === 1000);
                 const vatable = totalAmt / 1.12;
                 const vat = totalAmt - vatable;
@@ -7436,13 +7456,13 @@
                 const hasBothProofs = Boolean(pProof && dProof);
 
                 const discountRowHtml = ((dType && dType !== 'none') || dAmt > 0 || dProof)
-                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#c2410c; font-weight:700;">ðŸ·ï¸ Discount Applied</td><td style="font-weight:800; color:#c2410c;">${dLabel}${dAmt > 0 ? ' (-â‚±' + dAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ')' : ''}</td></tr>`
+                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#c2410c; font-weight:700;">🏷️ Discount Applied</td><td style="font-weight:800; color:#c2410c;">${dLabel}${dAmt > 0 ? ' (-₱' + dAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ')' : ''}</td></tr>`
                     : '';
 
                 const taxRowsHtml = isStandardFixedFee
-                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">ðŸ“Œ Fee Type</td><td style="font-weight:700; color:#475569;">Fixed Reservation Fee (No VAT)</td></tr>`
-                    : `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">ðŸ“Š Vatable Sales</td><td style="font-weight:600; color:#334155;">â‚±${vatable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-                       <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">ðŸ›ï¸ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">â‚±${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>`;
+                    ? `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📌 Fee Type</td><td style="font-weight:700; color:#475569;">Fixed Reservation Fee (No VAT)</td></tr>`
+                    : `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">📊 Vatable Sales</td><td style="font-weight:600; color:#334155;">₱${vatable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+                       <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🏛️ VAT (12% Incl.)</td><td style="font-weight:600; color:#334155;">₱${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>`;
 
                 let proofsGridHtml = '';
                 if (pProof || dProof) {
@@ -7450,13 +7470,13 @@
                         <div style="display:grid; grid-template-columns:${hasBothProofs ? 'repeat(auto-fit, minmax(230px, 1fr))' : '1fr'}; gap:14px; align-items:start;">
                             ${pProof ? `
                                 <div style="background:#f0fdf4; padding:10px; border-radius:14px; border:1px solid #bbf7d0;">
-                                    <div style="color:#16a34a; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">ðŸ’³ Payment Proof / E-Receipt:</div>
+                                    <div style="color:#16a34a; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">💳 Payment Proof / E-Receipt:</div>
                                     <img src="${pProof}" alt="Proof of Payment" onclick="window.open(this.src, '_blank')" title="Click to view full size" style="width:100%; max-height:330px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto; cursor:zoom-in;">
                                 </div>
                             ` : ''}
                             ${dProof ? `
                                 <div style="background:#fff7ed; padding:10px; border-radius:14px; border:1px solid #fed7aa;">
-                                    <div style="color:#c2410c; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">ðŸ·ï¸ ${dType === 'pwd' ? 'PWD ID' : (dType === 'senior' ? 'Senior ID' : 'Voucher/Promo')} Proof:</div>
+                                    <div style="color:#c2410c; font-size:11.5px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.4px;">🏷️ ${dType === 'pwd' ? 'PWD ID' : (dType === 'senior' ? 'Senior ID' : 'Voucher/Promo')} Proof:</div>
                                     <img src="${dProof}" alt="Discount ID / Voucher Proof" onclick="window.open(this.src, '_blank')" title="Click to view full size" style="width:100%; max-height:330px; object-fit:contain; border-radius:10px; background:white; display:block; margin:0 auto; cursor:zoom-in;">
                                 </div>
                             ` : ''}
@@ -7469,19 +7489,19 @@
                 modal.innerHTML = `
                     <div class="rsh-manager-proof-box" style="${hasBothProofs ? 'max-width: 760px !important;' : ''}" onclick="event.stopPropagation()">
                         <div class="rsh-proof-header">
-                            <h3>ðŸ§¾ Proof Viewer: ${resNum}</h3>
+                            <h3>🧾 Proof Viewer: ${resNum}</h3>
                             <button type="button" class="rsh-proof-close" onclick="window.closeProofModal()" title="Close (ESC)">&times;</button>
                         </div>
 
                         <div style="padding:18px 22px; overflow-y:auto; flex:1; background:#ffffff;">
                             <div style="margin-bottom:14px; font-size:13px; color:#555; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
                                 <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:145px;">ðŸ‘¤ Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">ðŸ”– Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b; width:145px;">👤 Customer</td><td style="font-weight:700; color:#0f172a;">${name}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">🔖 Reservation #</td><td style="font-weight:700; color:#0f172a;">${resNum}</td></tr>
                                     ${discountRowHtml}
                                     ${taxRowsHtml}
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">ðŸ’š Amount Paid</td><td style="font-weight:800; color:#16a34a; font-size:14.5px;">â‚±${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-                                    <tr><td style="padding:6px 0; color:#64748b;">ðŸ¦ Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:6px 0; color:#64748b;">💚 Amount Paid</td><td style="font-weight:800; color:#16a34a; font-size:14.5px;">₱${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+                                    <tr><td style="padding:6px 0; color:#64748b;">🏦 Ref / Account</td><td style="font-weight:700; color:#0f172a;">${ref}</td></tr>
                                 </table>
                             </div>
 
@@ -7490,7 +7510,7 @@
 
                         <div style="padding:12px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; gap:10px; justify-content:space-between; align-items:center; flex-shrink:0;">
                             <a href="receipt.html?res=${encodeURIComponent(resNum)}" target="_blank" style="flex:1.4; background:#1b5e20; color:white; text-decoration:none; padding:10px 14px; border-radius:10px; font-weight:800; font-size:12.5px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 10px rgba(27,94,32,0.2);">
-                                ðŸ–¨ï¸ Open Official Receipt
+                                🖨️ Open Official Receipt
                             </a>
                             <button type="button" onclick="window.closeProofModal()" style="flex:0.6; background:white; color:#334155; border:1px solid #cbd5e1; padding:10px 14px; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">
                                 Close
@@ -7518,7 +7538,7 @@
                 const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
                 const key = String(resNum || '').trim().toLowerCase();
 
-                // ðŸ‘‰ Match loosely: exact, case-insensitive, or id/number variants
+                // 👉 Match loosely: exact, case-insensitive, or id/number variants
                 const idx = hist.findIndex(h => {
                     if (!h) return false;
                     const candidates = [
@@ -7565,7 +7585,7 @@
                 if (e.key === 'Escape') window.closeProofModal();
             });
 
-            // ðŸ‘‰ FIX: Define 'hist' so the loop doesn't crash on a missing variable!
+            // 👉 FIX: Define 'hist' so the loop doesn't crash on a missing variable!
             const hist = JSON.parse(localStorage.getItem('reservationHistory') || '[]');
 
             let mutated = false;
@@ -7596,12 +7616,12 @@
                 const btnWrap = document.createElement('div');
                 btnWrap.style.cssText = 'display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;';
                 btnWrap.innerHTML = `
-                        <button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${firstCellText.replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">ðŸ§¾ View Proof</button>
-                        <a href="receipt.html?res=${encodeURIComponent(firstCellText)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">ðŸ–¨ï¸ Receipt</a>
+                        <button type="button" onclick="event.stopPropagation(); window.openProofByResNum('${firstCellText.replace(/'/g, "\\'")}')" style="flex:1; font-size:10.5px; padding:4px 6px; background:#e0f2fe; border:1px solid #7dd3fc; color:#0369a1; border-radius:5px; cursor:pointer; font-weight:700; white-space:nowrap;">🧾 View Proof</button>
+                        <a href="receipt.html?res=${encodeURIComponent(firstCellText)}" target="_blank" onclick="event.stopPropagation();" style="flex:1; font-size:10.5px; padding:4px 6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:5px; text-decoration:none; text-align:center; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center;">🖨️ Receipt</a>
                     `;
                 paidCell.appendChild(btnWrap);
             });
-        })(); // ðŸ‘‰ FIX: Added the missing parentheses to properly close and execute the function!
+        })(); // 👉 FIX: Added the missing parentheses to properly close and execute the function!
     </script>
     <script>
         (function () {
@@ -7615,7 +7635,7 @@
             let data = {};
 
             const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-            const peso = n => 'â‚±' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const peso = n => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const rawRead = key => (window.__rawGetStorage ? window.__rawGetStorage(key) : localStorage.getItem(key));
 
             function brGetBranches() {
@@ -7661,24 +7681,24 @@
                 const rawApi = (apiEl?.value || '').trim().replace(/\/+$/, '');
 
                 if (rawName.length < 2) {
-                    setBranchMsg('âš ï¸ Please enter a branch name (at least 2 characters).', false);
+                    setBranchMsg('⚠️ Please enter a branch name (at least 2 characters).', false);
                     return;
                 }
                 if (rawName.toLowerCase() === 'all' || rawName.toLowerCase() === 'all branches') {
-                    setBranchMsg('âš ï¸ "All" is reserved. Please enter a specific city or branch name.', false);
+                    setBranchMsg('⚠️ "All" is reserved. Please enter a specific city or branch name.', false);
                     return;
                 }
 
                 const existing = brGetBranches();
                 if (existing.some(b => String(b.name || '').toLowerCase() === rawName.toLowerCase())) {
-                    setBranchMsg(`âš ï¸ Branch "${rawName}" already exists.`, false);
+                    setBranchMsg(`⚠️ Branch "${rawName}" already exists.`, false);
                     return;
                 }
 
                 let finalApi = DEFAULT_API_URL;
                 if (rawApi) {
                     if (!/^https?:\/\/[a-z0-9.-]+(?::\d+)?(\/.*)?$/i.test(rawApi)) {
-                        setBranchMsg(`âš ï¸ Invalid API URL. Use ${DEFAULT_API_URL} (shared backend) or a valid https:// URL.`, false);
+                        setBranchMsg(`⚠️ Invalid API URL. Use ${DEFAULT_API_URL} (shared backend) or a valid https:// URL.`, false);
                         return;
                     }
                     finalApi = rawApi;
@@ -7696,7 +7716,7 @@
                 };
 
                 try {
-                    setBranchMsg('â³ Adding branch...', true);
+                    setBranchMsg('⏳ Adding branch...', true);
                     const nextList = [...existing, newBranch];
                     if (typeof window.saveBranchesToCloud === 'function') {
                         await window.saveBranchesToCloud(nextList);
@@ -7753,13 +7773,13 @@
                     if (pinEl) pinEl.value = '';
                     if (apiEl) apiEl.value = DEFAULT_API_URL;
 
-                    setBranchMsg(`âœ… Branch "${rawName}" added (POS PIN: ${branchPin}).`, true);
+                    setBranchMsg(`✅ Branch "${rawName}" added (POS PIN: ${branchPin}).`, true);
                     if (typeof window.showToast === 'function') {
                         window.showToast(`Branch "${rawName}" added across all dropdowns!`, 'success');
                     }
                     await window.brRefresh(false);
                 } catch (err) {
-                    setBranchMsg(`âŒ Could not save branch to cloud: ${err.message || err}`, false);
+                    setBranchMsg(`❌ Could not save branch to cloud: ${err.message || err}`, false);
                 }
             };
 
@@ -7769,14 +7789,14 @@
                 const existing = brGetBranches();
                 const found = existing.find(b => b.name === target);
                 if (!found || found.isDefault) {
-                    setBranchMsg('âš ï¸ Core branches (General Santos City & Koronadal City) cannot be removed.', false);
+                    setBranchMsg('⚠️ Core branches (General Santos City & Koronadal City) cannot be removed.', false);
                     return;
                 }
 
                 let ok = false;
                 if (typeof window.superModal === 'function') {
                     ok = await window.superModal({
-                        title: 'ðŸ—‘ï¸ Remove Custom Branch?',
+                        title: '🗑️ Remove Custom Branch?',
                         message: `Remove branch <b>${esc(target)}</b> from all dropdowns?<br><br>Existing records remain,and you may add this branch again.`,
                         confirmText: 'Remove Branch',
                         cancelText: 'Cancel'
@@ -7792,10 +7812,10 @@
                         await window.saveBranchesToCloud(nextList);
                     }
                     if (filter === target || filter === found.id) filter = 'all';
-                    setBranchMsg(`âœ… Removed "${target}" .`, true);
+                    setBranchMsg(`✅ Removed "${target}" .`, true);
                     await window.brRefresh(false);
                 } catch (err) {
-                    setBranchMsg(`âŒ Failed to remove branch: ${err.message || err}`, false);
+                    setBranchMsg(`❌ Failed to remove branch: ${err.message || err}`, false);
                 }
             };
 
@@ -7819,8 +7839,8 @@
                 }
                 const sel = document.getElementById('br-filter');
                 if (sel) {
-                    sel.innerHTML = '<option value="all">ðŸŒ All Branches</option>' +
-                        branches.map(b => `<option value="${esc(b.name)}">ðŸ“ ${esc(b.name)}</option>`).join('');
+                    sel.innerHTML = '<option value="all">🌐 All Branches</option>' +
+                        branches.map(b => `<option value="${esc(b.name)}">📍 ${esc(b.name)}</option>`).join('');
                     const hasMatch = filter === 'all' || branches.some(b => b.name === filter || b.id === filter);
                     if (!hasMatch) filter = 'all';
                     sel.value = filter;
@@ -7906,16 +7926,16 @@
                             <div class="card" style="margin:0; border:1px solid #e2e8f0;">
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px;">
                                     <div>
-                                        <h3 style="margin:0; font-size:18px; color:#1b5e20;">ðŸ“ ${esc(b.name)}</h3>
+                                        <h3 style="margin:0; font-size:18px; color:#1b5e20;">📍 ${esc(b.name)}</h3>
                                         <div style="font-size:12px; color:#64748b; margin-top:2px;">${esc(b.address)}</div>
                                         <div style="font-size:11px; color:#64748b; margin-top:4px; word-break:break-all;">
-                                            ðŸ”— API: <code>${esc(b.apiUrl || DEFAULT_API_URL)}</code> Â· ðŸ”’ POS PIN: <code>${esc(pin)}</code>
+                                            🔗 API: <code>${esc(b.apiUrl || DEFAULT_API_URL)}</code> · 🔒 POS PIN: <code>${esc(pin)}</code>
                                         </div>
                                     </div>
                                     <div style="display:flex; gap:6px; flex-shrink:0;">
                                         ${b.isDefault ? '' : `<button type="button" data-branch="${esc(b.name)}" onclick="window.brDeleteBranch(this.dataset.branch)" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">Delete</button>`}
                                         <button type="button" data-branch="${esc(bKey)}" onclick="window.setActiveBranch(this.dataset.branch)" style="background:#f0fdf4; color:#166534; border:1px solid #86efac; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:800; cursor:pointer;">
-                                            Manage Branch â†’
+                                            Manage Branch →
                                         </button>
                                     </div>
                                 </div>
@@ -7935,7 +7955,7 @@
                         return `
                         <div class="card" style="margin-bottom:20px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                                <h3 style="margin:0; color:#1b5e20;">ðŸ“¦ ${esc(b.name)} â€” Raw Inventory (${d.inv.length} Items)</h3>
+                                <h3 style="margin:0; color:#1b5e20;">📦 ${esc(b.name)} — Raw Inventory (${d.inv.length} Items)</h3>
                                 <button type="button" data-branch="${esc(bKey)}" onclick="window.setActiveBranch(this.dataset.branch)" style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">Edit ${esc(b.name)} Inventory</button>
                             </div>
                             <table>
@@ -7960,7 +7980,7 @@
                             <tbody>
                                 ${bs.map(b => {
                         const rev = revenueOf((data[b.name] || data[b.id] || { res: [] }).res);
-                        return `<tr><td><strong>ðŸ“ ${esc(b.name)}</strong></td><td>${peso(rev.day)}</td><td>${peso(rev.month)}</td><td style="font-weight:800; color:#16a34a;">${peso(rev.all)}</td><td>${rev.count}</td></tr>`;
+                        return `<tr><td><strong>📍 ${esc(b.name)}</strong></td><td>${peso(rev.day)}</td><td>${peso(rev.month)}</td><td style="font-weight:800; color:#16a34a;">${peso(rev.all)}</td><td>${rev.count}</td></tr>`;
                     }).join('')}
                             </tbody>
                         </table>
@@ -7971,7 +7991,7 @@
                         const d = data[b.name] || data[b.id] || { res: [] };
                         return `
                         <div class="card" style="margin-bottom:20px;">
-                            <h3 style="margin:0 0 12px 0; color:#1b5e20;">ðŸŽ« ${esc(b.name)} â€” Reservations (${d.res.length})</h3>
+                            <h3 style="margin:0 0 12px 0; color:#1b5e20;">🎫 ${esc(b.name)} — Reservations (${d.res.length})</h3>
                             <table>
                                 <thead><tr><th>Order #</th><th>Customer</th><th>Schedule</th><th>Table</th><th>Amount</th><th>Status</th></tr></thead>
                                 <tbody>
